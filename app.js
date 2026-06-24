@@ -2143,10 +2143,16 @@ function roleBadge(r) {
 var _pointageActifs = {};
 
 async function renderPointeuse() {
+  var _today = new Date();
+  var _dow = _today.getDay();
+  var _monday = new Date(_today);
+  _monday.setDate(_today.getDate() - (_dow === 0 ? 6 : _dow - 1));
+  _monday.setHours(0, 0, 0, 0);
+
   var [agents, pointages, rapport] = await Promise.all([
     DB.getAgents(),
     DB.getActivePointages(),
-    canWrite() ? DB.getPointageReport(7) : Promise.resolve([])
+    canWrite() ? DB.getPointageReport(_monday.toISOString()) : Promise.resolve([])
   ]);
   _pointageActifs = {};
   pointages.forEach(function(p) { _pointageActifs[p.agent_id] = p; });
@@ -2182,10 +2188,10 @@ async function renderPointeuse() {
       byAgentDay[key].days[day] = (byAgentDay[key].days[day] || 0) + sec;
     });
 
-    // Collecter tous les jours distincts (7 derniers jours)
+    // Lundi → Dimanche de la semaine en cours
     var days = [];
-    for (var i = 6; i >= 0; i--) {
-      var d = new Date(Date.now() - i * 86400000);
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(_monday.getTime() + i * 86400000);
       days.push(d.toISOString().slice(0, 10));
     }
 
