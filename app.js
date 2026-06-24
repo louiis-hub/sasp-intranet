@@ -2215,11 +2215,14 @@ async function renderPointeuse() {
       return '<th style="text-align:center;font-size:.75rem">' + dt.toLocaleDateString('fr-FR', { weekday:'short', day:'2-digit', month:'2-digit' }) + '</th>';
     }).join('');
 
+    var resetBtn = isAdmin()
+      ? '<button class="btn btn-danger btn-sm" onclick="resetPointageRecap()">🗑️ Réinitialiser</button>'
+      : '';
     rapportHtml = '<div class="card" style="margin-top:18px">' +
       '<div class="card-head"><div class="card-icon">📊</div><div>' +
-        '<div class="card-title">Récapitulatif — 7 derniers jours</div>' +
+        '<div class="card-title">Récapitulatif — semaine en cours</div>' +
         '<div class="card-sub">HEURES PAR AGENT ET PAR JOUR</div>' +
-      '</div></div>' +
+      '</div>' + resetBtn + '</div>' +
       '<div class="table-wrap"><table>' +
         '<thead><tr><th>AGENT</th>' + dayHeaders + '<th style="text-align:center">TOTAL</th></tr></thead>' +
         '<tbody>' + rapportRows + '</tbody>' +
@@ -2242,6 +2245,28 @@ async function renderPointeuse() {
     '</div>' +
     rapportHtml
   );
+}
+
+function resetPointageRecap() {
+  openModal({
+    eyebrow: 'POINTEUSE', title: 'Réinitialiser le récap ?',
+    body: '<p style="color:var(--t1)">Tous les pointages de la semaine en cours seront supprimés définitivement.</p>',
+    footer: '<button class="btn btn-ghost btn-sm" onclick="closeModal()">Annuler</button>' +
+            '<button class="btn btn-danger btn-sm" onclick="confirmResetRecap()">Supprimer</button>'
+  });
+}
+
+async function confirmResetRecap() {
+  closeModal();
+  var today = new Date();
+  var dow = today.getDay();
+  var monday = new Date(today);
+  monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+  monday.setHours(0, 0, 0, 0);
+  var { error } = await DB.deletePointagesSince(monday.toISOString());
+  if (error) { toast('Erreur : ' + error.message, 'error'); return; }
+  toast('Récap réinitialisé', 'success');
+  await renderPointeuse();
 }
 
 async function doClockIn(agentId) {
