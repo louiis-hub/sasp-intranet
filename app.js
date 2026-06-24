@@ -92,7 +92,7 @@ async function doDiscordLogin() {
   }
 }
 
-var WORKER_URL = 'https://sasp-nord-discord-bot.louisleurin.workers.dev';
+var WORKER_URL = 'https://sasp-intranet-bot.louisleurin.workers.dev';
 
 async function getDiscordRole(discordUserId) {
   console.log('[auth] discordUserId:', discordUserId);
