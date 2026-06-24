@@ -108,7 +108,7 @@ async function getDiscordRole(discordUserId) {
     if (data.is_owner) return { role: 'admin', apiOk: true };
     if (ROLE_ADMIN_IDS.some(function(r){ return roles.indexOf(r) !== -1; })) return { role: 'admin', apiOk: true };
     if (roles.indexOf(ROLE_ACADEMY_ID) !== -1) return { role: 'academy', apiOk: true };
-    if (roles.indexOf(ROLE_AGENT_ID) !== -1) return { role: 'agent', apiOk: true };
+    if ((typeof ROLE_AGENT_IDS !== 'undefined' ? ROLE_AGENT_IDS : [ROLE_AGENT_ID]).some(function(r){ return roles.indexOf(r) !== -1; })) return { role: 'agent', apiOk: true };
     return { role: null, apiOk: true };
   } catch(e) { console.error('[auth] error:', e); return { role: null, apiOk: false }; }
 }
