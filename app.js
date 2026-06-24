@@ -2143,9 +2143,10 @@ function roleBadge(r) {
 var _pointageActifs = {};
 
 async function renderPointeuse() {
-  var [agents, pointages] = await Promise.all([
+  var [agents, pointages, rapport] = await Promise.all([
     DB.getAgents(),
-    DB.getActivePointages()
+    DB.getActivePointages(),
+    canWrite() ? DB.getPointageReport(7) : Promise.resolve([])
   ]);
   _pointageActifs = {};
   pointages.forEach(function(p) { _pointageActifs[p.agent_id] = p; });
@@ -2168,6 +2169,60 @@ async function renderPointeuse() {
     '</tr>';
   }).join('');
 
+  // ── Rapport staff ──────────────────────────────────────────────
+  var rapportHtml = '';
+  if (canWrite() && rapport.length) {
+    // Grouper par agent + jour
+    var byAgentDay = {};
+    rapport.forEach(function(p) {
+      var key = p.agent_id;
+      var day = p.clock_in.slice(0, 10);
+      var sec = p.clock_out ? Math.floor((new Date(p.clock_out) - new Date(p.clock_in)) / 1000) : 0;
+      if (!byAgentDay[key]) byAgentDay[key] = { agent: p.agents, days: {} };
+      byAgentDay[key].days[day] = (byAgentDay[key].days[day] || 0) + sec;
+    });
+
+    // Collecter tous les jours distincts (7 derniers jours)
+    var days = [];
+    for (var i = 6; i >= 0; i--) {
+      var d = new Date(Date.now() - i * 86400000);
+      days.push(d.toISOString().slice(0, 10));
+    }
+
+    var rapportRows = Object.values(byAgentDay).map(function(entry) {
+      var a = entry.agent || {};
+      var totalSec = 0;
+      var cells = days.map(function(day) {
+        var sec = entry.days[day] || 0;
+        totalSec += sec;
+        return '<td style="text-align:center">' + (sec ? fmtSec(sec) : '<span style="color:var(--t3)">—</span>') + '</td>';
+      }).join('');
+      return '<tr>' +
+        '<td><strong>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule || '') + '</small></td>' +
+        cells +
+        '<td style="text-align:center"><strong>' + fmtSec(totalSec) + '</strong></td>' +
+      '</tr>';
+    }).join('');
+
+    var dayHeaders = days.map(function(d) {
+      var dt = new Date(d + 'T12:00:00');
+      return '<th style="text-align:center;font-size:.75rem">' + dt.toLocaleDateString('fr-FR', { weekday:'short', day:'2-digit', month:'2-digit' }) + '</th>';
+    }).join('');
+
+    rapportHtml = '<div class="card" style="margin-top:18px">' +
+      '<div class="card-head"><div class="card-icon">📊</div><div>' +
+        '<div class="card-title">Récapitulatif — 7 derniers jours</div>' +
+        '<div class="card-sub">HEURES PAR AGENT ET PAR JOUR</div>' +
+      '</div></div>' +
+      '<div class="table-wrap"><table>' +
+        '<thead><tr><th>AGENT</th>' + dayHeaders + '<th style="text-align:center">TOTAL</th></tr></thead>' +
+        '<tbody>' + rapportRows + '</tbody>' +
+      '</table></div>' +
+    '</div>';
+  } else if (canWrite()) {
+    rapportHtml = '<div class="card" style="margin-top:18px"><p class="text-muted" style="padding:12px">Aucun pointage enregistré sur les 7 derniers jours.</p></div>';
+  }
+
   setContent(
     '<div class="flex-between mb-20">' +
       '<div><h1 style="font-size:1.4rem">Pointeuse</h1>' +
@@ -2178,7 +2233,8 @@ async function renderPointeuse() {
         '<thead><tr><th>GRADE</th><th>AGENT</th><th>STATUT</th><th>ACTION</th></tr></thead>' +
         '<tbody>' + (rows || '<tr><td colspan="4" style="text-align:center;color:var(--t3)">Aucun agent</td></tr>') + '</tbody>' +
       '</table></div>' +
-    '</div>'
+    '</div>' +
+    rapportHtml
   );
 }
 
@@ -2202,6 +2258,12 @@ function fmtDuration(startIso) {
   var diff = Math.floor((Date.now() - new Date(startIso)) / 1000);
   var h = Math.floor(diff / 3600);
   var m = Math.floor((diff % 3600) / 60);
+  return h + 'h' + (m < 10 ? '0' : '') + m;
+}
+
+function fmtSec(sec) {
+  var h = Math.floor(sec / 3600);
+  var m = Math.floor((sec % 3600) / 60);
   return h + 'h' + (m < 10 ? '0' : '') + m;
 }
 

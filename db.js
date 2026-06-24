@@ -192,6 +192,15 @@ var DB = {
   async clockOut(id) {
     return getDb().from('pointages').update({ clock_out: new Date().toISOString() }).eq('id', id);
   },
+  async getPointageReport(days) {
+    var since = new Date(Date.now() - (days || 7) * 86400000).toISOString();
+    var { data } = await getDb().from('pointages')
+      .select('*, agents(nom, prenom, matricule, grade)')
+      .not('clock_out', 'is', null)
+      .gte('clock_in', since)
+      .order('clock_in', { ascending: false });
+    return data || [];
+  },
 
   // ── Search ───────────────────────────────────────────────────
   async search(q) {
