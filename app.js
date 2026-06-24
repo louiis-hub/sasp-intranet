@@ -36,7 +36,8 @@ var NAV = [
   { group: 'RESSOURCES HUMAINES' },
   { id: 'agents',   icon: '👮', label: 'Agents' },
   { id: 'grades',   icon: '🎖️', label: 'Grades' },
-  { id: 'units',    icon: '🚔', label: 'Divisions' },
+  { id: 'units',     icon: '🚔', label: 'Divisions' },
+  { id: 'pointeuse', icon: '⏱️', label: 'Pointeuse' },
   { divider: true },
   { group: 'DOCUMENTATION' },
   { id: 'mdt',      icon: '📚', label: 'Guide MDT' },
@@ -53,7 +54,7 @@ var NAV = [
 
 var PAGE_TITLES = {
   dashboard:'Tableau de bord', agents:'Agents', 'agent-profile':'Fiche agent',
-  grades:'Grades', units:'Divisions', mdt:'Guide MDT', vehicles:'Véhicules',
+  grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', mdt:'Guide MDT', vehicles:'Véhicules',
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
   archives:'Archives',
   'global-settings':'Réglages globaux',
@@ -244,7 +245,7 @@ async function navigate(page, pd) {
   _quill = null;
   setContent('<div class="loader-block"><div class="spinner"></div><p>Chargement…</p></div>');
   var _permCfg = {}; try { _permCfg = JSON.parse(localStorage.getItem('sasp_permissions') || '{}'); } catch(e) {}
-  var AGENT_ALLOWED   = _permCfg.agentPages   || ['dashboard','agents','agent-profile','grades','units','mdt','vehicles','info','manuel','tenue','document'];
+  var AGENT_ALLOWED   = _permCfg.agentPages   || ['dashboard','agents','agent-profile','grades','units','pointeuse','mdt','vehicles','info','manuel','tenue','document'];
   var ACADEMY_ALLOWED = _permCfg.academyPages  || null;
   if (S.role === 'agent' && AGENT_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au personnel d\'encadrement.</div></div>');
@@ -263,6 +264,7 @@ async function navigate(page, pd) {
       units:          renderUnits,
       mdt:            renderMDT,
       vehicles:       renderVehicles,
+      pointeuse:      renderPointeuse,
       archives:       renderArchives,
       'global-settings': renderGlobalSettings,
       stats:          renderStats,
@@ -2135,6 +2137,72 @@ function roleBadge(r) {
   var map = { admin:'badge-gold', academy:'badge-blue', agent:'badge-gray' };
   var labels = { admin:'Command Staff', academy:'SASP Academy', agent:'Agent' };
   return '<span class="badge ' + (map[r]||'badge-gray') + '">' + esc(labels[r]||r) + '</span>';
+}
+
+// ══ POINTEUSE ══════════════════════════════════════════════════════
+var _pointageActifs = {};
+
+async function renderPointeuse() {
+  var [agents, pointages] = await Promise.all([
+    DB.getAgents(),
+    DB.getActivePointages()
+  ]);
+  _pointageActifs = {};
+  pointages.forEach(function(p) { _pointageActifs[p.agent_id] = p; });
+  var enService = pointages.length;
+
+  var rows = agents.map(function(a) {
+    var actif = _pointageActifs[a.id];
+    var since = actif ? fmtDuration(actif.clock_in) : '';
+    var statusHtml = actif
+      ? '<span class="badge badge-green">En service · ' + since + '</span>'
+      : '<span class="badge badge-gray">Hors service</span>';
+    var btnHtml = actif
+      ? '<button class="btn btn-danger btn-sm" onclick="doClockOut(\'' + a.id + '\')">⏹ Sortie</button>'
+      : '<button class="btn btn-primary btn-sm" onclick="doClockIn(\'' + a.id + '\')">▶ Entrée</button>';
+    return '<tr>' +
+      '<td>' + gradeBadge(a.grade) + '</td>' +
+      '<td><strong>' + esc(a.prenom + ' ' + a.nom) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule) + '</small></td>' +
+      '<td>' + statusHtml + '</td>' +
+      '<td>' + btnHtml + '</td>' +
+    '</tr>';
+  }).join('');
+
+  setContent(
+    '<div class="flex-between mb-20">' +
+      '<div><h1 style="font-size:1.4rem">Pointeuse</h1>' +
+      '<p class="text-muted">' + enService + ' agent' + (enService > 1 ? 's' : '') + ' en service</p></div>' +
+    '</div>' +
+    '<div class="card">' +
+      '<div class="table-wrap"><table>' +
+        '<thead><tr><th>GRADE</th><th>AGENT</th><th>STATUT</th><th>ACTION</th></tr></thead>' +
+        '<tbody>' + (rows || '<tr><td colspan="4" style="text-align:center;color:var(--t3)">Aucun agent</td></tr>') + '</tbody>' +
+      '</table></div>' +
+    '</div>'
+  );
+}
+
+async function doClockIn(agentId) {
+  var { error } = await DB.clockIn(agentId);
+  if (error) { toast('Erreur : ' + error.message, 'error'); return; }
+  toast('Entrée enregistrée', 'success');
+  await renderPointeuse();
+}
+
+async function doClockOut(agentId) {
+  var p = _pointageActifs[agentId];
+  if (!p) return;
+  var { error } = await DB.clockOut(p.id);
+  if (error) { toast('Erreur : ' + error.message, 'error'); return; }
+  toast('Sortie enregistrée', 'success');
+  await renderPointeuse();
+}
+
+function fmtDuration(startIso) {
+  var diff = Math.floor((Date.now() - new Date(startIso)) / 1000);
+  var h = Math.floor(diff / 3600);
+  var m = Math.floor((diff % 3600) / 60);
+  return h + 'h' + (m < 10 ? '0' : '') + m;
 }
 
 async function changeRole(userId, role) {

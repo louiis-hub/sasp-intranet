@@ -181,6 +181,18 @@ var DB = {
     return { agents: ag.data || [], recentHist: hist.data || [] };
   },
 
+  // ── Pointeuse ────────────────────────────────────────────────
+  async getActivePointages() {
+    var { data } = await getDb().from('pointages').select('*').is('clock_out', null);
+    return data || [];
+  },
+  async clockIn(agentId) {
+    return getDb().from('pointages').insert({ agent_id: agentId, clock_in: new Date().toISOString() }).select().single();
+  },
+  async clockOut(id) {
+    return getDb().from('pointages').update({ clock_out: new Date().toISOString() }).eq('id', id);
+  },
+
   // ── Search ───────────────────────────────────────────────────
   async search(q) {
     if (!q || q.length < 2) return { agents: [], mdt: [] };
