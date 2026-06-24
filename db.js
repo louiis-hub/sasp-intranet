@@ -192,6 +192,13 @@ var DB = {
   async clockOut(id) {
     return getDb().from('pointages').update({ clock_out: new Date().toISOString() }).eq('id', id);
   },
+  async getAllPointages() {
+    var { data } = await getDb().from('pointages')
+      .select('*, agents(nom, prenom, matricule, grade)')
+      .not('clock_out', 'is', null)
+      .order('clock_in', { ascending: false });
+    return data || [];
+  },
   async deletePointagesSince(since) {
     return getDb().from('pointages').delete().gte('clock_in', since);
   },

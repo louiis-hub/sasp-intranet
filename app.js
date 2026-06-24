@@ -54,7 +54,7 @@ var NAV = [
 
 var PAGE_TITLES = {
   dashboard:'Tableau de bord', agents:'Agents', 'agent-profile':'Fiche agent',
-  grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', mdt:'Guide MDT', vehicles:'Véhicules',
+  grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', 'pointeuse-historique':'Historique pointages', mdt:'Guide MDT', vehicles:'Véhicules',
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
   archives:'Archives',
   'global-settings':'Réglages globaux',
@@ -264,7 +264,8 @@ async function navigate(page, pd) {
       units:          renderUnits,
       mdt:            renderMDT,
       vehicles:       renderVehicles,
-      pointeuse:      renderPointeuse,
+      pointeuse:               renderPointeuse,
+      'pointeuse-historique':  renderPointeuseHistorique,
       archives:       renderArchives,
       'global-settings': renderGlobalSettings,
       stats:          renderStats,
@@ -2232,10 +2233,15 @@ async function renderPointeuse() {
     rapportHtml = '<div class="card" style="margin-top:18px"><p class="text-muted" style="padding:12px">Aucun pointage enregistré sur les 7 derniers jours.</p></div>';
   }
 
+  var histBtn = canWrite()
+    ? '<button class="btn btn-ghost btn-sm" onclick="navigate(\'pointeuse-historique\')">📜 Historique</button>'
+    : '';
+
   setContent(
     '<div class="flex-between mb-20">' +
       '<div><h1 style="font-size:1.4rem">Pointeuse</h1>' +
       '<p class="text-muted">' + enService + ' agent' + (enService > 1 ? 's' : '') + ' en service</p></div>' +
+      histBtn +
     '</div>' +
     '<div class="card">' +
       '<div class="table-wrap"><table>' +
@@ -2283,6 +2289,99 @@ async function doClockOut(agentId) {
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
   toast('Sortie enregistrée', 'success');
   await renderPointeuse();
+}
+
+// ══ HISTORIQUE POINTAGES ══════════════════════════════════════════
+async function renderPointeuseHistorique() {
+  if (!canWrite()) {
+    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div></div>');
+    return;
+  }
+  var all = await DB.getAllPointages();
+
+  // Grouper par semaine (lundi de la semaine)
+  var byWeek = {};
+  all.forEach(function(p) {
+    var d = new Date(p.clock_in);
+    var dow = d.getDay();
+    var monday = new Date(d);
+    monday.setDate(d.getDate() - (dow === 0 ? 6 : dow - 1));
+    monday.setHours(0, 0, 0, 0);
+    var key = monday.toISOString().slice(0, 10);
+    if (!byWeek[key]) byWeek[key] = { monday: monday, entries: [] };
+    byWeek[key].entries.push(p);
+  });
+
+  var weekKeys = Object.keys(byWeek).sort(function(a, b) { return b.localeCompare(a); });
+
+  if (!weekKeys.length) {
+    setContent(
+      '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Historique pointages</h1></div>' +
+      '<button class="btn btn-ghost btn-sm" onclick="navigate(\'pointeuse\')">← Retour</button></div>' +
+      '<div class="card"><p class="text-muted" style="padding:12px">Aucun pointage enregistré.</p></div>'
+    );
+    return;
+  }
+
+  var accordionHtml = weekKeys.map(function(key, idx) {
+    var week = byWeek[key];
+    var sun = new Date(week.monday.getTime() + 6 * 86400000);
+    var label = 'Semaine du ' +
+      week.monday.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' }) +
+      ' au ' + sun.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+    var totalSec = week.entries.reduce(function(acc, p) {
+      if (!p.clock_out) return acc;
+      return acc + Math.floor((new Date(p.clock_out) - new Date(p.clock_in)) / 1000);
+    }, 0);
+
+    var rows = week.entries.map(function(p) {
+      var a = p.agents || {};
+      var dur = p.clock_out ? fmtSec(Math.floor((new Date(p.clock_out) - new Date(p.clock_in)) / 1000)) : '<span style="color:var(--gold)">En cours</span>';
+      var cin = new Date(p.clock_in).toLocaleString('fr-FR', { weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+      var cout = p.clock_out ? new Date(p.clock_out).toLocaleString('fr-FR', { hour:'2-digit', minute:'2-digit' }) : '—';
+      return '<tr>' +
+        '<td>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</td>' +
+        '<td style="color:var(--t2)">' + esc(a.matricule || '') + '</td>' +
+        '<td>' + cin + '</td>' +
+        '<td>' + cout + '</td>' +
+        '<td style="text-align:center"><strong>' + dur + '</strong></td>' +
+      '</tr>';
+    }).join('');
+
+    var panelId = 'wk_' + key.replace(/-/g, '');
+    return '<div style="border:1px solid var(--border1);border-radius:var(--rSm);margin-bottom:8px;overflow:hidden">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;background:var(--bg1)" onclick="toggleWeek(\'' + panelId + '\')">' +
+        '<div>' +
+          '<span style="font-weight:600;color:var(--t0)">' + label + '</span>' +
+          '<span style="margin-left:12px;font-size:.8rem;color:var(--t3)">' + week.entries.length + ' pointage' + (week.entries.length > 1 ? 's' : '') + ' · ' + fmtSec(totalSec) + ' total</span>' +
+        '</div>' +
+        '<span id="' + panelId + '_ico">▼</span>' +
+      '</div>' +
+      '<div id="' + panelId + '" style="display:none">' +
+        '<div class="table-wrap"><table>' +
+          '<thead><tr><th>AGENT</th><th>MATRICULE</th><th>ENTRÉE</th><th>SORTIE</th><th style="text-align:center">DURÉE</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  setContent(
+    '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Historique pointages</h1>' +
+    '<p class="text-muted">' + weekKeys.length + ' semaine' + (weekKeys.length > 1 ? 's' : '') + ' enregistrée' + (weekKeys.length > 1 ? 's' : '') + '</p></div>' +
+    '<button class="btn btn-ghost btn-sm" onclick="navigate(\'pointeuse\')">← Retour</button></div>' +
+    '<div>' + accordionHtml + '</div>'
+  );
+}
+
+function toggleWeek(id) {
+  var el = document.getElementById(id);
+  var ico = document.getElementById(id + '_ico');
+  if (!el) return;
+  var open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (ico) ico.textContent = open ? '▼' : '▲';
 }
 
 function fmtDuration(startIso) {
