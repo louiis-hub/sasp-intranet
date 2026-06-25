@@ -32,7 +32,7 @@ function syncDiscordRoles(discordId, addCodes, removeCodes) {
 
 async function syncAllAgentsToDiscord() {
   if (!confirm('Synchroniser les rôles Discord vers les fiches intranet ?\n\nLes divisions CID/SWAT/PA/CNU/TU/SYND seront mises à jour pour chaque agent qui a un Discord ID.')) return;
-  var loader = toastLoading('Récupération des rôles Discord…');
+  var loader = toastLoading('Synchronisation en cours…');
   try {
     var agents = await DB.getAgents({});
     var withId = agents.filter(function(a) { return a.discord_id; });
