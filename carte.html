@@ -338,7 +338,7 @@ function buildCRS() {
 // ══ CARTE 10-20 ══
 const map1020 = L.map('map-1020', {
   center:[0,0], zoom:1, minZoom:1, maxZoom:5,
-  crs:buildCRS(), preferCanvas:true, zoomControl:true
+  crs:buildCRS(), preferCanvas:true, zoomControl:true, attributionControl:false
 });
 
 // Satellite tiles
@@ -378,7 +378,7 @@ function initMapRoad() {
   if (mapRoad) return;
   mapRoad = L.map('map-road', {
     center:[0,0], zoom:1, minZoom:1, maxZoom:5,
-    crs:buildCRS(), preferCanvas:true, zoomControl:true
+    crs:buildCRS(), preferCanvas:true, zoomControl:true, attributionControl:false
   });
 
   // Image de la carte route — on l'utilise directement sans fond de tuiles
