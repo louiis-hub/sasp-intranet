@@ -61,7 +61,7 @@ async function syncAllAgentsToDiscord() {
     }
     loader.done(updated + ' fiche(s) mise(s) à jour depuis Discord.');
     sendLog('🔄 Sync Discord → Intranet', 0x3498db, [
-      { name: 'Par', value: S.userName || 'Inconnu', inline: true },
+      { name: 'Par', value: _whoAmI(), inline: true },
       { name: 'Agents avec Discord ID', value: String(withId.length), inline: true },
       { name: 'Fiches mises à jour', value: String(updated), inline: true }
     ]);
@@ -1069,7 +1069,7 @@ async function savePPAModal(agentId) {
       var fields = [{ name: 'Agent', value: esc(old.prenom) + ' ' + esc(old.nom) + ' (' + esc(old.matricule) + ')', inline: false }];
       if (addCodes.length) fields.push({ name: '✅ Ajouté', value: addCodes.map(function(c){ return ppaLabels[c]||c; }).join(', '), inline: true });
       if (removeCodes.length) fields.push({ name: '❌ Retiré', value: removeCodes.map(function(c){ return ppaLabels[c]||c; }).join(', '), inline: true });
-      fields.push({ name: 'Par', value: S.userName || 'Inconnu', inline: true });
+      fields.push({ name: 'Par', value: _whoAmI(), inline: true });
       sendLog('🔫 Mise à jour PPA', 0xe67e22, fields);
     }
     closeModal();
