@@ -47,23 +47,37 @@ async function syncAllAgentsToDiscord() {
     if (!discordData.ok) throw new Error(discordData.error || 'Erreur Discord');
     var roleMap = discordData.map;
     var updated = 0;
+    var changeLines = [];
     for (var i = 0; i < withId.length; i++) {
       var a = withId[i];
       var entry = roleMap[a.discord_id] || { divisions: [], ppa1: false, ppa2: false, ppa3: false };
       var nonTracked = (a.unites || []).filter(function(u) { return !TRACKED_DIVISIONS.includes(u); });
       var newUnites = nonTracked.concat(entry.divisions || []);
       var patch = {};
-      if (JSON.stringify(newUnites.slice().sort()) !== JSON.stringify((a.unites || []).slice().sort())) patch.unites = newUnites;
-      if (!!entry.ppa1 !== !!a.ppa1) patch.ppa1 = entry.ppa1;
-      if (!!entry.ppa2 !== !!a.ppa2) patch.ppa2 = entry.ppa2;
-      if (!!entry.ppa3 !== !!a.ppa3) patch.ppa3 = entry.ppa3;
-      if (Object.keys(patch).length) { await DB.updateAgent(a.id, patch); updated++; }
+      var diff = [];
+      if (JSON.stringify(newUnites.slice().sort()) !== JSON.stringify((a.unites || []).slice().sort())) {
+        patch.unites = newUnites;
+        var added = (entry.divisions || []).filter(function(d){ return !(a.unites||[]).includes(d); });
+        var removed = (a.unites||[]).filter(function(d){ return TRACKED_DIVISIONS.includes(d) && !(entry.divisions||[]).includes(d); });
+        if (added.length) diff.push('+' + added.join(', +'));
+        if (removed.length) diff.push('-' + removed.join(', -'));
+      }
+      if (!!entry.ppa1 !== !!a.ppa1) { patch.ppa1 = entry.ppa1; diff.push((entry.ppa1?'+':'-') + 'PPA1'); }
+      if (!!entry.ppa2 !== !!a.ppa2) { patch.ppa2 = entry.ppa2; diff.push((entry.ppa2?'+':'-') + 'PPA2'); }
+      if (!!entry.ppa3 !== !!a.ppa3) { patch.ppa3 = entry.ppa3; diff.push((entry.ppa3?'+':'-') + 'PPA3'); }
+      if (Object.keys(patch).length) {
+        await DB.updateAgent(a.id, patch);
+        updated++;
+        changeLines.push('**' + esc(a.prenom) + ' ' + esc(a.nom) + '** (' + esc(a.matricule) + ') — ' + diff.join(', '));
+      }
     }
     loader.done(updated + ' fiche(s) mise(s) à jour depuis Discord.');
+    var desc = changeLines.length ? changeLines.join('\n') : 'Aucun changement détecté.';
     sendLog('🔄 Sync Discord → Intranet', 0x3498db, [
       { name: 'Par', value: _whoAmI(), inline: true },
-      { name: 'Agents avec Discord ID', value: String(withId.length), inline: true },
-      { name: 'Fiches mises à jour', value: String(updated), inline: true }
+      { name: 'Agents vérifiés', value: String(withId.length), inline: true },
+      { name: 'Fiches mises à jour', value: String(updated), inline: true },
+      { name: 'Détail', value: desc.slice(0, 1024), inline: false }
     ]);
     if (S.page === 'agents') await renderAgents();
   } catch(e) { loader.done('Erreur : ' + e.message, 'error'); }
