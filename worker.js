@@ -506,8 +506,12 @@ export default {
           if (clickerId !== creatorId && !isAdmin) {
             return json({ type: 4, data: { content: "❌ Seul le créateur de la plainte ou un admin peut la modifier.", flags: 64 } });
           }
-          const fields = interaction.message.embeds?.[0]?.fields || [];
+          const embed = interaction.message.embeds?.[0] || {};
+          const fields = embed.fields || [];
           const getField = (kw) => fields.find(f => f.name.includes(kw))?.value || "";
+          // raison : nouveau format = description, ancien format = champ
+          const descRaison = embed.description ? embed.description.replace(/^\*\*📋 Raison de la plainte\*\*\n/, '') : "";
+          const raisonVal = descRaison || getField("Raison");
           const channelId = interaction.channel_id;
           const messageId = interaction.message.id;
           return json({
@@ -520,7 +524,7 @@ export default {
                 { type: 1, components: [{ type: 4, custom_id: "plaignant_tel", label: "Téléphone du plaignant", style: 1, required: true, value: getField("Téléphone"), min_length: 3, max_length: 30 }] },
                 { type: 1, components: [{ type: 4, custom_id: "plaignant_ddn", label: "Date de naissance du plaignant", style: 1, required: true, value: getField("naissance"), min_length: 8, max_length: 20 }] },
                 { type: 1, components: [{ type: 4, custom_id: "individu", label: "Individu signalé", style: 2, required: false, value: getField("Individu"), max_length: 1000 }] },
-                { type: 1, components: [{ type: 4, custom_id: "raison", label: "Raison de la plainte", style: 2, required: true, value: getField("Raison"), min_length: 10, max_length: 4000 }] }
+                { type: 1, components: [{ type: 4, custom_id: "raison", label: "Raison de la plainte", style: 2, required: true, value: raisonVal, min_length: 10, max_length: 4000 }] }
               ]
             }
           });
