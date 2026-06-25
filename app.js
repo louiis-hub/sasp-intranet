@@ -765,6 +765,8 @@ async function saveAgent(id) {
   var nom    = document.getElementById('agNom').value.trim();
   var mat    = document.getElementById('agMatricule').value.trim();
   if (!prenom || !nom || !mat) { toast('Prénom, nom et matricule sont requis.','error'); return; }
+  var discordIdVal = document.getElementById('agDiscordId').value.trim();
+  if (!id && !discordIdVal) { toast('Le Discord ID est requis pour créer une fiche.','error'); return; }
   var matTaken = await DB.checkMatricule(mat, id || null);
   if (matTaken) { toast('Ce matricule est déjà utilisé par un autre agent.','error'); return; }
 
