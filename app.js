@@ -34,16 +34,18 @@ async function syncAllAgentsToDiscord() {
   if (!confirm('Synchroniser les rôles Discord vers les fiches intranet ?\n\nLes divisions CID/SWAT/PA/CNU/TU/SYND seront mises à jour pour chaque agent qui a un Discord ID.')) return;
   var loader = toastLoading('Récupération des rôles Discord…');
   try {
+    var agents = await DB.getAgents({});
+    var withId = agents.filter(function(a) { return a.discord_id; });
+    if (!withId.length) { loader.done('Aucun agent avec un Discord ID.', 'error'); return; }
+    loader.update('Récupération des rôles Discord… (0 / ' + withId.length + ')');
     var discordRes = await fetch(WORKER_BASE + '/sync-all-from-discord', {
-      headers: { 'x-log-token': LOG_TOKEN }
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+      body: JSON.stringify({ discord_ids: withId.map(function(a) { return a.discord_id; }) })
     });
     var discordData = await discordRes.json();
     if (!discordData.ok) throw new Error(discordData.error || 'Erreur Discord');
     var roleMap = discordData.map;
-
-    loader.update('Mise à jour des fiches…');
-    var agents = await DB.getAgents({});
-    var withId = agents.filter(function(a) { return a.discord_id; });
     loader.update('Mise à jour des fiches… (0 / ' + withId.length + ')');
     var updated = 0;
     for (var i = 0; i < withId.length; i++) {

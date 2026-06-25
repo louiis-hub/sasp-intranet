@@ -187,25 +187,20 @@ export default {
       return json({ ok: true, divisions });
     }
 
-    // Récupère les rôles de tous les membres Discord (Discord → Intranet)
-    if (url.pathname === "/sync-all-from-discord" && request.method === "GET") {
+    // Récupère les rôles de membres Discord par IDs (Discord → Intranet)
+    if (url.pathname === "/sync-all-from-discord" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const { discord_ids } = await request.json();
       const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
-      const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members?limit=1000`, {
-        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
-      });
-      if (!res.ok) {
-        const errBody = await res.text();
-        return json({ ok: false, error: "Discord " + res.status + ": " + errBody }, 500);
-      }
-      const members = await res.json();
       const map = {};
-      for (const m of members) {
-        const userId = m.user?.id;
-        if (!userId) continue;
-        const divisions = (m.roles || []).filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]);
-        map[userId] = divisions;
+      for (const discordId of (discord_ids || [])) {
+        const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        if (!res.ok) continue;
+        const m = await res.json();
+        map[discordId] = (m.roles || []).filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]);
       }
       return json({ ok: true, map });
     }
