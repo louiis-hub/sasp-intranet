@@ -1145,6 +1145,13 @@ async function openAddArmeModal(agentId) {
     eyebrow: 'ARMEMENT',
     title: 'Ajouter une arme — ' + esc(ag.prenom) + ' ' + esc(ag.nom),
     body:
+      '<div class="form-group"><label class="form-label">Arme rapide</label>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+          ['Taser','Glock','MP5','Fusil à pompe','Fusil carabine'].map(function(w){
+            return '<button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById(\'armeNom\').value=\'' + w + '\'">' + w + '</button>';
+          }).join('') +
+        '</div>' +
+      '</div>' +
       fld("Nom de l'arme *", 'text', 'armeNom', '', 'Ex : Glock 17, AR-15…') +
       fld('Numéro de série', 'text', 'armeSerie', '', 'Ex : GK-123456') +
       '<div class="form-group"><label class="form-label">Niveau PPA requis *</label>' +
