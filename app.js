@@ -50,7 +50,8 @@ async function syncAllAgentsToDiscord() {
     var changeLines = [];
     for (var i = 0; i < withId.length; i++) {
       var a = withId[i];
-      var entry = roleMap[a.discord_id] || { divisions: [], ppa1: false, ppa2: false, ppa3: false };
+      if (!roleMap[a.discord_id]) continue; // pas trouvé sur Discord → on ne touche pas la fiche
+      var entry = roleMap[a.discord_id];
       var nonTracked = (a.unites || []).filter(function(u) { return !TRACKED_DIVISIONS.includes(u); });
       var newUnites = nonTracked.concat(entry.divisions || []);
       var patch = {};
