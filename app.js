@@ -60,6 +60,11 @@ async function syncAllAgentsToDiscord() {
       if (Object.keys(patch).length) { await DB.updateAgent(a.id, patch); updated++; }
     }
     loader.done(updated + ' fiche(s) mise(s) à jour depuis Discord.');
+    sendLog('🔄 Sync Discord → Intranet', 0x3498db, [
+      { name: 'Par', value: S.userName || 'Inconnu', inline: true },
+      { name: 'Agents avec Discord ID', value: String(withId.length), inline: true },
+      { name: 'Fiches mises à jour', value: String(updated), inline: true }
+    ]);
     if (S.page === 'agents') await renderAgents();
   } catch(e) { loader.done('Erreur : ' + e.message, 'error'); }
 }
@@ -1058,6 +1063,14 @@ async function savePPAModal(agentId) {
         else { removeCodes.push('ppa3a'); removeCodes.push('ppa3b'); }
       }
       if (addCodes.length || removeCodes.length) syncDiscordRoles(old.discord_id, addCodes, removeCodes);
+    }
+    if (old && old.discord_id && (addCodes.length || removeCodes.length)) {
+      var ppaLabels = { ppa1:'PPA 1 (Glock)', ppa2:'PPA 2 (MP5)', ppa3a:'PPA 3 Fusil à pompe', ppa3b:'PPA 3 Fusil carabine' };
+      var fields = [{ name: 'Agent', value: esc(old.prenom) + ' ' + esc(old.nom) + ' (' + esc(old.matricule) + ')', inline: false }];
+      if (addCodes.length) fields.push({ name: '✅ Ajouté', value: addCodes.map(function(c){ return ppaLabels[c]||c; }).join(', '), inline: true });
+      if (removeCodes.length) fields.push({ name: '❌ Retiré', value: removeCodes.map(function(c){ return ppaLabels[c]||c; }).join(', '), inline: true });
+      fields.push({ name: 'Par', value: S.userName || 'Inconnu', inline: true });
+      sendLog('🔫 Mise à jour PPA', 0xe67e22, fields);
     }
     closeModal();
     toast('Formations mises à jour.','success');
