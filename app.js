@@ -2345,7 +2345,7 @@ async function doClockOut(agentId, agentName, matricule) {
 function renderCartes() {
   setContent(
     '<div style="display:flex;flex-direction:column;height:calc(100vh - 60px);margin:-24px">' +
-      '<iframe src="carte.html?v=2" style="flex:1;border:none;width:100%;height:100%;" allowfullscreen></iframe>' +
+      '<iframe src="carte.html?v=3" style="flex:1;border:none;width:100%;height:100%;" allowfullscreen></iframe>' +
     '</div>'
   );
 }
