@@ -439,7 +439,8 @@ export default {
           const err = await postRes.text();
           return json({ type: 4, data: { content: `❌ Erreur Discord (${postRes.status}): ${err}`, flags: 64 } });
         }
-        return json({ type: 4, data: { content: "✅ Plainte enregistrée et transmise.", flags: 64 } });
+        const postData = await postRes.json();
+        return json({ type: 4, data: { content: `✅ Envoyé dans <#${interaction.channel_id}> (msg: ${postData.id || 'none'})`, flags: 64 } });
       }
 
       // Modal submit plainte (modification)
