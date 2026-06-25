@@ -2,6 +2,16 @@
 const DISCORD_API = "https://discord.com/api/v10";
 const SUPABASE_URL = "https://ufxhxptzcnvelnbprwng.supabase.co";
 
+const DIVISION_ROLES = {
+  'CID':  '1518631634524569641',
+  'SWAT': '1504454935645786222',
+  'PA':   '1518631987462668358',
+  'CNU':  '1519495084276715663',
+  'TU':   '1514523508980584528',
+  'SYND': '1519496665499959418'
+};
+const ROLE_TO_DIVISION = Object.fromEntries(Object.entries(DIVISION_ROLES).map(([k,v]) => [v,k]));
+
 const STAFF_ROLE_IDS = [
   '1519507318188933140', // rôle gestionnaire
   '1500975725153620033', // Command Staff
@@ -137,6 +147,44 @@ export default {
           "access-control-allow-methods": "GET,POST,OPTIONS"
         }
       });
+    }
+
+    // Sync divisions intranet → Discord
+    if (url.pathname === "/sync-member-roles" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return new Response("Unauthorized", { status: 401 });
+      const { discord_id, add_codes, remove_codes } = await request.json();
+      const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+      const results = [];
+      for (const code of (add_codes || [])) {
+        const roleId = DIVISION_ROLES[code]; if (!roleId) continue;
+        const r = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
+          method: "PUT", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet — sync division" }
+        });
+        results.push({ code, action: "add", status: r.status });
+      }
+      for (const code of (remove_codes || [])) {
+        const roleId = DIVISION_ROLES[code]; if (!roleId) continue;
+        const r = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
+          method: "DELETE", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet — sync division" }
+        });
+        results.push({ code, action: "remove", status: r.status });
+      }
+      return json({ ok: true, results });
+    }
+
+    // Sync divisions Discord → intranet
+    if (url.pathname === "/get-member-roles" && request.method === "GET") {
+      const discordId = url.searchParams.get("discord_id");
+      if (!discordId) return json({ error: "Missing discord_id" }, 400);
+      const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+      const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+      });
+      if (!res.ok) return json({ ok: false, error: "Membre non trouvé" }, 404);
+      const member = await res.json();
+      const divisions = (member.roles || []).filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]);
+      return json({ ok: true, divisions });
     }
 
     // Logs intranet → Discord

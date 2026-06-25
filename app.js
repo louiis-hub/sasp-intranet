@@ -16,8 +16,34 @@
 var S = { user: null, appUser: null, role: 'agent', page: 'dashboard', pd: {} };
 
 // ── Discord logs ────────────────────────────────────────────────────
-var LOG_WORKER = 'https://sasp-intranet-bot.louisleurin.workers.dev/log';
-var LOG_TOKEN  = 'SASPlogs2026!';
+var WORKER_BASE = 'https://sasp-intranet-bot.louisleurin.workers.dev';
+var LOG_WORKER  = WORKER_BASE + '/log';
+var LOG_TOKEN   = 'SASPlogs2026!';
+var TRACKED_DIVISIONS = ['CID','SWAT','PA','CNU','TU','SYND'];
+
+function syncDiscordRoles(discordId, addCodes, removeCodes) {
+  if (!discordId || (!addCodes.length && !removeCodes.length)) return;
+  fetch(WORKER_BASE + '/sync-member-roles', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+    body: JSON.stringify({ discord_id: discordId, add_codes: addCodes, remove_codes: removeCodes })
+  }).catch(function(e) { console.warn('Discord role sync error:', e); });
+}
+
+async function syncDiscordToAgent(agentId) {
+  var ag = await DB.getAgent(agentId);
+  if (!ag || !ag.discord_id) { toast('Pas de Discord ID sur cette fiche.', 'error'); return; }
+  try {
+    var res = await fetch(WORKER_BASE + '/get-member-roles?discord_id=' + ag.discord_id);
+    var data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Erreur Discord');
+    var nonTracked = (ag.unites || []).filter(function(u) { return !TRACKED_DIVISIONS.includes(u); });
+    var newUnites = nonTracked.concat(data.divisions || []);
+    await DB.updateAgent(agentId, { unites: newUnites });
+    toast('Unités synchronisées depuis Discord ✓', 'success');
+    await renderAgentProfile();
+  } catch(e) { toast('Erreur : ' + e.message, 'error'); }
+}
 function _whoAmI() {
   if (!S.user) return '—';
   var m = S.user.user_metadata || {};
@@ -657,6 +683,12 @@ async function saveAgent(id) {
   var matTaken = await DB.checkMatricule(mat, id || null);
   if (matTaken) { toast('Ce matricule est déjà utilisé par un autre agent.','error'); return; }
 
+  var oldUnites = []; var oldDiscordId = null;
+  if (id) {
+    var oldAg = await DB.getAgent(id);
+    if (oldAg) { oldUnites = oldAg.unites || []; oldDiscordId = oldAg.discord_id; }
+  }
+
   var unites = Array.from(document.querySelectorAll('input[name="unite"]:checked')).map(function(c){ return c.value; });
   var data = {
     prenom: prenom, nom: nom, matricule: mat,
@@ -691,6 +723,12 @@ async function saveAgent(id) {
         { name: 'Grade', value: data.grade || '—', inline: true },
         { name: 'Par', value: _whoAmI(), inline: true }
       ]);
+    }
+    var effectiveDiscordId = data.discord_id || oldDiscordId;
+    if (effectiveDiscordId) {
+      var addCodes    = unites.filter(function(u){ return TRACKED_DIVISIONS.includes(u) && !oldUnites.includes(u); });
+      var removeCodes = oldUnites.filter(function(u){ return TRACKED_DIVISIONS.includes(u) && !unites.includes(u); });
+      syncDiscordRoles(effectiveDiscordId, addCodes, removeCodes);
     }
     if (id && S.page === 'agent-profile') await renderAgentProfile();
     else await renderAgents();
@@ -748,6 +786,7 @@ async function renderAgentProfile() {
         canWrite() ?
           '<div class="profile-actions">' +
             '<button class="btn btn-outline btn-sm" onclick="openAgentModal(\'' + id + '\')">✏️ Modifier</button>' +
+            (ag.discord_id ? '<button class="btn btn-ghost btn-sm" onclick="syncDiscordToAgent(\'' + id + '\')" title="Sync divisions depuis Discord">🔄 Sync Discord</button>' : '') +
             (isAdmin() ? '<button class="btn btn-ghost btn-sm" style="color:var(--t3)" onclick="archiveAgent(\'' + id + '\')">🗃️ Archiver</button>' : '') +
           '</div>' : '') +
     '</div>' +
