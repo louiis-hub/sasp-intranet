@@ -363,7 +363,7 @@ function fmtShort(dateStr) {
   return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'short' });
 }
 function statusBadge(s) {
-  var map = { 'En service':'badge-green','Suspendu':'badge-orange','Licencié':'badge-red','Retraité':'badge-gray','Démission':'badge-gray','Archivé':'badge-red' };
+  var map = { 'En service':'badge-green','En congé':'badge-blue','Suspendu':'badge-orange','Licencié':'badge-red','Retraité':'badge-gray','Démission':'badge-gray','Archivé':'badge-red' };
   return '<span class="badge ' + (map[s]||'badge-gray') + '">' + esc(s) + '</span>';
 }
 function gradeBadge(g) {
@@ -462,7 +462,7 @@ function renderOrgChart(agents) {
     var members = agents.filter(function(a){ return a.grade === g.nom && a.statut !== 'Archivé'; });
     if (!members.length) return '';
     var chips = members.map(function(a) {
-      var dot = a.statut === 'En service' ? 'var(--green)' : a.statut === 'Suspendu' ? 'var(--orange)' : 'var(--t3)';
+      var dot = a.statut === 'En service' ? 'var(--green)' : a.statut === 'En congé' ? 'var(--blue)' : a.statut === 'Suspendu' ? 'var(--orange)' : 'var(--t3)';
       return '<div onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})" style="display:flex;align-items:center;gap:6px;background:var(--bg1);border:1px solid var(--border0);border-radius:20px;padding:5px 12px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border0)\'">' +
         '<div style="width:7px;height:7px;border-radius:50%;background:' + dot + ';flex-shrink:0"></div>' +
         '<span style="font-size:.78rem;font-weight:600;color:var(--t1)">' + esc(a.prenom + ' ' + a.nom) + '</span>' +
@@ -538,6 +538,7 @@ async function renderAgents() {
       '<div class="filter-tabs">' +
         ftab('', 'Tous', _agentFilters.statut === '') +
         ftab('En service', 'En service', _agentFilters.statut === 'En service') +
+        ftab('En congé', 'En congé', _agentFilters.statut === 'En congé') +
         ftab('Suspendu', 'Suspendus', _agentFilters.statut === 'Suspendu') +
         ftab('Licencié', 'Licenciés', _agentFilters.statut === 'Licencié') +
         ftab('Retraité', 'Retraités', _agentFilters.statut === 'Retraité') +
@@ -604,7 +605,7 @@ async function openAgentModal(id) {
       '<div class="form-grid2">' +
         '<div class="form-group"><label class="form-label">Grade *</label><select class="form-control" id="agGrade">' + gradeOpts + '</select></div>' +
         '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="agStatut">' +
-          ['En service','Suspendu','Licencié','Retraité','Démission','Archivé'].map(function(s){ return '<option' + (v.statut===s?' selected':'') + '>' + s + '</option>'; }).join('') +
+          ['En service','En congé','Suspendu','Licencié','Retraité','Démission','Archivé'].map(function(s){ return '<option' + (v.statut===s?' selected':'') + '>' + s + '</option>'; }).join('') +
         '</select></div>' +
       '</div>' +
       '<div class="form-grid2">' +
