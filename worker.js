@@ -426,6 +426,7 @@ export default {
           { name: "📞 Téléphone", value: plaignantTel, inline: false },
           { name: "🎂 Date de naissance", value: plaignantDdn, inline: false }
         ];
+        fields.push({ name: '​', value: '▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬', inline: false });
         if (individu) fields.push({ name: "🎯 Individu signalé", value: individu.slice(0, 1024), inline: false });
         fields.push({ name: '​', value: '▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬', inline: false });
         let rTmp = raison;
