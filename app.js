@@ -1813,7 +1813,7 @@ async function renderStats() {
   // Charts
   var gradeLabels = Object.keys(gradeCounts);
   var gradeData   = Object.values(gradeCounts);
-  var colors = ['#C9A84C','#E4C870','#8A6B1A','#6B7C3C','#A09060','#D4B060','#7A8B4A','#9B7A2A','#B89040','#5A6B30','#E8D888','#C0A040'];
+  var colors = ['#E74C3C','#E67E22','#F1C40F','#2ECC71','#1ABC9C','#3498DB','#9B59B6','#FF6B9D','#00BCD4','#FF5722','#8BC34A','#795548'];
 
   var ctxG = document.getElementById('chartGrades');
   if (ctxG) {
