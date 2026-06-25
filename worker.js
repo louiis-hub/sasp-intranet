@@ -421,10 +421,10 @@ export default {
         } catch {}
         const fields = [
           { name: "📅 Date & Heure", value: `${dateStr} à ${heureStr}`, inline: false },
-          { name: "👮 Agent visé", value: agentDisplay, inline: true },
-          { name: "🙋 Plaignant", value: plaignantIdentite, inline: true },
-          { name: "📞 Téléphone", value: plaignantTel, inline: true },
-          { name: "🎂 Date de naissance", value: plaignantDdn, inline: true }
+          { name: "👮 Agent visé", value: agentDisplay, inline: false },
+          { name: "🙋 Plaignant", value: plaignantIdentite, inline: false },
+          { name: "📞 Téléphone", value: plaignantTel, inline: false },
+          { name: "🎂 Date de naissance", value: plaignantDdn, inline: false }
         ];
         if (individu) fields.push({ name: "🎯 Individu signalé", value: individu.slice(0, 1024), inline: false });
         const postRes = await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
