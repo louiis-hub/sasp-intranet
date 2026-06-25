@@ -42,6 +42,7 @@ var NAV = [
   { group: 'DOCUMENTATION' },
   { id: 'mdt',      icon: '📚', label: 'Guide MDT' },
   { id: 'vehicles', icon: '🚗', label: 'Véhicules' },
+  { id: 'cartes',   icon: '🗺️', label: 'Cartes' },
   // wiki sections injected dynamically by loadWikiSections()
   { divider: true, staffOnly: true, _wikiEnd: true },
   { group: 'ADMINISTRATION', staffOnly: true },
@@ -54,7 +55,7 @@ var NAV = [
 
 var PAGE_TITLES = {
   dashboard:'Tableau de bord', agents:'Agents', 'agent-profile':'Fiche agent',
-  grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', 'pointeuse-historique':'Historique pointages', mdt:'Guide MDT', vehicles:'Véhicules',
+  grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', 'pointeuse-historique':'Historique pointages', mdt:'Guide MDT', vehicles:'Véhicules', cartes:'Cartes',
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
   archives:'Archives',
   'global-settings':'Réglages globaux',
@@ -245,7 +246,7 @@ async function navigate(page, pd) {
   _quill = null;
   setContent('<div class="loader-block"><div class="spinner"></div><p>Chargement…</p></div>');
   var _permCfg = {}; try { _permCfg = JSON.parse(localStorage.getItem('sasp_permissions') || '{}'); } catch(e) {}
-  var AGENT_ALLOWED   = _permCfg.agentPages   || ['dashboard','agents','agent-profile','grades','units','pointeuse','mdt','vehicles','info','manuel','tenue','document'];
+  var AGENT_ALLOWED   = _permCfg.agentPages   || ['dashboard','agents','agent-profile','grades','units','pointeuse','mdt','vehicles','cartes','info','manuel','tenue','document'];
   var ACADEMY_ALLOWED = _permCfg.academyPages  || null;
   if (S.role === 'agent' && AGENT_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au personnel d\'encadrement.</div></div>');
@@ -266,6 +267,7 @@ async function navigate(page, pd) {
       vehicles:       renderVehicles,
       pointeuse:               renderPointeuse,
       'pointeuse-historique':  renderPointeuseHistorique,
+      cartes:                  renderCartes,
       archives:       renderArchives,
       'global-settings': renderGlobalSettings,
       stats:          renderStats,
@@ -2289,6 +2291,15 @@ async function doClockOut(agentId) {
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
   toast('Sortie enregistrée', 'success');
   await renderPointeuse();
+}
+
+// ══ CARTES ════════════════════════════════════════════════════════
+function renderCartes() {
+  setContent(
+    '<div style="display:flex;flex-direction:column;height:calc(100vh - 60px);margin:-24px">' +
+      '<iframe src="carte.html" style="flex:1;border:none;width:100%;height:100%;" allowfullscreen></iframe>' +
+    '</div>'
+  );
 }
 
 // ══ HISTORIQUE POINTAGES ══════════════════════════════════════════
