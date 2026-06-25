@@ -187,6 +187,31 @@ export default {
       return json({ ok: true, divisions });
     }
 
+    // Sync tous les agents → Discord
+    if (url.pathname === "/sync-all-agents" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return new Response("Unauthorized", { status: 401 });
+      const { agents } = await request.json();
+      const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+      const allCodes = Object.keys(DIVISION_ROLES);
+      let ok = 0, errors = 0;
+      for (const ag of (agents || [])) {
+        if (!ag.discord_id) continue;
+        const hasDivisions = ag.divisions || [];
+        for (const code of allCodes) {
+          const roleId = DIVISION_ROLES[code];
+          const method = hasDivisions.includes(code) ? "PUT" : "DELETE";
+          try {
+            await fetch(`${DISCORD_API}/guilds/${guildId}/members/${ag.discord_id}/roles/${roleId}`, {
+              method, headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet — sync global" }
+            });
+            ok++;
+          } catch { errors++; }
+        }
+      }
+      return json({ ok: true, synced: ok, errors });
+    }
+
     // Logs intranet → Discord
     if (url.pathname === "/log" && request.method === "POST") {
       const token = request.headers.get("x-log-token");

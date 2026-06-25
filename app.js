@@ -30,6 +30,25 @@ function syncDiscordRoles(discordId, addCodes, removeCodes) {
   }).catch(function(e) { console.warn('Discord role sync error:', e); });
 }
 
+async function syncAllAgentsToDiscord() {
+  if (!confirm('Synchroniser les divisions de TOUS les agents vers Discord ?\n\nCela mettra à jour les rôles Discord de chaque agent qui a un Discord ID.')) return;
+  toast('Synchronisation en cours…', 'info');
+  try {
+    var agents = await DB.getAgents({ statut: '' });
+    var payload = agents
+      .filter(function(a) { return a.discord_id; })
+      .map(function(a) { return { discord_id: a.discord_id, divisions: (a.unites || []).filter(function(u) { return TRACKED_DIVISIONS.includes(u); }) }; });
+    if (!payload.length) { toast('Aucun agent avec un Discord ID.', 'error'); return; }
+    var res = await fetch(WORKER_BASE + '/sync-all-agents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+      body: JSON.stringify({ agents: payload })
+    });
+    var data = await res.json();
+    toast('✅ ' + payload.length + ' agent(s) synchronisés vers Discord.', 'success');
+  } catch(e) { toast('Erreur : ' + e.message, 'error'); }
+}
+
 async function syncDiscordToAgent(agentId) {
   var ag = await DB.getAgent(agentId);
   if (!ag || !ag.discord_id) { toast('Pas de Discord ID sur cette fiche.', 'error'); return; }
@@ -554,7 +573,10 @@ async function renderAgents() {
   setContent(
     '<div class="flex-between mb-20 flex-wrap gap-8">' +
       '<div><h1 style="font-size:1.4rem">Agents</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">' + agents.length + ' agent(s) trouvé(s)</p></div>' +
-      (canWrite() ? '<button class="btn btn-primary btn-sm" onclick="openAgentModal(null)">+ Ajouter un agent</button>' : '') +
+      '<div class="flex gap-8">' +
+        (canWrite() ? '<button class="btn btn-primary btn-sm" onclick="openAgentModal(null)">+ Ajouter un agent</button>' : '') +
+        (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="syncAllAgentsToDiscord()">🔄 Sync Discord</button>' : '') +
+      '</div>' +
     '</div>' +
     '<div class="filter-bar">' +
       '<div class="search-wrap" style="max-width:280px"><span class="search-icon">🔍</span>' +
