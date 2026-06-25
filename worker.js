@@ -152,7 +152,7 @@ export default {
     // Sync divisions intranet → Discord
     if (url.pathname === "/sync-member-roles" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
-      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return new Response("Unauthorized", { status: 401 });
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
       const { discord_id, add_codes, remove_codes } = await request.json();
       const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
       const results = [];
@@ -190,7 +190,7 @@ export default {
     // Récupère les rôles de tous les membres Discord (Discord → Intranet)
     if (url.pathname === "/sync-all-from-discord" && request.method === "GET") {
       const token = request.headers.get("x-log-token");
-      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return new Response("Unauthorized", { status: 401 });
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
       const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
       const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members?limit=1000`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
@@ -210,7 +210,7 @@ export default {
     // Sync tous les agents intranet → Discord
     if (url.pathname === "/sync-all-agents" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
-      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return new Response("Unauthorized", { status: 401 });
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
       const { agents } = await request.json();
       const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
       const allCodes = Object.keys(DIVISION_ROLES);
@@ -234,7 +234,7 @@ export default {
     if (url.pathname === "/log" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) {
-        return new Response("Unauthorized", { status: 401 });
+        return json({ error: "Unauthorized" }, 401);
       }
       try {
         const { embed } = await request.json();
@@ -307,7 +307,7 @@ export default {
       const publicKey = env.DISCORD_PUBLIC_KEY || "464ade991df3bbe8578510babaa575a74a30366ecf3bdb39538e40e099ca5b9f";
 
       if (!await verifyDiscordSignature(request, body, publicKey)) {
-        return new Response("Unauthorized", { status: 401 });
+        return json({ error: "Unauthorized" }, 401);
       }
 
       const interaction = JSON.parse(body);

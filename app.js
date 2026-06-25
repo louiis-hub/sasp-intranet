@@ -32,33 +32,32 @@ function syncDiscordRoles(discordId, addCodes, removeCodes) {
 
 async function syncAllAgentsToDiscord() {
   if (!confirm('Synchroniser les rôles Discord vers les fiches intranet ?\n\nLes divisions CID/SWAT/PA/CNU/TU/SYND seront mises à jour pour chaque agent qui a un Discord ID.')) return;
-  toast('Récupération des rôles Discord…', 'info');
+  var loader = toastLoading('Récupération des rôles Discord…');
   try {
-    // 1. Récupère tous les rôles Discord
     var discordRes = await fetch(WORKER_BASE + '/sync-all-from-discord', {
       headers: { 'x-log-token': LOG_TOKEN }
     });
     var discordData = await discordRes.json();
     if (!discordData.ok) throw new Error(discordData.error || 'Erreur Discord');
-    var roleMap = discordData.map; // { discord_id: ['CID', 'SWAT', ...] }
+    var roleMap = discordData.map;
 
-    // 2. Met à jour chaque agent qui a un discord_id
+    loader.update('Mise à jour des fiches…');
     var agents = await DB.getAgents({});
+    var withId = agents.filter(function(a) { return a.discord_id; });
+    loader.update('Mise à jour des fiches… (0 / ' + withId.length + ')');
     var updated = 0;
-    for (var i = 0; i < agents.length; i++) {
-      var a = agents[i];
-      if (!a.discord_id || !roleMap[a.discord_id]) continue;
+    for (var i = 0; i < withId.length; i++) {
+      var a = withId[i];
+      var discDivs = roleMap[a.discord_id] || [];
       var nonTracked = (a.unites || []).filter(function(u) { return !TRACKED_DIVISIONS.includes(u); });
-      var newUnites = nonTracked.concat(roleMap[a.discord_id]);
+      var newUnites = nonTracked.concat(discDivs);
       var changed = JSON.stringify(newUnites.slice().sort()) !== JSON.stringify((a.unites || []).slice().sort());
-      if (changed) {
-        await DB.updateAgent(a.id, { unites: newUnites });
-        updated++;
-      }
+      if (changed) { await DB.updateAgent(a.id, { unites: newUnites }); updated++; }
+      loader.update('Mise à jour des fiches… (' + (i + 1) + ' / ' + withId.length + ')');
     }
-    toast('✅ ' + updated + ' fiche(s) mise(s) à jour depuis Discord.', 'success');
+    loader.done(updated + ' fiche(s) mise(s) à jour depuis Discord.');
     if (S.page === 'agents') await renderAgents();
-  } catch(e) { toast('Erreur : ' + e.message, 'error'); }
+  } catch(e) { loader.done('Erreur : ' + e.message, 'error'); }
 }
 
 async function syncDiscordToAgent(agentId) {
@@ -398,6 +397,22 @@ function toast(msg, type) {
   el.innerHTML = '<span>' + icons[type] + '</span><span>' + esc(msg) + '</span>';
   document.getElementById('toastContainer').appendChild(el);
   setTimeout(function(){ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(function(){el.remove();}, 300); }, 3200);
+}
+
+function toastLoading(msg) {
+  var el = document.createElement('div');
+  el.className = 'toast toast-info';
+  el.style.cssText = 'opacity:1;pointer-events:none';
+  el.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite">⟳</span><span id="toastLoadingMsg">' + esc(msg) + '</span>';
+  document.getElementById('toastContainer').appendChild(el);
+  return {
+    update: function(m) { var s = el.querySelector('#toastLoadingMsg'); if (s) s.textContent = m; },
+    done: function(m, type) {
+      el.className = 'toast toast-' + (type || 'success');
+      el.innerHTML = '<span>' + (type === 'error' ? '✕' : '✓') + '</span><span>' + esc(m) + '</span>';
+      setTimeout(function(){ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(function(){el.remove();}, 300); }, 3200);
+    }
+  };
 }
 
 // ── Permissions ────────────────────────────────────────────────────
