@@ -420,7 +420,7 @@ export default {
           if (agent) agentDisplay = `${agent.prenom} ${agent.nom} — \`${agent.matricule}\``;
         } catch {}
         const fields = [
-          { name: "📅 Date & Heure", value: `${dateStr} à ${heureStr}`, inline: true },
+          { name: "📅 Date & Heure", value: `${dateStr} à ${heureStr}`, inline: false },
           { name: "👮 Agent visé", value: agentDisplay, inline: true },
           { name: "🙋 Plaignant", value: plaignantIdentite, inline: true },
           { name: "📞 Téléphone", value: plaignantTel, inline: true },
@@ -439,8 +439,7 @@ export default {
           const err = await postRes.text();
           return json({ type: 4, data: { content: `❌ Erreur Discord (${postRes.status}): ${err}`, flags: 64 } });
         }
-        const postData = await postRes.json();
-        return json({ type: 4, data: { content: `✅ Envoyé dans <#${interaction.channel_id}> (msg: ${postData.id || 'none'})`, flags: 64 } });
+        return json({ type: 4, data: { content: "✅ Plainte enregistrée et transmise.", flags: 64 } });
       }
 
       // Modal submit plainte (modification)
