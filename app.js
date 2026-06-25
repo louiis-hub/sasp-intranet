@@ -66,6 +66,7 @@ async function syncAllAgentsToDiscord() {
       if (!!entry.ppa1 !== !!a.ppa1) { patch.ppa1 = entry.ppa1; diff.push((entry.ppa1?'+':'-') + 'PPA1'); }
       if (!!entry.ppa2 !== !!a.ppa2) { patch.ppa2 = entry.ppa2; diff.push((entry.ppa2?'+':'-') + 'PPA2'); }
       if (!!entry.ppa3 !== !!a.ppa3) { patch.ppa3 = entry.ppa3; diff.push((entry.ppa3?'+':'-') + 'PPA3'); }
+      if (entry.grade && entry.grade !== a.grade) { patch.grade = entry.grade; diff.push('Grade: ' + (a.grade||'—') + ' → ' + entry.grade); }
       if (Object.keys(patch).length) {
         await DB.updateAgent(a.id, patch);
         updated++;
@@ -756,10 +757,10 @@ async function saveAgent(id) {
   var matTaken = await DB.checkMatricule(mat, id || null);
   if (matTaken) { toast('Ce matricule est déjà utilisé par un autre agent.','error'); return; }
 
-  var oldUnites = []; var oldDiscordId = null;
+  var oldUnites = []; var oldDiscordId = null; var oldGrade = null;
   if (id) {
     var oldAg = await DB.getAgent(id);
-    if (oldAg) { oldUnites = oldAg.unites || []; oldDiscordId = oldAg.discord_id; }
+    if (oldAg) { oldUnites = oldAg.unites || []; oldDiscordId = oldAg.discord_id; oldGrade = oldAg.grade; }
   }
 
   var unites = Array.from(document.querySelectorAll('input[name="unite"]:checked')).map(function(c){ return c.value; });
@@ -801,7 +802,11 @@ async function saveAgent(id) {
     if (effectiveDiscordId) {
       var addCodes    = unites.filter(function(u){ return TRACKED_DIVISIONS.includes(u) && !oldUnites.includes(u); });
       var removeCodes = oldUnites.filter(function(u){ return TRACKED_DIVISIONS.includes(u) && !unites.includes(u); });
-      syncDiscordRoles(effectiveDiscordId, addCodes, removeCodes);
+      if (data.grade && data.grade !== oldGrade) {
+        if (data.grade) addCodes.push(data.grade);
+        if (oldGrade)   removeCodes.push(oldGrade);
+      }
+      if (addCodes.length || removeCodes.length) syncDiscordRoles(effectiveDiscordId, addCodes, removeCodes);
     }
     if (id && S.page === 'agent-profile') await renderAgentProfile();
     else await renderAgents();

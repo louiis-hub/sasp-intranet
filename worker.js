@@ -18,7 +18,22 @@ const PPA_ROLES = {
   'ppa3a': '1519517734055186474',
   'ppa3b': '1519680711823593582'
 };
-const ALL_SYNCABLE_ROLES = { ...DIVISION_ROLES, ...PPA_ROLES };
+const GRADE_ROLES = {
+  'Commandant':          '1500983026987962388',
+  'Capitaine':           '1500975725153620036',
+  'Lieutenant II':       '1500983449287131266',
+  'Lieutenant I':        '1500975725153620034',
+  'Sergeant II':         '1500982880950550752',
+  'Sergeant I':          '1500975725153620032',
+  'Senior Lead Officer': '1500975725153620031',
+  'Officer III':         '1500975725153620030',
+  'Officer II':          '1500975724750704669',
+  'Officer I':           '1500975724750704668',
+  'Rookie':              '1500975724750704667'
+};
+const ROLE_TO_GRADE = Object.fromEntries(Object.entries(GRADE_ROLES).map(([k,v]) => [v,k]));
+
+const ALL_SYNCABLE_ROLES = { ...DIVISION_ROLES, ...PPA_ROLES, ...GRADE_ROLES };
 
 const STAFF_ROLE_IDS = [
   '1519507318188933140', // rôle gestionnaire
@@ -209,11 +224,13 @@ export default {
         if (!res.ok) continue;
         const m = await res.json();
         const roles = m.roles || [];
+        const gradeRoleId = roles.find(r => ROLE_TO_GRADE[r]);
         map[discordId] = {
           divisions: roles.filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]),
           ppa1:  roles.includes(PPA_ROLES.ppa1),
           ppa2:  roles.includes(PPA_ROLES.ppa2),
-          ppa3:  roles.includes(PPA_ROLES.ppa3a) || roles.includes(PPA_ROLES.ppa3b)
+          ppa3:  roles.includes(PPA_ROLES.ppa3a) || roles.includes(PPA_ROLES.ppa3b),
+          grade: gradeRoleId ? ROLE_TO_GRADE[gradeRoleId] : null
         };
       }
       return json({ ok: true, map });
