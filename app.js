@@ -37,7 +37,7 @@ async function syncAllAgentsToDiscord() {
     var agents = await DB.getAgents({});
     var withId = agents.filter(function(a) { return a.discord_id; });
     if (!withId.length) { loader.done('Aucun agent avec un Discord ID.', 'error'); return; }
-    loader.update('Récupération des rôles Discord… (0 / ' + withId.length + ')');
+    loader.update('Synchronisation en cours…');
     var discordRes = await fetch(WORKER_BASE + '/sync-all-from-discord', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
@@ -46,7 +46,6 @@ async function syncAllAgentsToDiscord() {
     var discordData = await discordRes.json();
     if (!discordData.ok) throw new Error(discordData.error || 'Erreur Discord');
     var roleMap = discordData.map;
-    loader.update('Mise à jour des fiches… (0 / ' + withId.length + ')');
     var updated = 0;
     for (var i = 0; i < withId.length; i++) {
       var a = withId[i];
@@ -55,7 +54,6 @@ async function syncAllAgentsToDiscord() {
       var newUnites = nonTracked.concat(discDivs);
       var changed = JSON.stringify(newUnites.slice().sort()) !== JSON.stringify((a.unites || []).slice().sort());
       if (changed) { await DB.updateAgent(a.id, { unites: newUnites }); updated++; }
-      loader.update('Mise à jour des fiches… (' + (i + 1) + ' / ' + withId.length + ')');
     }
     loader.done(updated + ' fiche(s) mise(s) à jour depuis Discord.');
     if (S.page === 'agents') await renderAgents();
