@@ -12,6 +12,14 @@ const DIVISION_ROLES = {
 };
 const ROLE_TO_DIVISION = Object.fromEntries(Object.entries(DIVISION_ROLES).map(([k,v]) => [v,k]));
 
+const PPA_ROLES = {
+  'ppa1':  '1519517647132168372',
+  'ppa2':  '1519517683379343372',
+  'ppa3a': '1519517734055186474',
+  'ppa3b': '1519680711823593582'
+};
+const ALL_SYNCABLE_ROLES = { ...DIVISION_ROLES, ...PPA_ROLES };
+
 const STAFF_ROLE_IDS = [
   '1519507318188933140', // rôle gestionnaire
   '1500975725153620033', // Command Staff
@@ -157,16 +165,16 @@ export default {
       const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
       const results = [];
       for (const code of (add_codes || [])) {
-        const roleId = DIVISION_ROLES[code]; if (!roleId) continue;
+        const roleId = ALL_SYNCABLE_ROLES[code]; if (!roleId) continue;
         const r = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
-          method: "PUT", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet — sync division" }
+          method: "PUT", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet — sync" }
         });
         results.push({ code, action: "add", status: r.status });
       }
       for (const code of (remove_codes || [])) {
-        const roleId = DIVISION_ROLES[code]; if (!roleId) continue;
+        const roleId = ALL_SYNCABLE_ROLES[code]; if (!roleId) continue;
         const r = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
-          method: "DELETE", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet — sync division" }
+          method: "DELETE", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet — sync" }
         });
         results.push({ code, action: "remove", status: r.status });
       }
@@ -200,7 +208,13 @@ export default {
         });
         if (!res.ok) continue;
         const m = await res.json();
-        map[discordId] = (m.roles || []).filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]);
+        const roles = m.roles || [];
+        map[discordId] = {
+          divisions: roles.filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]),
+          ppa1:  roles.includes(PPA_ROLES.ppa1),
+          ppa2:  roles.includes(PPA_ROLES.ppa2),
+          ppa3:  roles.includes(PPA_ROLES.ppa3a) || roles.includes(PPA_ROLES.ppa3b)
+        };
       }
       return json({ ok: true, map });
     }

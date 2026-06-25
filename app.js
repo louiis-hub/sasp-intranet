@@ -49,11 +49,15 @@ async function syncAllAgentsToDiscord() {
     var updated = 0;
     for (var i = 0; i < withId.length; i++) {
       var a = withId[i];
-      var discDivs = roleMap[a.discord_id] || [];
+      var entry = roleMap[a.discord_id] || { divisions: [], ppa1: false, ppa2: false, ppa3: false };
       var nonTracked = (a.unites || []).filter(function(u) { return !TRACKED_DIVISIONS.includes(u); });
-      var newUnites = nonTracked.concat(discDivs);
-      var changed = JSON.stringify(newUnites.slice().sort()) !== JSON.stringify((a.unites || []).slice().sort());
-      if (changed) { await DB.updateAgent(a.id, { unites: newUnites }); updated++; }
+      var newUnites = nonTracked.concat(entry.divisions || []);
+      var patch = {};
+      if (JSON.stringify(newUnites.slice().sort()) !== JSON.stringify((a.unites || []).slice().sort())) patch.unites = newUnites;
+      if (!!entry.ppa1 !== !!a.ppa1) patch.ppa1 = entry.ppa1;
+      if (!!entry.ppa2 !== !!a.ppa2) patch.ppa2 = entry.ppa2;
+      if (!!entry.ppa3 !== !!a.ppa3) patch.ppa3 = entry.ppa3;
+      if (Object.keys(patch).length) { await DB.updateAgent(a.id, patch); updated++; }
     }
     loader.done(updated + ' fiche(s) mise(s) à jour depuis Discord.');
     if (S.page === 'agents') await renderAgents();
@@ -1032,6 +1036,7 @@ function ppaCheckDate(ckId, label, checked, date, dateId) {
 }
 
 async function savePPAModal(agentId) {
+  var old = await DB.getAgent(agentId);
   var data = {
     ppa1: document.getElementById('ppaCk1').checked,
     ppa2: document.getElementById('ppaCk2').checked,
@@ -1044,6 +1049,16 @@ async function savePPAModal(agentId) {
   try {
     var r = await DB.updateAgent(agentId, data);
     if (r.error) throw r.error;
+    if (old && old.discord_id) {
+      var addCodes = [], removeCodes = [];
+      if (!!data.ppa1 !== !!old.ppa1) (data.ppa1 ? addCodes : removeCodes).push('ppa1');
+      if (!!data.ppa2 !== !!old.ppa2) (data.ppa2 ? addCodes : removeCodes).push('ppa2');
+      if (!!data.ppa3 !== !!old.ppa3) {
+        if (data.ppa3) { addCodes.push('ppa3a'); addCodes.push('ppa3b'); }
+        else { removeCodes.push('ppa3a'); removeCodes.push('ppa3b'); }
+      }
+      if (addCodes.length || removeCodes.length) syncDiscordRoles(old.discord_id, addCodes, removeCodes);
+    }
     closeModal();
     toast('Formations mises à jour.','success');
     await renderAgentProfile();
