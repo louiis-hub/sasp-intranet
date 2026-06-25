@@ -355,8 +355,8 @@ export default {
               { type: 1, components: [{ type: 4, custom_id: "plaignant_identite", label: "Plaignant — Nom & Prénom", style: 1, required: true, placeholder: "Ex : Morrison James", min_length: 2, max_length: 80 }] },
               { type: 1, components: [{ type: 4, custom_id: "plaignant_tel", label: "Téléphone du plaignant", style: 1, required: true, placeholder: "Ex : 555-0198", min_length: 3, max_length: 30 }] },
               { type: 1, components: [{ type: 4, custom_id: "plaignant_ddn", label: "Date de naissance du plaignant", style: 1, required: true, placeholder: "Ex : 01/01/1990", min_length: 8, max_length: 20 }] },
-              { type: 1, components: [{ type: 4, custom_id: "individu", label: "Individu signalé (Nom, Prénom, Tél...)", style: 2, required: false, placeholder: "Nom, Prénom, Téléphone, signalement, apparence...", max_length: 500 }] },
-              { type: 1, components: [{ type: 4, custom_id: "raison", label: "Raison de la plainte", style: 2, required: true, placeholder: "Décrivez les faits et la raison de la plainte...", min_length: 10, max_length: 500 }] }
+              { type: 1, components: [{ type: 4, custom_id: "individu", label: "Individu signalé (Nom, Prénom, Tél...)", style: 2, required: false, placeholder: "Nom, Prénom, Téléphone, signalement, apparence...", max_length: 1000 }] },
+              { type: 1, components: [{ type: 4, custom_id: "raison", label: "Raison de la plainte", style: 2, required: true, placeholder: "Décrivez les faits et la raison de la plainte...", min_length: 10, max_length: 4000 }] }
             ]
           }
         });
@@ -477,8 +477,8 @@ export default {
                 { type: 1, components: [{ type: 4, custom_id: "plaignant_identite", label: "Plaignant — Nom & Prénom", style: 1, required: true, value: getField("Plaignant"), min_length: 2, max_length: 80 }] },
                 { type: 1, components: [{ type: 4, custom_id: "plaignant_tel", label: "Téléphone du plaignant", style: 1, required: true, value: getField("Téléphone"), min_length: 3, max_length: 30 }] },
                 { type: 1, components: [{ type: 4, custom_id: "plaignant_ddn", label: "Date de naissance du plaignant", style: 1, required: true, value: getField("naissance"), min_length: 8, max_length: 20 }] },
-                { type: 1, components: [{ type: 4, custom_id: "individu", label: "Individu signalé", style: 2, required: false, value: getField("Individu"), max_length: 500 }] },
-                { type: 1, components: [{ type: 4, custom_id: "raison", label: "Raison de la plainte", style: 2, required: true, value: getField("Raison"), min_length: 10, max_length: 500 }] }
+                { type: 1, components: [{ type: 4, custom_id: "individu", label: "Individu signalé", style: 2, required: false, value: getField("Individu"), max_length: 1000 }] },
+                { type: 1, components: [{ type: 4, custom_id: "raison", label: "Raison de la plainte", style: 2, required: true, value: getField("Raison"), min_length: 10, max_length: 4000 }] }
               ]
             }
           });
