@@ -427,11 +427,17 @@ export default {
           { name: "🎂 Date de naissance", value: plaignantDdn, inline: false }
         ];
         if (individu) fields.push({ name: "🎯 Individu signalé", value: individu.slice(0, 1024), inline: false });
+        let rTmp = raison;
+        let rIdx = 0;
+        while (rTmp.length > 0) {
+          fields.push({ name: rIdx === 0 ? "📋 Raison de la plainte" : "📋 Raison (suite)", value: rTmp.slice(0, 1024), inline: false });
+          rTmp = rTmp.slice(1024); rIdx++;
+        }
         const postRes = await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            embeds: [{ title: "📋 Nouvelle plainte — SASP", color: 0xc0392b, description: `**📋 Raison de la plainte**\n${raison}`, fields, footer: { text: "SASP • Service des plaintes" }, timestamp: now.toISOString() }],
+            embeds: [{ title: "📋 Nouvelle plainte — SASP", color: 0xc0392b, fields, footer: { text: "SASP • Service des plaintes" }, timestamp: now.toISOString() }],
             components: [{ type: 1, components: [{ type: 2, style: 2, label: "Modifier", emoji: { name: "✏️" }, custom_id: `edit_plainte|${userId}` }] }]
           })
         });
@@ -475,6 +481,11 @@ export default {
           { name: "🎂 Date de naissance", value: plaignantDdn, inline: true }
         ];
         if (individu) fields.push({ name: "🎯 Individu signalé", value: individu.slice(0, 1024), inline: false });
+        let rTmp2 = raison; let rIdx2 = 0;
+        while (rTmp2.length > 0) {
+          fields.push({ name: rIdx2 === 0 ? "📋 Raison de la plainte" : "📋 Raison (suite)", value: rTmp2.slice(0, 1024), inline: false });
+          rTmp2 = rTmp2.slice(1024); rIdx2++;
+        }
         const editedById = interaction.member?.user?.id || interaction.user?.id;
         let editorDisplay = "inconnu";
         try {
@@ -485,7 +496,7 @@ export default {
           method: "PATCH",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            embeds: [{ title: "📋 Plainte — SASP", color: 0xe67e22, description: `**📋 Raison de la plainte**\n${raison}`, fields, footer: { text: `SASP • Modifiée par ${editorDisplay}` }, timestamp: new Date().toISOString() }],
+            embeds: [{ title: "📋 Plainte — SASP", color: 0xe67e22, fields, footer: { text: `SASP • Modifiée par ${editorDisplay}` }, timestamp: new Date().toISOString() }],
             components: [{ type: 1, components: [{ type: 2, style: 2, label: "Modifier", emoji: { name: "✏️" }, custom_id: `edit_plainte|${creatorId}` }] }]
           })
         });
