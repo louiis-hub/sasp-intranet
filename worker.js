@@ -421,12 +421,13 @@ export default {
         } catch {}
         const fields = [
           { name: "📅 Date & Heure", value: `${dateStr} à ${heureStr}`, inline: false },
-          { name: "👮 Agent visé", value: agentDisplay, inline: false },
+          { name: "👮 Agent déposant", value: agentDisplay, inline: false },
           { name: "🙋 Plaignant", value: plaignantIdentite, inline: false },
           { name: "📞 Téléphone", value: plaignantTel, inline: false },
           { name: "🎂 Date de naissance", value: plaignantDdn, inline: false }
         ];
         if (individu) fields.push({ name: "🎯 Individu signalé", value: individu.slice(0, 1024), inline: false });
+        fields.push({ name: '​', value: '▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬', inline: false });
         let rTmp = raison;
         let rIdx = 0;
         while (rTmp.length > 0) {
