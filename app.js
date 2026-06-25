@@ -21,6 +21,16 @@ var LOG_WORKER  = WORKER_BASE + '/log';
 var LOG_TOKEN   = 'SASPlogs2026!';
 var TRACKED_DIVISIONS = ['CID','SWAT','PA','CNU','TU','SYND'];
 
+function refreshAgentList() {
+  DB.getAgents({}).then(function(agents) {
+    fetch(WORKER_BASE + '/update-agent-list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+      body: JSON.stringify({ agents: agents.map(function(a) { return { matricule: a.matricule, prenom: a.prenom, nom: a.nom, telephone: a.telephone }; }) })
+    }).catch(function(e) { console.warn('refreshAgentList:', e); });
+  }).catch(function(e) { console.warn('refreshAgentList fetch agents:', e); });
+}
+
 function syncDiscordRoles(discordId, addCodes, removeCodes) {
   if (!discordId || (!addCodes.length && !removeCodes.length)) return;
   fetch(WORKER_BASE + '/sync-member-roles', {
@@ -74,6 +84,7 @@ async function syncAllAgentsToDiscord() {
       }
     }
     loader.done(updated + ' fiche(s) mise(s) à jour depuis Discord.');
+    refreshAgentList();
     var desc = changeLines.length ? changeLines.join('\n') : 'Aucun changement détecté.';
     sendLog('🔄 Sync Discord → Intranet', 0x3498db, [
       { name: 'Par', value: _whoAmI(), inline: true },
@@ -808,6 +819,7 @@ async function saveAgent(id) {
       }
       if (addCodes.length || removeCodes.length) syncDiscordRoles(effectiveDiscordId, addCodes, removeCodes);
     }
+    refreshAgentList();
     if (id && S.page === 'agent-profile') await renderAgentProfile();
     else await renderAgents();
   } catch(err) {
@@ -1788,6 +1800,7 @@ async function archiveAgent(id) {
     { name: 'Agent', value: agent.prenom + ' ' + agent.nom + ' · ' + agent.matricule, inline: true },
     { name: 'Par', value: _whoAmI(), inline: true }
   ]);
+  refreshAgentList();
   navigate('archives');
 }
 

@@ -260,6 +260,45 @@ export default {
     }
 
     // Logs intranet → Discord
+    // Liste agents → Discord (message auto-mis à jour)
+    if (url.pathname === "/update-agent-list" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const { agents } = await request.json();
+      const channelId = "1519818698100179094";
+      const lines = (agents || [])
+        .filter(a => a.telephone)
+        .sort((a, b) => (a.matricule || '').localeCompare(b.matricule || ''))
+        .map(a => `**${a.matricule || '—'}** ${a.prenom} ${a.nom} — \`${a.telephone}\``);
+      const description = lines.length ? lines.join('\n').slice(0, 4000) : '*Aucun agent avec un numéro de téléphone.*';
+      const embed = {
+        title: "📋 Liste des agents — Téléphones",
+        description,
+        color: 0x2c3e50,
+        footer: { text: `SASP Intranet • ${lines.length} agent(s) répertorié(s)` },
+        timestamp: new Date().toISOString()
+      };
+      const msgsRes = await fetch(`${DISCORD_API}/channels/${channelId}/messages?limit=50`, {
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+      });
+      const msgs = await msgsRes.json();
+      const existing = Array.isArray(msgs) && msgs.find(m => m.author?.bot && m.embeds?.[0]?.title?.includes('Téléphones'));
+      if (existing) {
+        await fetch(`${DISCORD_API}/channels/${channelId}/messages/${existing.id}`, {
+          method: "PATCH",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [embed] })
+        });
+      } else {
+        await fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [embed] })
+        });
+      }
+      return json({ ok: true });
+    }
+
     if (url.pathname === "/log" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) {
