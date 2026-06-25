@@ -195,7 +195,10 @@ export default {
       const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members?limit=1000`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
-      if (!res.ok) return json({ ok: false, error: "Erreur Discord" }, 500);
+      if (!res.ok) {
+        const errBody = await res.text();
+        return json({ ok: false, error: "Discord " + res.status + ": " + errBody }, 500);
+      }
       const members = await res.json();
       const map = {};
       for (const m of members) {
