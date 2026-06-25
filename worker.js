@@ -424,18 +424,21 @@ export default {
           { name: "👮 Agent visé", value: agentDisplay, inline: true },
           { name: "🙋 Plaignant", value: plaignantIdentite, inline: true },
           { name: "📞 Téléphone", value: plaignantTel, inline: true },
-          { name: "🎂 Date de naissance", value: plaignantDdn, inline: true },
-          { name: "📋 Raison de la plainte", value: raison, inline: false }
+          { name: "🎂 Date de naissance", value: plaignantDdn, inline: true }
         ];
-        if (individu) fields.push({ name: "🎯 Individu signalé", value: individu, inline: false });
-        await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
+        if (individu) fields.push({ name: "🎯 Individu signalé", value: individu.slice(0, 1024), inline: false });
+        const postRes = await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            embeds: [{ title: "📋 Nouvelle plainte — SASP", color: 0xc0392b, fields, footer: { text: "SASP • Service des plaintes" }, timestamp: now.toISOString() }],
+            embeds: [{ title: "📋 Nouvelle plainte — SASP", color: 0xc0392b, description: `**📋 Raison de la plainte**\n${raison}`, fields, footer: { text: "SASP • Service des plaintes" }, timestamp: now.toISOString() }],
             components: [{ type: 1, components: [{ type: 2, style: 2, label: "Modifier", emoji: { name: "✏️" }, custom_id: `edit_plainte|${userId}` }] }]
           })
         });
+        if (!postRes.ok) {
+          const err = await postRes.text();
+          return json({ type: 4, data: { content: `❌ Erreur Discord (${postRes.status}): ${err}`, flags: 64 } });
+        }
         return json({ type: 4, data: { content: "✅ Plainte enregistrée et transmise.", flags: 64 } });
       }
 
@@ -469,10 +472,9 @@ export default {
           { name: "👮 Agent visé", value: agentDisplay, inline: true },
           { name: "🙋 Plaignant", value: plaignantIdentite, inline: true },
           { name: "📞 Téléphone", value: plaignantTel, inline: true },
-          { name: "🎂 Date de naissance", value: plaignantDdn, inline: true },
-          { name: "📋 Raison de la plainte", value: raison, inline: false }
+          { name: "🎂 Date de naissance", value: plaignantDdn, inline: true }
         ];
-        if (individu) fields.push({ name: "🎯 Individu signalé", value: individu, inline: false });
+        if (individu) fields.push({ name: "🎯 Individu signalé", value: individu.slice(0, 1024), inline: false });
         const editedById = interaction.member?.user?.id || interaction.user?.id;
         let editorDisplay = "inconnu";
         try {
@@ -483,7 +485,7 @@ export default {
           method: "PATCH",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            embeds: [{ title: "📋 Plainte — SASP", color: 0xe67e22, fields, footer: { text: `SASP • Modifiée par ${editorDisplay}` }, timestamp: new Date().toISOString() }],
+            embeds: [{ title: "📋 Plainte — SASP", color: 0xe67e22, description: `**📋 Raison de la plainte**\n${raison}`, fields, footer: { text: `SASP • Modifiée par ${editorDisplay}` }, timestamp: new Date().toISOString() }],
             components: [{ type: 1, components: [{ type: 2, style: 2, label: "Modifier", emoji: { name: "✏️" }, custom_id: `edit_plainte|${creatorId}` }] }]
           })
         });
