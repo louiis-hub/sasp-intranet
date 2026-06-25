@@ -187,7 +187,27 @@ export default {
       return json({ ok: true, divisions });
     }
 
-    // Sync tous les agents → Discord
+    // Récupère les rôles de tous les membres Discord (Discord → Intranet)
+    if (url.pathname === "/sync-all-from-discord" && request.method === "GET") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return new Response("Unauthorized", { status: 401 });
+      const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+      const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members?limit=1000`, {
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+      });
+      if (!res.ok) return json({ ok: false, error: "Erreur Discord" }, 500);
+      const members = await res.json();
+      const map = {};
+      for (const m of members) {
+        const userId = m.user?.id;
+        if (!userId) continue;
+        const divisions = (m.roles || []).filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]);
+        map[userId] = divisions;
+      }
+      return json({ ok: true, map });
+    }
+
+    // Sync tous les agents intranet → Discord
     if (url.pathname === "/sync-all-agents" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return new Response("Unauthorized", { status: 401 });
@@ -201,12 +221,10 @@ export default {
         for (const code of allCodes) {
           const roleId = DIVISION_ROLES[code];
           const method = hasDivisions.includes(code) ? "PUT" : "DELETE";
-          try {
-            await fetch(`${DISCORD_API}/guilds/${guildId}/members/${ag.discord_id}/roles/${roleId}`, {
-              method, headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet — sync global" }
-            });
-            ok++;
-          } catch { errors++; }
+          const r = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${ag.discord_id}/roles/${roleId}`, {
+            method, headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet — sync global" }
+          });
+          if (r.ok || r.status === 204) ok++; else errors++;
         }
       }
       return json({ ok: true, synced: ok, errors });

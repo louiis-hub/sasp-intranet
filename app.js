@@ -31,21 +31,33 @@ function syncDiscordRoles(discordId, addCodes, removeCodes) {
 }
 
 async function syncAllAgentsToDiscord() {
-  if (!confirm('Synchroniser les divisions de TOUS les agents vers Discord ?\n\nCela mettra à jour les rôles Discord de chaque agent qui a un Discord ID.')) return;
-  toast('Synchronisation en cours…', 'info');
+  if (!confirm('Synchroniser les rôles Discord vers les fiches intranet ?\n\nLes divisions CID/SWAT/PA/CNU/TU/SYND seront mises à jour pour chaque agent qui a un Discord ID.')) return;
+  toast('Récupération des rôles Discord…', 'info');
   try {
-    var agents = await DB.getAgents({ statut: '' });
-    var payload = agents
-      .filter(function(a) { return a.discord_id; })
-      .map(function(a) { return { discord_id: a.discord_id, divisions: (a.unites || []).filter(function(u) { return TRACKED_DIVISIONS.includes(u); }) }; });
-    if (!payload.length) { toast('Aucun agent avec un Discord ID.', 'error'); return; }
-    var res = await fetch(WORKER_BASE + '/sync-all-agents', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
-      body: JSON.stringify({ agents: payload })
+    // 1. Récupère tous les rôles Discord
+    var discordRes = await fetch(WORKER_BASE + '/sync-all-from-discord', {
+      headers: { 'x-log-token': LOG_TOKEN }
     });
-    var data = await res.json();
-    toast('✅ ' + payload.length + ' agent(s) synchronisés vers Discord.', 'success');
+    var discordData = await discordRes.json();
+    if (!discordData.ok) throw new Error(discordData.error || 'Erreur Discord');
+    var roleMap = discordData.map; // { discord_id: ['CID', 'SWAT', ...] }
+
+    // 2. Met à jour chaque agent qui a un discord_id
+    var agents = await DB.getAgents({});
+    var updated = 0;
+    for (var i = 0; i < agents.length; i++) {
+      var a = agents[i];
+      if (!a.discord_id || !roleMap[a.discord_id]) continue;
+      var nonTracked = (a.unites || []).filter(function(u) { return !TRACKED_DIVISIONS.includes(u); });
+      var newUnites = nonTracked.concat(roleMap[a.discord_id]);
+      var changed = JSON.stringify(newUnites.slice().sort()) !== JSON.stringify((a.unites || []).slice().sort());
+      if (changed) {
+        await DB.updateAgent(a.id, { unites: newUnites });
+        updated++;
+      }
+    }
+    toast('✅ ' + updated + ' fiche(s) mise(s) à jour depuis Discord.', 'success');
+    if (S.page === 'agents') await renderAgents();
   } catch(e) { toast('Erreur : ' + e.message, 'error'); }
 }
 
