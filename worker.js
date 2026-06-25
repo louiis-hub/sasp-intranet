@@ -299,6 +299,22 @@ export default {
       return json({ ok: true });
     }
 
+    // Debug: déclenche manuellement la liste agents
+    if (url.pathname === "/debug-agent-list" && request.method === "GET") {
+      const channelId = "1519818698100179094";
+      const msgsRes = await fetch(`${DISCORD_API}/channels/${channelId}/messages?limit=5`, {
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+      });
+      const msgsBody = await msgsRes.text();
+      const postRes = await fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+        method: "POST",
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "🔧 Test liste agents — " + new Date().toISOString() })
+      });
+      const postBody = await postRes.text();
+      return json({ msgs_status: msgsRes.status, msgs_body: msgsBody, post_status: postRes.status, post_body: postBody });
+    }
+
     if (url.pathname === "/log" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) {
