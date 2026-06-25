@@ -133,10 +133,29 @@ export default {
         status: 204,
         headers: {
           "access-control-allow-origin": "*",
-          "access-control-allow-headers": "content-type",
+          "access-control-allow-headers": "content-type, x-log-token",
           "access-control-allow-methods": "GET,POST,OPTIONS"
         }
       });
+    }
+
+    // Logs intranet → Discord
+    if (url.pathname === "/log" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+      try {
+        const { embed } = await request.json();
+        await fetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [{ ...embed, footer: { text: "SASP Intranet" }, timestamp: new Date().toISOString() }] })
+        });
+        return json({ ok: true });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
     }
 
     if (url.pathname === "/health") return json({ ok: true });

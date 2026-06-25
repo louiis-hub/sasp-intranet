@@ -14,6 +14,24 @@
 
 // ── State ──────────────────────────────────────────────────────────
 var S = { user: null, appUser: null, role: 'agent', page: 'dashboard', pd: {} };
+
+// ── Discord logs ────────────────────────────────────────────────────
+var LOG_WORKER = 'https://sasp-intranet-bot.louisleurin.workers.dev/log';
+var LOG_TOKEN  = 'SASPlogs2026!';
+function _whoAmI() {
+  if (!S.user) return '—';
+  var m = S.user.user_metadata || {};
+  return m.full_name || m.name || m.user_name || S.user.email || '—';
+}
+function sendLog(title, color, fields) {
+  try {
+    fetch(LOG_WORKER, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+      body: JSON.stringify({ embed: { title: title, color: color, fields: fields || [] } })
+    });
+  } catch(e) {}
+}
 var _quill = null;
 var _charts = {};
 var _agentPage = 1;
@@ -661,6 +679,18 @@ async function saveAgent(id) {
     if (res.error) throw res.error;
     closeModal();
     toast(id ? 'Agent modifié.' : 'Agent créé.', 'success');
+    if (id) {
+      sendLog('✏️ Agent modifié', 0x3498db, [
+        { name: 'Agent', value: data.prenom + ' ' + data.nom + ' · ' + data.matricule, inline: true },
+        { name: 'Par', value: _whoAmI(), inline: true }
+      ]);
+    } else {
+      sendLog('✅ Agent créé', 0x27ae60, [
+        { name: 'Agent', value: data.prenom + ' ' + data.nom + ' · ' + data.matricule, inline: true },
+        { name: 'Grade', value: data.grade || '—', inline: true },
+        { name: 'Par', value: _whoAmI(), inline: true }
+      ]);
+    }
     if (id && S.page === 'agent-profile') await renderAgentProfile();
     else await renderAgents();
   } catch(err) {
@@ -1598,6 +1628,10 @@ async function deleteArchivedAgent(id, name) {
   var r = await DB.deleteAgent(id);
   if (r.error) { toast(r.error.message, 'error'); return; }
   toast('Dossier supprimé définitivement.', 'info');
+  sendLog('🗑️ Agent supprimé', 0xe74c3c, [
+    { name: 'Agent', value: name, inline: true },
+    { name: 'Par', value: _whoAmI(), inline: true }
+  ]);
   renderArchives();
 }
 async function archiveAgent(id) {
@@ -1605,6 +1639,11 @@ async function archiveAgent(id) {
   var r = await DB.updateAgent(id, { statut: 'Archivé' });
   if (r.error) { toast(r.error.message, 'error'); return; }
   toast('Agent archivé.', 'info');
+  var agent = await DB.getAgent(id);
+  if (agent) sendLog('📦 Agent archivé', 0xe67e22, [
+    { name: 'Agent', value: agent.prenom + ' ' + agent.nom + ' · ' + agent.matricule, inline: true },
+    { name: 'Par', value: _whoAmI(), inline: true }
+  ]);
   navigate('archives');
 }
 
@@ -2168,8 +2207,8 @@ async function renderPointeuse() {
       ? '<span class="badge badge-green">En service · ' + since + '</span>'
       : '<span class="badge badge-gray">Hors service</span>';
     var btnHtml = actif
-      ? '<button class="btn btn-danger btn-sm" onclick="doClockOut(\'' + a.id + '\')">⏹ Sortie</button>'
-      : '<button class="btn btn-primary btn-sm" onclick="doClockIn(\'' + a.id + '\')">▶ Entrée</button>';
+      ? '<button class="btn btn-danger btn-sm" onclick="doClockOut(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')">⏹ Sortie</button>'
+      : '<button class="btn btn-primary btn-sm" onclick="doClockIn(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')">▶ Entrée</button>';
     return '<tr>' +
       '<td>' + gradeBadge(a.grade) + '</td>' +
       '<td><strong>' + esc(a.prenom + ' ' + a.nom) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule) + '</small></td>' +
@@ -2277,19 +2316,27 @@ async function confirmResetRecap() {
   await renderPointeuse();
 }
 
-async function doClockIn(agentId) {
+async function doClockIn(agentId, agentName, matricule) {
   var { error } = await DB.clockIn(agentId);
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
   toast('Entrée enregistrée', 'success');
+  sendLog('🟢 Prise de service', 0x27ae60, [
+    { name: 'Agent', value: (agentName || '—') + (matricule ? ' · ' + matricule : ''), inline: true },
+    { name: 'Par', value: _whoAmI(), inline: true }
+  ]);
   await renderPointeuse();
 }
 
-async function doClockOut(agentId) {
+async function doClockOut(agentId, agentName, matricule) {
   var p = _pointageActifs[agentId];
   if (!p) return;
   var { error } = await DB.clockOut(p.id);
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
   toast('Sortie enregistrée', 'success');
+  sendLog('🔴 Fin de service', 0x7f8c8d, [
+    { name: 'Agent', value: (agentName || '—') + (matricule ? ' · ' + matricule : ''), inline: true },
+    { name: 'Par', value: _whoAmI(), inline: true }
+  ]);
   await renderPointeuse();
 }
 
