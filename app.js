@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════
-//  SASP INTRANET — app.js
+//  CENTRALE PA — app.js
 // ══════════════════════════════════════════════════════════════════
 
 // ── Config locale (overrides depuis localStorage) ───────────────────
@@ -41,7 +41,7 @@ function syncDiscordRoles(discordId, addCodes, removeCodes) {
 }
 
 async function syncAllAgentsToDiscord() {
-  if (!confirm('Synchroniser les rôles Discord vers les fiches intranet ?\n\nLes divisions CID/SWAT/PA/CNU/TU/SYND seront mises à jour pour chaque agent qui a un Discord ID.')) return;
+  if (!confirm('Synchroniser les rôles Discord vers les fiches Centrale PA ?\n\nLes divisions CID/SWAT/PA/CNU/TU/SYND seront mises à jour pour chaque agent qui a un Discord ID.')) return;
   var loader = toastLoading('Synchronisation en cours…');
   try {
     var agents = await DB.getAgents({});
@@ -86,7 +86,7 @@ async function syncAllAgentsToDiscord() {
     loader.done(updated + ' fiche(s) mise(s) à jour depuis Discord.');
     refreshAgentList();
     var desc = changeLines.length ? changeLines.join('\n') : 'Aucun changement détecté.';
-    sendLog('🔄 Sync Discord → Intranet', 0x3498db, [
+    sendLog('🔄 Sync Discord → Centrale PA', 0x3498db, [
       { name: 'Par', value: _whoAmI(), inline: true },
       { name: 'Agents vérifiés', value: String(withId.length), inline: true },
       { name: 'Fiches mises à jour', value: String(updated), inline: true },
