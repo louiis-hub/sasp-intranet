@@ -1796,23 +1796,29 @@ async function deleteArchivedAgent(id, name) {
 async function showMatriculesDispos() {
   var agents = await DB.getAgents({});
   var used = new Set(agents.map(function(a) { return String(a.matricule).trim(); }));
-  var max = 0;
-  used.forEach(function(m) { var n = parseInt(m, 10); if (!isNaN(n) && n > max) max = n; });
-  max = Math.max(max + 5, 30);
   var dispos = [];
-  for (var i = 1; i <= max; i++) {
+  for (var i = 1; i <= 99; i++) {
     var padded = String(i).padStart(2, '0');
     if (!used.has(padded) && !used.has(String(i))) dispos.push(padded);
   }
   var html = '<div style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0">' +
-    dispos.map(function(m) { return '<span class="badge badge-gold" style="font-size:.9rem;padding:4px 10px">' + esc(m) + '</span>'; }).join('') +
+    dispos.map(function(m) {
+      return '<button class="btn btn-ghost btn-sm" style="font-weight:700;min-width:48px" onclick="pickMatricule(\'' + m + '\')">' + esc(m) + '</button>';
+    }).join('') +
     '</div>';
   openModal({
     eyebrow: 'MATRICULES',
-    title: 'Matricules disponibles (' + dispos.length + ')',
+    title: 'Matricules disponibles (' + dispos.length + ' / 99)',
     body: html,
     footer: '<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>'
   });
+}
+
+async function pickMatricule(mat) {
+  closeModal();
+  await openAgentModal(null);
+  var el = document.getElementById('agMatricule');
+  if (el) el.value = mat;
 }
 
 async function archiveAgent(id) {
