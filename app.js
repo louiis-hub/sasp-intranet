@@ -150,9 +150,6 @@ var NAV = [
   { id: 'units',     icon: '🚔', label: 'Divisions' },
   { id: 'pointeuse', icon: '⏱️', label: 'Pointeuse' },
   { divider: true },
-  { id: 'mdt',      icon: '📚', label: 'Guide MDT' },
-  { id: 'vehicles', icon: '🚗', label: 'Véhicules' },
-  { id: 'cartes',   icon: '🗺️', label: 'Cartes' },
   // wiki sections injected dynamically by loadWikiSections()
   { divider: true, staffOnly: true, _wikiEnd: true },
   { group: 'ADMINISTRATION', staffOnly: true },
@@ -270,12 +267,7 @@ async function loadWikiSections() {
   NAV = NAV.filter(function(n) { return !n._wiki; });
   var endIdx = -1;
   for (var i = 0; i < NAV.length; i++) { if (NAV[i]._wikiEnd) { endIdx = i; break; } }
-  if (endIdx !== -1) {
-    var items = _wikiSections.map(function(s) {
-      return { id: s.slug, icon: s.icon || '📄', label: s.titre, _wiki: true };
-    });
-    Array.prototype.splice.apply(NAV, [endIdx, 0].concat(items));
-  }
+  // wiki sections not shown in nav
   if (document.getElementById('sidebarNav')) buildNav();
 }
 
