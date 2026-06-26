@@ -572,41 +572,61 @@ function renderOrgChart(agents) {
   var gradesSorted = _grades.slice().sort(function(a,b){ return (b.ordre||0)-(a.ordre||0); });
   var maxOrdre = gradesSorted.reduce(function(m,g){ return Math.max(m, g.ordre||0); }, 1);
 
-  var rows = gradesSorted.map(function(g) {
+  function gradeAccent(ordre) {
+    var r = ordre / maxOrdre;
+    if (r > 0.85) return { solid:'#c9a84c', grad:'linear-gradient(135deg,#c9a84c,#f0d080)', text:'#c9a84c' };
+    if (r > 0.65) return { solid:'#9b82c7', grad:'linear-gradient(135deg,#7b5ea7,#b09fd8)', text:'#b09fd8' };
+    if (r > 0.45) return { solid:'#4a90c4', grad:'linear-gradient(135deg,#2c6fa6,#5aaee0)', text:'#7ab8d8' };
+    if (r > 0.25) return { solid:'#3d8f6e', grad:'linear-gradient(135deg,#2d6e52,#5ab08a)', text:'#6fbf96' };
+    return             { solid:'#5a7080', grad:'linear-gradient(135deg,#3a5060,#6a8090)', text:'#8aaabb' };
+  }
+
+  var sections = gradesSorted.map(function(g, idx) {
     var members = agents.filter(function(a){ return a.grade === g.nom && a.statut !== 'Archivé'; });
-    var ratio = (g.ordre||0) / maxOrdre;
-    var accent = ratio > 0.8 ? 'var(--gold)' : ratio > 0.55 ? 'rgba(201,168,76,.55)' : ratio > 0.3 ? 'rgba(201,168,76,.25)' : 'var(--border0)';
-    var nameColor = ratio > 0.8 ? 'var(--gold)' : ratio > 0.55 ? 'var(--t0)' : 'var(--t1)';
+    var ac = gradeAccent(g.ordre||0);
 
-    var chips = members.length ? members.map(function(a) {
-      var initials = ((a.prenom||'')[0]||'') + ((a.nom||'')[0]||'');
-      var statusColor = { 'En service':'var(--green)', 'En congé':'var(--blue)', 'Suspendu':'var(--orange)' }[a.statut] || 'var(--t3)';
-      return '<div onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})" style="display:flex;align-items:center;gap:10px;background:var(--bg1);border:1px solid var(--border0);border-radius:10px;padding:8px 14px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor=\'var(--gold)\';this.style.background=\'var(--bg2)\';this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.borderColor=\'var(--border0)\';this.style.background=\'var(--bg1)\';this.style.transform=\'none\'">' +
-        '<div style="width:30px;height:30px;border-radius:50%;background:var(--bg2);border:1px solid var(--border0);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:var(--t2);flex-shrink:0">' + esc(initials.toUpperCase()) + '</div>' +
-        '<div>' +
-          '<div style="font-size:.83rem;font-weight:600;color:var(--t0);line-height:1.2">' + esc(a.prenom + ' ' + a.nom) + '</div>' +
-          '<div style="display:flex;align-items:center;gap:4px;margin-top:2px">' +
-            '<div style="width:5px;height:5px;border-radius:50%;background:' + statusColor + '"></div>' +
-            '<span style="font-size:.66rem;color:var(--t3);font-family:\'Share Tech Mono\',monospace">' + esc(a.matricule) + '</span>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-    }).join('') : '<span style="font-size:.75rem;color:var(--t3);font-style:italic;padding:8px 0;opacity:.6">— Vacant —</span>';
-
-    return '<div style="display:flex;align-items:flex-start;gap:0;border-bottom:1px solid rgba(255,255,255,.04);padding:12px 0">' +
-      '<div style="width:4px;border-radius:2px;background:' + accent + ';flex-shrink:0;align-self:stretch;min-height:40px;margin-right:16px"></div>' +
-      '<div style="width:170px;flex-shrink:0;padding-top:5px">' +
-        '<div style="font-size:.82rem;font-weight:700;color:' + nameColor + ';letter-spacing:.3px">' + esc(g.nom) + '</div>' +
-        '<div style="font-size:.67rem;color:var(--t3);margin-top:2px">' + members.length + ' agent' + (members.length !== 1 ? 's' : '') + '</div>' +
-      '</div>' +
-      '<div style="display:flex;flex-wrap:wrap;gap:6px;flex:1;align-items:center">' + chips + '</div>' +
+    var header = '<div style="display:flex;align-items:center;gap:10px;margin:' + (idx===0?'4px':'22px') + ' 0 10px 0">' +
+      '<div style="width:3px;height:18px;border-radius:2px;background:' + ac.solid + ';flex-shrink:0"></div>' +
+      '<span style="font-size:.7rem;font-weight:800;color:' + ac.text + ';letter-spacing:1.4px;text-transform:uppercase">' + esc(g.nom) + '</span>' +
+      '<div style="flex:1;height:1px;background:linear-gradient(to right,' + ac.solid + '44,transparent)"></div>' +
+      '<span style="font-size:.65rem;color:var(--t3);background:var(--bg2);border:1px solid var(--border0);border-radius:20px;padding:1px 8px">' + members.length + ' agent' + (members.length!==1?'s':'') + '</span>' +
     '</div>';
-  });
 
-  if (!rows.length) return '';
+    var cards;
+    if (members.length) {
+      cards = '<div style="display:flex;flex-wrap:wrap;gap:7px;padding-left:13px">' +
+        members.map(function(a) {
+          var initials = ((a.prenom||'')[0]||'').toUpperCase() + ((a.nom||'')[0]||'').toUpperCase();
+          var statusDot = { 'En service':'#2ecc71','En congé':'#3498db','Suspendu':'#e67e22' }[a.statut] || '#7f8c8d';
+          var divBadges = (a.unites||[]).slice(0,3).map(function(u) {
+            return '<span style="font-size:.57rem;padding:1px 5px;border-radius:3px;background:rgba(74,144,196,.18);color:#7ab8d8;font-weight:700;letter-spacing:.3px">' + esc(u) + '</span>';
+          }).join('');
+          return '<div onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})" ' +
+            'style="display:flex;align-items:center;gap:10px;background:var(--bg1);border:1px solid var(--border0);border-radius:10px;padding:9px 13px;cursor:pointer;transition:all .18s;min-width:170px;max-width:240px" ' +
+            'onmouseover="this.style.borderColor=\'' + ac.solid + '\';this.style.background=\'var(--bg2)\';this.style.transform=\'translateY(-2px)\';this.style.boxShadow=\'0 6px 16px rgba(0,0,0,.35)\'" ' +
+            'onmouseout="this.style.borderColor=\'var(--border0)\';this.style.background=\'var(--bg1)\';this.style.transform=\'none\';this.style.boxShadow=\'none\'">' +
+            '<div style="width:36px;height:36px;border-radius:50%;background:' + ac.grad + ';display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:900;color:#fff;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.4)">' + esc(initials) + '</div>' +
+            '<div style="min-width:0;flex:1">' +
+              '<div style="font-size:.83rem;font-weight:700;color:var(--t0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(a.prenom + ' ' + a.nom) + '</div>' +
+              '<div style="display:flex;align-items:center;gap:4px;margin-top:3px;flex-wrap:wrap">' +
+                '<div style="width:5px;height:5px;border-radius:50%;background:' + statusDot + ';flex-shrink:0"></div>' +
+                '<span style="font-size:.64rem;color:var(--t3);font-family:\'Share Tech Mono\',monospace">' + esc(a.matricule) + '</span>' +
+                divBadges +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    } else {
+      cards = '<div style="padding-left:13px;font-size:.72rem;color:var(--t3);font-style:italic;opacity:.45;padding-bottom:2px">— Vacant —</div>';
+    }
+    return header + cards;
+  }).join('');
+
+  if (!sections) return '';
   return '<div class="card" style="margin-top:18px">' +
     '<div class="card-head"><div class="card-icon">🏛️</div><div><div class="card-title">Organigramme</div><div class="card-sub">HIÉRARCHIE CENTRALE PA</div></div></div>' +
-    rows.join('') +
+    sections +
   '</div>';
 }
 
