@@ -466,7 +466,7 @@ function statusBadge(s) {
   return '<span class="badge ' + (map[s]||'badge-gray') + '">' + esc(s) + '</span>';
 }
 function gradeBadge(g) {
-  var pastille = (g === 'Rookie' || g === 'Officer I') ? ' <span title="En formation" style="font-size:1em">🎓</span>' : '';
+  var pastille = (g === 'Rookie' || g === 'Officer I') ? ' <span title="En formation" style="font-size:1.4em;vertical-align:middle">🎓</span>' : '';
   return '<span class="badge badge-gold">' + esc(g) + pastille + '</span>';
 }
 function unitBadge(u) {
@@ -700,7 +700,7 @@ async function openAgentModal(id) {
         fld('Date de naissance', 'date', 'agDob', v.date_naissance) +
       '</div>' +
       '<div class="form-group"><label class="form-label">Téléphone</label><input class="form-control" type="text" id="agTel" value="' + esc(fmtTel(v.telephone)||'') + '" placeholder="(555) 0000" oninput="formatTel(this)" maxlength="11"></div>' +
-      fld('IBAN', 'text', 'agIban', v.iban||'', 'Ex : FR76 3000 6000 0112 3456 7890 189') +
+      fld('IBAN', 'text', 'agIban', v.iban||'', 'Ex : 524156435465413') +
       '<div class="form-grid2">' +
         '<div class="form-group"><label class="form-label">Grade *</label><select class="form-control" id="agGrade">' + gradeOpts + '</select></div>' +
         '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="agStatut">' +
