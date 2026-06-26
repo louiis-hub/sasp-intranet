@@ -216,6 +216,7 @@ async function getDiscordRole(discordUserId) {
     if (ROLE_ADMIN_IDS.some(function(r){ return roles.indexOf(r) !== -1; })) return { role: 'admin', apiOk: true };
     if (roles.indexOf(ROLE_ACADEMY_ID) !== -1) return { role: 'academy', apiOk: true };
     if ((typeof ROLE_AGENT_IDS !== 'undefined' ? ROLE_AGENT_IDS : [ROLE_AGENT_ID]).some(function(r){ return roles.indexOf(r) !== -1; })) return { role: 'agent', apiOk: true };
+    if (typeof ROLE_VISITEUR_ID !== 'undefined' && ROLE_VISITEUR_ID && roles.indexOf(ROLE_VISITEUR_ID) !== -1) return { role: 'visiteur', apiOk: true };
     return { role: null, apiOk: true };
   } catch(e) { console.error('[auth] error:', e); return { role: null, apiOk: false }; }
 }
@@ -294,9 +295,12 @@ function showApp() {
 // ── Navigation ─────────────────────────────────────────────────────
 function buildNav() {
   var isStaff = S.role === 'admin' || S.role === 'academy';
+  var isVisiteur = S.role === 'visiteur';
+  var VISITEUR_NAV = ['dashboard', 'pointeuse', 'cartes'];
   var html = '';
   NAV.forEach(function(item) {
     if (item.staffOnly && !isStaff) return;
+    if (isVisiteur && item.id && VISITEUR_NAV.indexOf(item.id) === -1) return;
     if (item.divider) { html += '<div class="nav-divider"></div>'; return; }
     if (item.group)   { html += '<div class="nav-group">' + item.group + '</div>'; return; }
     html += '<div class="nav-item" data-page="' + item.id + '" onclick="navigate(\'' + item.id + '\')">' +
@@ -307,7 +311,7 @@ function buildNav() {
   var discordName = S.user && S.user.user_metadata && (S.user.user_metadata.full_name || S.user.user_metadata.name || S.user.user_metadata.user_name);
   var n = discordName || (S.appUser ? (S.appUser.prenom + ' ' + S.appUser.nom).trim() : S.user.email);
   var initials = n.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
-  var roleLabel = { admin:'ADMIN', academy:'SCA', agent:'AGENT' }[S.role] || S.role.toUpperCase();
+  var roleLabel = { admin:'ADMIN', academy:'SCA', agent:'AGENT', visiteur:'VISITEUR' }[S.role] || S.role.toUpperCase();
   document.getElementById('sidebarFooter').innerHTML =
     '<div class="sidebar-user">' +
       '<div class="sidebar-avatar">' + initials + '</div>' +
@@ -348,6 +352,11 @@ async function navigate(page, pd) {
   var _permCfg = {}; try { _permCfg = JSON.parse(localStorage.getItem('sasp_permissions') || '{}'); } catch(e) {}
   var AGENT_ALLOWED   = _permCfg.agentPages   || ['dashboard','agents','agent-profile','grades','units','pointeuse','mdt','vehicles','cartes','info','manuel','tenue','document'];
   var ACADEMY_ALLOWED = _permCfg.academyPages  || null;
+  var VISITEUR_ALLOWED = ['dashboard', 'pointeuse', 'cartes'];
+  if (S.role === 'visiteur' && VISITEUR_ALLOWED.indexOf(page) === -1) {
+    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Votre rôle ne permet pas d\'accéder à cette section.</div></div>');
+    return;
+  }
   if (S.role === 'agent' && AGENT_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au personnel d\'encadrement.</div></div>');
     return;
