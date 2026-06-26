@@ -145,7 +145,6 @@ var NAV = [
   { divider: true },
   { group: 'RESSOURCES HUMAINES' },
   { id: 'agents',   icon: '👮', label: 'Agents' },
-  { id: 'academie', icon: '🎓', label: 'Académie', staffOnly: true },
   { id: 'grades',   icon: '🎖️', label: 'Grades' },
   { id: 'units',     icon: '🚔', label: 'Divisions' },
   { id: 'pointeuse', icon: '⏱️', label: 'Pointeuse' },
