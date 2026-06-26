@@ -638,6 +638,7 @@ async function renderAgents() {
       '<div><h1 style="font-size:1.4rem">Agents</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">' + agents.length + ' agent(s) trouvé(s)</p></div>' +
       '<div class="flex gap-8">' +
         (canWrite() ? '<button class="btn btn-primary btn-sm" onclick="openAgentModal(null)">+ Ajouter un agent</button>' : '') +
+        '<button class="btn btn-ghost btn-sm" onclick="showMatriculesDispos()">🔢 Matricules dispo</button>' +
         (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="syncAllAgentsToDiscord()">🔄 Sync Discord</button>' : '') +
       '</div>' +
     '</div>' +
@@ -1792,6 +1793,28 @@ async function deleteArchivedAgent(id, name) {
   ]);
   renderArchives();
 }
+async function showMatriculesDispos() {
+  var agents = await DB.getAgents({});
+  var used = new Set(agents.map(function(a) { return String(a.matricule).trim(); }));
+  var max = 0;
+  used.forEach(function(m) { var n = parseInt(m, 10); if (!isNaN(n) && n > max) max = n; });
+  max = Math.max(max + 5, 30);
+  var dispos = [];
+  for (var i = 1; i <= max; i++) {
+    var padded = String(i).padStart(2, '0');
+    if (!used.has(padded) && !used.has(String(i))) dispos.push(padded);
+  }
+  var html = '<div style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0">' +
+    dispos.map(function(m) { return '<span class="badge badge-gold" style="font-size:.9rem;padding:4px 10px">' + esc(m) + '</span>'; }).join('') +
+    '</div>';
+  openModal({
+    eyebrow: 'MATRICULES',
+    title: 'Matricules disponibles (' + dispos.length + ')',
+    body: html,
+    footer: '<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>'
+  });
+}
+
 async function archiveAgent(id) {
   if (!confirm('Archiver cet agent ? Sa fiche passera en lecture seule et disparaîtra de la liste des agents.')) return;
   var r = await DB.updateAgent(id, { statut: 'Archivé' });
