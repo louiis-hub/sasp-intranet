@@ -466,7 +466,7 @@ function statusBadge(s) {
   return '<span class="badge ' + (map[s]||'badge-gray') + '">' + esc(s) + '</span>';
 }
 function gradeBadge(g) {
-  var pastille = (g === 'Rookie' || g === 'Officer I') ? ' <span title="En formation" style="font-size:.7em">🎓</span>' : '';
+  var pastille = (g === 'Rookie' || g === 'Officer I') ? ' <span title="En formation" style="font-size:1em">🎓</span>' : '';
   return '<span class="badge badge-gold">' + esc(g) + pastille + '</span>';
 }
 function unitBadge(u) {
@@ -532,23 +532,17 @@ async function renderDashboard() {
       statCard('📋', 'Recrutements ce mois', recentR.length) +
     '</div>' +
 
-    '<div class="page-grid3">' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">' +
       '<div class="card">' +
-        '<div class="card-head"><div class="card-icon">⏱️</div><div><div class="card-title">Activité récente</div><div class="card-sub">30 DERNIERS JOURS</div></div></div>' +
-        activityHtml +
+        '<div class="card-head"><div class="card-icon">🎖️</div><div><div class="card-title">Grades</div><div class="card-sub">EFFECTIFS</div></div></div>' +
+        (gradeListHtml || '<div class="empty-state" style="padding:20px"><div class="empty-title">Aucun agent</div></div>') +
       '</div>' +
-      '<div style="display:flex;flex-direction:column;gap:18px">' +
-        '<div class="card">' +
-          '<div class="card-head"><div class="card-icon">🎖️</div><div><div class="card-title">Grades</div><div class="card-sub">EFFECTIFS</div></div></div>' +
-          (gradeListHtml || '<div class="empty-state" style="padding:20px"><div class="empty-title">Aucun agent</div></div>') +
-        '</div>' +
-        '<div class="card">' +
-          '<div class="card-head"><div class="card-icon">⚡</div><div><div class="card-title">Accès rapide</div></div></div>' +
-          '<div style="display:flex;flex-direction:column;gap:8px">' +
-            quickLink('👮', 'Agents', 'agents') +
-            quickLink('📚', 'Guide MDT', 'mdt') +
-            quickLink('📈', 'Statistiques', 'stats') +
-          '</div>' +
+      '<div class="card">' +
+        '<div class="card-head"><div class="card-icon">⚡</div><div><div class="card-title">Accès rapide</div></div></div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px">' +
+          quickLink('👮', 'Agents', 'agents') +
+          quickLink('📈', 'Statistiques', 'stats') +
+          quickLink('🗺️', 'Cartes', 'cartes') +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -706,6 +700,7 @@ async function openAgentModal(id) {
         fld('Date de naissance', 'date', 'agDob', v.date_naissance) +
       '</div>' +
       '<div class="form-group"><label class="form-label">Téléphone</label><input class="form-control" type="text" id="agTel" value="' + esc(fmtTel(v.telephone)||'') + '" placeholder="(555) 0000" oninput="formatTel(this)" maxlength="11"></div>' +
+      fld('IBAN', 'text', 'agIban', v.iban||'', 'Ex : FR76 3000 6000 0112 3456 7890 189') +
       '<div class="form-grid2">' +
         '<div class="form-group"><label class="form-label">Grade *</label><select class="form-control" id="agGrade">' + gradeOpts + '</select></div>' +
         '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="agStatut">' +
@@ -779,6 +774,7 @@ async function saveAgent(id) {
     date_recrutement: document.getElementById('agRecruit').value || null,
     date_promotion: document.getElementById('agPromo').value || null,
     unites: unites,
+    iban: document.getElementById('agIban').value.trim() || null,
     notes: document.getElementById('agNotes').value.trim() || null,
     is_formateur: document.getElementById('agIsFormateur').checked,
     formateur_id: document.getElementById('agFormateur').value || null,
@@ -885,6 +881,7 @@ async function renderAgentProfile() {
           infoRow('Téléphone', fmtTel(ag.telephone)) +
           infoRow('Date de recrutement', fmt(ag.date_recrutement)) +
           infoRow('Dernière promotion', fmt(ag.date_promotion)) +
+          (ag.iban ? infoRow('IBAN', ag.iban) : '') +
           (formateur ? infoRow('Formateur', '<span onclick="navigate(\'agent-profile\',{id:\'' + formateur.id + '\'})" style="color:var(--blue);cursor:pointer">🎓 ' + esc(formateur.prenom + ' ' + formateur.nom) + ' (' + esc(formateur.matricule) + ')</span>') : '') +
         '</div>' +
 
@@ -955,21 +952,27 @@ async function renderAgentProfile() {
           '</div>' +
           (function() {
             var html = '';
+            function armeRow(a) {
+              return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--bg1);border-radius:var(--rSm);margin-bottom:4px">' +
+                '<div>' +
+                  '<div style="font-size:.85rem;font-weight:600;color:var(--t0)">' + esc(a.nom) + '</div>' +
+                  '<div style="font-size:.7rem;color:var(--t3);font-family:\'Share Tech Mono\',monospace">' + (a.serie ? 'S/N : ' + esc(a.serie) : 'Pas de numéro de série') + '</div>' +
+                '</div>' +
+                (canWrite() ? '<button class="btn btn-danger btn-sm btn-icon" onclick="delArme(\'' + a.id + '\',\'' + id + '\')">✕</button>' : '') +
+              '</div>';
+            }
+            var lvl0 = armes.filter(function(a){ return a.ppa_niveau === 0 || a.ppa_niveau === null; });
+            if (lvl0.length) {
+              html += '<div style="margin-bottom:10px"><div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Sans PPA</div>' +
+                lvl0.map(armeRow).join('') + '</div>';
+            }
             [1,2,3].forEach(function(n) {
               var lvl = armes.filter(function(a){ return a.ppa_niveau === n; });
               if (!ag['ppa'+n] && !lvl.length) return;
               html += '<div style="margin-bottom:10px">' +
                 '<div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">PPA ' + n + '</div>';
               if (lvl.length) {
-                lvl.forEach(function(a) {
-                  html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--bg1);border-radius:var(--rSm);margin-bottom:4px">' +
-                    '<div>' +
-                      '<div style="font-size:.85rem;font-weight:600;color:var(--t0)">' + esc(a.nom) + '</div>' +
-                      '<div style="font-size:.7rem;color:var(--t3);font-family:\'Share Tech Mono\',monospace">' + (a.serie ? 'S/N : ' + esc(a.serie) : 'Pas de numéro de série') + '</div>' +
-                    '</div>' +
-                    (canWrite() ? '<button class="btn btn-danger btn-sm btn-icon" onclick="delArme(\'' + a.id + '\',\'' + id + '\')">✕</button>' : '') +
-                  '</div>';
-                });
+                html += lvl.map(armeRow).join('');
               } else {
                 html += '<div style="font-size:.8rem;color:var(--t3);padding:4px 0">Aucune arme assignée</div>';
               }
@@ -1182,11 +1185,10 @@ async function openAddArmeModal(agentId) {
   if (!canWrite()) return;
   var ag = await DB.getAgent(agentId);
   if (!ag) return;
-  var ppas = [];
+  var ppas = [{ level:0, label:'Sans PPA (Taser)' }];
   if (ag.ppa1) ppas.push({ level:1, label:'PPA 1' });
   if (ag.ppa2) ppas.push({ level:2, label:'PPA 2' });
   if (ag.ppa3) ppas.push({ level:3, label:'PPA 3' });
-  if (!ppas.length) { toast("Cet agent n'a aucun PPA validé.", 'error'); return; }
   var ppaOpts = ppas.map(function(p){ return '<option value="' + p.level + '">' + p.label + '</option>'; }).join('');
   openModal({
     eyebrow: 'ARMEMENT',
@@ -1195,7 +1197,8 @@ async function openAddArmeModal(agentId) {
       '<div class="form-group"><label class="form-label">Arme rapide</label>' +
         '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
           ['Taser','Glock','MP5','Fusil à pompe','Fusil carabine'].map(function(w){
-            return '<button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById(\'armeNom\').value=\'' + w + '\'">' + w + '</button>';
+            var isTaser = w === 'Taser';
+            return '<button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById(\'armeNom\').value=\'' + w + '\';' + (isTaser ? 'document.getElementById(\'armeNiveau\').value=\'0\'' : '') + '">' + w + '</button>';
           }).join('') +
         '</div>' +
       '</div>' +
