@@ -806,15 +806,32 @@ async function saveAgent(id) {
     closeModal();
     toast(id ? 'Agent modifié.' : 'Agent créé.', 'success');
     if (id) {
-      sendLog('✏️ Agent modifié', 0x3498db, [
+      var diffLines = [];
+      var old = oldAg || {};
+      if ((old.prenom||'') !== data.prenom || (old.nom||'') !== data.nom) diffLines.push('Nom : ' + (old.prenom+' '+old.nom).trim() + ' → ' + data.prenom + ' ' + data.nom);
+      if ((old.matricule||'') !== data.matricule) diffLines.push('Matricule : ' + (old.matricule||'—') + ' → ' + data.matricule);
+      if ((old.grade||'') !== (data.grade||'')) diffLines.push('Grade : ' + (old.grade||'—') + ' → ' + (data.grade||'—'));
+      if ((old.statut||'') !== (data.statut||'')) diffLines.push('Statut : ' + (old.statut||'—') + ' → ' + (data.statut||'—'));
+      if ((old.telephone||'') !== (data.telephone||'')) diffLines.push('Téléphone : ' + (old.telephone||'—') + ' → ' + (data.telephone||'—'));
+      if (JSON.stringify((old.unites||[]).slice().sort()) !== JSON.stringify((data.unites||[]).slice().sort())) {
+        var added   = (data.unites||[]).filter(function(u){ return !(old.unites||[]).includes(u); });
+        var removed = (old.unites||[]).filter(function(u){ return !(data.unites||[]).includes(u); });
+        if (added.length)   diffLines.push('+Division : ' + added.join(', '));
+        if (removed.length) diffLines.push('−Division : ' + removed.join(', '));
+      }
+      if (!!old.is_formateur !== !!data.is_formateur) diffLines.push('Formateur : ' + (old.is_formateur?'Oui':'Non') + ' → ' + (data.is_formateur?'Oui':'Non'));
+      var logFields = [
         { name: 'Agent', value: data.prenom + ' ' + data.nom + ' · ' + data.matricule, inline: true },
         { name: 'Par', value: _whoAmI(), inline: true }
-      ]);
+      ];
+      if (diffLines.length) logFields.push({ name: 'Modifications', value: diffLines.join('\n').slice(0,1024), inline: false });
+      sendLog('✏️ Agent modifié', 0x3498db, logFields);
     } else {
       sendLog('✅ Agent créé', 0x27ae60, [
         { name: 'Agent', value: data.prenom + ' ' + data.nom + ' · ' + data.matricule, inline: true },
         { name: 'Grade', value: data.grade || '—', inline: true },
-        { name: 'Par', value: _whoAmI(), inline: true }
+        { name: 'Divisions', value: (data.unites||[]).join(', ')||'—', inline: true },
+        { name: 'Par', value: _whoAmI(), inline: false }
       ]);
     }
     var effectiveDiscordId = data.discord_id || oldDiscordId;
