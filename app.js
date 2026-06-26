@@ -482,9 +482,19 @@ function statusBadge(s) {
   var map = { 'En service':'badge-green','En congé':'badge-blue','Suspendu':'badge-orange','Licencié':'badge-red','Retraité':'badge-gray','Démission':'badge-gray','Archivé':'badge-red' };
   return '<span class="badge ' + (map[s]||'badge-gray') + '">' + esc(s) + '</span>';
 }
+function isReferent(grade) {
+  if (!grade || !_grades.length) return false;
+  var offII = _grades.find(function(g){ return g.nom === 'Officer II'; });
+  if (!offII) return false;
+  var g = _grades.find(function(g){ return g.nom === grade; });
+  return g ? (g.ordre||0) >= (offII.ordre||0) : false;
+}
 function gradeBadge(g) {
   var pastille = (g === 'Rookie' || g === 'Officer I') ? ' <span title="En formation" style="font-size:1.4em;vertical-align:middle">🎓</span>' : '';
   return '<span class="badge badge-gold">' + esc(g) + pastille + '</span>';
+}
+function referentBadge() {
+  return '<span class="badge" style="background:rgba(46,204,113,.14);color:#2ecc71;border:1px solid rgba(46,204,113,.3);font-size:.68rem">📌 Référent</span>';
 }
 function unitBadge(u) {
   return '<span class="badge badge-blue">' + esc(u) + '</span>';
@@ -655,7 +665,7 @@ async function renderAgents() {
     return '<tr onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})">' +
       '<td class="mono text-gold">' + esc(a.matricule) + '</td>' +
       '<td style="font-weight:600;color:var(--t0)">' + esc(a.prenom) + ' ' + esc(a.nom) + '</td>' +
-      '<td>' + gradeBadge(a.grade) + '</td>' +
+      '<td>' + gradeBadge(a.grade) + (isReferent(a.grade) ? referentBadge() : '') + '</td>' +
       '<td>' + (unites||'<span class="text-muted">—</span>') + '</td>' +
       '<td><span class="badge badge-gold" style="font-size:.65rem">PPA ' + ppas + '/3</span></td>' +
       '<td>' + statusBadge(a.statut) + '</td>' +
@@ -924,7 +934,7 @@ async function renderAgentProfile() {
       '<div style="flex:1">' +
         '<h1 class="profile-name">' + esc(ag.prenom) + ' ' + esc(ag.nom) + '</h1>' +
         '<div class="profile-mat">' + esc(ag.matricule) + '</div>' +
-        '<div class="profile-meta">' + gradeBadge(ag.grade) + statusBadge(ag.statut) + unites + '</div>' +
+        '<div class="profile-meta">' + gradeBadge(ag.grade) + (isReferent(ag.grade) ? referentBadge() : '') + statusBadge(ag.statut) + unites + '</div>' +
       '</div>' +
       (ag.statut === 'Archivé' ?
         '<div class="profile-actions"><span class="badge badge-red" style="font-size:.8rem;padding:6px 14px">🗃️ Archivé — lecture seule</span></div>' :
