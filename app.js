@@ -157,7 +157,6 @@ var NAV = [
   { id: 'archives',        icon: '🗃️', label: 'Archives',          staffOnly: true },
   { id: 'stats',           icon: '📈', label: 'Statistiques',       staffOnly: true },
   { id: 'search',          icon: '🔍', label: 'Recherche',          staffOnly: true },
-  { id: 'global-settings', icon: '🛠️', label: 'Réglages globaux',   staffOnly: true },
   { id: 'settings',        icon: '⚙️', label: 'Mon compte',         staffOnly: true },
 ];
 
