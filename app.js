@@ -145,6 +145,7 @@ var NAV = [
   { divider: true },
   { group: 'RESSOURCES HUMAINES' },
   { id: 'agents',   icon: '👮', label: 'Agents' },
+  { id: 'academie', icon: '🎓', label: 'Académie', staffOnly: true },
   { id: 'grades',   icon: '🎖️', label: 'Grades' },
   { id: 'units',     icon: '🚔', label: 'Divisions' },
   { id: 'pointeuse', icon: '⏱️', label: 'Pointeuse' },
@@ -370,6 +371,7 @@ async function navigate(page, pd) {
     var renderers = {
       dashboard:      renderDashboard,
       agents:         renderAgents,
+      academie:       renderAcademie,
       'agent-profile':renderAgentProfile,
       grades:         renderGrades,
       units:          renderUnits,
@@ -475,7 +477,8 @@ function statusBadge(s) {
   return '<span class="badge ' + (map[s]||'badge-gray') + '">' + esc(s) + '</span>';
 }
 function gradeBadge(g) {
-  return '<span class="badge badge-gold">' + esc(g) + '</span>';
+  var pastille = (g === 'Rookie' || g === 'Officer I') ? ' <span title="En formation" style="font-size:.7em">🎓</span>' : '';
+  return '<span class="badge badge-gold">' + esc(g) + pastille + '</span>';
 }
 function unitBadge(u) {
   return '<span class="badge badge-blue">' + esc(u) + '</span>';
@@ -894,7 +897,14 @@ async function renderAgentProfile() {
           infoRow('Date de recrutement', fmt(ag.date_recrutement)) +
           infoRow('Dernière promotion', fmt(ag.date_promotion)) +
           (formateur ? infoRow('Formateur', '<span onclick="navigate(\'agent-profile\',{id:\'' + formateur.id + '\'})" style="color:var(--blue);cursor:pointer">🎓 ' + esc(formateur.prenom + ' ' + formateur.nom) + ' (' + esc(formateur.matricule) + ')</span>') : '') +
-          (ag.notes ? '<div class="divider"></div><div style="font-size:.83rem;color:var(--t2)">' + esc(ag.notes) + '</div>' : '') +
+        '</div>' +
+
+        '<div class="card">' +
+          '<div class="flex-between mb-10">' +
+            '<div class="card-head" style="margin:0"><div class="card-icon">📝</div><div><div class="card-title">Notes internes</div></div></div>' +
+            (canWrite() && ag.statut !== 'Archivé' ? '<button class="btn btn-ghost btn-sm" onclick="openNotesModal(\'' + id + '\')">' + (ag.notes ? '✏️' : '+ Ajouter') + '</button>' : '') +
+          '</div>' +
+          (ag.notes ? '<div style="font-size:.84rem;color:var(--t1);white-space:pre-wrap;line-height:1.5">' + esc(ag.notes) + '</div>' : '<div style="font-size:.82rem;color:var(--t3)">Aucune note.</div>') +
         '</div>' +
 
         '<div class="card">' +
@@ -1793,6 +1803,96 @@ async function deleteArchivedAgent(id, name) {
   ]);
   renderArchives();
 }
+async function openNotesModal(agentId) {
+  var ag = await DB.getAgent(agentId);
+  openModal({
+    eyebrow: 'NOTES INTERNES',
+    title: 'Notes — visibles staff uniquement',
+    body: '<div class="form-group"><textarea class="form-control" id="notesText" rows="6" placeholder="Observations, remarques, suivi...">' + esc(ag && ag.notes || '') + '</textarea></div>',
+    footer: '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
+            '<button class="btn btn-primary" onclick="saveNotes(\'' + agentId + '\')">Enregistrer</button>'
+  });
+}
+
+async function saveNotes(agentId) {
+  var notes = document.getElementById('notesText').value.trim() || null;
+  await DB.updateAgent(agentId, { notes: notes });
+  closeModal();
+  toast('Notes enregistrées.', 'success');
+  await renderAgentProfile();
+}
+
+async function renderAcademie() {
+  var agents = await DB.getAgents({});
+  var recrues = agents.filter(function(a) {
+    return (a.grade === 'Rookie' || a.grade === 'Officer I') && a.statut !== 'Archivé';
+  });
+  var formateurMap = {};
+  agents.filter(function(a){ return a.is_formateur; }).forEach(function(f){ formateurMap[f.id] = f; });
+
+  var nRookie  = recrues.filter(function(r){ return r.grade === 'Rookie'; }).length;
+  var nOfficer = recrues.filter(function(r){ return r.grade === 'Officer I'; }).length;
+
+  var groups = {};
+  recrues.forEach(function(r) {
+    var fId = r.formateur_id || '__none__';
+    if (!groups[fId]) groups[fId] = [];
+    groups[fId].push(r);
+  });
+
+  function recrueRow(r) {
+    var blames = (r.blame1?1:0)+(r.blame2?1:0)+(r.blame3?1:0);
+    var ppaDots = [1,2,3].map(function(n) {
+      return '<span title="PPA '+n+'" style="width:22px;height:22px;border-radius:50%;font-size:.65rem;display:flex;align-items:center;justify-content:center;font-weight:700;' +
+        (r['ppa'+n] ? 'background:rgba(201,168,76,.3);color:var(--gold)' : 'background:var(--bg2);color:var(--t3)') + '">' + n + '</span>';
+    }).join('');
+    return '<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border0);cursor:pointer" onclick="navigate(\'agent-profile\',{id:\'' + r.id + '\'})">' +
+      '<div style="flex:1">' +
+        '<div style="font-size:.9rem;font-weight:600;color:var(--t0)">' + esc(r.prenom + ' ' + r.nom) + ' <span style="font-size:.75rem;color:var(--t3)">(' + esc(r.matricule) + ')</span></div>' +
+        (r.notes ? '<div style="font-size:.72rem;color:var(--t3);margin-top:2px">' + esc(r.notes.slice(0,80)) + (r.notes.length>80?'…':'') + '</div>' : '') +
+      '</div>' +
+      gradeBadge(r.grade) +
+      '<div style="display:flex;gap:4px">' + ppaDots + '</div>' +
+      (blames > 0 ? '<span class="badge badge-red" style="font-size:.7rem">⚠️ ' + blames + '</span>' : '') +
+      '<span style="color:var(--t3);font-size:.8rem">›</span>' +
+    '</div>';
+  }
+
+  var groupsHtml = '';
+  var ordered = Object.keys(groups).filter(function(k){ return k !== '__none__'; });
+  ordered.forEach(function(fId) {
+    var f = formateurMap[fId] || agents.find(function(a){ return a.id === fId; });
+    var list = groups[fId];
+    groupsHtml += '<div class="card" style="margin-bottom:16px">' +
+      '<div class="card-head"><div class="card-icon">🎓</div><div>' +
+        '<div class="card-title">Formateur : ' + esc(f ? f.prenom + ' ' + f.nom : '—') + (f ? ' <span style="color:var(--t3);font-size:.78rem">(' + esc(f.matricule) + ')</span>' : '') + '</div>' +
+        '<div class="card-sub">' + list.length + ' recrue(s)</div>' +
+      '</div></div>' +
+      list.map(recrueRow).join('') +
+    '</div>';
+  });
+  if (groups['__none__'] && groups['__none__'].length) {
+    groupsHtml += '<div class="card" style="margin-bottom:16px">' +
+      '<div class="card-head"><div class="card-icon">❓</div><div><div class="card-title">Sans formateur assigné</div><div class="card-sub">' + groups['__none__'].length + ' recrue(s)</div></div></div>' +
+      groups['__none__'].map(recrueRow).join('') +
+    '</div>';
+  }
+  if (!recrues.length) {
+    groupsHtml = '<div class="empty-state"><div class="empty-icon">🎓</div><div class="empty-title">Aucune recrue en formation</div><div class="empty-sub">Les agents de grade Rookie ou Officer I apparaissent ici.</div></div>';
+  }
+
+  setContent(
+    '<div class="welcome-bar"><div><h1 style="font-size:1.5rem">Académie</h1><p class="text-muted" style="margin-top:3px;font-size:.84rem">Suivi des recrues en formation</p></div></div>' +
+    '<div class="stats-grid">' +
+      statCard('🎓', 'Recrues totales', recrues.length) +
+      statCard('🟡', 'Rookie', nRookie) +
+      statCard('🔵', 'Officer I', nOfficer) +
+      statCard('👤', 'Formateurs', Object.keys(formateurMap).length) +
+    '</div>' +
+    groupsHtml
+  );
+}
+
 async function showMatriculesDispos() {
   var agents = await DB.getAgents({});
   var used = new Set(agents.map(function(a) { return String(a.matricule).trim(); }));
