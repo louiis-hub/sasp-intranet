@@ -570,33 +570,43 @@ async function renderDashboard() {
 
 function renderOrgChart(agents) {
   var gradesSorted = _grades.slice().sort(function(a,b){ return (b.ordre||0)-(a.ordre||0); });
+  var maxOrdre = gradesSorted.reduce(function(m,g){ return Math.max(m, g.ordre||0); }, 1);
+
   var rows = gradesSorted.map(function(g) {
     var members = agents.filter(function(a){ return a.grade === g.nom && a.statut !== 'Archivé'; });
+    var ratio = (g.ordre||0) / maxOrdre;
+    var accent = ratio > 0.8 ? 'var(--gold)' : ratio > 0.55 ? 'rgba(201,168,76,.55)' : ratio > 0.3 ? 'rgba(201,168,76,.25)' : 'var(--border0)';
+    var nameColor = ratio > 0.8 ? 'var(--gold)' : ratio > 0.55 ? 'var(--t0)' : 'var(--t1)';
+
     var chips = members.length ? members.map(function(a) {
-      var dot = a.statut === 'En service' ? 'var(--green)' : a.statut === 'En congé' ? 'var(--blue)' : a.statut === 'Suspendu' ? 'var(--orange)' : 'var(--t3)';
-      return '<div onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})" style="display:flex;align-items:center;gap:6px;background:var(--bg1);border:1px solid var(--border0);border-radius:20px;padding:5px 12px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border0)\'">' +
-        '<div style="width:7px;height:7px;border-radius:50%;background:' + dot + ';flex-shrink:0"></div>' +
-        '<span style="font-size:.78rem;font-weight:600;color:var(--t1)">' + esc(a.prenom + ' ' + a.nom) + '</span>' +
-        '<span style="font-size:.7rem;color:var(--t3)">' + esc(a.matricule) + '</span>' +
-      '</div>';
-    }).join('') : '<span style="font-size:.75rem;color:var(--t3);padding-top:14px;font-style:italic">Vacant</span>';
-    return '<div style="display:flex;align-items:flex-start;gap:0;position:relative">' +
-      '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:160px">' +
-        '<div style="background:var(--bg2);border:1px solid var(--border0);border-radius:var(--rSm);padding:6px 14px;text-align:center;min-width:120px">' +
-          '<div style="font-size:.7rem;color:var(--gold);font-weight:700;letter-spacing:.6px">' + esc(g.abreviation||g.nom) + '</div>' +
-          '<div style="font-size:.78rem;color:var(--t2);margin-top:1px">' + esc(g.nom) + '</div>' +
+      var initials = ((a.prenom||'')[0]||'') + ((a.nom||'')[0]||'');
+      var statusColor = { 'En service':'var(--green)', 'En congé':'var(--blue)', 'Suspendu':'var(--orange)' }[a.statut] || 'var(--t3)';
+      return '<div onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})" style="display:flex;align-items:center;gap:10px;background:var(--bg1);border:1px solid var(--border0);border-radius:10px;padding:8px 14px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor=\'var(--gold)\';this.style.background=\'var(--bg2)\';this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.borderColor=\'var(--border0)\';this.style.background=\'var(--bg1)\';this.style.transform=\'none\'">' +
+        '<div style="width:30px;height:30px;border-radius:50%;background:var(--bg2);border:1px solid var(--border0);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:var(--t2);flex-shrink:0">' + esc(initials.toUpperCase()) + '</div>' +
+        '<div>' +
+          '<div style="font-size:.83rem;font-weight:600;color:var(--t0);line-height:1.2">' + esc(a.prenom + ' ' + a.nom) + '</div>' +
+          '<div style="display:flex;align-items:center;gap:4px;margin-top:2px">' +
+            '<div style="width:5px;height:5px;border-radius:50%;background:' + statusColor + '"></div>' +
+            '<span style="font-size:.66rem;color:var(--t3);font-family:\'Share Tech Mono\',monospace">' + esc(a.matricule) + '</span>' +
+          '</div>' +
         '</div>' +
-        '<div style="width:2px;flex:1;background:var(--border0);min-height:12px"></div>' +
+      '</div>';
+    }).join('') : '<span style="font-size:.75rem;color:var(--t3);font-style:italic;padding:8px 0;opacity:.6">— Vacant —</span>';
+
+    return '<div style="display:flex;align-items:flex-start;gap:0;border-bottom:1px solid rgba(255,255,255,.04);padding:12px 0">' +
+      '<div style="width:4px;border-radius:2px;background:' + accent + ';flex-shrink:0;align-self:stretch;min-height:40px;margin-right:16px"></div>' +
+      '<div style="width:170px;flex-shrink:0;padding-top:5px">' +
+        '<div style="font-size:.82rem;font-weight:700;color:' + nameColor + ';letter-spacing:.3px">' + esc(g.nom) + '</div>' +
+        '<div style="font-size:.67rem;color:var(--t3);margin-top:2px">' + members.length + ' agent' + (members.length !== 1 ? 's' : '') + '</div>' +
       '</div>' +
-      '<div style="width:30px;height:2px;background:var(--border0);margin-top:20px;flex-shrink:0"></div>' +
-      '<div style="display:flex;flex-wrap:wrap;gap:6px;padding-top:12px">' + chips + '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;flex:1;align-items:center">' + chips + '</div>' +
     '</div>';
-  }).filter(Boolean);
+  });
 
   if (!rows.length) return '';
   return '<div class="card" style="margin-top:18px">' +
-    '<div class="card-head"><div class="card-icon">🏛️</div><div><div class="card-title">Organigramme</div><div class="card-sub">HIÉRARCHIE SASP</div></div></div>' +
-    '<div style="display:flex;flex-direction:column;gap:0;overflow-x:auto">' + rows.join('') + '</div>' +
+    '<div class="card-head"><div class="card-icon">🏛️</div><div><div class="card-title">Organigramme</div><div class="card-sub">HIÉRARCHIE CENTRALE PA</div></div></div>' +
+    rows.join('') +
   '</div>';
 }
 
