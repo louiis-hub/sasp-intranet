@@ -149,6 +149,7 @@ var NAV = [
   { id: 'grades',   icon: '🎖️', label: 'Grades' },
   { id: 'units',     icon: '🚔', label: 'Divisions' },
   { id: 'pointeuse', icon: '⏱️', label: 'Pointeuse' },
+  { id: 'cartes',   icon: '🗺️', label: 'Cartes' },
   { divider: true },
   // wiki sections injected dynamically by loadWikiSections()
   { divider: true, staffOnly: true, _wikiEnd: true },
