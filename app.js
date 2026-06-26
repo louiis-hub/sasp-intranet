@@ -513,10 +513,11 @@ async function renderDashboard() {
   var susp    = agents.filter(function(a){ return a.statut === 'Suspendu'; }).length;
   var recentR = agents.slice().sort(function(a,b){ return new Date(b.date_recrutement)-new Date(a.date_recrutement); }).slice(0,5);
 
-  // Grade counts
+  // Grade counts — tous les grades dans l'ordre hiérarchique
   var gradeCounts = {};
-  agents.forEach(function(a){ gradeCounts[a.grade] = (gradeCounts[a.grade]||0)+1; });
-  var topGrades = Object.entries(gradeCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,6);
+  agents.forEach(function(a){ if (a.grade) gradeCounts[a.grade] = (gradeCounts[a.grade]||0)+1; });
+  var gradesSorted = _grades.slice().sort(function(a,b){ return (b.ordre||0)-(a.ordre||0); });
+  var topGrades = gradesSorted.map(function(g){ return [g.nom, gradeCounts[g.nom]||0]; });
 
   var activityHtml = hist.length ? hist.map(function(h) {
     var dot = typeDotClass(h.type);
@@ -571,15 +572,14 @@ function renderOrgChart(agents) {
   var gradesSorted = _grades.slice().sort(function(a,b){ return (b.ordre||0)-(a.ordre||0); });
   var rows = gradesSorted.map(function(g) {
     var members = agents.filter(function(a){ return a.grade === g.nom && a.statut !== 'Archivé'; });
-    if (!members.length) return '';
-    var chips = members.map(function(a) {
+    var chips = members.length ? members.map(function(a) {
       var dot = a.statut === 'En service' ? 'var(--green)' : a.statut === 'En congé' ? 'var(--blue)' : a.statut === 'Suspendu' ? 'var(--orange)' : 'var(--t3)';
       return '<div onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})" style="display:flex;align-items:center;gap:6px;background:var(--bg1);border:1px solid var(--border0);border-radius:20px;padding:5px 12px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border0)\'">' +
         '<div style="width:7px;height:7px;border-radius:50%;background:' + dot + ';flex-shrink:0"></div>' +
         '<span style="font-size:.78rem;font-weight:600;color:var(--t1)">' + esc(a.prenom + ' ' + a.nom) + '</span>' +
         '<span style="font-size:.7rem;color:var(--t3)">' + esc(a.matricule) + '</span>' +
       '</div>';
-    }).join('');
+    }).join('') : '<span style="font-size:.75rem;color:var(--t3);padding-top:14px;font-style:italic">Vacant</span>';
     return '<div style="display:flex;align-items:flex-start;gap:0;position:relative">' +
       '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:160px">' +
         '<div style="background:var(--bg2);border:1px solid var(--border0);border-radius:var(--rSm);padding:6px 14px;text-align:center;min-width:120px">' +
