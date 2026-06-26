@@ -150,7 +150,6 @@ var NAV = [
   { id: 'units',     icon: '🚔', label: 'Divisions' },
   { id: 'pointeuse', icon: '⏱️', label: 'Pointeuse' },
   { divider: true },
-  { group: 'DOCUMENTATION' },
   { id: 'mdt',      icon: '📚', label: 'Guide MDT' },
   { id: 'vehicles', icon: '🚗', label: 'Véhicules' },
   { id: 'cartes',   icon: '🗺️', label: 'Cartes' },
