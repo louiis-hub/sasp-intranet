@@ -15,6 +15,26 @@
 // ── State ──────────────────────────────────────────────────────────
 var S = { user: null, appUser: null, role: 'agent', page: 'dashboard', pd: {} };
 
+// ── Salaires par grade ($/h) ─────────────────────────────────────────
+var GRADE_SALAIRE = {
+  'Commandant':          700,
+  'Capitaine':           600,
+  'Lieutenant II':       550,
+  'Lieutenant I':        500,
+  'Sergeant II':         450,
+  'Sergeant I':          400,
+  'Senior Lead Officer': 300,
+  'Officer III':         250,
+  'Officer II':          200,
+  'Officer I':           150,
+  'Rookie':              100
+};
+function calcSalaire(grade, seconds) {
+  var rate = GRADE_SALAIRE[grade] || 0;
+  return Math.round((seconds / 3600) * rate);
+}
+function fmtMoney(n) { return '$' + n.toLocaleString('fr-FR'); }
+
 // ── Discord logs ────────────────────────────────────────────────────
 var WORKER_BASE = 'https://sasp-intranet-bot.louisleurin.workers.dev';
 var LOG_WORKER  = WORKER_BASE + '/log';
@@ -2599,10 +2619,12 @@ async function renderPointeuse() {
         totalSec += sec;
         return '<td style="text-align:center">' + (sec ? fmtSec(sec) : '<span style="color:var(--t3)">—</span>') + '</td>';
       }).join('');
+      var salaire = calcSalaire(a.grade, totalSec);
       return '<tr>' +
         '<td><strong>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule || '') + '</small></td>' +
         cells +
         '<td style="text-align:center"><strong>' + fmtSec(totalSec) + '</strong></td>' +
+        '<td style="text-align:center;color:var(--gold);font-weight:700">' + fmtMoney(salaire) + '</td>' +
       '</tr>';
     }).join('');
 
@@ -2620,7 +2642,7 @@ async function renderPointeuse() {
         '<div class="card-sub">HEURES PAR AGENT ET PAR JOUR</div>' +
       '</div>' + resetBtn + '</div>' +
       '<div class="table-wrap"><table>' +
-        '<thead><tr><th>AGENT</th>' + dayHeaders + '<th style="text-align:center">TOTAL</th></tr></thead>' +
+        '<thead><tr><th>AGENT</th>' + dayHeaders + '<th style="text-align:center">TOTAL</th><th style="text-align:center">SALAIRE</th></tr></thead>' +
         '<tbody>' + rapportRows + '</tbody>' +
       '</table></div>' +
     '</div>';
@@ -2742,14 +2764,16 @@ async function renderPointeuseHistorique() {
       week.monday.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' }) +
       ' au ' + sun.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
 
-    var totalSec = week.entries.reduce(function(acc, p) {
-      if (!p.clock_out) return acc;
-      return acc + Math.floor((new Date(p.clock_out) - new Date(p.clock_in)) / 1000);
-    }, 0);
+    var totalSec = 0;
+    var totalSalaire = 0;
 
     var rows = week.entries.map(function(p) {
       var a = p.agents || {};
-      var dur = p.clock_out ? fmtSec(Math.floor((new Date(p.clock_out) - new Date(p.clock_in)) / 1000)) : '<span style="color:var(--gold)">En cours</span>';
+      var sec = p.clock_out ? Math.floor((new Date(p.clock_out) - new Date(p.clock_in)) / 1000) : 0;
+      totalSec += sec;
+      var sal = calcSalaire(a.grade, sec);
+      totalSalaire += sal;
+      var dur = p.clock_out ? fmtSec(sec) : '<span style="color:var(--gold)">En cours</span>';
       var cin = new Date(p.clock_in).toLocaleString('fr-FR', { weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
       var cout = p.clock_out ? new Date(p.clock_out).toLocaleString('fr-FR', { hour:'2-digit', minute:'2-digit' }) : '—';
       return '<tr>' +
@@ -2758,6 +2782,7 @@ async function renderPointeuseHistorique() {
         '<td>' + cin + '</td>' +
         '<td>' + cout + '</td>' +
         '<td style="text-align:center"><strong>' + dur + '</strong></td>' +
+        '<td style="text-align:center;color:var(--gold);font-weight:700">' + (p.clock_out ? fmtMoney(sal) : '—') + '</td>' +
       '</tr>';
     }).join('');
 
@@ -2767,12 +2792,13 @@ async function renderPointeuseHistorique() {
         '<div>' +
           '<span style="font-weight:600;color:var(--t0)">' + label + '</span>' +
           '<span style="margin-left:12px;font-size:.8rem;color:var(--t3)">' + week.entries.length + ' pointage' + (week.entries.length > 1 ? 's' : '') + ' · ' + fmtSec(totalSec) + ' total</span>' +
+          '<span style="margin-left:10px;font-size:.8rem;color:var(--gold);font-weight:700">' + fmtMoney(totalSalaire) + '</span>' +
         '</div>' +
         '<span id="' + panelId + '_ico">▼</span>' +
       '</div>' +
       '<div id="' + panelId + '" style="display:none">' +
         '<div class="table-wrap"><table>' +
-          '<thead><tr><th>AGENT</th><th>MATRICULE</th><th>ENTRÉE</th><th>SORTIE</th><th style="text-align:center">DURÉE</th></tr></thead>' +
+          '<thead><tr><th>AGENT</th><th>MATRICULE</th><th>ENTRÉE</th><th>SORTIE</th><th style="text-align:center">DURÉE</th><th style="text-align:center">SALAIRE</th></tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table></div>' +
       '</div>' +
