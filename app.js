@@ -2007,10 +2007,6 @@ async function renderRecap() {
     if (!filtered.length) return '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Aucun agent</div></div>';
     return filtered.map(function(a) {
       var formateur = a.formateur_id ? agentMap[a.formateur_id] : null;
-      var ppas = ['ppa1','ppa2','ppa3'].map(function(k,i){
-        return '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:.65rem;font-weight:700;' +
-          (a[k] ? 'background:rgba(201,168,76,.25);color:var(--gold)' : 'background:var(--bg2);color:var(--t3)') + '">' + (i+1) + '</span>';
-      }).join('');
       var divs = (a.unites||[]).map(unitBadge).join(' ') || '<span style="color:var(--t3);font-size:.75rem">—</span>';
       var blameCount = (a.blame1?1:0)+(a.blame2?1:0)+(a.blame3?1:0);
       return '<div class="card" style="cursor:pointer;transition:border-color .15s" onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'\'">' +
@@ -2034,8 +2030,7 @@ async function renderRecap() {
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;border-top:1px solid var(--border0);padding-top:10px">' +
           '<div style="display:flex;gap:6px">' + divs + '</div>' +
           '<div style="display:flex;align-items:center;gap:8px">' +
-            '<div style="display:flex;gap:3px">' + ppas + '</div>' +
-            (blameCount ? '<span class="badge badge-red" style="font-size:.68rem">⚠️ ' + blameCount + ' blâme' + (blameCount>1?'s':'') + '</span>' : '') +
+            (blameCount ?<span class="badge badge-red" style="font-size:.68rem">⚠️ ' + blameCount + ' blâme' + (blameCount>1?'s':'') + '</span>' : '') +
             (a.notes ? '<span title="' + esc(a.notes.slice(0,80)) + '" style="font-size:.75rem;color:var(--t3);cursor:help">📝</span>' : '') +
           '</div>' +
         '</div>' +
