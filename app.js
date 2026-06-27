@@ -165,6 +165,7 @@ var NAV = [
   { divider: true },
   { group: 'RESSOURCES HUMAINES' },
   { id: 'agents',   icon: '👮', label: 'Agents' },
+  { id: 'recap',    icon: '📋', label: 'Récap agents', staffOnly: true },
   { id: 'grades',   icon: '🎖️', label: 'Grades' },
   { id: 'units',     icon: '🚔', label: 'Divisions' },
   { id: 'pointeuse', icon: '⏱️', label: 'Pointeuse' },
@@ -318,7 +319,7 @@ function buildNav() {
   var isStaff = S.role === 'admin' || S.role === 'academy' || S.role === 'rh';
   var isVisiteur = S.role === 'visiteur';
   var VISITEUR_NAV = ['dashboard', 'pointeuse', 'cartes'];
-  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'cartes', 'stats', 'archives'];
+  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'cartes', 'stats', 'archives', 'recap'];
   var html = '';
   NAV.forEach(function(item) {
     if (item.staffOnly && !isStaff) return;
@@ -398,6 +399,7 @@ async function navigate(page, pd) {
       dashboard:      renderDashboard,
       agents:         renderAgents,
       academie:       renderAcademie,
+      recap:          renderRecap,
       'agent-profile':renderAgentProfile,
       grades:         renderGrades,
       units:          renderUnits,
@@ -1977,6 +1979,114 @@ async function renderAcademie() {
     '</div>' +
     groupsHtml
   );
+}
+
+async function renderRecap() {
+  var [agents, allArmes] = await Promise.all([
+    DB.getAgents({}),
+    DB.getAgentArmes ? Promise.all([]).then(function(){ return []; }) : Promise.resolve([])
+  ]);
+  var agentMap = {};
+  agents.forEach(function(a){ agentMap[a.id] = a; });
+
+  var _filterGrade  = '';
+  var _filterStatut = '';
+
+  function buildCards() {
+    var filtered = agents.filter(function(a){
+      if (a.statut === 'Archivé') return false;
+      if (_filterGrade  && a.grade  !== _filterGrade)  return false;
+      if (_filterStatut && a.statut !== _filterStatut) return false;
+      return true;
+    });
+    filtered.sort(function(a,b){
+      var ga = _grades.find(function(g){ return g.nom===a.grade; });
+      var gb = _grades.find(function(g){ return g.nom===b.grade; });
+      return ((gb&&gb.ordre)||0) - ((ga&&ga.ordre)||0);
+    });
+    if (!filtered.length) return '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Aucun agent</div></div>';
+    return filtered.map(function(a) {
+      var formateur = a.formateur_id ? agentMap[a.formateur_id] : null;
+      var ppas = ['ppa1','ppa2','ppa3'].map(function(k,i){
+        return '<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:.65rem;font-weight:700;' +
+          (a[k] ? 'background:rgba(201,168,76,.25);color:var(--gold)' : 'background:var(--bg2);color:var(--t3)') + '">' + (i+1) + '</span>';
+      }).join('');
+      var divs = (a.unites||[]).map(unitBadge).join(' ') || '<span style="color:var(--t3);font-size:.75rem">—</span>';
+      var blameCount = (a.blame1?1:0)+(a.blame2?1:0)+(a.blame3?1:0);
+      return '<div class="card" style="cursor:pointer;transition:border-color .15s" onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'\'">' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">' +
+          '<div>' +
+            '<div style="font-size:1rem;font-weight:700;color:var(--t0)">' + esc(a.prenom + ' ' + a.nom) + '</div>' +
+            '<div style="font-size:.72rem;color:var(--t3);font-family:\'Share Tech Mono\',monospace;margin-top:1px">' + esc(a.matricule) + '</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
+            gradeBadge(a.grade) +
+            (isReferent(a.grade) ? referentBadge() : '') +
+            statusBadge(a.statut) +
+          '</div>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:.78rem;border-top:1px solid var(--border0);padding-top:10px">' +
+          recapRow('📞', a.telephone ? fmtTel(a.telephone) : '—') +
+          recapRow('💳', a.iban || '—') +
+          recapRow('🎓', formateur ? formateur.prenom + ' ' + formateur.nom : '—') +
+          recapRow('📅', a.date_recrutement ? fmt(a.date_recrutement) : '—') +
+        '</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;border-top:1px solid var(--border0);padding-top:10px">' +
+          '<div style="display:flex;gap:6px">' + divs + '</div>' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+            '<div style="display:flex;gap:3px">' + ppas + '</div>' +
+            (blameCount ? '<span class="badge badge-red" style="font-size:.68rem">⚠️ ' + blameCount + ' blâme' + (blameCount>1?'s':'') + '</span>' : '') +
+            (a.notes ? '<span title="' + esc(a.notes.slice(0,80)) + '" style="font-size:.75rem;color:var(--t3);cursor:help">📝</span>' : '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function recapRow(icon, val) {
+    return '<div style="display:flex;gap:6px;align-items:center;padding:2px 0;color:var(--t2)">' +
+      '<span style="font-size:.8rem">' + icon + '</span>' +
+      '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(val) + '</span>' +
+    '</div>';
+  }
+
+  var gradeOpts = '<option value="">Tous les grades</option>' +
+    _grades.slice().sort(function(a,b){ return (b.ordre||0)-(a.ordre||0); }).map(function(g){
+      return '<option value="' + esc(g.nom) + '">' + esc(g.nom) + '</option>';
+    }).join('');
+  var statutOpts = ['Tous les statuts','En service','En congé','Suspendu','Licencié','Retraité','Démission'].map(function(s,i){
+    return '<option value="' + (i===0?'':s) + '">' + s + '</option>';
+  }).join('');
+
+  setContent(
+    '<div class="welcome-bar"><div><h1 style="font-size:1.5rem">Récap agents</h1><p class="text-muted" style="font-size:.84rem;margin-top:3px">Vue d\'ensemble — toutes les informations</p></div></div>' +
+    '<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">' +
+      '<select class="form-control" style="width:auto" id="recapFilterGrade" onchange="recapFilter()">' + gradeOpts + '</select>' +
+      '<select class="form-control" style="width:auto" id="recapFilterStatut" onchange="recapFilter()">' + statutOpts + '</select>' +
+      '<span id="recapCount" style="align-self:center;font-size:.82rem;color:var(--t3)"></span>' +
+    '</div>' +
+    '<div id="recapGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px"></div>'
+  );
+
+  window._recapAgents = agents;
+  window._recapBuild  = buildCards;
+  window.recapFilter  = function() {
+    _filterGrade  = document.getElementById('recapFilterGrade').value;
+    _filterStatut = document.getElementById('recapFilterStatut').value;
+    document.getElementById('recapGrid').innerHTML = buildCards();
+    var cnt = window._recapAgents.filter(function(a){
+      if (a.statut==='Archivé') return false;
+      if (_filterGrade  && a.grade  !== _filterGrade)  return false;
+      if (_filterStatut && a.statut !== _filterStatut) return false;
+      return true;
+    }).length;
+    var el = document.getElementById('recapCount');
+    if (el) el.textContent = cnt + ' agent' + (cnt!==1?'s':'');
+  };
+  document.getElementById('recapGrid').innerHTML = buildCards();
+  var total = agents.filter(function(a){ return a.statut !== 'Archivé'; }).length;
+  var cnt = document.getElementById('recapCount');
+  if (cnt) cnt.textContent = total + ' agent' + (total!==1?'s':'');
 }
 
 async function showMatriculesDispos() {
