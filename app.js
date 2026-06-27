@@ -2030,7 +2030,7 @@ async function renderRecap() {
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;border-top:1px solid var(--border0);padding-top:10px">' +
           '<div style="display:flex;gap:6px">' + divs + '</div>' +
           '<div style="display:flex;align-items:center;gap:8px">' +
-            (blameCount ?<span class="badge badge-red" style="font-size:.68rem">⚠️ ' + blameCount + ' blâme' + (blameCount>1?'s':'') + '</span>' : '') +
+            (blameCount ? '<span class="badge badge-red" style="font-size:.68rem">⚠️ ' + blameCount + ' blâme' + (blameCount>1?'s':'') + '</span>' : '') +
             (a.notes ? '<span title="' + esc(a.notes.slice(0,80)) + '" style="font-size:.75rem;color:var(--t3);cursor:help">📝</span>' : '') +
           '</div>' +
         '</div>' +
