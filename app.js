@@ -882,6 +882,15 @@ async function saveAgent(id) {
         if (removed.length) diffLines.push('−Division : ' + removed.join(', '));
       }
       if (!!old.is_formateur !== !!data.is_formateur) diffLines.push('Formateur : ' + (old.is_formateur?'Oui':'Non') + ' → ' + (data.is_formateur?'Oui':'Non'));
+      if ((old.iban||'') !== (data.iban||'')) diffLines.push('IBAN : ' + (old.iban||'—') + ' → ' + (data.iban||'—'));
+      if ((old.notes||'').trim() !== (data.notes||'').trim()) diffLines.push('Notes : modifiées');
+      if ((old.date_recrutement||'') !== (data.date_recrutement||'')) diffLines.push('Date recrutement : ' + (old.date_recrutement||'—') + ' → ' + (data.date_recrutement||'—'));
+      ['blame1','blame2','blame3'].forEach(function(k,i){
+        if (!!old[k] !== !!data[k]) diffLines.push('Blâme ' + (i+1) + ' : ' + (old[k]?'✅':'❌') + ' → ' + (data[k]?'✅':'❌'));
+      });
+      ['ppa1','ppa2','ppa3'].forEach(function(k,i){
+        if (!!old[k] !== !!data[k]) diffLines.push('PPA ' + (i+1) + ' : ' + (old[k]?'✅':'❌') + ' → ' + (data[k]?'✅':'❌'));
+      });
       var logFields = [
         { name: 'Agent', value: data.prenom + ' ' + data.nom + ' · ' + data.matricule, inline: true },
         { name: 'Par', value: _whoAmI(), inline: true }
@@ -2000,9 +2009,7 @@ async function renderRecap() {
       return true;
     });
     filtered.sort(function(a,b){
-      var ga = _grades.find(function(g){ return g.nom===a.grade; });
-      var gb = _grades.find(function(g){ return g.nom===b.grade; });
-      return ((gb&&gb.ordre)||0) - ((ga&&ga.ordre)||0);
+      return parseInt(a.matricule||'99',10) - parseInt(b.matricule||'99',10);
     });
     if (!filtered.length) return '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Aucun agent</div></div>';
     return filtered.map(function(a) {
@@ -2013,7 +2020,7 @@ async function renderRecap() {
         '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">' +
           '<div>' +
             '<div style="font-size:1rem;font-weight:700;color:var(--t0)">' + esc(a.prenom + ' ' + a.nom) + '</div>' +
-            '<div style="font-size:.72rem;color:var(--t3);font-family:\'Share Tech Mono\',monospace;margin-top:1px">' + esc(a.matricule) + '</div>' +
+            '<div style="font-size:.85rem;font-weight:700;color:var(--gold);font-family:\'Share Tech Mono\',monospace;margin-top:2px;letter-spacing:.04em">#' + esc(a.matricule) + '</div>' +
           '</div>' +
           '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
             gradeBadge(a.grade) +
