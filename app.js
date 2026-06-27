@@ -164,8 +164,8 @@ var NAV = [
   { id: 'dashboard', icon: '🏛️', label: 'Tableau de bord' },
   { divider: true },
   { group: 'RESSOURCES HUMAINES' },
-  { id: 'agents',   icon: '👮', label: 'Agents' },
   { id: 'recap',    icon: '📋', label: 'Récap agents', staffOnly: true },
+  { id: 'agents',   icon: '👮', label: 'Agents' },
   { id: 'grades',   icon: '🎖️', label: 'Grades' },
   { id: 'units',     icon: '🚔', label: 'Divisions' },
   { id: 'pointeuse', icon: '⏱️', label: 'Pointeuse' },
@@ -2020,7 +2020,7 @@ async function renderRecap() {
         '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">' +
           '<div>' +
             '<div style="font-size:1rem;font-weight:700;color:var(--t0)">' + esc(a.prenom + ' ' + a.nom) + '</div>' +
-            '<div style="font-size:.85rem;font-weight:700;color:var(--gold);font-family:\'Share Tech Mono\',monospace;margin-top:2px;letter-spacing:.04em">#' + esc(a.matricule) + '</div>' +
+            '<div style="font-size:1.1rem;font-weight:800;color:var(--gold);font-family:\'Share Tech Mono\',monospace;margin-top:3px;letter-spacing:.06em;text-shadow:0 0 8px rgba(201,168,76,.35)">#' + esc(a.matricule) + '</div>' +
           '</div>' +
           '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
             gradeBadge(a.grade) +
