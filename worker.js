@@ -156,6 +156,40 @@ async function editMessage(env, channelId, messageId, payload) {
   });
 }
 
+// ── Auto clock-out tous les agents actifs ──────────────────────────
+async function autoClockoutAll(env) {
+  const active = await getAllActivePointages(env);
+  if (!active.length) return 0;
+  const now = new Date().toISOString();
+  for (const p of active) {
+    await sb(env, "PATCH", `/pointages?id=eq.${p.id}`, { clock_out: now });
+  }
+  const names = active.map(p => {
+    const a = p.agents || {};
+    return `• ${(a.prenom + ' ' + a.nom).trim()} (${a.matricule || '—'})`;
+  }).join('\n');
+  await fetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bot ${env.DISCORD_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      embeds: [{
+        title: '🕗 Fin de service automatique — Dimanche 20h',
+        description: `**${active.length} agent${active.length > 1 ? 's' : ''} déconnecté${active.length > 1 ? 's' : ''} automatiquement :**\n${names}`,
+        color: 0xe74c3c,
+        footer: { text: 'CENTRALE PA · Auto clock-out hebdomadaire' },
+        timestamp: now
+      }]
+    })
+  });
+  // Mise à jour du message pointeuse Discord si env vars présentes
+  const chId = env.POINTEUSE_CHANNEL_ID;
+  const msgId = env.POINTEUSE_MESSAGE_ID;
+  if (chId && msgId) {
+    await editMessage(env, chId, msgId, buildPointeuseMessage([]));
+  }
+  return active.length;
+}
+
 // ── Main ───────────────────────────────────────────────────────────
 export default {
   async fetch(request, env) {
@@ -637,6 +671,31 @@ export default {
       return json({ type: 4, data: { content: "Type d'interaction non supporté.", flags: 64 } });
     }
 
+    // ── Forcer fin de service pour un agent précis ─────────────────
+    if (url.pathname === "/clockout-agent" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const { agent_id } = await request.json();
+      if (!agent_id) return json({ error: "Missing agent_id" }, 400);
+      const active = await getActivePointage(env, agent_id);
+      if (!active) return json({ ok: false, message: "Agent non en service" });
+      await sb(env, "PATCH", `/pointages?id=eq.${active.id}`, { clock_out: new Date().toISOString() });
+      return json({ ok: true });
+    }
+
+    // ── Reset manuel tous les agents (admin) ───────────────────────
+    if (url.pathname === "/clockout-all" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const count = await autoClockoutAll(env);
+      return json({ ok: true, count });
+    }
+
     return json({ error: "Not found" }, 404);
+  },
+
+  // ── Cron : tous les dimanches à 20h (France été = 18h UTC) ────────
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(autoClockoutAll(env));
   }
 };

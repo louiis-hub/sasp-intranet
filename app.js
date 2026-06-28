@@ -2692,8 +2692,11 @@ async function renderPointeuse() {
     var statusHtml = actif
       ? '<span class="badge badge-green">En service · ' + since + '</span>'
       : '<span class="badge badge-gray">Hors service</span>';
+    var forceBtn = (actif && canWrite())
+      ? ' <button class="btn btn-ghost btn-sm" style="color:#e74c3c;border-color:rgba(231,76,60,.3)" onclick="forceClockOut(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')" title="Forcer fin de service">🛑</button>'
+      : '';
     var btnHtml = actif
-      ? '<button class="btn btn-danger btn-sm" onclick="doClockOut(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')">⏹ Sortie</button>'
+      ? '<button class="btn btn-danger btn-sm" onclick="doClockOut(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')">⏹ Sortie</button>' + forceBtn
       : '<button class="btn btn-primary btn-sm" onclick="doClockIn(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')">▶ Entrée</button>';
     return '<tr>' +
       '<td>' + gradeBadge(a.grade) + '</td>' +
@@ -2802,6 +2805,15 @@ async function confirmResetRecap() {
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
   toast('Récap réinitialisé', 'success');
   await renderPointeuse();
+}
+
+function forceClockOut(agentId, agentName, matricule) {
+  openModal({
+    eyebrow: 'POINTEUSE', title: 'Forcer la sortie ?',
+    body: '<p style="color:var(--t1)">Forcer la fin de service de <strong>' + esc(agentName) + '</strong> (' + esc(matricule) + ') ?</p>',
+    footer: '<button class="btn btn-ghost btn-sm" onclick="closeModal()">Annuler</button>' +
+            '<button class="btn btn-danger btn-sm" onclick="closeModal();doClockOut(\'' + agentId + '\',\'' + agentName.replace(/'/g,"\\'") + '\',\'' + matricule + '\')">Forcer</button>'
+  });
 }
 
 async function doClockIn(agentId, agentName, matricule) {
