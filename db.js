@@ -199,6 +199,16 @@ var DB = {
       .order('clock_in', { ascending: false });
     return data || [];
   },
+  async getCeremonieVotes() {
+    var { data } = await getDb().from('ceremonie_votes').select('*').order('created_at', { ascending: true });
+    return data || [];
+  },
+  async upsertCeremonieVote(v) {
+    return getDb().from('ceremonie_votes').upsert(v, { onConflict: 'agent_id,voter_discord_id' });
+  },
+  async deleteCeremonieVotes() {
+    return getDb().from('ceremonie_votes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  },
   async deletePointagesSince(since) {
     return getDb().from('pointages').delete().gte('clock_in', since);
   },
