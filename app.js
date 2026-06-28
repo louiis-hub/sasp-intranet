@@ -2726,7 +2726,9 @@ async function renderPointeuse() {
       days.push(d.toISOString().slice(0, 10));
     }
 
-    var rapportRows = Object.values(byAgentDay).map(function(entry) {
+    var rapportRows = Object.entries(byAgentDay).map(function(kv) {
+      var agentId = kv[0];
+      var entry = kv[1];
       var a = entry.agent || {};
       var totalSec = 0;
       var cells = days.map(function(day) {
@@ -2735,11 +2737,15 @@ async function renderPointeuse() {
         return '<td style="text-align:center">' + (sec ? fmtSec(sec) : '<span style="color:var(--t3)">—</span>') + '</td>';
       }).join('');
       var salaire = calcSalaire(a.grade, totalSec);
+      var delBtn = isAdmin()
+        ? '<td style="text-align:center"><button class="btn btn-ghost btn-sm" style="color:#e74c3c;padding:2px 7px" onclick="deleteAgentRecap(\'' + agentId + '\',\'' + esc((a.prenom||'')+' '+(a.nom||'')) + '\')" title="Supprimer les pointages de cet agent">🗑️</button></td>'
+        : '<td></td>';
       return '<tr>' +
         '<td><strong>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule || '') + '</small></td>' +
         cells +
         '<td style="text-align:center"><strong>' + fmtSec(totalSec) + '</strong></td>' +
         '<td style="text-align:center;color:var(--gold);font-weight:700">' + fmtMoney(salaire) + '</td>' +
+        delBtn +
       '</tr>';
     }).join('');
 
@@ -2757,7 +2763,7 @@ async function renderPointeuse() {
         '<div class="card-sub">HEURES PAR AGENT ET PAR JOUR</div>' +
       '</div>' + resetBtn + '</div>' +
       '<div class="table-wrap"><table>' +
-        '<thead><tr><th>AGENT</th>' + dayHeaders + '<th style="text-align:center">TOTAL</th><th style="text-align:center">SALAIRE</th></tr></thead>' +
+        '<thead><tr><th>AGENT</th>' + dayHeaders + '<th style="text-align:center">TOTAL</th><th style="text-align:center">SALAIRE</th><th></th></tr></thead>' +
         '<tbody>' + rapportRows + '</tbody>' +
       '</table></div>' +
     '</div>';
@@ -2814,6 +2820,28 @@ function forceClockOut(agentId, agentName, matricule) {
     footer: '<button class="btn btn-ghost btn-sm" onclick="closeModal()">Annuler</button>' +
             '<button class="btn btn-danger btn-sm" onclick="closeModal();doClockOut(\'' + agentId + '\',\'' + agentName.replace(/'/g,"\\'") + '\',\'' + matricule + '\')">Forcer</button>'
   });
+}
+
+function deleteAgentRecap(agentId, agentName) {
+  openModal({
+    eyebrow: 'POINTEUSE', title: 'Supprimer les pointages ?',
+    body: '<p style="color:var(--t1)">Supprimer tous les pointages de <strong>' + esc(agentName.trim()) + '</strong> sur la semaine en cours ?</p>',
+    footer: '<button class="btn btn-ghost btn-sm" onclick="closeModal()">Annuler</button>' +
+            '<button class="btn btn-danger btn-sm" onclick="confirmDeleteAgentRecap(\'' + agentId + '\')">Supprimer</button>'
+  });
+}
+
+async function confirmDeleteAgentRecap(agentId) {
+  closeModal();
+  var today = new Date();
+  var dow = today.getDay();
+  var monday = new Date(today);
+  monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+  monday.setHours(0, 0, 0, 0);
+  var { error } = await DB.deletePointagesForAgent(agentId, monday.toISOString());
+  if (error) { toast('Erreur : ' + error.message, 'error'); return; }
+  toast('Pointages supprimés', 'success');
+  await renderPointeuse();
 }
 
 async function doClockIn(agentId, agentName, matricule) {

@@ -202,6 +202,9 @@ var DB = {
   async deletePointagesSince(since) {
     return getDb().from('pointages').delete().gte('clock_in', since);
   },
+  async deletePointagesForAgent(agentId, since) {
+    return getDb().from('pointages').delete().eq('agent_id', agentId).gte('clock_in', since);
+  },
   async getPointageReport(since) {
     var { data } = await getDb().from('pointages')
       .select('*, agents(nom, prenom, matricule, grade)')
