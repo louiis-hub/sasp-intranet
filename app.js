@@ -2945,7 +2945,9 @@ async function renderCeremonie() {
     var myVoteHtml = myVote
       ? (myVote.decision === 'promotion'
           ? '<span class="badge" style="background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.3)">📈 Promotion</span>'
-          : '<span class="badge badge-red">📉 Rétrogradation</span>') +
+          : myVote.decision === 'maintien'
+            ? '<span class="badge badge-gray">➡️ Maintien</span>'
+            : '<span class="badge badge-red">📉 Rétrogradation</span>') +
         (myVote.commentaire ? '<div style="font-size:.67rem;color:var(--t3);margin-top:2px">' + esc(myVote.commentaire) + '</div>' : '')
       : '<span style="color:var(--t3);font-size:.75rem">—</span>';
 
@@ -2958,9 +2960,10 @@ async function renderCeremonie() {
         var pCount = av.filter(function(v){ return v.decision === 'promotion'; }).length;
         var rCount = av.filter(function(v){ return v.decision === 'retrogradation'; }).length;
         allVotesHtml = av.map(function(v) {
-          var isP = v.decision === 'promotion';
-          return '<div style="font-size:.72rem;color:' + (isP ? '#2ecc71' : '#e74c3c') + ';line-height:1.5">' +
-            (isP ? '📈' : '📉') + ' <strong>' + esc(v.voter_name || '?') + '</strong>' +
+          var dc = { promotion:'#2ecc71', maintien:'var(--t2)', retrogradation:'#e74c3c' };
+          var di = { promotion:'📈', maintien:'➡️', retrogradation:'📉' };
+          return '<div style="font-size:.72rem;color:' + (dc[v.decision]||'var(--t2)') + ';line-height:1.5">' +
+            (di[v.decision]||'❓') + ' <strong>' + esc(v.voter_name || '?') + '</strong>' +
             (v.commentaire ? ' — <span style="color:var(--t3)">' + esc(v.commentaire) + '</span>' : '') +
           '</div>';
         }).join('');
@@ -3013,9 +3016,10 @@ function openCeremonieVoteModal(agentId, agentName, grade) {
     eyebrow: 'VOTE · ' + grade,
     title: agentName,
     body: '<div style="display:flex;flex-direction:column;gap:14px">' +
-      '<div style="display:flex;gap:10px">' +
-        '<button class="btn btn-primary" style="flex:1" id="cBtnPromo" onclick="setCeremonieDecision(\'promotion\')">📈 Promotion</button>' +
-        '<button class="btn btn-danger"  style="flex:1" id="cBtnRetro" onclick="setCeremonieDecision(\'retrogradation\')">📉 Rétrogradation</button>' +
+      '<div style="display:flex;gap:8px">' +
+        '<button class="btn btn-primary" style="flex:1" onclick="setCeremonieDecision(\'promotion\')">📈 Promotion</button>' +
+        '<button class="btn btn-ghost"   style="flex:1;border:1px solid var(--border0)" onclick="setCeremonieDecision(\'maintien\')">➡️ Maintien</button>' +
+        '<button class="btn btn-danger"  style="flex:1" onclick="setCeremonieDecision(\'retrogradation\')">📉 Rétrogradation</button>' +
       '</div>' +
       '<div id="cVoteStatus" style="font-size:.8rem;color:var(--t3);text-align:center">Sélectionne une décision</div>' +
       '<div><label style="font-size:.75rem;color:var(--t3);display:block;margin-bottom:4px">Commentaire <span id="cCommentReq" style="color:#e74c3c"></span></label>' +
@@ -3029,10 +3033,11 @@ function openCeremonieVoteModal(agentId, agentName, grade) {
 
 function setCeremonieDecision(decision) {
   window._cDecision = decision;
-  var isRetro = decision === 'retrogradation';
-  document.getElementById('cVoteStatus').textContent = isRetro ? '📉 Rétrogradation sélectionnée' : '📈 Promotion sélectionnée';
-  document.getElementById('cVoteStatus').style.color = isRetro ? '#e74c3c' : '#2ecc71';
-  document.getElementById('cCommentReq').textContent = isRetro ? '(obligatoire)' : '';
+  var labels = { promotion: '📈 Promotion sélectionnée', maintien: '➡️ Maintien sélectionné', retrogradation: '📉 Rétrogradation sélectionnée' };
+  var colors = { promotion: '#2ecc71', maintien: 'var(--t2)', retrogradation: '#e74c3c' };
+  document.getElementById('cVoteStatus').textContent = labels[decision] || '';
+  document.getElementById('cVoteStatus').style.color = colors[decision] || 'var(--t2)';
+  document.getElementById('cCommentReq').textContent = decision === 'retrogradation' ? '(obligatoire)' : '';
   document.getElementById('cSubmitBtn').disabled = false;
 }
 
