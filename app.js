@@ -113,6 +113,8 @@ async function syncAllAgentsToDiscord() {
       { name: 'Détail', value: desc.slice(0, 1024), inline: false }
     ]);
     if (S.page === 'agents') await renderAgents();
+    else if (S.page === 'dashboard') await renderDashboard();
+    else if (S.page === 'recap') await renderRecap();
   } catch(e) { loader.done('Erreur : ' + e.message, 'error'); }
 }
 
@@ -753,14 +755,16 @@ function agentFilter(key, val) { _agentFilters[key] = val; renderAgents(); }
 // ── Agent modal (add / edit) ──────────────────────────────────────
 async function openAgentModal(id) {
   if (!canWrite()) return;
-  if (!_grades.length) _grades = await DB.getGrades();
+  _grades = await DB.getGrades();
   var ag = id ? await DB.getAgent(id) : null;
   var formateurs = await DB.getFormateurs();
   var v = ag || {};
 
-  var gradeOpts = _grades.map(function(g){
-    return '<option value="' + esc(g.nom) + '"' + (v.grade===g.nom?' selected':'') + '>' + esc(g.nom) + '</option>';
-  }).join('');
+  var gradeInList = _grades.some(function(g){ return g.nom === v.grade; });
+  var gradeOpts = (v.grade && !gradeInList ? '<option value="' + esc(v.grade) + '" selected>' + esc(v.grade) + '</option>' : '') +
+    _grades.map(function(g){
+      return '<option value="' + esc(g.nom) + '"' + (v.grade===g.nom?' selected':'') + '>' + esc(g.nom) + '</option>';
+    }).join('');
 
   var uniteChecks = _units.map(function(u){
     var chk = (v.unites||[]).includes(u.code) ? ' checked' : '';
