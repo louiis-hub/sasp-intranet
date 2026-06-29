@@ -1048,10 +1048,11 @@ async function renderAgentProfile() {
               (function(){
                 var fmts = [
                   { key:'formation_lead', label:'Lead Terrain' },
-                  { key:'formation_nego', label:'Négociation' }
+                  { key:'formation_nego', label:'Négociation' },
+                  { key:'lp', label:'Lincoln Patrol' }
                 ];
                 return fmts.map(function(f){
-                  var active = ag[f.key];
+                  var active = f.key === 'lp' ? (ag.unites||[]).includes('LP') : ag[f.key];
                   return '<span style="padding:4px 14px;border-radius:20px;font-size:.78rem;font-weight:600;border:1px solid;' +
                     (active ? 'background:rgba(59,130,246,.18);color:var(--blue);border-color:rgba(59,130,246,.5)' :
                               'background:var(--bg2);color:var(--t3);border-color:var(--border0)') +
