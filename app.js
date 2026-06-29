@@ -766,7 +766,7 @@ async function openAgentModal(id) {
       return '<option value="' + esc(g.nom) + '"' + (v.grade===g.nom?' selected':'') + '>' + esc(g.nom) + '</option>';
     }).join('');
 
-  var uniteChecks = _units.map(function(u){
+  var uniteChecks = _units.filter(function(u){ return u.code !== 'LP'; }).map(function(u){
     var chk = (v.unites||[]).includes(u.code) ? ' checked' : '';
     return '<label class="form-check"><input type="checkbox" name="unite" value="' + esc(u.code) + '"' + chk + '><span class="form-check-lbl">' + esc(u.code) + ' — ' + esc(u.nom) + '</span></label>';
   }).join('');
@@ -1243,6 +1243,7 @@ async function openFormationsModal(agentId) {
         '<div style="display:flex;flex-direction:column;gap:10px">' +
           ppaCheck('fmtLead','Lead Terrain',ag.formation_lead) +
           ppaCheck('fmtNego','Négociation',ag.formation_nego) +
+          ppaCheck('fmtLP','Lincoln Patrol',(ag.unites||[]).includes('LP')) +
         '</div>' +
       '</div>',
     footer:
@@ -1251,13 +1252,22 @@ async function openFormationsModal(agentId) {
   });
 }
 async function saveFormationsModal(agentId) {
+  var ag = await DB.getAgent(agentId);
+  var lpChecked = document.getElementById('fmtLP').checked;
+  var currentUnites = (ag ? ag.unites || [] : []).filter(function(u){ return u !== 'LP'; });
+  if (lpChecked) currentUnites.push('LP');
   var data = {
     formation_lead: document.getElementById('fmtLead').checked,
-    formation_nego: document.getElementById('fmtNego').checked
+    formation_nego: document.getElementById('fmtNego').checked,
+    unites: currentUnites
   };
   try {
     var r = await DB.updateAgent(agentId, data);
     if (r.error) throw r.error;
+    if (ag && ag.discord_id) {
+      if (lpChecked) syncDiscordRoles(ag.discord_id, ['LP'], []);
+      else syncDiscordRoles(ag.discord_id, [], ['LP']);
+    }
     closeModal();
     toast('Formations mises à jour.', 'success');
     await renderAgentProfile();
