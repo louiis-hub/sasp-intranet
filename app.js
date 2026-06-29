@@ -24,9 +24,9 @@ var GRADE_SALAIRE = {
   'Sergeant II':         450,
   'Sergeant I':          400,
   'Senior Lead Officer': 300,
-  'Officer III':         250,
-  'Officer II':          200,
-  'Officer I':           150,
+  'Trooper III':         250,
+  'Trooper II':          200,
+  'Trooper I':           150,
   'Rookie':              100
 };
 function calcSalaire(grade, seconds) {
@@ -516,13 +516,13 @@ function statusBadge(s) {
 }
 function isReferent(grade) {
   if (!grade || !_grades.length) return false;
-  var offII = _grades.find(function(g){ return g.nom === 'Officer II'; });
+  var offII = _grades.find(function(g){ return g.nom === 'Trooper II'; });
   if (!offII) return false;
   var g = _grades.find(function(g){ return g.nom === grade; });
   return g ? (g.ordre||0) >= (offII.ordre||0) : false;
 }
 function gradeBadge(g) {
-  var pastille = (g === 'Rookie' || g === 'Officer I') ? ' <span title="En formation" style="font-size:1.4em;vertical-align:middle">🎓</span>' : '';
+  var pastille = (g === 'Rookie' || g === 'Trooper I') ? ' <span title="En formation" style="font-size:1.4em;vertical-align:middle">🎓</span>' : '';
   return '<span class="badge badge-gold">' + esc(g) + pastille + '</span>';
 }
 function referentBadge() {
@@ -1934,7 +1934,7 @@ async function saveNotes(agentId) {
 async function renderAcademie() {
   var agents = await DB.getAgents({});
   var recrues = agents.filter(function(a) {
-    return (a.grade === 'Rookie' || a.grade === 'Officer I') && a.statut !== 'Archivé';
+    return (a.grade === 'Rookie' || a.grade === 'Trooper I') && a.statut !== 'Archivé';
   });
   var formateurMap = {};
   agents.filter(function(a){ return a.is_formateur; }).forEach(function(f){ formateurMap[f.id] = f; });
@@ -1987,7 +1987,7 @@ async function renderAcademie() {
     '</div>';
   }
   if (!recrues.length) {
-    groupsHtml = '<div class="empty-state"><div class="empty-icon">🎓</div><div class="empty-title">Aucune recrue en formation</div><div class="empty-sub">Les agents de grade Rookie ou Officer I apparaissent ici.</div></div>';
+    groupsHtml = '<div class="empty-state"><div class="empty-icon">🎓</div><div class="empty-title">Aucune recrue en formation</div><div class="empty-sub">Les agents de grade Rookie ou Trooper I apparaissent ici.</div></div>';
   }
 
   setContent(
@@ -1995,7 +1995,7 @@ async function renderAcademie() {
     '<div class="stats-grid">' +
       statCard('🎓', 'Recrues totales', recrues.length) +
       statCard('🟡', 'Rookie', nRookie) +
-      statCard('🔵', 'Officer I', nOfficer) +
+      statCard('🔵', 'Trooper I', nOfficer) +
       statCard('👤', 'Formateurs', Object.keys(formateurMap).length) +
     '</div>' +
     groupsHtml

@@ -27,9 +27,9 @@ const GRADE_ROLES = {
   'Sergeant II':         '1500982880950550752',
   'Sergeant I':          '1500975725153620032',
   'Senior Lead Officer': '1500975725153620031',
-  'Officer III':         '1500975725153620030',
-  'Officer II':          '1500975724750704669',
-  'Officer I':           '1500975724750704668',
+  'Trooper III':         '1500975725153620030',
+  'Trooper II':          '1500975724750704669',
+  'Trooper I':           '1500975724750704668',
   'Rookie':              '1500975724750704667'
 };
 const ROLE_TO_GRADE = Object.fromEntries(Object.entries(GRADE_ROLES).map(([k,v]) => [v,k]));
