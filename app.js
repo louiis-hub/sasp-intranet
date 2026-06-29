@@ -39,7 +39,7 @@ function fmtMoney(n) { return '$' + n.toLocaleString('fr-FR'); }
 var WORKER_BASE = 'https://sasp-intranet-bot.louisleurin.workers.dev';
 var LOG_WORKER  = WORKER_BASE + '/log';
 var LOG_TOKEN   = 'SASPlogs2026!';
-var TRACKED_DIVISIONS = ['CID','SWAT','PA','CNU','TU','SYND'];
+var TRACKED_DIVISIONS = ['CID','SWAT','PA','CNU','TU','SYND','LP'];
 
 function refreshAgentList() {
   DB.getAgents({}).then(function(agents) {
