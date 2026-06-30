@@ -65,7 +65,7 @@ var DB = {
     return data || [];
   },
   async checkMatricule(matricule, excludeId) {
-    var q = getDb().from('agents').select('id').eq('matricule', matricule);
+    var q = getDb().from('agents').select('id').eq('matricule', matricule).neq('statut', 'Archivé');
     if (excludeId) q = q.neq('id', excludeId);
     var { data } = await q;
     return data && data.length > 0;
