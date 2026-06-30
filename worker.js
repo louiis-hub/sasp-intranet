@@ -544,6 +544,18 @@ export default {
           const err = await forumRes.text();
           return json({ type: 4, data: { content: `❌ Erreur création forum (${forumRes.status}): ${err}`, flags: 64 } });
         }
+        await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [{ title: "⚖️ Nouvelle demande procureur", color: 0x2c3e50, fields: [
+            { name: "🧑 Suspect", value: suspect, inline: true },
+            { name: "📞 Téléphone", value: telSuspect, inline: true },
+            { name: "📋 Chef(s) d'accusation", value: chefsAccusation, inline: false },
+            { name: "👮 Agent en charge", value: agentDisplay, inline: true },
+            { name: "🕐 Heure des faits", value: heureFaits, inline: true },
+            ...(avocat ? [{ name: "⚖️ Avocat + Tél", value: avocat, inline: false }] : [])
+          ], footer: { text: "SASP · Proc" }, timestamp: now.toISOString() }] })
+        });
         return json({ type: 4, data: { content: `✅ Demande procureur créée pour **${suspect}**.`, flags: 64 } });
       }
 
@@ -607,6 +619,17 @@ export default {
           const err = await forumRes.text();
           return json({ type: 4, data: { content: `❌ Erreur création bracelet (${forumRes.status}): ${err}`, flags: 64 } });
         }
+        await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [{ title: "🔗 Bracelet électronique posé", color: 0xe67e22, fields: [
+            { name: "🧑 Suspect", value: suspect, inline: true },
+            { name: "📞 Téléphone", value: tel, inline: true },
+            { name: "📋 Chef(s) d'inculpation", value: raison, inline: false },
+            { name: "📅 Posé le", value: date, inline: true },
+            { name: "👮 Posé par", value: agentDisplay, inline: true }
+          ], footer: { text: "SASP · Bracelet" }, timestamp: new Date().toISOString() }] })
+        });
         return json({ type: 4, data: { content: `✅ Bracelet électronique créé pour **${suspect}**.`, flags: 64 } });
       }
 
@@ -621,10 +644,20 @@ export default {
         const now = new Date();
         const heureStr = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
         const dateStr  = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+        const threadName = interaction.message?.thread?.name || interaction.channel?.name || "Inconnu";
         await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ content: `✅ Pointage enregistré le ${dateStr} à ${heureStr} — par ${agentDisplay}` })
+        });
+        await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [{ title: "📍 Pointage bracelet enregistré", color: 0x2ecc71, fields: [
+            { name: "🧑 Suspect", value: threadName, inline: true },
+            { name: "🕐 Heure", value: `${dateStr} à ${heureStr}`, inline: true },
+            { name: "👮 Enregistré par", value: agentDisplay, inline: false }
+          ], footer: { text: "SASP · Bracelet" }, timestamp: now.toISOString() }] })
         });
         return json({ type: 4, data: { content: "✅ Pointage enregistré.", flags: 64 } });
       }
