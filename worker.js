@@ -593,7 +593,13 @@ export default {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             name: suspect,
-            message: { content }
+            message: {
+              content,
+              components: [{
+                type: 1,
+                components: [{ type: 2, style: 3, label: "📍 Pointage", custom_id: "bracelet_pointage" }]
+              }]
+            }
           })
         });
 
@@ -602,6 +608,25 @@ export default {
           return json({ type: 4, data: { content: `❌ Erreur création bracelet (${forumRes.status}): ${err}`, flags: 64 } });
         }
         return json({ type: 4, data: { content: `✅ Bracelet électronique créé pour **${suspect}**.`, flags: 64 } });
+      }
+
+      // Bouton pointage bracelet
+      if (interaction.type === 3 && interaction.data.custom_id === "bracelet_pointage") {
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        let agentDisplay = `<@${userId}>`;
+        try {
+          const agent = await getAgentByDiscordId(env, userId);
+          if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
+        } catch {}
+        const now = new Date();
+        const heureStr = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        const dateStr  = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+        await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ content: `✅ Pointage enregistré le ${dateStr} à ${heureStr} — par ${agentDisplay}` })
+        });
+        return json({ type: 4, data: { content: "✅ Pointage enregistré.", flags: 64 } });
       }
 
       // Slash command /plainte
