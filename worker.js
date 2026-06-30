@@ -102,7 +102,12 @@ async function sb(env, method, path, body) {
 }
 
 async function getAgentByDiscordId(env, discordId) {
-  const data = await sb(env, "GET", `/agents?discord_id=eq.${discordId}&select=id,nom,prenom,matricule&limit=1`);
+  const data = await sb(env, "GET", `/agents?discord_id=eq.${discordId}&select=id,nom,prenom,matricule,discord_id&limit=1`);
+  return data && data.length > 0 ? data[0] : null;
+}
+
+async function getAgentByMatricule(env, matricule) {
+  const data = await sb(env, "GET", `/agents?matricule=eq.${matricule}&select=id,nom,prenom,matricule,discord_id&limit=1`);
   return data && data.length > 0 ? data[0] : null;
 }
 
@@ -616,16 +621,7 @@ export default {
             message: {
               content,
               components: [
-                { type: 1, components: [{ type: 2, style: 3, label: "📍 Pointage", custom_id: "bracelet_pointage" }] },
-                { type: 1, components: [
-                  { type: 2, style: 3, label: "✅ Affaire clôturée",   custom_id: "proc_tag|AFFAIRE CLOTURER" },
-                  { type: 2, style: 4, label: "🚫 Dossier incomplet",  custom_id: "proc_tag|DOSSIER INCOMPLET" },
-                  { type: 2, style: 2, label: "🔄 Affaire en cours",   custom_id: "proc_tag|AFFAIRE EN COUR" }
-                ]},
-                { type: 1, components: [
-                  { type: 2, style: 2, label: "⚖️ Attente jugement",   custom_id: "proc_tag|ATTENTE DE JUGEMENT" },
-                  { type: 2, style: 2, label: "⏳ Attente procureur",  custom_id: "proc_tag|ATTENTE PROCUREUR" }
-                ]}
+                { type: 1, components: [{ type: 2, style: 3, label: "📍 Pointage", custom_id: "bracelet_pointage" }] }
               ]
             }
           })
@@ -707,10 +703,37 @@ export default {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
           });
           const msgs = await msgsRes.json();
-          const braceletMsg = Array.isArray(msgs) && msgs.find(m => m.content && m.content.includes("🔗 Bracelet créé : <#"));
-          if (braceletMsg) {
-            const match = braceletMsg.content.match(/<#(\d+)>/);
-            if (match) await applyTagAndMessage(match[1]);
+          const braceletLinkMsg = Array.isArray(msgs) && msgs.find(m => m.content && m.content.includes("🔗 Bracelet créé : <#"));
+          if (braceletLinkMsg) {
+            const match = braceletLinkMsg.content.match(/<#(\d+)>/);
+            if (match) {
+              const braceletThreadId = match[1];
+              await applyTagAndMessage(braceletThreadId);
+
+              // Si affaire clôturée : ping l'agent qui a posé le bracelet pour lui dire de l'enlever
+              if (tagName === "AFFAIRE CLOTURER") {
+                try {
+                  const braceletMsgsRes = await fetch(`${DISCORD_API}/channels/${braceletThreadId}/messages?limit=10`, {
+                    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+                  });
+                  const braceletMsgs = await braceletMsgsRes.json();
+                  // Premier message du thread = le message du bot avec "Posé par : Prénom Nom (matricule)"
+                  const firstMsg = Array.isArray(braceletMsgs) && braceletMsgs[braceletMsgs.length - 1];
+                  if (firstMsg && firstMsg.content) {
+                    const poseMatch = firstMsg.content.match(/Posé par : .+?\((\d+)\)/);
+                    if (poseMatch) {
+                      const agent = await getAgentByMatricule(env, poseMatch[1]);
+                      const ping = agent && agent.discord_id ? `<@${agent.discord_id}>` : `Matricule ${poseMatch[1]}`;
+                      await fetch(`${DISCORD_API}/channels/${braceletThreadId}/messages`, {
+                        method: "POST",
+                        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+                        body: JSON.stringify({ content: `${ping} — L'affaire est clôturée, pense à **enlever le bracelet électronique**.` })
+                      });
+                    }
+                  }
+                } catch {}
+              }
+            }
           }
         } catch {}
 
