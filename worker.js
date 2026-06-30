@@ -553,7 +553,50 @@ export default {
 
       // Bouton bracelet depuis un post proc
       if (interaction.type === 3 && interaction.data.custom_id === "proc_bracelet") {
-        return json({ type: 4, data: { content: "⏳ Le formulaire bracelet arrive bientôt.", flags: 64 } });
+        const embed = interaction.message?.embeds?.[0] || {};
+        const suspectField = (embed.fields || []).find(f => f.name.includes("Suspect"));
+        const suspectName = suspectField?.value || "";
+        const now = new Date();
+        const dateDefault = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+        return json({
+          type: 9,
+          data: {
+            custom_id: "bracelet_modal",
+            title: "Bracelet Électronique",
+            components: [
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_suspect", label: "Nom Prénom du suspect", style: 1, required: true, value: suspectName, max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "Posé le", style: 1, required: true, value: dateDefault, max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "Numéro de téléphone", style: 1, required: true, placeholder: "Ex : 555-0123", max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Raison", style: 2, required: true, max_length: 500 }] }
+            ]
+          }
+        });
+      }
+
+      // Modal submit bracelet
+      if (interaction.type === 5 && interaction.data.custom_id === "bracelet_modal") {
+        const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
+        const suspect = getValue("bracelet_suspect");
+        const date    = getValue("bracelet_date");
+        const tel     = getValue("bracelet_tel");
+        const raison  = getValue("bracelet_raison");
+
+        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nPosé le : ${date}\nNuméro de téléphone : ${tel}\nRaison : ${raison}\n\nPensez à bien noter quand les individus viennent pointer\n\nℹ️ Les bracelets peuvent être activés pour voir la position une fois toutes les 24h via un message "BIP" sur le téléphone de l'individu.`;
+
+        const forumRes = await fetch(`${DISCORD_API}/channels/1518656285074128926/threads`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: suspect,
+            message: { content }
+          })
+        });
+
+        if (!forumRes.ok) {
+          const err = await forumRes.text();
+          return json({ type: 4, data: { content: `❌ Erreur création bracelet (${forumRes.status}): ${err}`, flags: 64 } });
+        }
+        return json({ type: 4, data: { content: `✅ Bracelet électronique créé pour **${suspect}**.`, flags: 64 } });
       }
 
       // Slash command /plainte
