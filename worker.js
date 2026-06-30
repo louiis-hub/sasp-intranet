@@ -656,6 +656,12 @@ export default {
 
       // Boutons tags proc/bracelet
       if (interaction.type === 3 && interaction.data.custom_id.startsWith("proc_tag|")) {
+        const TAG_ALLOWED_ROLES = ["1512410095173238814", "1500975725153620033", "1504452141518032956"];
+        const memberRoles = interaction.member?.roles || [];
+        if (!TAG_ALLOWED_ROLES.some(r => memberRoles.includes(r))) {
+          return json({ type: 4, data: { content: "❌ Tu n'as pas la permission de modifier le statut de ce dossier.", flags: 64 } });
+        }
+
         const tagName = interaction.data.custom_id.split("|")[1];
         const userId = interaction.member?.user?.id || interaction.user?.id;
         let agentDisplay = `<@${userId}>`;
