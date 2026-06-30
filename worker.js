@@ -738,6 +738,17 @@ export default {
                     }
                   }
                 } catch {}
+
+                // Fermer (archiver + verrouiller) les deux posts
+                const closeThread = async (tid) => {
+                  await fetch(`${DISCORD_API}/channels/${tid}`, {
+                    method: "PATCH",
+                    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ archived: true, locked: true })
+                  });
+                };
+                await closeThread(interaction.channel_id);
+                await closeThread(braceletThreadId);
               }
             }
           }
