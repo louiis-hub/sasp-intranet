@@ -579,7 +579,14 @@ export default {
         const tel     = getValue("bracelet_tel");
         const raison  = getValue("bracelet_raison");
 
-        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nPosé le : ${date}\nNuméro de téléphone : ${tel}\nRaison : ${raison}\n\nPensez à bien noter quand les individus viennent pointer\n\nℹ️ Les bracelets peuvent être activés pour voir la position une fois toutes les 24h via un message "BIP" sur le téléphone de l'individu.`;
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        let agentDisplay = `<@${userId}>`;
+        try {
+          const agent = await getAgentByDiscordId(env, userId);
+          if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
+        } catch {}
+
+        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nPosé le : ${date}\nNuméro de téléphone : ${tel}\nRaison : ${raison}\nPosé par : ${agentDisplay}\n\nPensez à bien noter quand les individus viennent pointer\n\nℹ️ Les bracelets peuvent être activés pour voir la position une fois toutes les 24h via un message "BIP" sur le téléphone de l'individu.`;
 
         const forumRes = await fetch(`${DISCORD_API}/channels/1518656285074128926/threads`, {
           method: "POST",
