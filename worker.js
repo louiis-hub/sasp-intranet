@@ -157,6 +157,42 @@ async function editMessage(env, channelId, messageId, payload) {
   });
 }
 
+// ── Auto clock-out agents en service depuis +6h ────────────────────
+async function autoClockout6h(env) {
+  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+  const data = await sb(env, "GET", `/pointages?clock_out=is.null&clock_in=lt.${encodeURIComponent(sixHoursAgo)}&select=id,agent_id,clock_in,agents(nom,prenom,matricule)&order=clock_in.asc`);
+  const expired = data || [];
+  if (!expired.length) return 0;
+  const now = new Date().toISOString();
+  for (const p of expired) {
+    await sb(env, "PATCH", `/pointages?id=eq.${p.id}`, { clock_out: now });
+  }
+  const names = expired.map(p => {
+    const a = p.agents || {};
+    return `• ${(a.prenom + ' ' + a.nom).trim()} (${a.matricule || '—'})`;
+  }).join('\n');
+  await fetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bot ${env.DISCORD_BOT_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      embeds: [{
+        title: '⏱️ Fin de service automatique — 6h dépassées',
+        description: `**${expired.length} agent${expired.length > 1 ? 's' : ''} déconnecté${expired.length > 1 ? 's' : ''} automatiquement (6h en service) :**\n${names}`,
+        color: 0xe67e22,
+        footer: { text: 'CENTRALE PA · Auto clock-out 6h' },
+        timestamp: now
+      }]
+    })
+  });
+  const chId = env.POINTEUSE_CHANNEL_ID;
+  const msgId = env.POINTEUSE_MESSAGE_ID;
+  if (chId && msgId) {
+    const remaining = await getAllActivePointages(env);
+    await editMessage(env, chId, msgId, buildPointeuseMessage(remaining));
+  }
+  return expired.length;
+}
+
 // ── Auto clock-out tous les agents actifs ──────────────────────────
 async function autoClockoutAll(env) {
   const active = await getAllActivePointages(env);
@@ -695,8 +731,12 @@ export default {
     return json({ error: "Not found" }, 404);
   },
 
-  // ── Cron : tous les dimanches à 20h (France été = 18h UTC) ────────
+  // ── Cron ──────────────────────────────────────────────────────────
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(autoClockoutAll(env));
+    if (event.cron === '0 18 * * SUN') {
+      ctx.waitUntil(autoClockoutAll(env));
+    } else {
+      ctx.waitUntil(autoClockout6h(env));
+    }
   }
 };

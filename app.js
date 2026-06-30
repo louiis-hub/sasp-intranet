@@ -2749,7 +2749,9 @@ async function renderPointeuse() {
       days.push(d.toISOString().slice(0, 10));
     }
 
-    var rapportRows = Object.entries(byAgentDay).map(function(kv) {
+    var rapportRows = Object.entries(byAgentDay).sort(function(a, b) {
+      return parseInt(a[1].agent.matricule || 999) - parseInt(b[1].agent.matricule || 999);
+    }).map(function(kv) {
       var agentId = kv[0];
       var entry = kv[1];
       var a = entry.agent || {};
