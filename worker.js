@@ -442,6 +442,23 @@ export default {
       }
     }
 
+    if (url.pathname === "/admin/install-proc-command" && request.method === "GET") {
+      try {
+        const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const res = await fetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "proc", description: "Créer une demande procureur SASP" })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, data });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     // Discord interactions (boutons + select menu + slash commands + modals)
     if (url.pathname === "/interactions" && request.method === "POST") {
       const body = await request.text();
@@ -455,6 +472,89 @@ export default {
 
       // Ping
       if (interaction.type === 1) return json({ type: 1 });
+
+      // Slash command /proc
+      if (interaction.type === 2 && interaction.data.name === "proc") {
+        return json({
+          type: 9,
+          data: {
+            custom_id: "proc_modal",
+            title: "Demande Procureur",
+            components: [
+              { type: 1, components: [{ type: 4, custom_id: "suspect", label: "Nom Prénom du suspect", style: 1, required: true, placeholder: "Ex : John Smith", min_length: 2, max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "chefs_accusation", label: "Chef(s) d'accusation", style: 2, required: true, min_length: 2, max_length: 1000 }] },
+              { type: 1, components: [{ type: 4, custom_id: "rapport_num", label: "Rapport d'arrestation #", style: 1, required: true, placeholder: "Ex : #12345", max_length: 50 }] },
+              { type: 1, components: [{ type: 4, custom_id: "agent_charge", label: "Agent en charge", style: 1, required: true, placeholder: "Discord ID ou @pseudo", max_length: 100 }] },
+              { type: 1, components: [{ type: 4, custom_id: "avocat", label: "Avocat + Téléphone (si représenté)", style: 1, required: false, placeholder: "Ex : Me. Dupont — 555-0123", max_length: 150 }] }
+            ]
+          }
+        });
+      }
+
+      // Modal submit /proc
+      if (interaction.type === 5 && interaction.data.custom_id === "proc_modal") {
+        const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
+        const suspect        = getValue("suspect");
+        const chefsAccusation = getValue("chefs_accusation");
+        const rapportNum     = getValue("rapport_num");
+        const agentCharge    = getValue("agent_charge");
+        const avocat         = getValue("avocat");
+
+        const now = new Date();
+        const dateStr  = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+        const heureStr = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        const threadTitle = `${suspect} — ${dateStr} — ${heureStr}`;
+
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        let agentDisplay = `<@${userId}>`;
+        try {
+          const agent = await getAgentByDiscordId(env, userId);
+          if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
+        } catch {}
+
+        // Formater agent en charge : si c'est un ID numérique → mention Discord
+        const agentChargeDisplay = /^\d{15,20}$/.test(agentCharge.trim()) ? `<@${agentCharge.trim()}>` : agentCharge;
+
+        const fields = [
+          { name: "🧑 Suspect", value: suspect, inline: false },
+          { name: "📋 Chef(s) d'accusation", value: chefsAccusation, inline: false },
+          { name: "📄 Rapport d'arrestation", value: rapportNum, inline: false },
+          { name: "👮 Agent en charge", value: agentChargeDisplay, inline: false }
+        ];
+        if (avocat) fields.push({ name: "⚖️ Avocat + Téléphone", value: avocat, inline: false });
+
+        const forumRes = await fetch(`${DISCORD_API}/channels/1521565049729187961/threads`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: threadTitle,
+            message: {
+              embeds: [{
+                title: "⚖️ Demande Procureur",
+                color: 0x2c3e50,
+                fields,
+                footer: { text: `SASP · Déposée par ${agentDisplay}` },
+                timestamp: now.toISOString()
+              }],
+              components: [{
+                type: 1,
+                components: [{ type: 2, style: 1, label: "🔗 Bracelet Électronique", custom_id: "proc_bracelet" }]
+              }]
+            }
+          })
+        });
+
+        if (!forumRes.ok) {
+          const err = await forumRes.text();
+          return json({ type: 4, data: { content: `❌ Erreur création forum (${forumRes.status}): ${err}`, flags: 64 } });
+        }
+        return json({ type: 4, data: { content: `✅ Demande procureur créée pour **${suspect}**.`, flags: 64 } });
+      }
+
+      // Bouton bracelet depuis un post proc
+      if (interaction.type === 3 && interaction.data.custom_id === "proc_bracelet") {
+        return json({ type: 4, data: { content: "⏳ Le formulaire bracelet arrive bientôt.", flags: 64 } });
+      }
 
       // Slash command /plainte
       if (interaction.type === 2 && interaction.data.name === "plainte") {
