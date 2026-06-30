@@ -167,19 +167,20 @@ async function autoClockout6h(env) {
   for (const p of expired) {
     await sb(env, "PATCH", `/pointages?id=eq.${p.id}`, { clock_out: now });
   }
-  const names = expired.map(p => {
+  const lines = expired.map(p => {
     const a = p.agents || {};
-    return `• ${(a.prenom + ' ' + a.nom).trim()} (${a.matricule || '—'})`;
+    return `• **${(a.prenom + ' ' + a.nom).trim()}** (${a.matricule || '—'}) a oublié de terminer son service et a bien été déconnecté automatiquement.`;
   }).join('\n');
   await fetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
     method: 'POST',
     headers: { 'Authorization': `Bot ${env.DISCORD_BOT_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      content: `<@&1500975725153620033>`,
       embeds: [{
         title: '⏱️ Fin de service automatique — 6h dépassées',
-        description: `**${expired.length} agent${expired.length > 1 ? 's' : ''} déconnecté${expired.length > 1 ? 's' : ''} automatiquement (6h en service) :**\n${names}`,
+        description: lines,
         color: 0xe67e22,
-        footer: { text: 'CENTRALE PA · Auto clock-out 6h' },
+        footer: { text: 'SASP · Auto clock-out 6h' },
         timestamp: now
       }]
     })

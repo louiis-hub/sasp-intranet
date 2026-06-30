@@ -61,7 +61,7 @@ function syncDiscordRoles(discordId, addCodes, removeCodes) {
 }
 
 async function syncAllAgentsToDiscord() {
-  if (!confirm('Synchroniser les rôles Discord vers les fiches Centrale PA ?\n\nLes divisions CID/SWAT/PA/CNU/TU/SYND seront mises à jour pour chaque agent qui a un Discord ID.')) return;
+  if (!confirm('Synchroniser les rôles Discord vers les fiches SASP ?\n\nLes divisions CID/SWAT/PA/CNU/TU/SYND seront mises à jour pour chaque agent qui a un Discord ID.')) return;
   var loader = toastLoading('Synchronisation en cours…');
   try {
     var agents = await DB.getAgents({});
@@ -106,7 +106,7 @@ async function syncAllAgentsToDiscord() {
     loader.done(updated + ' fiche(s) mise(s) à jour depuis Discord.');
     refreshAgentList();
     var desc = changeLines.length ? changeLines.join('\n') : 'Aucun changement détecté.';
-    sendLog('🔄 Sync Discord → Centrale PA', 0x3498db, [
+    sendLog('🔄 Sync Discord → SASP', 0x3498db, [
       { name: 'Par', value: _whoAmI(), inline: true },
       { name: 'Agents vérifiés', value: String(withId.length), inline: true },
       { name: 'Fiches mises à jour', value: String(updated), inline: true },
@@ -541,6 +541,7 @@ function ppaCount(a) { return [a.ppa1,a.ppa2,a.ppa3].filter(Boolean).length; }
 
 // ══ DASHBOARD ══════════════════════════════════════════════════════
 async function renderDashboard() {
+  _grades = await DB.getGrades();
   var agents = await DB.getAgents();
   var hist = [];
   try {
@@ -667,7 +668,7 @@ function renderOrgChart(agents) {
 
   if (!sections) return '';
   return '<div class="card" style="margin-top:18px">' +
-    '<div class="card-head"><div class="card-icon">🏛️</div><div><div class="card-title">Organigramme</div><div class="card-sub">HIÉRARCHIE CENTRALE PA</div></div></div>' +
+    '<div class="card-head"><div class="card-icon">🏛️</div><div><div class="card-title">Organigramme</div><div class="card-sub">HIÉRARCHIE SASP</div></div></div>' +
     sections +
   '</div>';
 }
