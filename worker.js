@@ -532,10 +532,18 @@ export default {
                 footer: { text: `SASP · Déposée par ${agentDisplay}` },
                 timestamp: now.toISOString()
               }],
-              components: [{
-                type: 1,
-                components: [{ type: 2, style: 1, label: "🔗 Bracelet Électronique", custom_id: "proc_bracelet" }]
-              }]
+              components: [
+                { type: 1, components: [{ type: 2, style: 1, label: "🔗 Bracelet Électronique", custom_id: "proc_bracelet" }] },
+                { type: 1, components: [
+                  { type: 2, style: 3, label: "✅ Affaire clôturée",   custom_id: "proc_tag|AFFAIRE CLOTURER" },
+                  { type: 2, style: 4, label: "🚫 Dossier incomplet",  custom_id: "proc_tag|DOSSIER INCOMPLET" },
+                  { type: 2, style: 2, label: "🔄 Affaire en cours",   custom_id: "proc_tag|AFFAIRE EN COUR" }
+                ]},
+                { type: 1, components: [
+                  { type: 2, style: 2, label: "⚖️ Attente jugement",   custom_id: "proc_tag|ATTENTE DE JUGEMENT" },
+                  { type: 2, style: 2, label: "⏳ Attente procureur",  custom_id: "proc_tag|ATTENTE PROCUREUR" }
+                ]}
+              ]
             }
           })
         });
@@ -607,10 +615,18 @@ export default {
             name: suspect,
             message: {
               content,
-              components: [{
-                type: 1,
-                components: [{ type: 2, style: 3, label: "📍 Pointage", custom_id: "bracelet_pointage" }]
-              }]
+              components: [
+                { type: 1, components: [{ type: 2, style: 3, label: "📍 Pointage", custom_id: "bracelet_pointage" }] },
+                { type: 1, components: [
+                  { type: 2, style: 3, label: "✅ Affaire clôturée",   custom_id: "proc_tag|AFFAIRE CLOTURER" },
+                  { type: 2, style: 4, label: "🚫 Dossier incomplet",  custom_id: "proc_tag|DOSSIER INCOMPLET" },
+                  { type: 2, style: 2, label: "🔄 Affaire en cours",   custom_id: "proc_tag|AFFAIRE EN COUR" }
+                ]},
+                { type: 1, components: [
+                  { type: 2, style: 2, label: "⚖️ Attente jugement",   custom_id: "proc_tag|ATTENTE DE JUGEMENT" },
+                  { type: 2, style: 2, label: "⏳ Attente procureur",  custom_id: "proc_tag|ATTENTE PROCUREUR" }
+                ]}
+              ]
             }
           })
         });
@@ -631,6 +647,56 @@ export default {
           ], footer: { text: "SASP · Bracelet" }, timestamp: new Date().toISOString() }] })
         });
         return json({ type: 4, data: { content: `✅ Bracelet électronique créé pour **${suspect}**.`, flags: 64 } });
+      }
+
+      // Boutons tags proc/bracelet
+      if (interaction.type === 3 && interaction.data.custom_id.startsWith("proc_tag|")) {
+        const tagName = interaction.data.custom_id.split("|")[1];
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        let agentDisplay = `<@${userId}>`;
+        try {
+          const agent = await getAgentByDiscordId(env, userId);
+          if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
+        } catch {}
+
+        // Récupère le tag ID depuis le forum parent
+        try {
+          const threadInfo = await (await fetch(`${DISCORD_API}/channels/${interaction.channel_id}`, { headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` } })).json();
+          const forumInfo  = await (await fetch(`${DISCORD_API}/channels/${threadInfo.parent_id}`, { headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` } })).json();
+          const tag = (forumInfo.available_tags || []).find(t => t.name.toUpperCase() === tagName.toUpperCase());
+          if (tag) {
+            await fetch(`${DISCORD_API}/channels/${interaction.channel_id}`, {
+              method: "PATCH",
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ applied_tags: [tag.id] })
+            });
+          }
+        } catch {}
+
+        const tagMessages = {
+          'AFFAIRE CLOTURER':    '🔒 **Affaire clôturée.**',
+          'DOSSIER INCOMPLET':   '⚠️ **Dossier incomplet** — des informations sont manquantes.',
+          'AFFAIRE EN COUR':     '🔄 **Affaire en cours** de traitement.',
+          'ATTENTE DE JUGEMENT': '⚖️ **En attente de jugement.**',
+          'ATTENTE PROCUREUR':   '⏳ **En attente du procureur.**'
+        };
+        const msg = tagMessages[tagName] || `**${tagName}**`;
+        const now = new Date();
+
+        await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ content: `${msg} — par ${agentDisplay}` })
+        });
+        await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [{ title: "🏷️ Statut mis à jour", color: 0x9b59b6, fields: [
+            { name: "📌 Statut", value: tagName, inline: true },
+            { name: "👮 Par", value: agentDisplay, inline: true }
+          ], footer: { text: "SASP · Proc/Bracelet" }, timestamp: now.toISOString() }] })
+        });
+        return json({ type: 4, data: { content: `✅ Statut mis à jour : **${tagName}**`, flags: 64 } });
       }
 
       // Bouton pointage bracelet
