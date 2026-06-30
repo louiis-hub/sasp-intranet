@@ -484,7 +484,7 @@ export default {
               { type: 1, components: [{ type: 4, custom_id: "suspect", label: "Nom Prénom du suspect", style: 1, required: true, placeholder: "Ex : John Smith", min_length: 2, max_length: 80 }] },
               { type: 1, components: [{ type: 4, custom_id: "chefs_accusation", label: "Chef(s) d'accusation", style: 2, required: true, min_length: 2, max_length: 1000 }] },
               { type: 1, components: [{ type: 4, custom_id: "rapport_num", label: "Rapport d'arrestation #", style: 1, required: true, placeholder: "Ex : #12345", max_length: 50 }] },
-              { type: 1, components: [{ type: 4, custom_id: "agent_charge", label: "Agent en charge / Avocat + Tél", style: 2, required: true, placeholder: "Agent : @pseudo\nAvocat : Me. Dupont — 555-0123 (si représenté)", max_length: 300 }] },
+              { type: 1, components: [{ type: 4, custom_id: "avocat", label: "Avocat + Téléphone (si représenté)", style: 1, required: false, placeholder: "Ex : Me. Dupont — 555-0123", max_length: 150 }] },
               { type: 1, components: [{ type: 4, custom_id: "heure_faits", label: "Heure des faits (HH:MM)", style: 1, required: true, placeholder: "Ex : 17:30", max_length: 10 }] }
             ]
           }
@@ -492,16 +492,16 @@ export default {
       }
 
       // Modal submit /proc
-      if (interaction.type === 5 && interaction.data.custom_id === "proc_modal") {
+      if (interaction.type === 5 && interaction.data.custom_id.startsWith("proc_modal")) {
         const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
         const suspect         = getValue("suspect");
         const chefsAccusation = getValue("chefs_accusation");
         const rapportNum      = getValue("rapport_num");
-        const agentCharge     = getValue("agent_charge");
+        const avocat          = getValue("avocat");
         const heureFaits      = getValue("heure_faits");
 
         const now = new Date();
-        const dateStr  = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+        const dateStr = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
         const threadTitle = `${suspect} — ${dateStr} — ${heureFaits}`;
 
         const userId = interaction.member?.user?.id || interaction.user?.id;
@@ -515,8 +515,9 @@ export default {
           { name: "🧑 Suspect", value: suspect, inline: false },
           { name: "📋 Chef(s) d'accusation", value: chefsAccusation, inline: false },
           { name: "📄 Rapport d'arrestation", value: rapportNum, inline: false },
-          { name: "👮 Agent en charge / Avocat", value: agentCharge, inline: false }
+          { name: "👮 Agent en charge", value: agentDisplay, inline: false }
         ];
+        if (avocat) fields.push({ name: "⚖️ Avocat + Téléphone", value: avocat, inline: false });
 
         const forumRes = await fetch(`${DISCORD_API}/channels/1521565049729187961/threads`, {
           method: "POST",
