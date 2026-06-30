@@ -563,7 +563,7 @@ export default {
               { type: 1, components: [{ type: 4, custom_id: "bracelet_suspect", label: "Nom Prénom du suspect", style: 1, required: true, value: suspectName, max_length: 80 }] },
               { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "Posé le", style: 1, required: true, value: dateDefault, max_length: 30 }] },
               { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "Numéro de téléphone", style: 1, required: true, placeholder: "Ex : 555-0123", max_length: 30 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Raison", style: 2, required: true, max_length: 500 }] }
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, required: true, max_length: 500 }] }
             ]
           }
         });
