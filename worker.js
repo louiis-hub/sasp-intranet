@@ -635,6 +635,15 @@ export default {
           const err = await forumRes.text();
           return json({ type: 4, data: { content: `❌ Erreur création bracelet (${forumRes.status}): ${err}`, flags: 64 } });
         }
+        const braceletData = await forumRes.json();
+        const braceletThreadId = braceletData.id;
+        const procThreadId = interaction.channel_id;
+        // Poster le lien du bracelet dans le thread proc pour relier les deux
+        await fetch(`${DISCORD_API}/channels/${procThreadId}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ content: `🔗 Bracelet créé : <#${braceletThreadId}>` })
+        });
         await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
@@ -659,20 +668,6 @@ export default {
           if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
         } catch {}
 
-        // Récupère le tag ID depuis le forum parent
-        try {
-          const threadInfo = await (await fetch(`${DISCORD_API}/channels/${interaction.channel_id}`, { headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` } })).json();
-          const forumInfo  = await (await fetch(`${DISCORD_API}/channels/${threadInfo.parent_id}`, { headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` } })).json();
-          const tag = (forumInfo.available_tags || []).find(t => t.name.toUpperCase() === tagName.toUpperCase());
-          if (tag) {
-            await fetch(`${DISCORD_API}/channels/${interaction.channel_id}`, {
-              method: "PATCH",
-              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ applied_tags: [tag.id] })
-            });
-          }
-        } catch {}
-
         const tagMessages = {
           'AFFAIRE CLOTURER':    '🔒 **Affaire clôturée.**',
           'DOSSIER INCOMPLET':   '⚠️ **Dossier incomplet** — des informations sont manquantes.',
@@ -683,11 +678,42 @@ export default {
         const msg = tagMessages[tagName] || `**${tagName}**`;
         const now = new Date();
 
-        await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
-          method: "POST",
-          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ content: `${msg} — par ${agentDisplay}` })
-        });
+        const applyTagAndMessage = async (threadId) => {
+          try {
+            const threadInfo = await (await fetch(`${DISCORD_API}/channels/${threadId}`, { headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` } })).json();
+            const forumInfo  = await (await fetch(`${DISCORD_API}/channels/${threadInfo.parent_id}`, { headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` } })).json();
+            const tag = (forumInfo.available_tags || []).find(t => t.name.toUpperCase() === tagName.toUpperCase());
+            if (tag) {
+              await fetch(`${DISCORD_API}/channels/${threadId}`, {
+                method: "PATCH",
+                headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ applied_tags: [tag.id] })
+              });
+            }
+          } catch {}
+          await fetch(`${DISCORD_API}/channels/${threadId}/messages`, {
+            method: "POST",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ content: `${msg} — par ${agentDisplay}` })
+          });
+        };
+
+        // Applique sur le thread actuel
+        await applyTagAndMessage(interaction.channel_id);
+
+        // Si on est dans un thread proc, cherche le bracelet lié et propage
+        try {
+          const msgsRes = await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages?limit=50`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          const msgs = await msgsRes.json();
+          const braceletMsg = Array.isArray(msgs) && msgs.find(m => m.content && m.content.includes("🔗 Bracelet créé : <#"));
+          if (braceletMsg) {
+            const match = braceletMsg.content.match(/<#(\d+)>/);
+            if (match) await applyTagAndMessage(match[1]);
+          }
+        } catch {}
+
         await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
