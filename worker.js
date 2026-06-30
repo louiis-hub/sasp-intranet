@@ -482,8 +482,8 @@ export default {
             title: "Demande Procureur",
             components: [
               { type: 1, components: [{ type: 4, custom_id: "suspect", label: "Nom Prénom du suspect", style: 1, required: true, placeholder: "Ex : John Smith", min_length: 2, max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "tel_suspect", label: "Numéro de téléphone du suspect", style: 1, required: true, placeholder: "Ex : 555-0123", max_length: 30 }] },
               { type: 1, components: [{ type: 4, custom_id: "chefs_accusation", label: "Chef(s) d'accusation", style: 2, required: true, min_length: 2, max_length: 1000 }] },
-              { type: 1, components: [{ type: 4, custom_id: "rapport_num", label: "Rapport d'arrestation #", style: 1, required: true, placeholder: "Ex : #12345", max_length: 50 }] },
               { type: 1, components: [{ type: 4, custom_id: "avocat", label: "Avocat + Téléphone (si représenté)", style: 1, required: false, placeholder: "Ex : Me. Dupont — 555-0123", max_length: 150 }] },
               { type: 1, components: [{ type: 4, custom_id: "heure_faits", label: "Heure des faits (HH:MM)", style: 1, required: true, placeholder: "Ex : 17:30", max_length: 10 }] }
             ]
@@ -495,8 +495,8 @@ export default {
       if (interaction.type === 5 && interaction.data.custom_id.startsWith("proc_modal")) {
         const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
         const suspect         = getValue("suspect");
+        const telSuspect      = getValue("tel_suspect");
         const chefsAccusation = getValue("chefs_accusation");
-        const rapportNum      = getValue("rapport_num");
         const avocat          = getValue("avocat");
         const heureFaits      = getValue("heure_faits");
 
@@ -513,8 +513,8 @@ export default {
 
         const fields = [
           { name: "🧑 Suspect", value: suspect, inline: false },
+          { name: "📞 Téléphone suspect", value: telSuspect, inline: false },
           { name: "📋 Chef(s) d'accusation", value: chefsAccusation, inline: false },
-          { name: "📄 Rapport d'arrestation", value: rapportNum, inline: false },
           { name: "👮 Agent en charge", value: agentDisplay, inline: false }
         ];
         if (avocat) fields.push({ name: "⚖️ Avocat + Téléphone", value: avocat, inline: false });
@@ -550,8 +550,10 @@ export default {
       // Bouton bracelet depuis un post proc
       if (interaction.type === 3 && interaction.data.custom_id === "proc_bracelet") {
         const embed = interaction.message?.embeds?.[0] || {};
-        const suspectField = (embed.fields || []).find(f => f.name.includes("Suspect"));
-        const suspectName = suspectField?.value || "";
+        const getField = (kw) => (embed.fields || []).find(f => f.name.includes(kw))?.value || "";
+        const suspectName = getField("Suspect");
+        const telSuspect  = getField("Téléphone");
+        const chefs       = getField("accusation");
         const now = new Date();
         const dateDefault = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
         return json({
@@ -562,8 +564,8 @@ export default {
             components: [
               { type: 1, components: [{ type: 4, custom_id: "bracelet_suspect", label: "Nom Prénom du suspect", style: 1, required: true, value: suspectName, max_length: 80 }] },
               { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "Posé le", style: 1, required: true, value: dateDefault, max_length: 30 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "Numéro de téléphone", style: 1, required: true, placeholder: "Ex : 555-0123", max_length: 30 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, required: true, max_length: 500 }] }
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "Numéro de téléphone", style: 1, required: true, value: telSuspect, max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, required: true, value: chefs, max_length: 500 }] }
             ]
           }
         });
