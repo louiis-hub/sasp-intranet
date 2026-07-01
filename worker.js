@@ -850,14 +850,23 @@ export default {
           if (idData && idData[0]) plainteId = idData[0].id;
         } catch {}
 
-        const descLine = descMisenCause ? `\n**Description :** ${descMisenCause}` : "";
-        const content = `<@&1512185605805703187>\n\n**Plaignant :** ${plaignant}\n\n**Mis en cause :** ${misenCause}${descLine}\n\n**Motif :** ${motif}\n\n**Dossier :** #${plainteId}\n\n**Agent en charge :** ${agentDisplay}\n\n**Résumé des faits :**\n\n${resume}\n\nLa Cour est respectueusement saisie de ce dossier et invitée à statuer sur les suites judiciaires à y apporter. Le SASP demeure à disposition pour toute information complémentaire jugée nécessaire à l'instruction de cette affaire.\n\n📅 ${dateStr} à ${heureStr}`;
+        const misenCauseVal = descMisenCause ? `${misenCause}\n${descMisenCause}` : misenCause;
+        const fields = [
+          { name: "📅 Date & Heure",      value: `${dateStr} à ${heureStr}`, inline: true },
+          { name: "👮 Agent en charge",   value: agentDisplay, inline: true },
+          { name: "🙋 Plaignant",         value: plaignant, inline: false },
+          { name: "🎯 Mis en cause",      value: misenCauseVal, inline: false },
+          { name: "📋 Motif",             value: motif, inline: false },
+          { name: "📝 Résumé des faits",  value: resume.slice(0, 1024), inline: false },
+          { name: "⚖️ Note",              value: "La Cour est respectueusement saisie de ce dossier et invitée à statuer sur les suites judiciaires à y apporter. Le SASP demeure à disposition pour toute information complémentaire jugée nécessaire à l'instruction de cette affaire.", inline: false }
+        ];
 
         const postRes = await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            content,
+            content: "<@&1512185605805703187>",
+            embeds: [{ title: `📋 Plainte #${plainteId} — SASP`, color: 0xc0392b, fields, footer: { text: "SASP • Service des plaintes" }, timestamp: now.toISOString() }],
             components: [{ type: 1, components: [{ type: 2, style: 2, label: "✏️ Modifier", custom_id: `edit_plainte|${userId}` }] }]
           })
         });
@@ -902,27 +911,34 @@ export default {
         const motif          = getValue("motif");
         const resume         = getValue("resume");
 
-        // Récupère dossier #, agent en charge et date depuis le message original
+        // Récupère dossier # et agent en charge depuis l'embed original
         const origRes = await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
         });
         const origMsg = await origRes.json();
-        const origContent = origMsg.content || "";
-        const dossierMatch = origContent.match(/\*\*Dossier :\*\* (#\S+)/);
-        const agentMatch   = origContent.match(/\*\*Agent en charge :\*\* (.+)/);
-        const dateMatch    = origContent.match(/📅 (.+)$/);
-        const dossierStr   = dossierMatch ? dossierMatch[1] : "?";
-        const agentStr     = agentMatch   ? agentMatch[1].trim()  : `<@${creatorId}>`;
-        const dateStr      = dateMatch    ? dateMatch[1].trim()   : "";
+        const origEmbed = origMsg.embeds?.[0] || {};
+        const origTitle = origEmbed.title || `📋 Plainte — SASP`;
+        const origGetField = (kw) => (origEmbed.fields || []).find(f => f.name.includes(kw))?.value || "";
+        const agentStr = origGetField("Agent");
+        const dateStr  = origGetField("Date");
 
-        const descLineEdit = descMisenCause ? `\n**Description :** ${descMisenCause}` : "";
-        const newContent = `<@&1512185605805703187>\n\n**Plaignant :** ${plaignant}\n\n**Mis en cause :** ${misenCause}${descLineEdit}\n\n**Motif :** ${motif}\n\n**Dossier :** ${dossierStr}\n\n**Agent en charge :** ${agentStr}\n\n**Résumé des faits :**\n\n${resume}\n\nLa Cour est respectueusement saisie de ce dossier et invitée à statuer sur les suites judiciaires à y apporter. Le SASP demeure à disposition pour toute information complémentaire jugée nécessaire à l'instruction de cette affaire.\n\n📅 ${dateStr}`;
+        const misenCauseVal = descMisenCause ? `${misenCause}\n${descMisenCause}` : misenCause;
+        const newFields = [
+          { name: "📅 Date & Heure",      value: dateStr, inline: true },
+          { name: "👮 Agent en charge",   value: agentStr, inline: true },
+          { name: "🙋 Plaignant",         value: plaignant, inline: false },
+          { name: "🎯 Mis en cause",      value: misenCauseVal, inline: false },
+          { name: "📋 Motif",             value: motif, inline: false },
+          { name: "📝 Résumé des faits",  value: resume.slice(0, 1024), inline: false },
+          { name: "⚖️ Note",              value: "La Cour est respectueusement saisie de ce dossier et invitée à statuer sur les suites judiciaires à y apporter. Le SASP demeure à disposition pour toute information complémentaire jugée nécessaire à l'instruction de cette affaire.", inline: false }
+        ];
 
         await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
           method: "PATCH",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            content: newContent,
+            content: "<@&1512185605805703187>",
+            embeds: [{ title: origTitle, color: 0xe67e22, fields: newFields, footer: { text: "SASP • Service des plaintes (modifiée)" }, timestamp: new Date().toISOString() }],
             components: [{ type: 1, components: [{ type: 2, style: 2, label: "✏️ Modifier", custom_id: `edit_plainte|${creatorId}` }] }]
           })
         });
@@ -943,9 +959,12 @@ export default {
           if (clickerId !== creatorId && !isAdmin) {
             return json({ type: 4, data: { content: "❌ Seul le créateur de la plainte ou un admin peut la modifier.", flags: 64 } });
           }
-          const msgContent = interaction.message.content || "";
-          const extract = (label) => { const m = msgContent.match(new RegExp(`\\*\\*${label} :\\*\\* (.+)`)); return m ? m[1].trim() : ""; };
-          const resumeMatch = msgContent.match(/\*\*Résumé des faits :\*\*\n\n([\s\S]+?)\n\nLa Cour/);
+          const embed = interaction.message.embeds?.[0] || {};
+          const getField = (kw) => (embed.fields || []).find(f => f.name.includes(kw))?.value || "";
+          const misenCauseRaw = getField("Mis en cause");
+          const misenLines = misenCauseRaw.split("\n");
+          const misenVal = misenLines[0] || "";
+          const descVal  = misenLines.slice(1).join("\n");
           const channelId = interaction.channel_id;
           const messageId = interaction.message.id;
           return json({
@@ -954,11 +973,11 @@ export default {
               custom_id: `edit_plainte_modal|${channelId}|${messageId}|${creatorId}`,
               title: "Modifier la plainte",
               components: [
-                { type: 1, components: [{ type: 4, custom_id: "plaignant", label: "Plaignant — Nom Prénom", style: 1, required: true, value: extract("Plaignant"), min_length: 2, max_length: 80 }] },
-                { type: 1, components: [{ type: 4, custom_id: "misen_cause", label: "Mis en cause", style: 1, required: true, value: extract("Mis en cause"), min_length: 2, max_length: 80 }] },
-                { type: 1, components: [{ type: 4, custom_id: "desc_misen_cause", label: "Description du mis en cause", style: 2, required: false, value: extract("Description"), max_length: 500 }] },
-                { type: 1, components: [{ type: 4, custom_id: "motif", label: "Motif de la plainte", style: 1, required: true, value: extract("Motif"), min_length: 2, max_length: 200 }] },
-                { type: 1, components: [{ type: 4, custom_id: "resume", label: "Résumé des faits", style: 2, required: true, value: resumeMatch ? resumeMatch[1] : "", min_length: 10, max_length: 2000 }] }
+                { type: 1, components: [{ type: 4, custom_id: "plaignant", label: "Plaignant — Nom Prénom", style: 1, required: true, value: getField("Plaignant"), min_length: 2, max_length: 80 }] },
+                { type: 1, components: [{ type: 4, custom_id: "misen_cause", label: "Mis en cause", style: 1, required: true, value: misenVal, min_length: 2, max_length: 80 }] },
+                { type: 1, components: [{ type: 4, custom_id: "desc_misen_cause", label: "Description du mis en cause", style: 2, required: false, value: descVal, max_length: 500 }] },
+                { type: 1, components: [{ type: 4, custom_id: "motif", label: "Motif de la plainte", style: 1, required: true, value: getField("Motif"), min_length: 2, max_length: 200 }] },
+                { type: 1, components: [{ type: 4, custom_id: "resume", label: "Résumé des faits", style: 2, required: true, value: getField("Résumé"), min_length: 10, max_length: 2000 }] }
               ]
             }
           });
