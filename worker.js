@@ -442,6 +442,18 @@ export default {
       return json({ ok: res.ok, data });
     }
 
+    const STICKY_PROC_CHANNEL = "1521575058500489478";
+    const STICKY_PROC_EMBED = { embeds: [{ title: "⚖️ Demande de procureur", color: 0x2c3e50, description: "Utilisez la commande `/proc` pour commencer la procédure de demande de procureur.\n\nRemplissez le formulaire et validez — le dossier sera automatiquement créé dans <#1521565049729187961>.", footer: { text: "SASP • Service judiciaire" } }] };
+    if (url.pathname === "/admin/send-sticky-proc" && request.method === "GET") {
+      const res = await fetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages`, {
+        method: "POST",
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify(STICKY_PROC_EMBED)
+      });
+      const data = await res.json();
+      return json({ ok: res.ok, data });
+    }
+
     // Installer la commande /plainte
     if (url.pathname === "/admin/install-plainte-command" && request.method === "GET") {
       try {
@@ -583,6 +595,26 @@ export default {
             ...(avocat ? [{ name: "⚖️ Avocat + Tél", value: avocat, inline: false }] : [])
           ], footer: { text: "SASP · Proc" }, timestamp: now.toISOString() }] })
         });
+        // Supprime l'ancien sticky proc puis le renvoie
+        try {
+          const msgsRes = await fetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages?limit=20`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          const msgs = await msgsRes.json();
+          const sticky = Array.isArray(msgs) && msgs.find(m => m.embeds?.[0]?.title === "⚖️ Demande de procureur");
+          if (sticky) {
+            await fetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages/${sticky.id}`, {
+              method: "DELETE",
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+            });
+          }
+          await fetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages`, {
+            method: "POST",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify(STICKY_PROC_EMBED)
+          });
+        } catch {}
+
         return json({ type: 4, data: { content: `✅ Demande procureur créée pour **${suspect}**.`, flags: 64 } });
       }
 
