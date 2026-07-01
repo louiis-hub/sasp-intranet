@@ -429,6 +429,19 @@ export default {
       return json({ ok: res.ok, message_id: data.id, channel_id: channelId });
     }
 
+    // Envoyer le message sticky plainte
+    const STICKY_PLAINTE_CHANNEL = "1519510826233364500";
+    const STICKY_PLAINTE_TEXT = "📋 Pour déposer une plainte, utilisez la commande `/plainte`.\nEnsuite, copiez-collez le message généré et envoyez-le ici : https://discord.com/channels/1512185605805703179/1517219854724235477";
+    if (url.pathname === "/admin/send-sticky-plainte" && request.method === "GET") {
+      const res = await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages`, {
+        method: "POST",
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ content: STICKY_PLAINTE_TEXT })
+      });
+      const data = await res.json();
+      return json({ ok: res.ok, data });
+    }
+
     // Installer la commande /plainte
     if (url.pathname === "/admin/install-plainte-command" && request.method === "GET") {
       try {
@@ -852,6 +865,27 @@ export default {
           const err = await postRes.text();
           return json({ type: 4, data: { content: `❌ Erreur Discord (${postRes.status}): ${err}`, flags: 64 } });
         }
+
+        // Supprime l'ancien sticky puis le renvoie
+        try {
+          const msgsRes = await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages?limit=20`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          const msgs = await msgsRes.json();
+          const sticky = Array.isArray(msgs) && msgs.find(m => m.content && m.content.startsWith("📋 Pour déposer une plainte"));
+          if (sticky) {
+            await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages/${sticky.id}`, {
+              method: "DELETE",
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+            });
+          }
+          await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages`, {
+            method: "POST",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ content: STICKY_PLAINTE_TEXT })
+          });
+        } catch {}
+
         return json({ type: 4, data: { content: "✅ Plainte enregistrée !\n\nMaintenant, faites un **copier-coller** du message de la plainte et envoyez-le ici : https://discord.com/channels/1512185605805703179/1517219854724235477", flags: 64 } });
       }
 
