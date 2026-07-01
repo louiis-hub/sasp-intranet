@@ -530,6 +530,7 @@ export default {
           body: JSON.stringify({
             name: threadTitle,
             message: {
+              content: "<@&1512410095173238814>",
               embeds: [{
                 title: "⚖️ Demande Procureur",
                 color: 0x2c3e50,
