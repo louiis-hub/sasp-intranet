@@ -431,7 +431,7 @@ export default {
 
     // Envoyer le message sticky plainte
     const STICKY_PLAINTE_CHANNEL = "1519510826233364500";
-    const STICKY_PLAINTE_EMBED = { embeds: [{ title: "📋 Déposer une plainte", color: 0xc0392b, description: "Utilisez la commande `/plainte` pour déposer une plainte officielle.\n\nUne fois le formulaire validé, **copiez-collez** le message généré et envoyez-le ici :\nhttps://discord.com/channels/1512185605805703179/1517219854724235477", footer: { text: "SASP • Service des plaintes" } }] };
+    const STICKY_PLAINTE_EMBED = { embeds: [{ title: "📋 Déposer une plainte", color: 0x3498db, description: "Utilisez la commande `/plainte` pour déposer une plainte officielle.\n\nUne fois le formulaire validé, **copiez-collez** le message généré et envoyez-le ici :\nhttps://discord.com/channels/1512185605805703179/1517219854724235477", footer: { text: "SASP • Service des plaintes" } }] };
     if (url.pathname === "/admin/send-sticky-plainte" && request.method === "GET") {
       const res = await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages`, {
         method: "POST",
