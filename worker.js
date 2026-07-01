@@ -431,12 +431,12 @@ export default {
 
     // Envoyer le message sticky plainte
     const STICKY_PLAINTE_CHANNEL = "1519510826233364500";
-    const STICKY_PLAINTE_TEXT = "📋 Pour déposer une plainte, utilisez la commande `/plainte`.\nEnsuite, copiez-collez le message généré et envoyez-le ici : https://discord.com/channels/1512185605805703179/1517219854724235477";
+    const STICKY_PLAINTE_EMBED = { embeds: [{ title: "📋 Déposer une plainte", color: 0xc0392b, description: "Utilisez la commande `/plainte` pour déposer une plainte officielle.\n\nUne fois le formulaire validé, **copiez-collez** le message généré et envoyez-le ici :\nhttps://discord.com/channels/1512185605805703179/1517219854724235477", footer: { text: "SASP • Service des plaintes" } }] };
     if (url.pathname === "/admin/send-sticky-plainte" && request.method === "GET") {
       const res = await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages`, {
         method: "POST",
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ content: STICKY_PLAINTE_TEXT })
+        body: JSON.stringify(STICKY_PLAINTE_EMBED)
       });
       const data = await res.json();
       return json({ ok: res.ok, data });
@@ -881,7 +881,7 @@ export default {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
           });
           const msgs = await msgsRes.json();
-          const sticky = Array.isArray(msgs) && msgs.find(m => m.content && m.content.startsWith("📋 Pour déposer une plainte"));
+          const sticky = Array.isArray(msgs) && msgs.find(m => m.embeds?.[0]?.title === "📋 Déposer une plainte");
           if (sticky) {
             await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages/${sticky.id}`, {
               method: "DELETE",
@@ -891,7 +891,7 @@ export default {
           await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages`, {
             method: "POST",
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ content: STICKY_PLAINTE_TEXT })
+            body: JSON.stringify(STICKY_PLAINTE_EMBED)
           });
         } catch {}
 
