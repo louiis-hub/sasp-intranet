@@ -846,11 +846,17 @@ export default {
           fields.push({ name: rIdx === 0 ? "📋 Raison de la plainte" : "📋 Raison (suite)", value: rTmp.slice(0, 1024), inline: false });
           rTmp = rTmp.slice(1024); rIdx++;
         }
+        let plainteId = "?";
+        try {
+          const idData = await sb(env, "POST", "/plaintes", { created_at: now.toISOString() });
+          if (idData && idData[0]) plainteId = idData[0].id;
+        } catch {}
+
         const postRes = await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            embeds: [{ title: "📋 Nouvelle plainte — SASP", color: 0xc0392b, fields, footer: { text: "SASP • Service des plaintes" }, timestamp: now.toISOString() }],
+            embeds: [{ title: `📋 Plainte #${plainteId} — SASP`, color: 0xc0392b, fields, footer: { text: "SASP • Service des plaintes" }, timestamp: now.toISOString() }],
             components: [{ type: 1, components: [{ type: 2, style: 2, label: "Modifier", emoji: { name: "✏️" }, custom_id: `edit_plainte|${userId}` }] }]
           })
         });
