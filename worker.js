@@ -805,6 +805,7 @@ export default {
             components: [
               { type: 1, components: [{ type: 4, custom_id: "plaignant", label: "Plaignant — Nom Prénom", style: 1, required: true, placeholder: "Ex : James Morrison", min_length: 2, max_length: 80 }] },
               { type: 1, components: [{ type: 4, custom_id: "misen_cause", label: "Mis en cause (Nom Prénom ou entreprise)", style: 1, required: true, placeholder: "Ex : John Smith", min_length: 2, max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "desc_misen_cause", label: "Description du mis en cause", style: 2, required: false, placeholder: "Apparence, véhicule, signalement...", max_length: 500 }] },
               { type: 1, components: [{ type: 4, custom_id: "motif", label: "Motif de la plainte", style: 1, required: true, placeholder: "Ex : Vol à main armée", min_length: 2, max_length: 200 }] },
               { type: 1, components: [{ type: 4, custom_id: "resume", label: "Résumé des faits", style: 2, required: true, placeholder: "Décrivez les faits...", min_length: 10, max_length: 2000 }] }
             ]
@@ -815,10 +816,11 @@ export default {
       // Modal submit plainte (nouvelle)
       if (interaction.type === 5 && interaction.data.custom_id === "plainte_modal") {
         const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
-        const plaignant  = getValue("plaignant");
-        const misenCause = getValue("misen_cause");
-        const motif      = getValue("motif");
-        const resume     = getValue("resume");
+        const plaignant      = getValue("plaignant");
+        const misenCause     = getValue("misen_cause");
+        const descMisenCause = getValue("desc_misen_cause");
+        const motif          = getValue("motif");
+        const resume         = getValue("resume");
         const now = new Date();
         const dateStr  = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
         const heureStr = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -835,7 +837,8 @@ export default {
           if (idData && idData[0]) plainteId = idData[0].id;
         } catch {}
 
-        const content = `<@&1512185605805703187>\n\n**Plaignant :** ${plaignant}\n\n**Mis en cause :** ${misenCause}\n\n**Motif :** ${motif}\n\n**Dossier :** #${plainteId}\n\n**Agent en charge :** ${agentDisplay}\n\n**Résumé des faits :**\n\n${resume}\n\nLa Cour est respectueusement saisie de ce dossier et invitée à statuer sur les suites judiciaires à y apporter. Le SASP demeure à disposition pour toute information complémentaire jugée nécessaire à l'instruction de cette affaire.\n\n📅 ${dateStr} à ${heureStr}`;
+        const descLine = descMisenCause ? `\n**Description :** ${descMisenCause}` : "";
+        const content = `<@&1512185605805703187>\n\n**Plaignant :** ${plaignant}\n\n**Mis en cause :** ${misenCause}${descLine}\n\n**Motif :** ${motif}\n\n**Dossier :** #${plainteId}\n\n**Agent en charge :** ${agentDisplay}\n\n**Résumé des faits :**\n\n${resume}\n\nLa Cour est respectueusement saisie de ce dossier et invitée à statuer sur les suites judiciaires à y apporter. Le SASP demeure à disposition pour toute information complémentaire jugée nécessaire à l'instruction de cette affaire.\n\n📅 ${dateStr} à ${heureStr}`;
 
         const postRes = await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
           method: "POST",
@@ -859,10 +862,11 @@ export default {
         const messageId = parts[2];
         const creatorId = parts[3];
         const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
-        const plaignant  = getValue("plaignant");
-        const misenCause = getValue("misen_cause");
-        const motif      = getValue("motif");
-        const resume     = getValue("resume");
+        const plaignant      = getValue("plaignant");
+        const misenCause     = getValue("misen_cause");
+        const descMisenCause = getValue("desc_misen_cause");
+        const motif          = getValue("motif");
+        const resume         = getValue("resume");
 
         // Récupère dossier #, agent en charge et date depuis le message original
         const origRes = await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
@@ -877,7 +881,8 @@ export default {
         const agentStr     = agentMatch   ? agentMatch[1].trim()  : `<@${creatorId}>`;
         const dateStr      = dateMatch    ? dateMatch[1].trim()   : "";
 
-        const newContent = `<@&1512185605805703187>\n\n**Plaignant :** ${plaignant}\n\n**Mis en cause :** ${misenCause}\n\n**Motif :** ${motif}\n\n**Dossier :** ${dossierStr}\n\n**Agent en charge :** ${agentStr}\n\n**Résumé des faits :**\n\n${resume}\n\nLa Cour est respectueusement saisie de ce dossier et invitée à statuer sur les suites judiciaires à y apporter. Le SASP demeure à disposition pour toute information complémentaire jugée nécessaire à l'instruction de cette affaire.\n\n📅 ${dateStr}`;
+        const descLineEdit = descMisenCause ? `\n**Description :** ${descMisenCause}` : "";
+        const newContent = `<@&1512185605805703187>\n\n**Plaignant :** ${plaignant}\n\n**Mis en cause :** ${misenCause}${descLineEdit}\n\n**Motif :** ${motif}\n\n**Dossier :** ${dossierStr}\n\n**Agent en charge :** ${agentStr}\n\n**Résumé des faits :**\n\n${resume}\n\nLa Cour est respectueusement saisie de ce dossier et invitée à statuer sur les suites judiciaires à y apporter. Le SASP demeure à disposition pour toute information complémentaire jugée nécessaire à l'instruction de cette affaire.\n\n📅 ${dateStr}`;
 
         await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
           method: "PATCH",
@@ -917,6 +922,7 @@ export default {
               components: [
                 { type: 1, components: [{ type: 4, custom_id: "plaignant", label: "Plaignant — Nom Prénom", style: 1, required: true, value: extract("Plaignant"), min_length: 2, max_length: 80 }] },
                 { type: 1, components: [{ type: 4, custom_id: "misen_cause", label: "Mis en cause", style: 1, required: true, value: extract("Mis en cause"), min_length: 2, max_length: 80 }] },
+                { type: 1, components: [{ type: 4, custom_id: "desc_misen_cause", label: "Description du mis en cause", style: 2, required: false, value: extract("Description"), max_length: 500 }] },
                 { type: 1, components: [{ type: 4, custom_id: "motif", label: "Motif de la plainte", style: 1, required: true, value: extract("Motif"), min_length: 2, max_length: 200 }] },
                 { type: 1, components: [{ type: 4, custom_id: "resume", label: "Résumé des faits", style: 2, required: true, value: resumeMatch ? resumeMatch[1] : "", min_length: 10, max_length: 2000 }] }
               ]
