@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>SASP-INT-2026-0702-EF — CONFIDENTIEL</title>
+<title>INTERPOL — SASP-INT-2026-0702-EF — CONFIDENTIEL</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -11,16 +11,18 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
 .page{max-width:900px;margin:0 auto;padding:40px 20px}
 
 /* HEADER */
-.doc-header{background:#0a0c10;border:1px solid #1e2330;border-radius:4px;overflow:hidden;margin-bottom:8px}
-.classify-bar{background:#8b0000;color:#fff;text-align:center;padding:7px;font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:3px;font-weight:bold}
-.header-inner{display:grid;grid-template-columns:80px 1fr 80px;align-items:center;padding:24px 32px;gap:20px}
-.header-logo img{width:70px;height:70px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(139,0,0,0.4))}
+.doc-header{background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden;margin-bottom:8px}
+.classify-bar{background:#003087;color:#fff;text-align:center;padding:7px;font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:3px;font-weight:bold}
+.header-inner{display:grid;grid-template-columns:100px 1fr 100px;align-items:center;padding:24px 32px;gap:20px}
+.header-logo img{width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(0,48,135,0.5))}
 .header-logo{text-align:center}
 .header-text{text-align:center}
-.header-org{font-family:'Rajdhani',sans-serif;font-size:13px;letter-spacing:4px;color:#8b0000;font-weight:600;margin-bottom:4px}
-.header-title{font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:#e8eaf0;letter-spacing:2px}
-.header-sub{font-family:'Rajdhani',sans-serif;font-size:13px;letter-spacing:3px;color:#5c6275;margin-top:4px}
-.header-seal{text-align:center;font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a3f52;line-height:1.5}
+.header-org{font-family:'Rajdhani',sans-serif;font-size:12px;letter-spacing:4px;color:#4a7abf;font-weight:600;margin-bottom:4px}
+.header-title{font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:700;color:#e8eaf0;letter-spacing:4px}
+.header-sub{font-family:'Rajdhani',sans-serif;font-size:12px;letter-spacing:3px;color:#5c6275;margin-top:4px}
+.header-sasp{text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+.header-sasp img{width:50px;height:50px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(0,48,135,0.3))}
+.header-sasp-label{font-family:'Share Tech Mono',monospace;font-size:8px;color:#3a4f6a;line-height:1.5;letter-spacing:1px}
 
 /* META */
 .doc-meta{background:#0e1018;border:1px solid #1e2330;border-radius:4px;display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-bottom:8px}
@@ -32,21 +34,21 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
 .meta-value.orange{color:#c87d30}
 
 /* DISCLAIMER */
-.disclaimer{background:#0e1018;border:1px solid #1e2330;border-left:3px solid #8b0000;border-radius:4px;padding:10px 16px;margin-bottom:24px;font-size:11px;color:#4a5068;font-family:'Share Tech Mono',monospace;text-align:center;line-height:1.8}
+.disclaimer{background:#0e1018;border:1px solid #1e2330;border-left:3px solid #003087;border-radius:4px;padding:10px 16px;margin-bottom:24px;font-size:11px;color:#4a5068;font-family:'Share Tech Mono',monospace;text-align:center;line-height:1.8}
 .disclaimer span{color:#6b7280}
 
 /* SOMMAIRE */
 .sommaire{background:#0e1018;border:1px solid #1e2330;border-radius:4px;padding:20px 24px;margin-bottom:32px}
-.sommaire-title{font-family:'Rajdhani',sans-serif;font-size:13px;letter-spacing:3px;color:#8b0000;font-weight:600;margin-bottom:14px}
+.sommaire-title{font-family:'Rajdhani',sans-serif;font-size:13px;letter-spacing:3px;color:#003087;font-weight:600;margin-bottom:14px}
 .sommaire-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 32px}
 .sommaire-item{display:flex;gap:12px;padding:5px 0;border-bottom:1px solid #161922;font-size:12px}
-.sommaire-num{color:#8b0000;font-family:'Share Tech Mono',monospace;min-width:20px}
+.sommaire-num{color:#003087;font-family:'Share Tech Mono',monospace;min-width:20px}
 .sommaire-label{color:#8a90a0}
 
 /* SECTIONS */
 .section{margin-bottom:32px}
 .section-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #1e2330}
-.section-num{background:#8b0000;color:#fff;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:2px;flex-shrink:0}
+.section-num{background:#003087;color:#fff;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:2px;flex-shrink:0}
 .section-title{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#e8eaf0;letter-spacing:1px}
 
 /* INFO GRID */
@@ -60,7 +62,7 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
 .prose{color:#8a90a0;font-size:13px;margin-bottom:12px}
 .bullet-list{list-style:none;margin:8px 0}
 .bullet-list li{padding:5px 0 5px 20px;position:relative;color:#8a90a0;font-size:13px;border-bottom:1px solid #131620}
-.bullet-list li:before{content:'▸';position:absolute;left:0;color:#8b0000}
+.bullet-list li:before{content:'▸';position:absolute;left:0;color:#003087}
 
 /* TABLES */
 .data-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
@@ -73,8 +75,8 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
 .chrono{border-left:2px solid #1e2330;padding-left:20px;margin-top:8px}
 .chrono-item{position:relative;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #131620}
 .chrono-item:last-child{border-bottom:none}
-.chrono-item:before{content:'';position:absolute;left:-25px;top:6px;width:8px;height:8px;border-radius:50%;background:#8b0000;border:2px solid #0d0f14}
-.chrono-year{font-family:'Share Tech Mono',monospace;font-size:11px;color:#8b0000;margin-bottom:3px;letter-spacing:1px}
+.chrono-item:before{content:'';position:absolute;left:-25px;top:6px;width:8px;height:8px;border-radius:50%;background:#003087;border:2px solid #0d0f14}
+.chrono-year{font-family:'Share Tech Mono',monospace;font-size:11px;color:#003087;margin-bottom:3px;letter-spacing:1px}
 .chrono-title{font-size:12px;font-weight:600;color:#c9cdd6;margin-bottom:3px}
 .chrono-desc{font-size:12px;color:#5c6275}
 
@@ -85,7 +87,7 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
 .risk-jaune{background:#2d2b08;color:#c8b430;border:1px solid #4a4010}
 
 /* CHEFS INCULPATION */
-.chef-num{color:#8b0000;font-family:'Share Tech Mono',monospace;font-size:11px;text-align:center}
+.chef-num{color:#003087;font-family:'Share Tech Mono',monospace;font-size:11px;text-align:center}
 .chef-ref{color:#4a5068;font-family:'Share Tech Mono',monospace;font-size:10px}
 .chef-peine{color:#c87d30;font-size:11px}
 .perp{color:#cf4040;font-weight:600}
@@ -96,7 +98,7 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
 /* RECOMMANDATIONS */
 .rec-list{list-style:none;margin:8px 0}
 .rec-list li{padding:7px 0 7px 24px;position:relative;color:#8a90a0;font-size:13px;border-bottom:1px solid #131620;display:flex;gap:10px}
-.rec-list li:before{content:'→';position:absolute;left:0;color:#8b0000;font-family:'Share Tech Mono',monospace}
+.rec-list li:before{content:'→';position:absolute;left:0;color:#003087;font-family:'Share Tech Mono',monospace}
 
 /* FOOTER */
 .doc-footer{margin-top:48px;border-top:1px solid #1e2330;padding-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
@@ -114,14 +116,15 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
   <div class="doc-header">
     <div class="classify-bar">✦ SECRET — DIFFUSION RESTREINTE ✦</div>
     <div class="header-inner">
-      <div class="header-logo"><img src="https://i.imgur.com/QsngJ4w.png" alt="SASP"></div>
+      <div class="header-logo"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Interpol_Logo.svg/800px-Interpol_Logo.svg.png" alt="INTERPOL"></div>
       <div class="header-text">
-        <div class="header-org">SAN ANDREAS STATE TROOPER</div>
-        <div class="header-title">SASP</div>
-        <div class="header-sub">DIVISION RENSEIGNEMENT</div>
+        <div class="header-org">ORGANISATION INTERNATIONALE DE POLICE CRIMINELLE</div>
+        <div class="header-title">INTERPOL</div>
+        <div class="header-sub">DIVISION CRIMINALITÉ ORGANISÉE TRANSNATIONALE</div>
       </div>
-      <div class="header-seal">
-        DOSSIER<br>D'ENQUÊTE<br>──────<br>CONFIDENTIEL
+      <div class="header-sasp">
+        <img src="https://i.imgur.com/QsngJ4w.png" alt="SASP">
+        <div class="header-sasp-label">TRANSMIS PAR<br>SASP<br>SAN ANDREAS</div>
       </div>
     </div>
     <div class="classify-bar">DOCUMENT À USAGE EXCLUSIF DES DESTINATAIRES AUTORISÉS</div>
@@ -142,11 +145,11 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
     </div>
     <div class="meta-item">
       <div class="meta-label">Rédigé par</div>
-      <div class="meta-value">Capitaine, SASP — Div. Renseignement</div>
+      <div class="meta-value">INTERPOL — Div. Criminalité Organisée</div>
     </div>
     <div class="meta-item">
       <div class="meta-label">Destinataire</div>
-      <div class="meta-value">DOJ — Bureau des affaires transnationales</div>
+      <div class="meta-value">SASP / DOJ — Bureau des affaires transnationales</div>
     </div>
     <div class="meta-item">
       <div class="meta-label">Objet</div>
@@ -254,7 +257,7 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
         <div class="chrono-desc">Confirmation de la présence de Montoya sur une propriété fortifiée au sud-ouest de San Andreas.</div>
       </div>
     </div>
-    <div style="margin-top:16px;padding:10px 16px;background:#0e1018;border:1px solid #1e2330;border-left:3px solid #8b0000;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#cf4040">
+    <div style="margin-top:16px;padding:10px 16px;background:#0e1018;border:1px solid #1e2330;border-left:3px solid #003087;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#cf4040">
       TOTAL ESTIMÉ : ~40 homicides directement ou indirectement attribués au réseau
     </div>
   </div>
@@ -394,25 +397,24 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
 
   <div class="doc-footer">
     <div class="footer-sig">
-      <p style="color:#4a5068;font-size:11px;margin-bottom:8px">Fait à San Andreas, le 2 juillet 2026.</p>
-      <p style="color:#4a5068;font-size:11px">Pour le SASP,</p>
-      <p class="sig-name">Capitaine — SASP</p>
-      <p style="color:#4a5068;font-size:11px">Division Renseignement</p>
-      <p style="color:#4a5068;font-size:11px;margin-top:8px">Transmission officielle au Department of Justice<br>Bureau des affaires transnationales.</p>
+      <p style="color:#4a5068;font-size:11px;margin-bottom:8px">Fait à Lyon, le 2 juillet 2026.</p>
+      <p style="color:#4a5068;font-size:11px">Pour INTERPOL,</p>
+      <p class="sig-name">Division Criminalité Organisée Transnationale</p>
+      <p style="color:#4a5068;font-size:11px;margin-top:8px">Transmis officiellement au SASP — San Andreas<br>et au Department of Justice — Bureau des affaires transnationales.</p>
     </div>
     <div class="footer-classify">
       SASP-INT-2026-0702-EF<br>
       SECRET — DIFFUSION RESTREINTE<br>
       ──────────────────────────<br>
-      DIVISION RENSEIGNEMENT<br>
-      SAN ANDREAS STATE TROOPER<br>
+      INTERPOL — DIVISION COT<br>
+      TRANSMIS PAR SASP SAN ANDREAS<br>
       ──────────────────────────<br>
-      © 2026 SASP — TOUS DROITS RÉSERVÉS
+      © 2026 INTERPOL — TOUS DROITS RÉSERVÉS
     </div>
   </div>
 
   <div style="margin-top:24px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:10px;color:#2a2f3f;letter-spacing:2px">
-    ✦ SECRET — DIFFUSION RESTREINTE — SASP DIVISION RENSEIGNEMENT ✦
+    ✦ SECRET — DIFFUSION RESTREINTE — INTERPOL / SASP SAN ANDREAS ✦
   </div>
 
 </div>
