@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SASP-INT-2026-0702-EF — CONFIDENTIEL</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6}
+.page{max-width:900px;margin:0 auto;padding:40px 20px}
+
+/* HEADER */
+.doc-header{background:#0a0c10;border:1px solid #1e2330;border-radius:4px;overflow:hidden;margin-bottom:8px}
+.classify-bar{background:#8b0000;color:#fff;text-align:center;padding:7px;font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:3px;font-weight:bold}
+.header-inner{display:grid;grid-template-columns:80px 1fr 80px;align-items:center;padding:24px 32px;gap:20px}
+.header-logo img{width:70px;height:70px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(139,0,0,0.4))}
+.header-logo{text-align:center}
+.header-text{text-align:center}
+.header-org{font-family:'Rajdhani',sans-serif;font-size:13px;letter-spacing:4px;color:#8b0000;font-weight:600;margin-bottom:4px}
+.header-title{font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:#e8eaf0;letter-spacing:2px}
+.header-sub{font-family:'Rajdhani',sans-serif;font-size:13px;letter-spacing:3px;color:#5c6275;margin-top:4px}
+.header-seal{text-align:center;font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a3f52;line-height:1.5}
+
+/* META */
+.doc-meta{background:#0e1018;border:1px solid #1e2330;border-radius:4px;display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-bottom:8px}
+.meta-item{padding:14px 20px;border-right:1px solid #1e2330}
+.meta-item:last-child{border-right:none}
+.meta-label{font-size:10px;letter-spacing:2px;color:#4a5068;font-family:'Share Tech Mono',monospace;text-transform:uppercase;margin-bottom:4px}
+.meta-value{font-size:13px;color:#c9cdd6;font-weight:500}
+.meta-value.red{color:#cf4040}
+.meta-value.orange{color:#c87d30}
+
+/* DISCLAIMER */
+.disclaimer{background:#0e1018;border:1px solid #1e2330;border-left:3px solid #8b0000;border-radius:4px;padding:10px 16px;margin-bottom:24px;font-size:11px;color:#4a5068;font-family:'Share Tech Mono',monospace;text-align:center;line-height:1.8}
+.disclaimer span{color:#6b7280}
+
+/* SOMMAIRE */
+.sommaire{background:#0e1018;border:1px solid #1e2330;border-radius:4px;padding:20px 24px;margin-bottom:32px}
+.sommaire-title{font-family:'Rajdhani',sans-serif;font-size:13px;letter-spacing:3px;color:#8b0000;font-weight:600;margin-bottom:14px}
+.sommaire-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 32px}
+.sommaire-item{display:flex;gap:12px;padding:5px 0;border-bottom:1px solid #161922;font-size:12px}
+.sommaire-num{color:#8b0000;font-family:'Share Tech Mono',monospace;min-width:20px}
+.sommaire-label{color:#8a90a0}
+
+/* SECTIONS */
+.section{margin-bottom:32px}
+.section-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #1e2330}
+.section-num{background:#8b0000;color:#fff;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:2px;flex-shrink:0}
+.section-title{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#e8eaf0;letter-spacing:1px}
+
+/* INFO GRID */
+.info-grid{display:grid;grid-template-columns:200px 1fr;gap:1px;background:#1e2330;border:1px solid #1e2330;border-radius:4px;overflow:hidden}
+.info-label{background:#0e1018;padding:10px 16px;font-size:11px;letter-spacing:1px;color:#4a5068;font-family:'Share Tech Mono',monospace;text-transform:uppercase}
+.info-value{background:#0a0c10;padding:10px 16px;font-size:13px;color:#c9cdd6}
+.info-value.danger{color:#cf4040;font-weight:600;letter-spacing:2px}
+.info-value.fugitif{color:#c87d30}
+
+/* PROSE */
+.prose{color:#8a90a0;font-size:13px;margin-bottom:12px}
+.bullet-list{list-style:none;margin:8px 0}
+.bullet-list li{padding:5px 0 5px 20px;position:relative;color:#8a90a0;font-size:13px;border-bottom:1px solid #131620}
+.bullet-list li:before{content:'▸';position:absolute;left:0;color:#8b0000}
+
+/* TABLES */
+.data-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.data-table th{background:#0e1018;color:#4a5068;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:10px 14px;border:1px solid #1e2330;text-align:left;font-weight:normal}
+.data-table td{background:#0a0c10;color:#8a90a0;padding:9px 14px;border:1px solid #161922}
+.data-table tr:hover td{background:#0d1018}
+.data-table td.name-code{color:#c9cdd6;font-weight:500;font-family:'Share Tech Mono',monospace}
+
+/* CHRONOLOGIE */
+.chrono{border-left:2px solid #1e2330;padding-left:20px;margin-top:8px}
+.chrono-item{position:relative;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #131620}
+.chrono-item:last-child{border-bottom:none}
+.chrono-item:before{content:'';position:absolute;left:-25px;top:6px;width:8px;height:8px;border-radius:50%;background:#8b0000;border:2px solid #0d0f14}
+.chrono-year{font-family:'Share Tech Mono',monospace;font-size:11px;color:#8b0000;margin-bottom:3px;letter-spacing:1px}
+.chrono-title{font-size:12px;font-weight:600;color:#c9cdd6;margin-bottom:3px}
+.chrono-desc{font-size:12px;color:#5c6275}
+
+/* RISQUES */
+.risk-badge{display:inline-block;padding:2px 10px;border-radius:2px;font-size:10px;font-weight:600;letter-spacing:2px;font-family:'Share Tech Mono',monospace}
+.risk-rouge{background:#3d0e0e;color:#cf4040;border:1px solid #5a1a1a}
+.risk-orange{background:#3d2008;color:#c87d30;border:1px solid #5a3010}
+.risk-jaune{background:#2d2b08;color:#c8b430;border:1px solid #4a4010}
+
+/* CHEFS INCULPATION */
+.chef-num{color:#8b0000;font-family:'Share Tech Mono',monospace;font-size:11px;text-align:center}
+.chef-ref{color:#4a5068;font-family:'Share Tech Mono',monospace;font-size:10px}
+.chef-peine{color:#c87d30;font-size:11px}
+.perp{color:#cf4040;font-weight:600}
+
+/* REQUETE */
+.requete-box{background:#0e1018;border:1px solid #1e2330;border-left:3px solid #cf4040;border-radius:4px;padding:16px 20px;margin-top:16px;font-family:'Rajdhani',sans-serif;font-size:15px;color:#cf4040;letter-spacing:1px;text-align:center;font-weight:600}
+
+/* RECOMMANDATIONS */
+.rec-list{list-style:none;margin:8px 0}
+.rec-list li{padding:7px 0 7px 24px;position:relative;color:#8a90a0;font-size:13px;border-bottom:1px solid #131620;display:flex;gap:10px}
+.rec-list li:before{content:'→';position:absolute;left:0;color:#8b0000;font-family:'Share Tech Mono',monospace}
+
+/* FOOTER */
+.doc-footer{margin-top:48px;border-top:1px solid #1e2330;padding-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.footer-sig{font-size:12px;color:#4a5068}
+.footer-sig p{margin-bottom:4px}
+.footer-sig .sig-name{color:#c9cdd6;font-weight:500;font-size:13px}
+.footer-classify{text-align:right;font-family:'Share Tech Mono',monospace;font-size:10px;color:#3a3f52;line-height:2}
+
+.divider{height:1px;background:#1e2330;margin:24px 0}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-header">
+    <div class="classify-bar">✦ SECRET — DIFFUSION RESTREINTE ✦</div>
+    <div class="header-inner">
+      <div class="header-logo"><img src="https://i.imgur.com/QsngJ4w.png" alt="SASP"></div>
+      <div class="header-text">
+        <div class="header-org">SAN ANDREAS STATE TROOPER</div>
+        <div class="header-title">SASP</div>
+        <div class="header-sub">DIVISION RENSEIGNEMENT</div>
+      </div>
+      <div class="header-seal">
+        DOSSIER<br>D'ENQUÊTE<br>──────<br>CONFIDENTIEL
+      </div>
+    </div>
+    <div class="classify-bar">DOCUMENT À USAGE EXCLUSIF DES DESTINATAIRES AUTORISÉS</div>
+  </div>
+
+  <div class="doc-meta">
+    <div class="meta-item">
+      <div class="meta-label">Référence dossier</div>
+      <div class="meta-value" style="font-family:'Share Tech Mono',monospace;font-size:12px">SASP-INT-2026-0702-EF</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Date d'émission</div>
+      <div class="meta-value">2 juillet 2026</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Classification</div>
+      <div class="meta-value red">SECRET — Diffusion restreinte</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Rédigé par</div>
+      <div class="meta-value">Capitaine, SASP — Div. Renseignement</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Destinataire</div>
+      <div class="meta-value">DOJ — Bureau des affaires transnationales</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Objet</div>
+      <div class="meta-value orange">Alejandro « El Fantasma » Montoya</div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    <span>Document à usage exclusif des destinataires autorisés. Toute diffusion non autorisée est interdite.</span><br>
+    — Document fictif rédigé dans le cadre d'un roleplay GTA (serveur SASP). Toute ressemblance avec des personnes ou faits réels est purement fortuite. —
+  </div>
+
+  <!-- SOMMAIRE -->
+  <div class="sommaire">
+    <div class="sommaire-title">SOMMAIRE</div>
+    <div class="sommaire-grid">
+      <div class="sommaire-item"><span class="sommaire-num">01</span><span class="sommaire-label">Identité de la cible</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">06</span><span class="sommaire-label">Localisation et surveillance</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">02</span><span class="sommaire-label">Portrait physique et signes distinctifs</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">07</span><span class="sommaire-label">Évaluation des risques</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">03</span><span class="sommaire-label">Historique criminel détaillé</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">08</span><span class="sommaire-label">Recommandations opérationnelles</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">04</span><span class="sommaire-label">Organigramme du réseau « Los Espectros »</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">09</span><span class="sommaire-label">Chefs d'inculpation retenus</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">05</span><span class="sommaire-label">Structure et moyens de la milice</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">10</span><span class="sommaire-label">Mentions légales et confidentialité</span></div>
+    </div>
+  </div>
+
+  <!-- 1. IDENTITÉ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div class="section-title">Identité de la cible</div>
+    </div>
+    <div class="info-grid">
+      <div class="info-label">Nom complet</div><div class="info-value">Alejandro Ricardo Montoya Salcedo</div>
+      <div class="info-label">Alias / nom de code</div><div class="info-value" style="color:#c87d30;font-style:italic">« El Fantasma »</div>
+      <div class="info-label">Nationalité</div><div class="info-value">Mexicaine</div>
+      <div class="info-label">Date de naissance</div><div class="info-value">14 mars 1979 (estimée)</div>
+      <div class="info-label">Lieu de naissance</div><div class="info-value">Culiacán, Sinaloa (Mexique) — présumé</div>
+      <div class="info-label">Organisation</div><div class="info-value">Cartel « Los Espectros »</div>
+      <div class="info-label">Base d'opérations</div><div class="info-value">Cayo Perico — production et transit</div>
+      <div class="info-label">Fonction</div><div class="info-value">Chef suprême du cartel</div>
+      <div class="info-label">Statut</div><div class="info-value fugitif">Fugitif — mandat d'arrêt international actif</div>
+      <div class="info-label">Dangerosité</div><div class="info-value danger">⚠ EXTRÊME</div>
+    </div>
+  </div>
+
+  <!-- 2. PORTRAIT -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div class="section-title">Portrait physique et signes distinctifs</div>
+    </div>
+    <p class="prose">Montoya se présente généralement sous une apparence sobre, évitant les signes extérieurs de richesse en public. Les éléments suivants ont été confirmés par plusieurs sources de renseignement indépendantes :</p>
+    <ul class="bullet-list">
+      <li>Taille estimée : 1,78 m — corpulence athlétique</li>
+      <li>Cheveux noirs, grisonnants sur les tempes</li>
+      <li>Cicatrice verticale au niveau du sourcil gauche, consécutive à une tentative d'assassinat en 2015</li>
+      <li>Tatouage représentant une tête de mort stylisée sur l'avant-bras droit, symbole associé au cartel « Los Espectros »</li>
+      <li>Porte fréquemment un gilet pare-balles dissimulé sous des vêtements civils</li>
+      <li>Ne se déplace jamais sans une escorte rapprochée d'au moins quatre gardes du corps armés</li>
+    </ul>
+  </div>
+
+  <!-- 3. HISTORIQUE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div class="section-title">Historique criminel détaillé</div>
+    </div>
+    <p class="prose">Chronologie établie à partir des recoupements d'enquête disponibles :</p>
+    <div class="chrono">
+      <div class="chrono-item">
+        <div class="chrono-year">2001 — FONDATION</div>
+        <div class="chrono-desc">Constitution officieuse du réseau « Los Espectros » autour d'un noyau de contrebandiers locaux dans la région de Sinaloa.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2006 — EXPANSION</div>
+        <div class="chrono-desc">Ouverture de nouveaux couloirs maritimes de trafic de cocaïne vers l'Amérique du Nord, en lien avec des intermédiaires portuaires.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2011 — BLANCHIMENT</div>
+        <div class="chrono-desc">Premiers signalements d'un réseau de blanchiment structuré via des sociétés-écrans immobilières et des casinos offshore.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2015 — GUERRE DE TERRITOIRE</div>
+        <div class="chrono-desc">Tentative d'assassinat manquée contre Montoya, déclenchant une guerre de territoire attribuée à environ quinze homicides.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2019 — CORRUPTION</div>
+        <div class="chrono-desc">Infiltration confirmée de plusieurs douanes portuaires ; six fonctionnaires identifiés comme corrompus par le réseau.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2023 — ENLÈVEMENTS</div>
+        <div class="chrono-desc">Disparition de deux agents infiltrés (noms de code « Cobra » et « Viper »), présumés exécutés sur ordre direct de Montoya. Aucun corps retrouvé à ce jour.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2025 — DIVERSIFICATION</div>
+        <div class="chrono-desc">Extension des activités au trafic de fentanyl synthétique, avec une hausse marquée de la létalité des règlements de comptes internes.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2026 — LOCALISATION</div>
+        <div class="chrono-desc">Confirmation de la présence de Montoya sur une propriété fortifiée au sud-ouest de San Andreas.</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;padding:10px 16px;background:#0e1018;border:1px solid #1e2330;border-left:3px solid #8b0000;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#cf4040">
+      TOTAL ESTIMÉ : ~40 homicides directement ou indirectement attribués au réseau
+    </div>
+  </div>
+
+  <!-- 4. ORGANIGRAMME -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div class="section-title">Organigramme du réseau « Los Espectros »</div>
+    </div>
+    <p class="prose">Structure hiérarchique reconstituée à partir des écoutes et filatures menées ces derniers mois :</p>
+    <table class="data-table">
+      <thead>
+        <tr><th>Nom de code</th><th>Rôle</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="name-code" style="color:#cf4040">El Fantasma</td><td style="color:#c9cdd6">Chef suprême</td><td>Autorité absolue sur le réseau, valide toutes les opérations majeures et les représailles.</td></tr>
+        <tr><td class="name-code">La Contadora</td><td style="color:#c9cdd6">Finances</td><td>Supervise le blanchiment d'argent via les sociétés-écrans et les casinos offshore.</td></tr>
+        <tr><td class="name-code">El Ingeniero</td><td style="color:#c9cdd6">Logistique</td><td>Organise les routes maritimes et aériennes de transport de la marchandise.</td></tr>
+        <tr><td class="name-code">El Verdugo</td><td style="color:#c9cdd6">Sécurité / milice</td><td>Commande la milice armée, chargé des représailles et de la protection rapprochée.</td></tr>
+        <tr><td class="name-code">El Notario</td><td style="color:#c9cdd6">Corruption</td><td>Gère le réseau de fonctionnaires et de douaniers corrompus.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 5. MILICE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div class="section-title">Structure et moyens de la milice</div>
+    </div>
+    <ul class="bullet-list">
+      <li>Effectifs estimés : 60 à 80 hommes armés</li>
+      <li>Composition : anciens militaires, mercenaires étrangers, gardes rapprochés</li>
+      <li>Armement : fusils d'assaut, fusils de précision, mitrailleuses lourdes, présence non confirmée de lance-roquettes</li>
+      <li>Véhicules : 4x4 blindés légers, techniques armés</li>
+      <li>Moyens navals : plusieurs vedettes rapides et au moins un navire de soutien logistique</li>
+      <li>Positions défensives : bunkers, tourelles et postes d'observation sur les hauteurs de l'île</li>
+    </ul>
+  </div>
+
+  <!-- 6. LOCALISATION -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div class="section-title">Localisation et surveillance</div>
+    </div>
+    <p class="prose">La cible a été localisée sur une île isolée à environ 8–10 km au sud-ouest de San Andreas (cap estimé : 220°). Propriété sous surveillance depuis trois semaines. Point d'opération principal : <strong style="color:#c9cdd6">Cayo Perico</strong>.</p>
+    <table class="data-table" style="margin-top:12px">
+      <thead>
+        <tr><th>Date</th><th>Heure</th><th>Observation</th></tr>
+      </thead>
+      <tbody>
+        <tr><td style="font-family:'Share Tech Mono',monospace;color:#c9cdd6">14/06/2026</td><td style="font-family:'Share Tech Mono',monospace">06h20</td><td>Arrivée d'une vedette rapide ; déchargement de caisses non identifiées.</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace;color:#c9cdd6">19/06/2026</td><td style="font-family:'Share Tech Mono',monospace">23h45</td><td>Déplacement de huit hommes armés vers le poste d'observation nord.</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace;color:#c9cdd6">24/06/2026</td><td style="font-family:'Share Tech Mono',monospace">14h10</td><td>Survol d'un hélicoptère privé, atterrissage sur la propriété.</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace;color:#c9cdd6">28/06/2026</td><td style="font-family:'Share Tech Mono',monospace">02h30</td><td>Renforcement visible ; arrivée estimée de quinze hommes supplémentaires.</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace;color:#c9cdd6">01/07/2026</td><td style="font-family:'Share Tech Mono',monospace">19h00</td><td><strong style="color:#cf4040">Confirmation visuelle</strong> de la présence de Montoya sur la terrasse principale.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 7. RISQUES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <div class="section-title">Évaluation des risques</div>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th>Menace</th><th>Probabilité</th><th>Impact</th><th>Niveau</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Résistance armée massive à l'approche</td><td>Élevée</td><td>Critique</td><td><span class="risk-badge risk-rouge">ROUGE</span></td></tr>
+        <tr><td>Fuite de la cible par voie maritime</td><td>Modérée</td><td>Élevé</td><td><span class="risk-badge risk-orange">ORANGE</span></td></tr>
+        <tr><td>Prise d'otages parmi le personnel</td><td>Modérée</td><td>Élevé</td><td><span class="risk-badge risk-orange">ORANGE</span></td></tr>
+        <tr><td>Utilisation de boucliers humains</td><td>Faible à modérée</td><td>Critique</td><td><span class="risk-badge risk-rouge">ROUGE</span></td></tr>
+        <tr><td>Représailles du cartel après l'opération</td><td>Élevée</td><td>Modéré</td><td><span class="risk-badge risk-orange">ORANGE</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 8. RECOMMANDATIONS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">8</div>
+      <div class="section-title">Recommandations opérationnelles</div>
+    </div>
+    <ul class="rec-list">
+      <li>Capture vivante prioritaire de la cible</li>
+      <li>Usage de la force autorisé contre toute résistance armée</li>
+      <li>Mobilisation maximale : SASP Sud, SASP Nord, unités tactiques, soutien aérien</li>
+      <li>Sécurisation complète de la zone avant toute extraction</li>
+      <li>Transfert sous haute sécurité vers la prison fédérale de Brolin Brook</li>
+      <li>Base légale : trafic international de stupéfiants, blanchiment, corruption, enlèvements, homicides multiples</li>
+    </ul>
+  </div>
+
+  <!-- 9. CHEFS D'INCULPATION -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">9</div>
+      <div class="section-title">Chefs d'inculpation retenus</div>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th style="width:32px">N°</th><th>Chef d'inculpation</th><th style="width:120px">Base légale</th><th style="width:180px">Peine encourue</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="chef-num">01</td><td>Direction d'une association de malfaiteurs — trafic de stupéfiants</td><td class="chef-ref">Art. 450-1 CP</td><td class="chef-peine">20 ans réclusion</td></tr>
+        <tr><td class="chef-num">02</td><td>Direction d'une organisation criminelle transnationale</td><td class="chef-ref">Art. 450-5 CP</td><td class="chef-peine perp">Réclusion à perpétuité</td></tr>
+        <tr><td class="chef-num">03</td><td>Trafic international de stupéfiants en bande organisée</td><td class="chef-ref">Art. 222-34 CP</td><td class="chef-peine">30 ans réclusion</td></tr>
+        <tr><td class="chef-num">04</td><td>Fabrication et distribution illicite de fentanyl synthétique</td><td class="chef-ref">Art. 222-35 CP</td><td class="chef-peine">30 ans réclusion</td></tr>
+        <tr><td class="chef-num">05</td><td>Blanchiment aggravé en bande organisée</td><td class="chef-ref">Art. 324-1 CP</td><td class="chef-peine">15 ans + confiscation</td></tr>
+        <tr><td class="chef-num">06</td><td>Corruption active de fonctionnaires et douaniers</td><td class="chef-ref">Art. 433-1 CP</td><td class="chef-peine">10 ans réclusion</td></tr>
+        <tr><td class="chef-num">07</td><td>Enlèvement et séquestration en bande organisée (agents « Cobra » et « Viper »)</td><td class="chef-ref">Art. 224-1 CP</td><td class="chef-peine perp">Réclusion à perpétuité</td></tr>
+        <tr><td class="chef-num">08</td><td>Assassinats avec préméditation (~40 victimes)</td><td class="chef-ref">Art. 221-3 CP</td><td class="chef-peine perp">Réclusion à perpétuité</td></tr>
+        <tr><td class="chef-num">09</td><td>Tentative d'assassinat sur agents infiltrés</td><td class="chef-ref">Art. 221-3 CP</td><td class="chef-peine perp">Réclusion à perpétuité</td></tr>
+        <tr><td class="chef-num">10</td><td>Détention et trafic d'armes de guerre</td><td class="chef-ref">Art. 222-52 CP</td><td class="chef-peine">20 ans réclusion</td></tr>
+        <tr><td class="chef-num">11</td><td>Direction d'un groupement armé — trouble à l'ordre public</td><td class="chef-ref">Art. 431-13 CP</td><td class="chef-peine">10 ans réclusion</td></tr>
+        <tr><td class="chef-num">12</td><td>Obstruction à la justice et destruction de preuves</td><td class="chef-ref">Art. 434-4 CP</td><td class="chef-peine">7 ans réclusion</td></tr>
+      </tbody>
+    </table>
+    <div class="requete-box">
+      LE MINISTÈRE PUBLIC REQUIERT UNE PEINE DE RÉCLUSION CRIMINELLE À PERPÉTUITÉ INCOMPRESSIBLE
+    </div>
+  </div>
+
+  <!-- 10. MENTIONS LÉGALES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div class="section-title">Mentions légales et clause de confidentialité</div>
+    </div>
+    <p class="prose">Le présent dossier est classé confidentiel et destiné exclusivement aux services autorisés du SASP et du Department of Justice dans le cadre de la procédure visée. Toute reproduction, diffusion ou transmission à un tiers non autorisé est strictement interdite et pourra faire l'objet de sanctions internes. Les éléments présentés reposent sur des renseignements croisés et sont susceptibles d'évolution au fil de l'enquête.</p>
+  </div>
+
+  <div class="doc-footer">
+    <div class="footer-sig">
+      <p style="color:#4a5068;font-size:11px;margin-bottom:8px">Fait à San Andreas, le 2 juillet 2026.</p>
+      <p style="color:#4a5068;font-size:11px">Pour le SASP,</p>
+      <p class="sig-name">Capitaine — SASP</p>
+      <p style="color:#4a5068;font-size:11px">Division Renseignement</p>
+      <p style="color:#4a5068;font-size:11px;margin-top:8px">Transmission officielle au Department of Justice<br>Bureau des affaires transnationales.</p>
+    </div>
+    <div class="footer-classify">
+      SASP-INT-2026-0702-EF<br>
+      SECRET — DIFFUSION RESTREINTE<br>
+      ──────────────────────────<br>
+      DIVISION RENSEIGNEMENT<br>
+      SAN ANDREAS STATE TROOPER<br>
+      ──────────────────────────<br>
+      © 2026 SASP — TOUS DROITS RÉSERVÉS
+    </div>
+  </div>
+
+  <div style="margin-top:24px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:10px;color:#2a2f3f;letter-spacing:2px">
+    ✦ SECRET — DIFFUSION RESTREINTE — SASP DIVISION RENSEIGNEMENT ✦
+  </div>
+
+</div>
+</body>
+</html>
