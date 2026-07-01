@@ -507,7 +507,7 @@ export default {
 
         const now = new Date();
         const dateStr = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
-        const threadTitle = `${suspect} — ${dateStr} — ${heureFaits}`;
+        const threadTitle = `${suspect} - ${dateStr} - ${heureFaits}`;
 
         const userId = interaction.member?.user?.id || interaction.user?.id;
         let agentDisplay = `<@${userId}>`;
