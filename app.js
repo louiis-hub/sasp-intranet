@@ -592,8 +592,6 @@ function countAgentsByGrade(agents) {
 async function renderDashboard() {
   _grades = await DB.getGrades();
   var agents = visibleRosterAgents(await DB.getAgents());
-  try { agents = applyDiscordGrades(agents, await getDiscordRosterMap(agents)); }
-  catch(e) { console.warn('dashboard Discord grades:', e); }
   var hist = [];
   try {
     var { data: histData } = await getDb().from('agent_historique')
@@ -1421,8 +1419,6 @@ async function delArme(armeId, agentId) {
 async function renderGrades() {
   _grades = await DB.getGrades();
   var agents = visibleRosterAgents(await DB.getAgents());
-  try { agents = applyDiscordGrades(agents, await getDiscordRosterMap(agents)); }
-  catch(e) { console.warn('grades Discord grades:', e); }
 
   var gradeCounts = countAgentsByGrade(agents);
   try {
