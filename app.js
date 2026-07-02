@@ -61,7 +61,7 @@ function syncDiscordRoles(discordId, addCodes, removeCodes) {
 }
 
 async function syncAllAgentsToDiscord() {
-  if (!confirm('Synchroniser les rôles Discord vers les fiches SASP ?\n\nLes divisions CID/SWAT/PA/CNU/TU/SYND seront mises à jour pour chaque agent qui a un Discord ID.')) return;
+  if (!confirm('Synchroniser les rôles Discord vers les fiches SASP ?\n\nLes grades, divisions CID/SWAT/PA/CNU/TU/SYND et PPA seront mis à jour pour chaque agent qui a un Discord ID.')) return;
   var loader = toastLoading('Synchronisation en cours…');
   try {
     var agents = await DB.getAgents({});
@@ -127,8 +127,13 @@ async function syncDiscordToAgent(agentId) {
     if (!data.ok) throw new Error(data.error || 'Erreur Discord');
     var nonTracked = (ag.unites || []).filter(function(u) { return !TRACKED_DIVISIONS.includes(u); });
     var newUnites = nonTracked.concat(data.divisions || []);
-    await DB.updateAgent(agentId, { unites: newUnites });
-    toast('Unités synchronisées depuis Discord ✓', 'success');
+    var patch = { unites: newUnites };
+    if (data.grade) patch.grade = data.grade;
+    if (typeof data.ppa1 === 'boolean') patch.ppa1 = data.ppa1;
+    if (typeof data.ppa2 === 'boolean') patch.ppa2 = data.ppa2;
+    if (typeof data.ppa3 === 'boolean') patch.ppa3 = data.ppa3;
+    await DB.updateAgent(agentId, patch);
+    toast('Fiche synchronisée depuis Discord ✓', 'success');
     await renderAgentProfile();
   } catch(e) { toast('Erreur : ' + e.message, 'error'); }
 }

@@ -283,8 +283,17 @@ export default {
       });
       if (!res.ok) return json({ ok: false, error: "Membre non trouvé" }, 404);
       const member = await res.json();
-      const divisions = (member.roles || []).filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]);
-      return json({ ok: true, divisions });
+      const roles = member.roles || [];
+      const gradeRoleId = roles.find(r => ROLE_TO_GRADE[r]);
+      const divisions = roles.filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]);
+      return json({
+        ok: true,
+        divisions,
+        ppa1: roles.includes(PPA_ROLES.ppa1),
+        ppa2: roles.includes(PPA_ROLES.ppa2),
+        ppa3: roles.includes(PPA_ROLES.ppa3a) || roles.includes(PPA_ROLES.ppa3b),
+        grade: gradeRoleId ? ROLE_TO_GRADE[gradeRoleId] : null
+      });
     }
 
     // Récupère les rôles de membres Discord par IDs (Discord → Intranet)
