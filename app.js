@@ -83,6 +83,12 @@ function applyDiscordGrades(agents, roleMap) {
     return entry && entry.grade ? Object.assign({}, a, { grade: entry.grade }) : a;
   });
 }
+async function getDiscordGradeCounts() {
+  var res = await fetch(WORKER_BASE + '/grade-role-counts');
+  var data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Erreur Discord');
+  return data.counts || {};
+}
 
 async function syncAllAgentsToDiscord() {
   if (!confirm('Synchroniser les rôles Discord vers les fiches SASP ?\n\nLes grades, divisions CID/SWAT/PA/CNU/TU/SYND et PPA seront mis à jour pour chaque agent qui a un Discord ID.')) return;
@@ -603,6 +609,10 @@ async function renderDashboard() {
 
   // Grade counts — tous les grades dans l'ordre hiérarchique
   var gradeCounts = countAgentsByGrade(agents);
+  try {
+    var discordGradeCounts = await getDiscordGradeCounts();
+    Object.keys(discordGradeCounts).forEach(function(g){ gradeCounts[gradeKey(g)] = discordGradeCounts[g] || 0; });
+  } catch(e) { console.warn('dashboard Discord grade counts:', e); }
   var gradesSorted = _grades.slice().sort(function(a,b){ return (b.ordre||0)-(a.ordre||0); });
   var topGrades = gradesSorted.map(function(g){ return [g.nom, gradeCounts[gradeKey(g.nom)]||0]; });
 
@@ -1415,6 +1425,10 @@ async function renderGrades() {
   catch(e) { console.warn('grades Discord grades:', e); }
 
   var gradeCounts = countAgentsByGrade(agents);
+  try {
+    var discordGradeCounts = await getDiscordGradeCounts();
+    Object.keys(discordGradeCounts).forEach(function(g){ gradeCounts[gradeKey(g)] = discordGradeCounts[g] || 0; });
+  } catch(e) { console.warn('grades Discord grade counts:', e); }
 
   var rows = _grades.length ? _grades.map(function(g, i){
     return '<tr>' +
