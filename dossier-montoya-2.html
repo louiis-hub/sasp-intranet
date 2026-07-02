@@ -1,0 +1,2084 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>INTERPOL — SASP-INT-2026-0702-EF — CONFIDENTIEL</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6}
+.page{max-width:900px;margin:0 auto;padding:40px 20px}
+
+/* HEADER */
+.doc-header{background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden;margin-bottom:8px}
+.classify-bar{background:#003087;color:#fff;text-align:center;padding:7px;font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:3px;font-weight:bold}
+.header-inner{display:grid;grid-template-columns:100px 1fr 100px;align-items:center;padding:24px 32px;gap:20px}
+.header-logo img{width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(0,48,135,0.5))}
+.header-logo{text-align:center}
+.header-text{text-align:center}
+.header-org{font-family:'Rajdhani',sans-serif;font-size:12px;letter-spacing:4px;color:#4a7abf;font-weight:600;margin-bottom:4px}
+.header-title{font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:700;color:#e8eaf0;letter-spacing:4px}
+.header-sub{font-family:'Rajdhani',sans-serif;font-size:12px;letter-spacing:3px;color:#5c6275;margin-top:4px}
+.header-sasp{text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+.header-sasp img{width:50px;height:50px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(0,48,135,0.3))}
+.header-sasp-label{font-family:'Share Tech Mono',monospace;font-size:8px;color:#3a4f6a;line-height:1.5;letter-spacing:1px}
+
+/* META */
+.doc-meta{background:#0e1018;border:1px solid #1e2330;border-radius:4px;display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-bottom:8px}
+.meta-item{padding:14px 20px;border-right:1px solid #1e2330}
+.meta-item:last-child{border-right:none}
+.meta-label{font-size:10px;letter-spacing:2px;color:#4a5068;font-family:'Share Tech Mono',monospace;text-transform:uppercase;margin-bottom:4px}
+.meta-value{font-size:13px;color:#c9cdd6;font-weight:500}
+.meta-value.red{color:#cf4040}
+.meta-value.orange{color:#c87d30}
+
+/* DISCLAIMER */
+.disclaimer{background:#0e1018;border:1px solid #1e2330;border-left:3px solid #003087;border-radius:4px;padding:10px 16px;margin-bottom:24px;font-size:11px;color:#4a5068;font-family:'Share Tech Mono',monospace;text-align:center;line-height:1.8}
+.disclaimer span{color:#6b7280}
+
+/* SOMMAIRE */
+.sommaire{background:#0e1018;border:1px solid #1e2330;border-radius:4px;padding:20px 24px;margin-bottom:32px}
+.sommaire-title{font-family:'Rajdhani',sans-serif;font-size:13px;letter-spacing:3px;color:#003087;font-weight:600;margin-bottom:14px}
+.sommaire-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 32px}
+.sommaire-item{display:flex;gap:12px;padding:5px 0;border-bottom:1px solid #161922;font-size:12px}
+.sommaire-num{color:#003087;font-family:'Share Tech Mono',monospace;min-width:20px}
+.sommaire-label{color:#8a90a0}
+
+/* SECTIONS */
+.section{margin-bottom:32px}
+.section-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #1e2330}
+.section-num{background:#003087;color:#fff;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:2px;flex-shrink:0}
+.section-title{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#e8eaf0;letter-spacing:1px}
+
+/* INFO GRID */
+.info-grid{display:grid;grid-template-columns:200px 1fr;gap:1px;background:#1e2330;border:1px solid #1e2330;border-radius:4px;overflow:hidden}
+.info-label{background:#0e1018;padding:10px 16px;font-size:11px;letter-spacing:1px;color:#4a5068;font-family:'Share Tech Mono',monospace;text-transform:uppercase}
+.info-value{background:#0a0c10;padding:10px 16px;font-size:13px;color:#c9cdd6}
+.info-value.danger{color:#cf4040;font-weight:600;letter-spacing:2px}
+.info-value.fugitif{color:#c87d30}
+
+/* PROSE */
+.prose{color:#8a90a0;font-size:13px;margin-bottom:12px}
+.bullet-list{list-style:none;margin:8px 0}
+.bullet-list li{padding:5px 0 5px 20px;position:relative;color:#8a90a0;font-size:13px;border-bottom:1px solid #131620}
+.bullet-list li:before{content:'▸';position:absolute;left:0;color:#003087}
+
+/* TABLES */
+.data-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.data-table th{background:#0e1018;color:#4a5068;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:10px 14px;border:1px solid #1e2330;text-align:left;font-weight:normal}
+.data-table td{background:#0a0c10;color:#8a90a0;padding:9px 14px;border:1px solid #161922}
+.data-table tr:hover td{background:#0d1018}
+.data-table td.name-code{color:#c9cdd6;font-weight:500;font-family:'Share Tech Mono',monospace}
+
+/* CHRONOLOGIE */
+.chrono{border-left:2px solid #1e2330;padding-left:20px;margin-top:8px}
+.chrono-item{position:relative;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #131620}
+.chrono-item:last-child{border-bottom:none}
+.chrono-item:before{content:'';position:absolute;left:-25px;top:6px;width:8px;height:8px;border-radius:50%;background:#003087;border:2px solid #0d0f14}
+.chrono-year{font-family:'Share Tech Mono',monospace;font-size:11px;color:#003087;margin-bottom:3px;letter-spacing:1px}
+.chrono-title{font-size:12px;font-weight:600;color:#c9cdd6;margin-bottom:3px}
+.chrono-desc{font-size:12px;color:#5c6275}
+
+/* RISQUES */
+.risk-badge{display:inline-block;padding:2px 10px;border-radius:2px;font-size:10px;font-weight:600;letter-spacing:2px;font-family:'Share Tech Mono',monospace}
+.risk-rouge{background:#3d0e0e;color:#cf4040;border:1px solid #5a1a1a}
+.risk-orange{background:#3d2008;color:#c87d30;border:1px solid #5a3010}
+.risk-jaune{background:#2d2b08;color:#c8b430;border:1px solid #4a4010}
+
+/* CHEFS INCULPATION */
+.chef-num{color:#003087;font-family:'Share Tech Mono',monospace;font-size:11px;text-align:center}
+.chef-ref{color:#4a5068;font-family:'Share Tech Mono',monospace;font-size:10px}
+.chef-peine{color:#c87d30;font-size:11px}
+.perp{color:#cf4040;font-weight:600}
+
+/* REQUETE */
+.requete-box{background:#0e1018;border:1px solid #1e2330;border-left:3px solid #cf4040;border-radius:4px;padding:16px 20px;margin-top:16px;font-family:'Rajdhani',sans-serif;font-size:15px;color:#cf4040;letter-spacing:1px;text-align:center;font-weight:600}
+
+/* RECOMMANDATIONS */
+.rec-list{list-style:none;margin:8px 0}
+.rec-list li{padding:7px 0 7px 24px;position:relative;color:#8a90a0;font-size:13px;border-bottom:1px solid #131620;display:flex;gap:10px}
+.rec-list li:before{content:'→';position:absolute;left:0;color:#003087;font-family:'Share Tech Mono',monospace}
+
+/* FOOTER */
+.doc-footer{margin-top:48px;border-top:1px solid #1e2330;padding-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.footer-sig{font-size:12px;color:#4a5068}
+.footer-sig p{margin-bottom:4px}
+.footer-sig .sig-name{color:#c9cdd6;font-weight:500;font-size:13px}
+.footer-classify{text-align:right;font-family:'Share Tech Mono',monospace;font-size:10px;color:#3a3f52;line-height:2}
+
+.divider{height:1px;background:#1e2330;margin:24px 0}
+
+/* ANALYSE JUDICIAIRE — styles supplémentaires */
+.score-row{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid #131620}
+.score-row:last-child{border-bottom:none}
+.score-label{min-width:220px;font-size:12px;color:#c9cdd6;font-weight:500}
+.score-track{flex:1;background:#131620;border-radius:2px;height:8px;overflow:hidden}
+.score-fill{height:100%;border-radius:2px}
+.score-fill.critical{background:linear-gradient(90deg,#8b0000,#cf4040)}
+.score-fill.high{background:linear-gradient(90deg,#5a2800,#c87d30)}
+.score-fill.medium{background:linear-gradient(90deg,#1a3a1a,#3a8a3a)}
+.score-fill.low{background:linear-gradient(90deg,#1a1a3a,#3a4a8a)}
+.score-pct{font-family:'Share Tech Mono',monospace;font-size:11px;min-width:36px;text-align:right}
+.score-badge{font-family:'Share Tech Mono',monospace;font-size:9px;padding:2px 8px;border-radius:2px;min-width:90px;text-align:center}
+.badge-critical{background:#3d0e0e;color:#cf4040;border:1px solid #5a1a1a}
+.badge-high{background:#3d2008;color:#c87d30;border:1px solid #5a3010}
+.badge-medium{background:#0e2010;color:#3a9a3a;border:1px solid #1a4a1a}
+.badge-low{background:#0e0e30;color:#6a7abf;border:1px solid #1a2050}
+.cred-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+.cred-card{background:#0a0c10;border:1px solid #1e2330;border-radius:4px;padding:14px 18px}
+.cred-source{font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068;letter-spacing:2px;margin-bottom:8px}
+.cred-score-wrap{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.cred-score-big{font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;line-height:1}
+.cred-score-max{font-family:'Share Tech Mono',monospace;font-size:11px;color:#4a5068;margin-top:6px}
+.cred-bar-track{flex:1;background:#131620;border-radius:2px;height:6px}
+.cred-bar-fill{height:100%;border-radius:2px}
+.cred-desc{font-size:11px;color:#5c6275;line-height:1.5}
+.qual-item{background:#0a0c10;border:1px solid #1e2330;border-radius:4px;padding:14px 18px;margin-bottom:10px}
+.qual-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.qual-name{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#e8eaf0;letter-spacing:1px}
+.qual-badge{font-family:'Share Tech Mono',monospace;font-size:9px;padding:3px 10px;border-radius:2px}
+.qual-retenu{background:#0a2010;color:#2ecc71;border:1px solid #1a4a20}
+.qual-partiel{background:#2d2008;color:#c87d30;border:1px solid #5a3010}
+.qual-consolider{background:#0e0e30;color:#6a7abf;border:1px solid #1a2050}
+.qual-desc{font-size:12px;color:#5c6275;line-height:1.6}
+.circonstances-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.circonstance-item{background:#0a0c10;border:1px solid #1e2330;border-radius:4px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px}
+.circonstance-label{font-size:12px;color:#c9cdd6;font-weight:500;margin-bottom:2px}
+.circonstance-desc{font-size:11px;color:#5c6275}
+.probability-block{background:#0a0c10;border:1px solid #1e2330;border-radius:6px;padding:28px;margin-top:12px;text-align:center}
+.prob-gauge-wrap{display:flex;justify-content:center;margin-bottom:20px}
+.prob-gauge{position:relative;width:160px;height:160px}
+.prob-gauge svg{transform:rotate(-90deg)}
+.prob-number{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Rajdhani',sans-serif;font-size:48px;font-weight:700;color:#e8eaf0;line-height:1}
+.prob-unit{position:absolute;bottom:34%;left:50%;transform:translateX(-50%);font-family:'Share Tech Mono',monospace;font-size:11px;color:#4a5068}
+.prob-label{font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068;letter-spacing:2px;margin-bottom:6px}
+.prob-comment{font-size:12px;color:#8a90a0;max-width:500px;margin:0 auto}
+.prob-sub-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px;text-align:left}
+.prob-sub{background:#0e1018;border:1px solid #1e2330;border-radius:4px;padding:12px 16px}
+.prob-sub-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068;letter-spacing:2px;margin-bottom:6px}
+.prob-sub-value{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:#c87d30;margin-bottom:4px}
+.prob-sub-desc{font-size:11px;color:#5c6275}
+.decision-proc{background:#0a0c10;border:1px solid #5a1010;border-radius:6px;overflow:hidden;margin-top:12px}
+.decision-proc-header{background:#1a0808;padding:14px 22px;border-bottom:1px solid #5a1010;display:flex;justify-content:space-between;align-items:center}
+.decision-proc-title{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#cf4040;letter-spacing:2px}
+.decision-proc-ref{font-family:'Share Tech Mono',monospace;font-size:10px;color:#6b3030}
+.decision-proc-body{padding:20px 24px}
+.decision-stamp{display:inline-block;border:2px solid #cf4040;color:#cf4040;font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;letter-spacing:3px;padding:6px 20px;transform:rotate(-2deg);margin-bottom:16px}
+.decision-proc-list{list-style:none;margin:10px 0}
+.decision-proc-list li{padding:6px 0 6px 22px;position:relative;font-size:12px;color:#8a90a0;border-bottom:1px solid #1a0808}
+.decision-proc-list li:before{content:'■';position:absolute;left:0;color:#cf4040;font-size:8px;top:9px}
+.requisition-box{margin-top:16px;background:#1a0808;border:1px solid #5a1010;border-radius:4px;padding:14px 18px;text-align:center;font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:#cf4040;letter-spacing:2px}
+.decision-juge{background:#0a0c10;border:1px solid #1a2640;border-radius:6px;overflow:hidden;margin-top:12px}
+.decision-juge-header{background:#0d1220;padding:14px 22px;border-bottom:1px solid #1a2640;display:flex;justify-content:space-between;align-items:center}
+.decision-juge-title{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#4a7abf;letter-spacing:2px}
+.decision-juge-ref{font-family:'Share Tech Mono',monospace;font-size:10px;color:#2a3a5a}
+.decision-juge-body{padding:20px 24px}
+.jugement-section{margin-bottom:16px}
+.jugement-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068;letter-spacing:3px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #1e2330}
+.jugement-text{font-size:13px;color:#8a90a0;line-height:1.7}
+.jugement-text strong{color:#c9cdd6}
+.jugement-verdict{background:#0d1220;border:1px solid #1a2640;border-left:3px solid #4a7abf;border-radius:4px;padding:14px 18px;font-size:13px;color:#c9cdd6;line-height:1.7}
+.faiblesse-list{list-style:none;margin:8px 0}
+.faiblesse-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #131620;align-items:flex-start}
+.faiblesse-item:last-child{border-bottom:none}
+.faiblesse-dot{width:8px;height:8px;border-radius:50%;background:#c87d30;flex-shrink:0;margin-top:5px}
+.faiblesse-text{font-size:12px;color:#8a90a0;line-height:1.5}
+.reco-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.reco-item{background:#0a0c10;border:1px solid #1e2330;border-left:3px solid #003087;border-radius:4px;padding:12px 16px}
+.reco-num{font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068;margin-bottom:4px}
+.reco-text{font-size:12px;color:#8a90a0;line-height:1.5}
+.reco-text strong{color:#c9cdd6}
+.ext-link{display:inline-flex;align-items:center;gap:8px;color:#4a7abf;font-family:'Share Tech Mono',monospace;font-size:11px;text-decoration:none;padding:8px 16px;border:1px solid #1a2640;border-radius:3px;margin-top:12px}
+.ext-link:hover{color:#6a9adf;border-color:#4a7abf}
+@keyframes drawCircle{to{stroke-dashoffset:62}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="doc-header">
+    <div class="classify-bar">✦ SECRET — DIFFUSION RESTREINTE ✦</div>
+    <div class="header-inner">
+      <div class="header-logo"><img src="logo-interpol.jpg" alt="INTERPOL"></div>
+      <div class="header-text">
+        <div class="header-org">ORGANISATION INTERNATIONALE DE POLICE CRIMINELLE</div>
+        <div class="header-title">INTERPOL</div>
+        <div class="header-sub">DIVISION CRIMINALITÉ ORGANISÉE TRANSNATIONALE</div>
+      </div>
+      <div class="header-sasp">
+        <img src="https://i.imgur.com/QsngJ4w.png" alt="SASP">
+        <div class="header-sasp-label">TRANSMIS PAR<br>SASP<br>SAN ANDREAS</div>
+      </div>
+    </div>
+    <div class="classify-bar">DOCUMENT À USAGE EXCLUSIF DES DESTINATAIRES AUTORISÉS</div>
+  </div>
+
+  <div class="doc-meta">
+    <div class="meta-item">
+      <div class="meta-label">Référence dossier</div>
+      <div class="meta-value" style="font-family:'Share Tech Mono',monospace;font-size:12px">SASP-INT-2026-0702-EF</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Date d'émission</div>
+      <div class="meta-value">2 juillet 2026</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Classification</div>
+      <div class="meta-value red">SECRET — Diffusion restreinte</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Rédigé par</div>
+      <div class="meta-value">INTERPOL — Div. Criminalité Organisée</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Destinataire</div>
+      <div class="meta-value">SASP / DOJ — Bureau des affaires transnationales</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Objet</div>
+      <div class="meta-value orange">Alejandro « El Fantasma » Montoya</div>
+    </div>
+  </div>
+
+
+  <!-- FEUILLE DE SAISINE -->
+  <div style="margin-bottom:28px;background:#0a0c10;border:1px solid #1e2330;border-radius:6px;overflow:hidden">
+    <div style="background:#003087;padding:10px 22px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#fff;letter-spacing:2px">SAISINE JUDICIAIRE — TRANSMISSION DU DOSSIER</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(255,255,255,.55)">DOJ/SAI/2026/SA-0247</div>
+    </div>
+    <div style="padding:20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:18px">
+      <div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068;letter-spacing:2px;margin-bottom:8px">EXPÉDITEUR</div>
+        <div style="font-size:12px;color:#c9cdd6;line-height:1.7">
+          <strong style="color:#e8eaf0">San Andreas State Police — SASP</strong><br>
+          Direction Enquêtes Criminelles & Crime Organisé<br>
+          Bureau central — Los Santos, San Andreas
+        </div>
+      </div>
+      <div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068;letter-spacing:2px;margin-bottom:8px">DATE DE TRANSMISSION</div>
+        <div style="font-size:12px;color:#c9cdd6;line-height:1.7">
+          À l'issue de l'Opération <strong style="color:#e8eaf0">SPECTRE</strong><br>
+          Nuit du 2 au 3 juillet 2026<br>
+          <span style="color:#c87d30;font-family:'Share Tech Mono',monospace;font-size:10px">⚠ DOSSIER CLASSIFIÉ — DIFFUSION RESTREINTE</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068;letter-spacing:2px;margin-bottom:8px">DESTINATAIRE 1</div>
+        <div style="font-size:12px;color:#c9cdd6;line-height:1.7">
+          <strong style="color:#e8eaf0">Madame la Procureure de San Andreas</strong><br>
+          US Attorney's Office — District of San Andreas<br>
+          <span style="font-size:11px;color:#4a7abf">→ Saisie aux fins de poursuites pénales</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068;letter-spacing:2px;margin-bottom:8px">DESTINATAIRE 2</div>
+        <div style="font-size:12px;color:#c9cdd6;line-height:1.7">
+          <strong style="color:#e8eaf0">Federal Judge — US District Court, Dist. of San Andreas</strong><br>
+          Chambre criminelle — Pôle Crime Organisé & Stupéfiants<br>
+          <span style="font-size:11px;color:#4a7abf">→ Saisi aux fins d'federal prosecution</span>
+        </div>
+      </div>
+    </div>
+    <div style="padding:0 24px 16px">
+      <div style="background:#0d1018;border:1px solid #1e2330;border-radius:4px;padding:14px 18px">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068;letter-spacing:2px;margin-bottom:8px">OBJET DE LA SAISINE</div>
+        <p style="font-size:12px;color:#c9cdd6;line-height:1.8;margin:0">
+          Le SASP a l'honneur de porter à la connaissance de Madame la Procureure et de Federal Judge le présent dossier constitué dans le cadre de l'enquête conduite contre <strong style="color:#e8eaf0">MONTOYA REYES, Alejandro, dit « El Fantasma »</strong>, chef suprême du cartel Los Espectros.<br><br>
+          Ce dossier compile l'ensemble des éléments de preuve, témoignages, interceptions, expertises et actes procéduraux réunis au cours de l'enquête ainsi qu'à l'issue de l'Opération SPECTRE conduite sur Cayo Perico (territoire fédéral). Il est transmis aux fins d'engagement des poursuites judiciaires et of federal prosecution against the target. <strong style="color:#c87d30">Il appartient désormais à l'autorité judiciaire d'apprécier les suites à donner.</strong>
+        </p>
+      </div>
+    </div>
+    <div style="padding:0 24px 16px;display:flex;gap:12px">
+      <div style="flex:1;background:#0d1018;border:1px solid #1e2330;border-radius:4px;padding:10px 14px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068">
+        RÉFÉRENCE DOSSIER PÉNAL SASP<br><span style="color:#c9cdd6">DOJ/PÉNAL/2026/EF — Affaire n° SA-2026-CO-0147</span>
+      </div>
+      <div style="flex:1;background:#0d1018;border:1px solid #1e2330;border-radius:4px;padding:10px 14px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068">
+        DOSSIER FÉDÉRAL CONNEXE<br><span style="color:#c9cdd6">2026-CR-SA-0847 — US District Court, District of SA</span>
+      </div>
+      <div style="flex:1;background:#0a100a;border:1px solid #1a2a1a;border-radius:4px;padding:10px 14px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#00a040">
+        ✓ DOSSIER COMPLET<br>36 sections + 2 annexes — pièces P-001 à P-009
+      </div>
+    </div>
+  </div>
+
+  <!-- SOMMAIRE -->
+  <div class="sommaire">
+    <div class="sommaire-title">SOMMAIRE</div>
+    <div class="sommaire-grid">
+      <div class="sommaire-item"><span class="sommaire-num">01</span><span class="sommaire-label">Identité de la cible</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">12</span><span class="sommaire-label">Analyse des flux financiers suspects</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">02</span><span class="sommaire-label">Portrait physique et signes distinctifs</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">13</span><span class="sommaire-label">Photo de surveillance — confirmation visuelle</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">03</span><span class="sommaire-label">Historique criminel détaillé</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">14</span><span class="sommaire-label">Carte tactique des zones d'opération</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">04</span><span class="sommaire-label">Organigramme du réseau « Los Espectros »</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">15</span><span class="sommaire-label">Alias et fausses identités</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">05</span><span class="sommaire-label">Structure et moyens de la milice</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">16</span><span class="sommaire-label">Véhicules et plaques associés</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">06</span><span class="sommaire-label">Localisation et surveillance</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">17</span><span class="sommaire-label">Propriétés et biens immobiliers</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">07</span><span class="sommaire-label">Évaluation des risques</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">18</span><span class="sommaire-label">Connexions internationales</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">08</span><span class="sommaire-label">Recommandations opérationnelles</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">19</span><span class="sommaire-label">Notice rouge INTERPOL — mandat d'arrêt</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">09</span><span class="sommaire-label">Chefs d'inculpation retenus</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">20</span><span class="sommaire-label">Rapport d'autopsie — associé neutralisé</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">10</span><span class="sommaire-label">Témoignages et dépositions de sources</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">21</span><span class="sommaire-label">Saisies et preuves matérielles</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">11</span><span class="sommaire-label">Interceptions téléphoniques et rapports terrain</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">22</span><span class="sommaire-label">Profil psychologique — analyse comportementale</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">23</span><span class="sommaire-label">Rapport d'agent infiltré — opération SOMBRA</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">24</span><span class="sommaire-label">Actes et ordonnances procéduraux</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">25</span><span class="sommaire-label">Dossier disparition — agents « Cobra » et « Viper »</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">26</span><span class="sommaire-label">Mentions légales et confidentialité</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">27</span><span class="sommaire-label">Valeur probante des éléments</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">28</span><span class="sommaire-label">Crédibilité des sources</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">29</span><span class="sommaire-label">Qualification juridique détaillée</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">30</span><span class="sommaire-label">Circonstances aggravantes</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">31</span><span class="sommaire-label">Solidité procédurale</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">32</span><span class="sommaire-label">Défense — arguments anticipés</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">33</span><span class="sommaire-label">Position du US Attorney</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">34</span><span class="sommaire-label">Évaluation probabiliste</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">35</span><span class="sommaire-label">Criminal Information — US Attorney SA</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">36</span><span class="sommaire-label">Federal Indictment — USDC-SA</span></div>
+      <div class="sommaire-item"><span class="sommaire-num" style="color:#c87d30">↗</span><span class="sommaire-label"><a href="ecoutes-transcription.html" style="color:#4a7abf;text-decoration:none">Transcriptions complètes des écoutes</a></span></div>
+      <div class="sommaire-item"><span class="sommaire-num" style="color:#c87d30">↗</span><span class="sommaire-label"><a href="dossiers-victimologiques.html" style="color:#4a7abf;text-decoration:none">Dossiers victimologiques individuels</a></span></div>
+    </div>
+  </div>
+
+  <!-- 1. IDENTITÉ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div class="section-title">Identité de la cible</div>
+    </div>
+    <div class="info-grid">
+      <div class="info-label">Nom complet</div><div class="info-value">Alejandro Ricardo Montoya Salcedo</div>
+      <div class="info-label">Alias / nom de code</div><div class="info-value" style="color:#c87d30;font-style:italic">« El Fantasma »</div>
+      <div class="info-label">Nationalité</div><div class="info-value">Mexicaine</div>
+      <div class="info-label">Date de naissance</div><div class="info-value">14 mars 1979 (estimée)</div>
+      <div class="info-label">Lieu de naissance</div><div class="info-value">Culiacán, Sinaloa (Mexique) — présumé</div>
+      <div class="info-label">Organisation</div><div class="info-value">Cartel « Los Espectros »</div>
+      <div class="info-label">Base d'opérations</div><div class="info-value">Cayo Perico — production et transit</div>
+      <div class="info-label">Fonction</div><div class="info-value">Chef suprême du cartel</div>
+      <div class="info-label">Statut</div><div class="info-value fugitif">Fugitif — mandat d'arrêt international actif</div>
+      <div class="info-label">Dangerosité</div><div class="info-value danger">⚠ EXTRÊME</div>
+    </div>
+  </div>
+
+  <!-- 2. PORTRAIT -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div class="section-title">Portrait physique et signes distinctifs</div>
+    </div>
+    <p class="prose">Montoya se présente généralement sous une apparence sobre, évitant les signes extérieurs de richesse en public. Les éléments suivants ont été confirmés par plusieurs sources de renseignement indépendantes :</p>
+    <ul class="bullet-list">
+      <li>Taille estimée : 1,78 m — corpulence athlétique</li>
+      <li>Cheveux noirs, grisonnants sur les tempes</li>
+      <li>Cicatrice verticale au niveau du sourcil gauche, consécutive à une tentative d'assassinat en 2015</li>
+      <li>Tatouage représentant une tête de mort stylisée sur l'avant-bras droit, symbole associé au cartel « Los Espectros »</li>
+      <li>Porte fréquemment un gilet pare-balles dissimulé sous des vêtements civils</li>
+      <li>Ne se déplace jamais sans une escorte rapprochée d'au moins quatre gardes du corps armés</li>
+    </ul>
+  </div>
+
+  <!-- 3. HISTORIQUE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div class="section-title">Historique criminel détaillé</div>
+    </div>
+    <p class="prose">Chronologie établie à partir des recoupements d'enquête disponibles :</p>
+    <div class="chrono">
+      <div class="chrono-item">
+        <div class="chrono-year">2001 — FONDATION</div>
+        <div class="chrono-desc">Constitution officieuse du réseau « Los Espectros » autour d'un noyau de contrebandiers locaux dans la région de Sinaloa.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2006 — EXPANSION</div>
+        <div class="chrono-desc">Ouverture de nouveaux couloirs maritimes de trafic de cocaïne vers l'Amérique du Nord, en lien avec des intermédiaires portuaires.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2011 — BLANCHIMENT</div>
+        <div class="chrono-desc">Premiers signalements d'un réseau de blanchiment structuré via des sociétés-écrans immobilières et des casinos offshore.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2015 — GUERRE DE TERRITOIRE</div>
+        <div class="chrono-desc">Tentative d'assassinat manquée contre Montoya, déclenchant une guerre de territoire attribuée à environ quinze homicides.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2019 — CORRUPTION</div>
+        <div class="chrono-desc">Infiltration confirmée de plusieurs douanes portuaires ; six fonctionnaires identifiés comme corrompus par le réseau.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2023 — ENLÈVEMENTS</div>
+        <div class="chrono-desc">Disparition de deux agents infiltrés (noms de code « Cobra » et « Viper »), présumés exécutés sur ordre direct de Montoya. Aucun corps retrouvé à ce jour.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2025 — DIVERSIFICATION</div>
+        <div class="chrono-desc">Extension des activités au trafic de fentanyl synthétique, avec une hausse marquée de la létalité des règlements de comptes internes.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">2026 — LOCALISATION</div>
+        <div class="chrono-desc">Confirmation de la présence de Montoya sur une propriété fortifiée au sud-ouest de San Andreas.</div>
+      </div>
+    </div>
+    <div style="margin-top:18px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:#cf4040;letter-spacing:2px;border-bottom:1px solid #1e2330;padding-bottom:6px;margin-bottom:10px">▸ LISTE PARTIELLE DES HOMICIDES ATTRIBUÉS</div>
+      <p class="prose" style="margin-bottom:10px">Inventaire établi à partir des archives judiciaires, des écoutes et des dépositions de sources. Les 29 dossiers complémentaires sont versés au dossier pénal principal sur support scellé.</p>
+      <table class="data-table">
+        <thead>
+          <tr><th>N°</th><th>Victime</th><th>Date</th><th>Lieu</th><th>Circonstances</th><th>Réf. dossier</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="chef-num">001</td><td style="color:#c9cdd6">Ricardo Herrera « El Chivo »</td><td style="font-family:'Share Tech Mono',monospace;font-size:11px">18/06/2026</td><td>Paleto Bay</td><td>Exécution interne — tir de grâce</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#c87d30">DOJ/HOM/2026/047</td></tr>
+          <tr><td class="chef-num">002</td><td><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████████████</span></td><td style="font-family:'Share Tech Mono',monospace;font-size:11px">03/09/2023</td><td>Los Santos</td><td>Règlement de comptes — rival cartel éliminé</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#c87d30">DOJ/HOM/2023/312</td></tr>
+          <tr><td class="chef-num">003</td><td><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████████████</span></td><td style="font-family:'Share Tech Mono',monospace;font-size:11px">03/09/2023</td><td>Los Santos</td><td>Règlement de comptes — rival cartel éliminé</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#c87d30">DOJ/HOM/2023/313</td></tr>
+          <tr><td class="chef-num">004</td><td><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████████████</span></td><td style="font-family:'Share Tech Mono',monospace;font-size:11px">12/03/2015</td><td>Sandy Shores</td><td>Guerre de territoire — fusillade</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#c87d30">DOJ/HOM/2015/089</td></tr>
+          <tr><td class="chef-num">005</td><td><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████████████</span></td><td style="font-family:'Share Tech Mono',monospace;font-size:11px">14/03/2015</td><td>Sandy Shores</td><td>Guerre de territoire — fusillade</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#c87d30">DOJ/HOM/2015/092</td></tr>
+          <tr><td class="chef-num">006</td><td><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████████████</span></td><td style="font-family:'Share Tech Mono',monospace;font-size:11px">16/03/2015</td><td>Paleto Bay</td><td>Guerre de territoire — représailles</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#c87d30">DOJ/HOM/2015/097</td></tr>
+          <tr><td class="chef-num">007</td><td><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████████████</span></td><td style="font-family:'Share Tech Mono',monospace;font-size:11px">07/07/2019</td><td>Port de LS</td><td>Témoin gênant — douanier non corrompu</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#c87d30">DOJ/HOM/2019/204</td></tr>
+          <tr><td class="chef-num">008</td><td><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████████████</span></td><td style="font-family:'Share Tech Mono',monospace;font-size:11px">19/02/2021</td><td>Cayo Perico</td><td>Exécution interne — trahison présumée</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#c87d30">DOJ/HOM/2021/056</td></tr>
+          <tr><td class="chef-num">009</td><td><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████████████</span></td><td style="font-family:'Share Tech Mono',monospace;font-size:11px">20/02/2021</td><td>Cayo Perico</td><td>Exécution interne — témoin de la précédente</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#c87d30">DOJ/HOM/2021/057</td></tr>
+          <tr><td class="chef-num">010</td><td><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████████████</span></td><td style="font-family:'Share Tech Mono',monospace;font-size:11px">08/11/2023</td><td>Lieu inconnu</td><td>Agent infiltré COBRA — disparition forcée</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#cf4040">DOJ/DISP/2023/EF-CV</td></tr>
+          <tr><td class="chef-num">011</td><td><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████████████</span></td><td style="font-family:'Share Tech Mono',monospace;font-size:11px">08/11/2023</td><td>Lieu inconnu</td><td>Agent infiltré VIPER — disparition forcée</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#cf4040">DOJ/DISP/2023/EF-CV</td></tr>
+          <tr><td class="chef-num" style="color:#4a5068">…</td><td style="color:#4a5068;font-style:italic" colspan="5">29 homicides supplémentaires — dossiers DOJ/HOM séries 2015–2025 — versés au dossier pénal principal sur support scellé (réf. DOJ/PÉNAL/2026/EF — Volume III)</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px;padding:8px 14px;background:#1a0808;border:1px solid #3a1010;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#cf4040">
+        TOTAL DOCUMENTÉ : 11 homicides dans le présent dossier · 40 au total dans le dossier pénal principal — Chef 08 pleinement étayé
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. ORGANIGRAMME -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div class="section-title">Organigramme du réseau « Los Espectros »</div>
+    </div>
+    <p class="prose">Structure hiérarchique reconstituée à partir des écoutes et filatures menées ces derniers mois :</p>
+    <table class="data-table">
+      <thead>
+        <tr><th>Nom de code</th><th>Rôle</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="name-code" style="color:#cf4040">El Fantasma</td><td style="color:#c9cdd6">Chef suprême</td><td>Autorité absolue sur le réseau, valide toutes les opérations majeures et les représailles.</td></tr>
+        <tr><td class="name-code">La Contadora</td><td style="color:#c9cdd6">Finances</td><td>Supervise le blanchiment d'argent via les sociétés-écrans et les casinos offshore.</td></tr>
+        <tr><td class="name-code">El Ingeniero</td><td style="color:#c9cdd6">Logistique</td><td>Organise les routes maritimes et aériennes de transport de la marchandise.</td></tr>
+        <tr><td class="name-code">El Verdugo</td><td style="color:#c9cdd6">Sécurité / milice</td><td>Commande la milice armée, chargé des représailles et de la protection rapprochée.</td></tr>
+        <tr><td class="name-code">El Notario</td><td style="color:#c9cdd6">Corruption</td><td>Gère le réseau de fonctionnaires et de douaniers corrompus.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 5. MILICE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div class="section-title">Structure et moyens de la milice</div>
+    </div>
+    <ul class="bullet-list">
+      <li>Effectifs estimés : 60 à 80 hommes armés</li>
+      <li>Composition : anciens militaires, mercenaires étrangers, gardes rapprochés</li>
+      <li>Armement : fusils d'assaut, fusils de précision, mitrailleuses lourdes, présence non confirmée de lance-roquettes</li>
+      <li>Véhicules : 4x4 blindés légers, techniques armés</li>
+      <li>Moyens navals : plusieurs vedettes rapides et au moins un navire de soutien logistique</li>
+      <li>Positions défensives : bunkers, tourelles et postes d'observation sur les hauteurs de l'île</li>
+    </ul>
+  </div>
+
+  <!-- 6. LOCALISATION -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div class="section-title">Localisation et surveillance</div>
+    </div>
+    <p class="prose">La cible a été localisée sur une île isolée à environ 8–10 km au sud-ouest de San Andreas (cap estimé : 220°). Propriété sous surveillance depuis trois semaines. Point d'opération principal : <strong style="color:#c9cdd6">Cayo Perico</strong>.</p>
+    <table class="data-table" style="margin-top:12px">
+      <thead>
+        <tr><th>Date</th><th>Heure</th><th>Observation</th></tr>
+      </thead>
+      <tbody>
+        <tr><td style="font-family:'Share Tech Mono',monospace;color:#c9cdd6">14/06/2026</td><td style="font-family:'Share Tech Mono',monospace">06h20</td><td>Arrivée d'une vedette rapide ; déchargement de caisses non identifiées.</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace;color:#c9cdd6">19/06/2026</td><td style="font-family:'Share Tech Mono',monospace">23h45</td><td>Déplacement de huit hommes armés vers le poste d'observation nord.</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace;color:#c9cdd6">24/06/2026</td><td style="font-family:'Share Tech Mono',monospace">14h10</td><td>Survol d'un hélicoptère privé, atterrissage sur la propriété.</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace;color:#c9cdd6">28/06/2026</td><td style="font-family:'Share Tech Mono',monospace">02h30</td><td>Renforcement visible ; arrivée estimée de quinze hommes supplémentaires.</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace;color:#c9cdd6">01/07/2026</td><td style="font-family:'Share Tech Mono',monospace">19h00</td><td><strong style="color:#cf4040">Confirmation visuelle</strong> de la présence de Montoya sur la terrasse principale.</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:16px">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a7abf;letter-spacing:2px;margin-bottom:8px">VUE SATELLITE — CAYO PERICO — CLASSIFIÉE</div>
+      <div style="position:relative;border:1px solid #1a2640;border-radius:4px;overflow:hidden">
+        <img src="cayo.png" alt="Vue satellite Cayo Perico" style="width:100%;display:block;filter:brightness(0.82) contrast(1.1) saturate(0.75)">
+        <div style="position:absolute;top:0;left:0;right:0;padding:8px 14px;background:linear-gradient(to bottom,rgba(0,0,0,0.85),transparent);font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a7abf;letter-spacing:1px">
+          SAT-INT/12 — RÉSOLUTION 0,5m/px — PASSAGE : 30/06/2026 — 08h42 UTC
+        </div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:8px 14px;background:linear-gradient(to top,rgba(0,0,0,0.85),transparent);font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068">
+          © INTERPOL GÉOSPATIAL — USAGE RESTREINT — REF: INT/SAT/CAYO/2026-0630
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. RISQUES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <div class="section-title">Évaluation des risques</div>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th>Menace</th><th>Probabilité</th><th>Impact</th><th>Niveau</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Résistance armée massive à l'approche</td><td>Élevée</td><td>Critique</td><td><span class="risk-badge risk-rouge">ROUGE</span></td></tr>
+        <tr><td>Fuite de la cible par voie maritime</td><td>Modérée</td><td>Élevé</td><td><span class="risk-badge risk-orange">ORANGE</span></td></tr>
+        <tr><td>Prise d'otages parmi le personnel</td><td>Modérée</td><td>Élevé</td><td><span class="risk-badge risk-orange">ORANGE</span></td></tr>
+        <tr><td>Utilisation de boucliers humains</td><td>Faible à modérée</td><td>Critique</td><td><span class="risk-badge risk-rouge">ROUGE</span></td></tr>
+        <tr><td>Représailles du cartel après l'opération</td><td>Élevée</td><td>Modéré</td><td><span class="risk-badge risk-orange">ORANGE</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 8. RECOMMANDATIONS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">8</div>
+      <div class="section-title">Recommandations opérationnelles</div>
+    </div>
+    <ul class="rec-list">
+      <li>Capture vivante prioritaire de la cible</li>
+      <li>Usage de la force autorisé contre toute résistance armée</li>
+      <li>Mobilisation maximale : SASP Sud, SASP Nord, unités tactiques, soutien aérien</li>
+      <li>Sécurisation complète de la zone avant toute extraction</li>
+      <li><strong>Opération sous mandat fédéral</strong> — les agents SASP sont déclarés <em>deputized federal officers</em> pour la durée de l'opération, en coordination avec le FBI et la DEA — Réf. FED/WARRANT/2026/CP-0047</li>
+      <li>Transfert sous haute sécurité vers la prison fédérale de Brolin Brook — présentation devant l'US District Court, District de San Andreas</li>
+      <li>Transfert de compétence vers le DOJ de San Andreas et le US District Court, Dist. of San Andreas en vertu de l'Accord FED/SA/2026/TPC-01 — les chefs d'inculpation liés aux infractions commises sur territoire SA seront jugés devant les juridictions de San Andreas (<em>Dual Sovereignty Doctrine</em>)</li>
+      <li>Dossier transmis simultanément au <em>US Attorney for the District of San Andreas</em> (poursuites fédérales — infractions sur Cayo Perico) et au Procureur Général de San Andreas (poursuites étatiques — infractions commises en État SA)</li>
+    </ul>
+  </div>
+
+  <!-- 9. CHEFS D'INCULPATION -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">9</div>
+      <div class="section-title">Chefs d'inculpation retenus</div>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th style="width:32px">N°</th><th>Chef d'inculpation</th><th style="width:120px">Base légale</th><th style="width:180px">Peine encourue</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="chef-num">01</td><td>Association de malfaiteurs — direction du réseau Los Espectros</td><td class="chef-ref">Art. 4-3.5</td><td class="chef-peine">15 ans + $20,000</td></tr>
+        <tr><td class="chef-num">02</td><td>Conspiration — organisation criminelle transnationale</td><td class="chef-ref">Art. 4-4.3</td><td class="chef-peine perp">Réclusion à perpétuité</td></tr>
+        <tr><td class="chef-num">03</td><td>Trafic de stupéfiants en bande organisée (+200 unités — 480 kg cocaïne + 32 kg fentanyl)</td><td class="chef-ref">Art. 4-3.4</td><td class="chef-peine">10 ans + $5,000 × cumul</td></tr>
+        <tr><td class="chef-num">04</td><td>Blanchiment d'argent aggravé (+$59,4M via sociétés-écrans)</td><td class="chef-ref">Art. 4-3.6</td><td class="chef-peine">15 ans + $20,000</td></tr>
+        <tr><td class="chef-num">05</td><td>Trafic d'armes de guerre en bande organisée</td><td class="chef-ref">Art. 4-3.3</td><td class="chef-peine">15 ans + $15,000</td></tr>
+        <tr><td class="chef-num">06</td><td>Possession d'arme de destruction massive (RPG-7 ×3)</td><td class="chef-ref">Art. 4-3.1</td><td class="chef-peine perp">Réclusion à perpétuité</td></tr>
+        <tr><td class="chef-num">07</td><td>Prise d'otage sur agents dépositaires de la fonction publique (COBRA + VIPER)</td><td class="chef-ref">Art. 4-1.6</td><td class="chef-peine">5 ans + $800/otage</td></tr>
+        <tr><td class="chef-num">08</td><td>Meurtre avec préméditation (~40 victimes — civils, informateurs, membres internes)</td><td class="chef-ref">Art. 4-2.2</td><td class="chef-peine perp">Réclusion à perpétuité</td></tr>
+        <tr><td class="chef-num">09</td><td>Homicide sur agents dépositaires de la fonction publique (COBRA, VIPER, Medina Torres)</td><td class="chef-ref">Art. 4-2.1</td><td class="chef-peine perp">Réclusion à perpétuité</td></tr>
+        <tr><td class="chef-num">10</td><td>Possession d'armes illégales catégorie D — armes de guerre (AK-103 ×14 + arsenal)</td><td class="chef-ref">Art. 4-1.2</td><td class="chef-peine">15 ans + $30,000</td></tr>
+        <tr><td class="chef-num">11</td><td>Corruption active de fonctionnaires et douaniers</td><td class="chef-ref">Art. 4-1.4</td><td class="chef-peine">15 ans + $7,000</td></tr>
+        <tr><td class="chef-num">12</td><td>Usurpation d'identité (×11 faux documents — passeports + cartes d'identité)</td><td class="chef-ref">Art. 3-1.4</td><td class="chef-peine">30 min + $2,000 × cumul</td></tr>
+      </tbody>
+    </table>
+    <div class="requete-box">
+      LE MINISTÈRE PUBLIC REQUIERT UNE PEINE DE RÉCLUSION CRIMINELLE À PERPÉTUITÉ INCOMPRESSIBLE
+    </div>
+    <a href="dossiers-victimologiques.html" class="ext-link">→ VOIR DOSSIERS VICTIMOLOGIQUES — Fiches individuelles par homicide documenté</a>
+  </div>
+
+  <!-- 10. TÉMOIGNAGES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div class="section-title">Témoignages et dépositions de sources</div>
+    </div>
+    <p class="prose">Les dépositions suivantes ont été recueillies dans le cadre de l'enquête. Les identités des témoins sont masquées conformément au protocole de protection des sources INTERPOL. Les originaux sont conservés sous scellés (référence : <span style="font-family:'Share Tech Mono',monospace;color:#4a7abf">INTP/SCELL/2026/COT/0047</span>).</p>
+
+    <div style="margin-top:16px;display:flex;flex-direction:column;gap:16px">
+
+      <div style="background:#0a0c10;border:1px solid #1a2640;border-left:3px solid #003087;border-radius:4px;padding:16px 20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#003087;letter-spacing:2px">TÉMOIN A — SOURCE ALPHA-1</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a4f6a">Audition du 12/05/2026 — 14h22</div>
+        </div>
+        <div style="font-size:11px;color:#4a5068;margin-bottom:10px;font-style:italic">Identité : <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 8px;user-select:none;font-style:normal">████████████████</span> — Ancien membre subalterne du réseau, protection judiciaire accordée.</div>
+        <p style="font-size:13px;color:#8a90a0;line-height:1.8;font-style:italic">"Je travaillais pour <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">████ El Verdugo</span> sur les expéditions maritimes. J'ai vu El Fantasma une seule fois, en <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">████████</span> 2023. Il avait ordonné la liquidation d'un groupe concurrent sans la moindre hésitation. Les hommes avaient peur de prononcer son nom à voix haute. Il ne donnait jamais d'ordre directement — tout passait par <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">██████████</span>. Mais tout le monde savait que rien ne se faisait sans lui."</p>
+        <div style="margin-top:10px;font-family:'Share Tech Mono',monospace;font-size:9px;color:#2a3a52">DÉPOSITION AUTHENTIFIÉE — INTP/DEP/A1/2026 — VALEUR PROBANTE : ÉLEVÉE</div>
+      </div>
+
+      <div style="background:#0a0c10;border:1px solid #1a2640;border-left:3px solid #003087;border-radius:4px;padding:16px 20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#003087;letter-spacing:2px">TÉMOIN B — SOURCE BRAVO-4</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a4f6a">Audition du 03/06/2026 — 09h47</div>
+        </div>
+        <div style="font-size:11px;color:#4a5068;margin-bottom:10px;font-style:italic">Identité : <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 8px;user-select:none;font-style:normal">████████████████</span> — Fonctionnaire portuaire, collaboration spontanée.</div>
+        <p style="font-size:13px;color:#8a90a0;line-height:1.8;font-style:italic">"Entre <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">████████</span> 2019 et <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">████████</span> 2022, j'ai reçu des versements mensuels en espèces via un intermédiaire que je connaissais sous le nom de <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">██████</span>. En échange, je laissais passer certains conteneurs sans inspection complète. Je n'avais aucun contact direct avec Montoya, mais les montants ont triplé à partir du moment où j'ai identifié les marchandises comme étant de la cocaïne conditionnée. J'ai compris à ce moment-là que je ne pouvais plus reculer."</p>
+        <div style="margin-top:10px;font-family:'Share Tech Mono',monospace;font-size:9px;color:#2a3a52">DÉPOSITION AUTHENTIFIÉE — INTP/DEP/B4/2026 — VALEUR PROBANTE : TRÈS ÉLEVÉE</div>
+      </div>
+
+      <div style="background:#0a0c10;border:1px solid #1a2640;border-left:3px solid #003087;border-radius:4px;padding:16px 20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#003087;letter-spacing:2px">TÉMOIN C — SOURCE CHARLIE-7</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a4f6a">Audition du 18/06/2026 — 16h05</div>
+        </div>
+        <div style="font-size:11px;color:#4a5068;margin-bottom:10px;font-style:italic">Identité : <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 8px;user-select:none;font-style:normal">████████████████</span> — Voisin de la propriété surveillée, témoin civil.</div>
+        <p style="font-size:13px;color:#8a90a0;line-height:1.8;font-style:italic">"J'ai vu des mouvements inhabituels vers <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">02h00</span> dans la nuit du <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">████████</span>. Plusieurs véhicules noirs, des hommes armés en tenue sombre. J'ai reconnu l'homme que vous m'avez montré sur la photo. Il était debout sur la terrasse, il parlait au téléphone. Il semblait calme, presque détendu. Une heure plus tard, tout était reparti. Il n'y avait plus personne."</p>
+        <div style="margin-top:10px;font-family:'Share Tech Mono',monospace;font-size:9px;color:#2a3a52">DÉPOSITION AUTHENTIFIÉE — INTP/DEP/C7/2026 — VALEUR PROBANTE : MODÉRÉE</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 11. INTERCEPTIONS & RAPPORTS TERRAIN -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">11</div>
+      <div class="section-title">Interceptions téléphoniques et rapports de terrain</div>
+    </div>
+    <p class="prose">Extraits sélectionnés des écoutes actives conduites par l'unité technique INTERPOL en coordination avec le SASP. Les numéros et noms des correspondants sont masqués. Les enregistrements originaux sont archivés sous scellés.</p>
+
+    <div style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
+
+      <div style="background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden">
+        <div style="background:#0d1320;padding:8px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1a2640">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a7abf;letter-spacing:1px">INTERCEPTION N° INTP/ECO/0023 — 19/06/2026 à 23h12</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a4f6a">DURÉE : 4min 37s</span>
+        </div>
+        <div style="padding:14px 16px">
+          <div style="display:grid;grid-template-columns:120px 1fr;gap:8px;font-size:12px">
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">APPELANT</span>
+            <span style="color:#8a90a0"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">+1 (███) ███-████</span> — identifié comme El Fantasma</span>
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">DESTINATAIRE</span>
+            <span style="color:#8a90a0"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">+██ (███) ███-████</span> — El Ingeniero (présumé)</span>
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">EXTRAIT</span>
+            <span style="color:#8a90a0;font-style:italic">"La livraison de <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">████████</span> est confirmée pour vendredi. Assure-toi que <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">██████</span> soit en place avant l'aube. Si ça merde encore une fois, tu sais ce qui arrive."</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden">
+        <div style="background:#0d1320;padding:8px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1a2640">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a7abf;letter-spacing:1px">RAPPORT TERRAIN — AGENT ████████ — 24/06/2026</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a4f6a">SASP / INTERPOL COT</span>
+        </div>
+        <div style="padding:14px 16px;font-size:12px;color:#8a90a0;line-height:1.8">
+          À 14h10, un aéronef privé immatriculé <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">██-███</span> a atterri sur la propriété. Trois individus en sont descendus. Le premier, <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">████████████</span>, est connu de nos services comme intermédiaire financier du réseau. Les deux autres n'ont pas pu être formellement identifiés. L'un d'eux portait une mallette rigide noire. La réunion a duré approximativement <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">██</span> minutes. L'aéronef a décollé en direction du nord-ouest à 17h42.
+        </div>
+      </div>
+
+      <div style="background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden">
+        <div style="background:#0d1320;padding:8px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1a2640">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a7abf;letter-spacing:1px">INTERCEPTION N° INTP/ECO/0031 — 28/06/2026 à 02h14</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a4f6a">DURÉE : 1min 52s</span>
+        </div>
+        <div style="padding:14px 16px">
+          <div style="display:grid;grid-template-columns:120px 1fr;gap:8px;font-size:12px">
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">APPELANT</span>
+            <span style="color:#8a90a0">El Verdugo (confirmé via empreinte vocale)</span>
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">DESTINATAIRE</span>
+            <span style="color:#8a90a0"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">+1 (███) ███-████</span> — non identifié</span>
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">EXTRAIT</span>
+            <span style="color:#8a90a0;font-style:italic">"Il y a du mouvement autour de la propriété. Renforce le périmètre nord avec <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">██</span> hommes supplémentaires. Le patron ne veut pas être surpris. Personne n'entre, personne ne sort sans mon accord."</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <a href="ecoutes-transcription.html" class="ext-link" style="margin-top:16px">→ VOIR TRANSCRIPTIONS COMPLÈTES — Toutes les interceptions + analyses techniques</a>
+  </div>
+
+  <!-- 12. ANALYSE FINANCIÈRE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">12</div>
+      <div class="section-title">Analyse des flux financiers suspects</div>
+    </div>
+    <p class="prose">Synthèse partielle des mouvements financiers attribués au réseau, établie en coopération avec l'Unité de Renseignement Financier. Les montants sont des estimations basses.</p>
+    <table class="data-table" style="margin-top:12px">
+      <thead>
+        <tr><th>Période</th><th>Type d'opération</th><th>Entité</th><th>Montant estimé</th><th>Statut</th></tr>
+      </thead>
+      <tbody>
+        <tr><td style="font-family:'Share Tech Mono',monospace">2019–2021</td><td>Blanchiment immobilier</td><td><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">████████ Corp.</span></td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">~$14,2M</td><td><span class="risk-badge risk-rouge">CONFIRMÉ</span></td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace">2020–2023</td><td>Casino offshore</td><td><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">██████ Entertainment</span></td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">~$8,7M</td><td><span class="risk-badge risk-rouge">CONFIRMÉ</span></td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace">2022–2026</td><td>Sociétés-écrans import/export</td><td><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 6px;user-select:none">███ Trading Ltd.</span></td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">~$31,4M</td><td><span class="risk-badge risk-orange">EN COURS</span></td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace">2024–2026</td><td>Cryptomonnaies non traçables</td><td>Wallets anonymes</td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">~$5,1M</td><td><span class="risk-badge risk-orange">PARTIEL</span></td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px;padding:10px 16px;background:#0e1018;border:1px solid #1a2640;border-left:3px solid #003087;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#4a7abf">
+      TOTAL ESTIMÉ BLANCHI : +$59,4M — Procédure de gel des avoirs en cours auprès du DOJ
+    </div>
+    <div style="margin-top:20px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:#4a7abf;letter-spacing:2px;border-bottom:1px solid #1e2330;padding-bottom:6px;margin-bottom:12px">▸ CERTIFICATION — EXPERT-COMPTABLE JUDICIAIRE</div>
+      <div style="background:#0a0c10;border:1px solid #1e2330;border-radius:4px;overflow:hidden;max-width:620px">
+        <div style="background:#0d1018;padding:10px 18px;border-bottom:1px solid #1e2330;display:flex;justify-content:space-between">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#e8eaf0;letter-spacing:1px">RAPPORT D'EXPERTISE COMPTABLE JUDICIAIRE</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068">CPT/EXP/2026/0034</div>
+        </div>
+        <div style="padding:16px 20px">
+          <div style="display:grid;grid-template-columns:180px 1fr;gap:1px;background:#1e2330;border:1px solid #1e2330;border-radius:3px;overflow:hidden;margin-bottom:14px">
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">EXPERT DÉSIGNÉ</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Dr. <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">████████████████</span> — Expert-comptable judiciaire, inscrit Cour d'appel SA, réf. n° <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">████</span></div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">PÉRIMÈTRE</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Flux financiers attribués au réseau Los Espectros — période 2019–2026</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">SOURCES ANALYSÉES</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Relevés bancaires (14 établissements, 7 pays) · Actes notariés immobiliers · Transactions casino offshore · Pièces à conviction P-004, P-006, P-009</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">MÉTHODE</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Reconstitution des flux par traçage amont-aval — norme FATF/GAFI · Recoupement TRACFIN/DOJ · Analyse des sociétés-écrans par couches successives</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">MONTANT CERTIFIÉ</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:13px;color:#c87d30;font-weight:600">$59 400 000 — chiffre plancher certifié. Montant réel estimé supérieur de 15 à 25 %.</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">CONCLUSION</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Les flux présentent les caractéristiques typiques du blanchiment en bande organisée — stratification multiple, sociétés-écrans, fractionnement. La responsabilité du donneur d'ordre est établie au niveau de direction.</div>
+          </div>
+          <div style="padding:8px 14px;background:#0a100a;border:1px solid #1a2a1a;border-left:3px solid #00a040;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#00a040">
+            ✓ MONTANT CERTIFIÉ OPPOSABLE EN AUDIENCE — Chef 05 (blanchiment aggravé +$59M) pleinement étayé
+          </div>
+          <p style="margin-top:10px;font-size:10px;color:#3a4060;font-family:'Share Tech Mono',monospace">Fait à San Andreas, le 30 juin 2026 — Signature : <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">████████████</span> — Réf. greffe : CPT/EXP/2026/0034</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13. PHOTO DE SURVEILLANCE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">13</div>
+      <div class="section-title">Photo de surveillance — confirmation visuelle</div>
+    </div>
+    <p class="prose">Capture obtenue par l'unité de surveillance INTERPOL positionnée à environ 180 mètres au nord-est de la propriété. Prise de vue nocturne à vision amplifiée, caméra longue portée. Identité confirmée à 94,7 % par reconnaissance biométrique croisée.</p>
+    <div style="background:#030f05;border:1px solid #1a3020;border-radius:4px;overflow:hidden;max-width:640px;margin:16px auto;font-family:'Share Tech Mono',monospace">
+      <div style="background:#020a02;padding:7px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #0a2010">
+        <span style="color:#00cc33;font-size:10px;letter-spacing:1px">CAM-04 // SECTEUR NORD — CAYO PERICO</span>
+        <span style="font-size:10px"><span style="color:#cc3300">● REC</span> <span style="color:#00aa22">01/07/2026 — 19:03:47</span></span>
+      </div>
+      <div style="background:linear-gradient(180deg,#030e04 0%,#020b03 50%,#010701 100%);height:280px;position:relative;overflow:hidden">
+        <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.12) 3px,rgba(0,0,0,0.12) 4px);pointer-events:none;z-index:5"></div>
+        <div style="position:absolute;bottom:0;left:0;right:0;height:90px;background:#010901"></div>
+        <div style="position:absolute;bottom:88px;left:30px;right:30px;height:50px;background:#010a01;border-top:1px solid #0a1a08"></div>
+        <div style="position:absolute;bottom:136px;left:30px;right:30px;height:4px;background:#0a1a08"></div>
+        <div style="position:absolute;bottom:102px;left:50px;width:20px;height:12px;background:rgba(20,40,10,0.8);border:1px solid #1a3010"></div>
+        <div style="position:absolute;bottom:102px;right:50px;width:20px;height:12px;background:rgba(20,40,10,0.6);border:1px solid #1a3010"></div>
+        <div style="position:absolute;bottom:142px;left:50%;transform:translateX(-50%);z-index:3">
+          <div style="width:20px;height:22px;border-radius:50% 50% 40% 40%;background:#091d07;margin:0 auto;border:1px solid #0f3010"></div>
+          <div style="width:30px;height:42px;background:#091d07;margin:0 auto;margin-top:2px;border-radius:4px 4px 2px 2px;border:1px solid #0f3010"></div>
+          <div style="position:absolute;top:24px;left:-12px;width:10px;height:32px;background:#091d07;border-radius:3px;transform:rotate(8deg);border:1px solid #0f3010"></div>
+          <div style="position:absolute;top:24px;right:-12px;width:10px;height:32px;background:#091d07;border-radius:3px;transform:rotate(-8deg);border:1px solid #0f3010"></div>
+        </div>
+        <div style="position:absolute;left:50%;top:128px;transform:translate(-50%,-50%);z-index:4;width:90px;height:90px">
+          <div style="position:absolute;inset:0;border-radius:50%;border:1px solid rgba(0,255,65,0.65)"></div>
+          <div style="position:absolute;top:50%;left:0;width:24%;height:1px;background:rgba(0,255,65,0.65);transform:translateY(-50%)"></div>
+          <div style="position:absolute;top:50%;right:0;width:24%;height:1px;background:rgba(0,255,65,0.65);transform:translateY(-50%)"></div>
+          <div style="position:absolute;left:50%;top:0;height:24%;width:1px;background:rgba(0,255,65,0.65);transform:translateX(-50%)"></div>
+          <div style="position:absolute;left:50%;bottom:0;height:24%;width:1px;background:rgba(0,255,65,0.65);transform:translateX(-50%)"></div>
+          <div style="position:absolute;top:8%;left:8%;width:14px;height:14px;border-top:1px solid rgba(0,255,65,0.8);border-left:1px solid rgba(0,255,65,0.8)"></div>
+          <div style="position:absolute;top:8%;right:8%;width:14px;height:14px;border-top:1px solid rgba(0,255,65,0.8);border-right:1px solid rgba(0,255,65,0.8)"></div>
+          <div style="position:absolute;bottom:8%;left:8%;width:14px;height:14px;border-bottom:1px solid rgba(0,255,65,0.8);border-left:1px solid rgba(0,255,65,0.8)"></div>
+          <div style="position:absolute;bottom:8%;right:8%;width:14px;height:14px;border-bottom:1px solid rgba(0,255,65,0.8);border-right:1px solid rgba(0,255,65,0.8)"></div>
+        </div>
+        <div style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.82);border:1px solid rgba(0,255,65,0.3);padding:8px 12px;z-index:6;font-size:9px;line-height:1.8">
+          <div style="color:#00cc33;letter-spacing:1px;margin-bottom:2px">■ ANALYSE BIOMÉTRIQUE</div>
+          <div style="color:#8aaa80">SUJET  : <span style="color:#c9cdd6">MONTOYA, A.R.</span></div>
+          <div style="color:#8aaa80">ALIAS  : <span style="color:#c87d30">EL FANTASMA</span></div>
+          <div style="color:#8aaa80">SCORE  : <span style="color:#00cc33">94.7 %</span></div>
+          <div style="color:#8aaa80">STATUT : <span style="color:#cc3300">FUGITIF ACTIF</span></div>
+        </div>
+        <div style="position:absolute;top:12px;left:12px;font-size:9px;color:#00aa22;z-index:6;line-height:1.8">
+          <div>SGN ▮▮▮▮▯</div><div>BAT ▮▮▮▯▯</div><div>NVG ON</div>
+        </div>
+        <div style="position:absolute;bottom:10px;left:12px;font-size:9px;color:#00aa22;z-index:6;line-height:1.7">GPS: 18°24'11"N / 66°47'32"W<br>ALT: 12m | AZI: 224°</div>
+        <div style="position:absolute;bottom:10px;right:12px;font-size:9px;color:#00aa22;z-index:6;text-align:right;line-height:1.7">DIST: ~180m | ZOOM: 8x<br>EXP: 1/60s | ISO: 3200</div>
+      </div>
+      <div style="background:#020a02;padding:7px 14px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #0a2010">
+        <span style="color:#4a6a44;font-size:9px">REF: INTP/SURV/CAM04/2026-0701</span>
+        <span style="color:#cc8800;font-size:9px;font-weight:bold">◆ CIBLE IDENTIFIÉE</span>
+        <span style="color:#4a6a44;font-size:9px">OP: ████████</span>
+      </div>
+    </div>
+    <p class="prose" style="text-align:center;font-size:11px;color:#3a4f6a;margin-top:6px">Capture brute archivée — INTP/SURV/CAM04/2026-0701 — Accès niveau SECRET uniquement</p>
+    <div style="margin-top:20px">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a7abf;letter-spacing:2px;margin-bottom:8px">PHOTO TERRAIN — PROPRIÉTÉ PRINCIPALE (DIURNE)</div>
+      <div style="position:relative;border:1px solid #1a2640;border-radius:4px;overflow:hidden">
+        <img src="villa-cayo.jpg" alt="Propriété Cayo Perico" style="width:100%;display:block;filter:brightness(0.85) contrast(1.05) saturate(0.8)">
+        <div style="position:absolute;top:0;left:0;right:0;padding:8px 14px;background:linear-gradient(to bottom,rgba(0,0,0,0.82),transparent);font-family:'Share Tech Mono',monospace;font-size:9px;color:#c87d30;letter-spacing:1px">
+          PHOTO RECONNAISSANCE — PROPRIÉTÉ CIBLE — 27/06/2026 à 15h20 — Agent <span style="background:rgba(0,0,0,0.5);color:transparent;border-radius:1px;padding:0 4px">████████</span>
+        </div>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:8px 14px;background:linear-gradient(to top,rgba(0,0,0,0.82),transparent);font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068">
+          REF: INTP/PHOTO/PROP/2026-0627 — RÉSIDENCE PRINCIPALE CONFIRMÉE — DIFFUSION RESTREINTE
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14. CARTE TACTIQUE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">14</div>
+      <div class="section-title">Carte tactique des zones d'opération</div>
+    </div>
+    <p class="prose">Cartographie établie par l'unité d'analyse géospatiale INTERPOL sur la base des filatures, interceptions et données satellitaires. Les zones de contrôle et routes logistiques sont représentées au meilleur niveau de précision disponible.</p>
+    <svg viewBox="0 0 700 430" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;background:#030912;border:1px solid #1a2640;border-radius:4px;margin-top:12px">
+      <defs>
+        <pattern id="mapgrid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#080e1c" stroke-width="0.5"/>
+        </pattern>
+      </defs>
+      <rect width="700" height="430" fill="url(#mapgrid)"/>
+      <!-- Sea -->
+      <rect width="700" height="430" fill="rgba(0,15,40,0.85)"/>
+      <!-- Main landmass -->
+      <polygon points="195,38 375,18 498,58 558,118 578,198 538,298 478,358 358,378 238,358 158,278 138,178 158,98" fill="#0d180d" stroke="#1a2a18" stroke-width="2"/>
+      <!-- Mountain range -->
+      <polygon points="285,78 315,48 348,78 380,52 412,78 432,98 265,98" fill="#0a1408" stroke="#132010" stroke-width="1"/>
+      <!-- City - LS south -->
+      <rect x="275" y="258" width="118" height="78" rx="3" fill="#0d1a0d" stroke="#1a3018" stroke-width="1"/>
+      <!-- City - Sandy Shores east -->
+      <rect x="428" y="178" width="78" height="58" rx="3" fill="#1a180a" stroke="#2a2810" stroke-width="1"/>
+      <!-- Port area -->
+      <rect x="278" y="316" width="78" height="38" rx="2" fill="#080f10" stroke="#0f2020" stroke-width="1"/>
+      <!-- Cayo Perico island -->
+      <ellipse cx="115" cy="362" rx="55" ry="34" fill="#0d1a0d" stroke="#cf4040" stroke-width="2" stroke-dasharray="5,2"/>
+      <!-- Zone circles -->
+      <circle cx="334" cy="297" r="38" fill="rgba(207,64,64,0.08)" stroke="#cf4040" stroke-width="1" stroke-dasharray="4,2"/>
+      <circle cx="334" cy="297" r="5" fill="#cf4040"/>
+      <circle cx="467" cy="207" r="26" fill="rgba(200,125,48,0.08)" stroke="#c87d30" stroke-width="1" stroke-dasharray="4,2"/>
+      <circle cx="467" cy="207" r="4" fill="#c87d30"/>
+      <circle cx="317" cy="335" r="16" fill="rgba(0,48,135,0.15)" stroke="#003087" stroke-width="1" stroke-dasharray="3,2"/>
+      <circle cx="317" cy="335" r="4" fill="#003087"/>
+      <!-- Cayo Perico HQ pulse circles -->
+      <circle cx="115" cy="362" r="9" fill="#cf4040"/>
+      <circle cx="115" cy="362" r="20" fill="none" stroke="#cf4040" stroke-width="1.5" opacity="0.6"/>
+      <circle cx="115" cy="362" r="32" fill="none" stroke="#cf4040" stroke-width="1" opacity="0.3"/>
+      <!-- Logistic routes -->
+      <line x1="152" y1="354" x2="292" y2="332" stroke="#c87d30" stroke-width="1" stroke-dasharray="7,4" opacity="0.55"/>
+      <line x1="312" y1="322" x2="330" y2="292" stroke="#c87d30" stroke-width="1" stroke-dasharray="7,4" opacity="0.55"/>
+      <line x1="368" y1="295" x2="450" y2="215" stroke="#c87d30" stroke-width="1" stroke-dasharray="7,4" opacity="0.55"/>
+      <!-- Label - Cayo Perico -->
+      <text x="115" y="408" fill="#cf4040" font-family="monospace" font-size="9" text-anchor="middle">★ CAYO PERICO — QG EL FANTASMA</text>
+      <!-- Labels cities -->
+      <text x="334" y="282" fill="#cf4040" font-family="monospace" font-size="8" text-anchor="middle">LOS SANTOS</text>
+      <text x="334" y="293" fill="#7a0000" font-family="monospace" font-size="7" text-anchor="middle">ZONE D'INFLUENCE</text>
+      <text x="467" y="193" fill="#c87d30" font-family="monospace" font-size="8" text-anchor="middle">SANDY SHORES</text>
+      <text x="467" y="203" fill="#6a4800" font-family="monospace" font-size="7" text-anchor="middle">TRANSIT STUPÉFIANTS</text>
+      <text x="317" y="352" fill="#003087" font-family="monospace" font-size="7" text-anchor="middle">PORT / DOUANE</text>
+      <text x="317" y="361" fill="#001a5a" font-family="monospace" font-size="6" text-anchor="middle">CORROMPUE</text>
+      <text x="355" y="70" fill="#1a2a18" font-family="monospace" font-size="7" text-anchor="middle">MONTS CHILLIAD</text>
+      <!-- Top bar -->
+      <rect x="0" y="0" width="700" height="30" fill="rgba(0,0,0,0.85)"/>
+      <text x="12" y="12" fill="#003087" font-family="monospace" font-size="9" font-weight="bold">INTERPOL — CARTE TACTIQUE CLASSIFIÉE</text>
+      <text x="12" y="24" fill="#4a5068" font-family="monospace" font-size="8">SAN ANDREAS — ZONES D'OPÉRATION « LOS ESPECTROS » — V3.2</text>
+      <text x="608" y="12" fill="#4a5068" font-family="monospace" font-size="8">ÉCHELLE 1/250 000</text>
+      <text x="608" y="24" fill="#4a5068" font-family="monospace" font-size="8">REF: INT/CART/SA/2026</text>
+      <!-- Legend box -->
+      <rect x="528" y="178" width="158" height="118" fill="rgba(0,0,0,0.82)" stroke="#1a2640" stroke-width="1" rx="2"/>
+      <text x="538" y="194" fill="#4a5068" font-family="monospace" font-size="8" font-weight="bold">LÉGENDE</text>
+      <circle cx="544" cy="210" r="4" fill="#cf4040"/><text x="554" y="214" fill="#8a90a0" font-family="monospace" font-size="8">QG / Zone de contrôle</text>
+      <circle cx="544" cy="226" r="4" fill="#c87d30"/><text x="554" y="230" fill="#8a90a0" font-family="monospace" font-size="8">Zone de transit drogue</text>
+      <circle cx="544" cy="242" r="4" fill="#003087"/><text x="554" y="246" fill="#8a90a0" font-family="monospace" font-size="8">Infrastructure corrompue</text>
+      <line x1="536" y1="259" x2="552" y2="259" stroke="#c87d30" stroke-width="1" stroke-dasharray="4,2"/><text x="556" y="263" fill="#8a90a0" font-family="monospace" font-size="8">Route logistique</text>
+      <rect x="536" y="270" width="12" height="8" fill="none" stroke="#cf4040" stroke-width="1" stroke-dasharray="3,1" rx="1"/><text x="552" y="278" fill="#8a90a0" font-family="monospace" font-size="8">Périmètre surveillé</text>
+      <!-- Compass -->
+      <g transform="translate(625,80)">
+        <circle cx="0" cy="0" r="20" fill="rgba(0,0,0,0.7)" stroke="#1a2640" stroke-width="1"/>
+        <polygon points="0,-15 3,-5 0,-9 -3,-5" fill="#003087"/>
+        <polygon points="0,15 3,5 0,9 -3,5" fill="#1a2640"/>
+        <polygon points="-15,0 -5,-3 -9,0 -5,3" fill="#1a2640"/>
+        <polygon points="15,0 5,-3 9,0 5,3" fill="#1a2640"/>
+        <text x="0" y="-20" fill="#003087" font-family="monospace" font-size="9" text-anchor="middle">N</text>
+      </g>
+      <!-- Bottom bar -->
+      <rect x="0" y="402" width="700" height="28" fill="rgba(0,0,0,0.85)"/>
+      <text x="12" y="419" fill="#4a5068" font-family="monospace" font-size="8">DOCUMENT CLASSIFIÉ — INTERPOL / SASP SAN ANDREAS — NON DIFFUSABLE SANS AUTORISATION</text>
+    </svg>
+  </div>
+
+  <!-- 15. ALIAS ET FAUSSES IDENTITÉS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">15</div>
+      <div class="section-title">Alias et fausses identités</div>
+    </div>
+    <p class="prose">Identités frauduleuses utilisées par Montoya pour franchir les frontières, signer des contrats immobiliers ou accéder à des services bancaires. La liste ci-dessous est partielle — plusieurs alias supplémentaires restent à confirmer.</p>
+    <table class="data-table" style="margin-top:10px">
+      <thead>
+        <tr><th>Alias utilisé</th><th>Type de document</th><th>Numéro (partiel)</th><th>Pays d'émission</th><th>Période d'usage</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="name-code">José Luis Reyes Vargas</td><td>Passeport</td><td style="font-family:'Share Tech Mono',monospace">MX-<span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">███████</span></td><td>Mexique</td><td>2018–2021</td></tr>
+        <tr><td class="name-code">Carlos Eduardo Fuentes</td><td>Carte d'identité nationale</td><td style="font-family:'Share Tech Mono',monospace">CO-<span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████</span></td><td>Colombie</td><td>2022</td></tr>
+        <tr><td class="name-code">Miguel Ángel Domínguez</td><td>Passeport diplomatique</td><td style="font-family:'Share Tech Mono',monospace">PA-<span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">███████</span></td><td>Panama</td><td>2023</td></tr>
+        <tr><td class="name-code">Roberto Salinas Cruz</td><td>Carte de résident permanent</td><td style="font-family:'Share Tech Mono',monospace"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">██████████</span></td><td>États-Unis</td><td>2024–2025</td></tr>
+        <tr><td class="name-code" style="color:#c87d30">« El Lobo »</td><td>Alias opérationnel interne</td><td style="color:#4a5068">—</td><td>Usage interne cartel</td><td>2019–présent</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px;padding:10px 16px;background:#0e1018;border:1px solid #1a2640;border-left:3px solid #cf4040;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#cf4040">
+      ALERTE : Montoya est susceptible d'utiliser des documents non répertoriés dans cet état. Vérification biométrique obligatoire à l'interpellation.
+    </div>
+  </div>
+
+  <!-- 16. VÉHICULES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">16</div>
+      <div class="section-title">Véhicules et plaques associés</div>
+    </div>
+    <p class="prose">Véhicules régulièrement associés à la cible ou à son escorte rapprochée, identifiés par filature et recoupements de sources.</p>
+    <table class="data-table" style="margin-top:10px">
+      <thead>
+        <tr><th>Type</th><th>Couleur</th><th>Immatriculation</th><th>Description</th><th>Usage</th></tr>
+      </thead>
+      <tbody>
+        <tr><td style="color:#c9cdd6;font-weight:500">SUV blindé</td><td>Noir</td><td style="font-family:'Share Tech Mono',monospace"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">███-███</span>-SA</td><td>Mercedes GLS 600 Guard modifié</td><td>Escorte principale</td></tr>
+        <tr><td style="color:#c9cdd6;font-weight:500">Vedette rapide</td><td>Noir / gris</td><td style="font-family:'Share Tech Mono',monospace"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">██████████</span></td><td>38 pieds, 2 × 300 cv — sans marquage</td><td>Transit maritime prioritaire</td></tr>
+        <tr><td style="color:#c9cdd6;font-weight:500">Hélicoptère privé</td><td>Blanc / bleu</td><td style="font-family:'Share Tech Mono',monospace"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">██</span>-<span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">███</span></td><td>Airbus H135 — immatriculation îles Caïmans</td><td>Transferts rapides inter-îles</td></tr>
+        <tr><td style="color:#c9cdd6;font-weight:500">Camion frigorifique</td><td>Blanc</td><td style="font-family:'Share Tech Mono',monospace"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">██-████</span>-MX</td><td>Iveco Daily — faux compartiment arrière</td><td>Dissimulation de marchandise</td></tr>
+        <tr><td style="color:#c9cdd6;font-weight:500">Berline de liaison</td><td>Grise</td><td style="font-family:'Share Tech Mono',monospace"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">██████████</span></td><td>BMW Série 7 — vitres teintées full</td><td>Déplacements discrets urbains</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 17. PROPRIÉTÉS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">17</div>
+      <div class="section-title">Propriétés et biens immobiliers</div>
+    </div>
+    <p class="prose">Propriétés détenues directement ou via des prête-noms et sociétés-écrans identifiées par l'Unité de Renseignement Financier. Les estimations de valeur sont basées sur les transactions déclarées ; la valeur réelle est probablement supérieure.</p>
+    <table class="data-table" style="margin-top:10px">
+      <thead>
+        <tr><th>Localisation</th><th>Type</th><th>Propriétaire légal</th><th>Valeur estimée</th><th>Rôle</th></tr>
+      </thead>
+      <tbody>
+        <tr><td style="color:#c9cdd6;font-weight:500">Cayo Perico</td><td>Complexe fortifié</td><td style="font-family:'Share Tech Mono',monospace;font-size:11px">Los Espectros LLC</td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">~$8,2M</td><td><span class="risk-badge risk-rouge">QG PRINCIPAL</span></td></tr>
+        <tr><td style="color:#c9cdd6;font-weight:500">LS — Rockford Hills</td><td>Villa résidentielle</td><td style="font-family:'Share Tech Mono',monospace;font-size:11px"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████</span> Invest. SA</td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">~$4,1M</td><td><span class="risk-badge risk-orange">RÉSIDENCE SEC.</span></td></tr>
+        <tr><td style="color:#c9cdd6;font-weight:500">Port de Los Santos</td><td>Entrepôt frigorifique n°7</td><td style="font-family:'Share Tech Mono',monospace;font-size:11px"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">███████</span> Import-Export</td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">~$1,8M</td><td><span class="risk-badge risk-orange">TRANSIT DROGUE</span></td></tr>
+        <tr><td style="color:#c9cdd6;font-weight:500">Paleto Bay</td><td>Ferme isolée</td><td style="font-family:'Share Tech Mono',monospace;font-size:11px"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████████</span></td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">~$0,6M</td><td><span class="risk-badge risk-jaune">CACHE / REPLI</span></td></tr>
+        <tr><td style="color:#c9cdd6;font-weight:500">Sandy Shores</td><td>Entrepôt industriel</td><td style="font-family:'Share Tech Mono',monospace;font-size:11px"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████</span> Distribution LLC</td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">~$0,9M</td><td><span class="risk-badge risk-orange">STOCKAGE ARMES</span></td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px;padding:10px 16px;background:#0e1018;border:1px solid #1a2640;border-left:3px solid #003087;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#4a7abf">
+      Procédure de saisie conservatoire initiée — Réf. DOJ/SAISIE/2026/EF — En attente de validation judiciaire
+    </div>
+  </div>
+
+  <!-- 18. CONNEXIONS INTERNATIONALES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">18</div>
+      <div class="section-title">Connexions internationales</div>
+    </div>
+    <p class="prose">Réseau de partenaires et d'alliés identifiés à l'international, permettant au cartel Los Espectros d'opérer sur plusieurs continents. Ces connexions sont déterminantes dans la chaîne d'approvisionnement et de blanchiment.</p>
+    <table class="data-table" style="margin-top:10px">
+      <thead>
+        <tr><th>Entité / Contact</th><th>Pays</th><th>Type de relation</th><th>Statut</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="name-code">Cartel de Sinaloa</td><td>Mexique</td><td>Fournisseur exclusif — cocaïne brute</td><td><span class="risk-badge risk-rouge">ALLIANCE ACTIVE</span></td></tr>
+        <tr><td class="name-code">Clan del Golfo</td><td>Colombie</td><td>Partenaire transit maritime Atlantique</td><td><span class="risk-badge risk-rouge">ACTIF</span></td></tr>
+        <tr><td class="name-code"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████</span> Syndicate</td><td>Hong Kong / Macao</td><td>Blanchiment via casinos offshore et cryptomonnaies</td><td><span class="risk-badge risk-rouge">ACTIF</span></td></tr>
+        <tr><td class="name-code"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">███████████</span> Camorra</td><td>Italie (Naples)</td><td>Distribution réseau européen — fentanyl</td><td><span class="risk-badge risk-orange">PARTIEL</span></td></tr>
+        <tr><td class="name-code">Réseau <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████</span></td><td>Moyen-Orient</td><td>Approvisionnement précurseurs chimiques</td><td><span class="risk-badge risk-orange">EN COURS D'ÉVALUATION</span></td></tr>
+        <tr><td class="name-code" style="color:#c87d30"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████████</span>, dir. douanes</td><td>Port de Los Santos</td><td>Facilitateur — laissez-passer conteneurs</td><td><span class="risk-badge risk-jaune">NEUTRALISÉ — EN DÉTENTION</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 19. NOTICE ROUGE INTERPOL -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">19</div>
+      <div class="section-title">Notice rouge INTERPOL — mandat d'arrêt international</div>
+    </div>
+    <p class="prose">Document officiel émis par le Secrétariat général INTERPOL à la demande du SASP et du Department of Justice. Valide dans les 195 pays membres de l'organisation.</p>
+
+    <div style="background:#0a0c10;border:2px solid #8a0000;border-radius:4px;overflow:hidden;max-width:620px;margin:16px auto;font-family:'Inter',sans-serif">
+      <!-- Red header -->
+      <div style="background:#8a0000;padding:10px 20px;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:14px">
+          <img src="logo-interpol.jpg" alt="INTERPOL" style="width:36px;height:36px;object-fit:contain;filter:brightness(10)">
+          <div>
+            <div style="color:#fff;font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;letter-spacing:3px">INTERPOL</div>
+            <div style="color:rgba(255,255,255,0.75);font-size:9px;letter-spacing:2px;font-family:'Share Tech Mono',monospace">NOTICE ROUGE / RED NOTICE</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="color:#fff;font-family:'Share Tech Mono',monospace;font-size:11px">RN-2026/A-15487</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:9px;font-family:'Share Tech Mono',monospace">ÉMISE LE 28/06/2026</div>
+        </div>
+      </div>
+
+      <!-- Notice body -->
+      <div style="padding:20px 24px">
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:13px;color:#8a0000;letter-spacing:3px;font-weight:700">NOTICE DIFFUSÉE AUX 195 PAYS MEMBRES</div>
+          <div style="font-size:11px;color:#4a5068;margin-top:4px;font-family:'Share Tech Mono',monospace">DEMANDE D'ARRESTATION PROVISOIRE ET D'EXTRADITION</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#1e2330;border:1px solid #1e2330;border-radius:3px;overflow:hidden;margin-bottom:16px">
+          <div style="background:#0e1018;padding:9px 14px"><div style="font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:3px">NOM DE FAMILLE</div><div style="color:#e8eaf0;font-weight:600;font-size:14px">MONTOYA SALCEDO</div></div>
+          <div style="background:#0a0c10;padding:9px 14px"><div style="font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:3px">PRÉNOM(S)</div><div style="color:#e8eaf0;font-weight:600;font-size:14px">Alejandro Ricardo</div></div>
+          <div style="background:#0a0c10;padding:9px 14px"><div style="font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:3px">DATE DE NAISSANCE</div><div style="color:#c9cdd6;font-size:13px">14/03/1979 (estimée)</div></div>
+          <div style="background:#0e1018;padding:9px 14px"><div style="font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:3px">NATIONALITÉ</div><div style="color:#c9cdd6;font-size:13px">Mexicaine</div></div>
+          <div style="background:#0e1018;padding:9px 14px"><div style="font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:3px">ALIAS PRINCIPAL</div><div style="color:#c87d30;font-style:italic;font-size:13px">« El Fantasma »</div></div>
+          <div style="background:#0a0c10;padding:9px 14px"><div style="font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-bottom:3px">LANGUE(S)</div><div style="color:#c9cdd6;font-size:13px">Espagnol, Anglais (limité)</div></div>
+        </div>
+
+        <div style="background:#1a0808;border:1px solid #5a1010;border-radius:3px;padding:12px 16px;margin-bottom:16px">
+          <div style="font-size:10px;color:#8a0000;font-family:'Share Tech Mono',monospace;letter-spacing:2px;margin-bottom:6px">INFRACTIONS RETENUES</div>
+          <ul style="list-style:none;margin:0;padding:0">
+            <li style="color:#c9cdd6;font-size:12px;padding:3px 0;padding-left:16px;position:relative">
+              <span style="position:absolute;left:0;color:#8a0000">▸</span> Trafic international de stupéfiants en bande organisée
+            </li>
+            <li style="color:#c9cdd6;font-size:12px;padding:3px 0;padding-left:16px;position:relative">
+              <span style="position:absolute;left:0;color:#8a0000">▸</span> Direction d'organisation criminelle transnationale
+            </li>
+            <li style="color:#c9cdd6;font-size:12px;padding:3px 0;padding-left:16px;position:relative">
+              <span style="position:absolute;left:0;color:#8a0000">▸</span> Assassinats avec préméditation (multiple), enlèvements
+            </li>
+            <li style="color:#c9cdd6;font-size:12px;padding:3px 0;padding-left:16px;position:relative">
+              <span style="position:absolute;left:0;color:#8a0000">▸</span> Blanchiment aggravé (+$59M estimés) et corruption
+            </li>
+          </ul>
+        </div>
+
+        <div style="text-align:center;padding:10px;background:#1a0808;border-radius:3px;border:1px solid #5a1010">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:18px;color:#cc2222;font-weight:700;letter-spacing:2px">⚠ SUJET EXTRÊMEMENT DANGEREUX</div>
+          <div style="font-size:11px;color:#8a4040;margin-top:4px;font-family:'Share Tech Mono',monospace">N'APPROCHEZ PAS SANS RENFORTS ARMÉS — NEUTRALISATION AUTORISÉE EN CAS DE RÉSISTANCE</div>
+        </div>
+
+        <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:flex-end">
+          <div style="font-size:10px;color:#3a4060;font-family:'Share Tech Mono',monospace;line-height:1.8">
+            PAYS DEMANDEURS : SAN ANDREAS (SASP) / DOJ<br>
+            PAYS MEMBRES ALERTÉS : 195<br>
+            VALIDITÉ : 5 ans — renouvelable
+          </div>
+          <div style="text-align:right;font-size:10px;color:#3a4060;font-family:'Share Tech Mono',monospace;line-height:1.8">
+            Secrétariat Général INTERPOL<br>
+            Lyon, 28 juin 2026<br>
+            Réf. RN-2026/A-15487
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 20. RAPPORT D'AUTOPSIE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">20</div>
+      <div class="section-title">Rapport d'autopsie — associé neutralisé</div>
+    </div>
+    <p class="prose">Document transmis par le Bureau médico-légal de San Andreas suite à la découverte d'un corps identifié comme un lieutenant du réseau Los Espectros. Ce rapport constitue une pièce à charge directe contre Montoya, dont la responsabilité dans cet homicide est fortement présumée.</p>
+
+    <div style="background:#0a0c0e;border:1px solid #1e2330;border-radius:4px;overflow:hidden;max-width:620px;margin:16px auto">
+      <!-- Header -->
+      <div style="background:#0d1018;border-bottom:1px solid #1e2330;padding:12px 20px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#e8eaf0;letter-spacing:2px">BUREAU MÉDICO-LÉGAL</div>
+          <div style="font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace;letter-spacing:1px">SAN ANDREAS — DÉPARTEMENT DE JUSTICE</div>
+        </div>
+        <div style="text-align:right;font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068;line-height:1.8">
+          RAPPORT N° ML-2026-0619-047<br>
+          DATE : 19/06/2026
+        </div>
+      </div>
+      <div style="padding:20px 24px">
+        <!-- Identity of deceased -->
+        <div style="margin-bottom:16px">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#003087;letter-spacing:2px;margin-bottom:8px">IDENTITÉ DU DÉFUNT</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#1e2330;border:1px solid #1e2330;border-radius:3px;overflow:hidden">
+            <div style="background:#0e1018;padding:8px 14px"><div style="font-size:10px;color:#3a4060;font-family:'Share Tech Mono',monospace;margin-bottom:2px">NOM</div><div style="color:#c9cdd6;font-size:13px">Ricardo Herrera Villanueva</div></div>
+            <div style="background:#0a0c10;padding:8px 14px"><div style="font-size:10px;color:#3a4060;font-family:'Share Tech Mono',monospace;margin-bottom:2px">ALIAS</div><div style="color:#c87d30;font-size:13px;font-style:italic">« El Chivo »</div></div>
+            <div style="background:#0a0c10;padding:8px 14px"><div style="font-size:10px;color:#3a4060;font-family:'Share Tech Mono',monospace;margin-bottom:2px">ÂGE</div><div style="color:#c9cdd6;font-size:13px">38 ans (estimé)</div></div>
+            <div style="background:#0e1018;padding:8px 14px"><div style="font-size:10px;color:#3a4060;font-family:'Share Tech Mono',monospace;margin-bottom:2px">DÉCOUVERTE</div><div style="color:#c9cdd6;font-size:13px">Paleto Bay — berge nord, 04h15</div></div>
+          </div>
+        </div>
+        <!-- Findings -->
+        <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#003087;letter-spacing:2px;margin-bottom:8px">CONCLUSIONS MÉDICO-LÉGALES</div>
+        <ul class="bullet-list">
+          <li><strong style="color:#c9cdd6">Cause du décès :</strong> Trois impacts de projectile — 2× thorax, 1× crâne (tir de grâce). Mort quasi-instantanée.</li>
+          <li><strong style="color:#c9cdd6">Arme utilisée :</strong> Calibre .45 ACP — douilles récupérées sur site. Compatibles avec armement cartel.</li>
+          <li><strong style="color:#c9cdd6">Heure estimée :</strong> Entre 22h00 et 23h30 le 18/06/2026.</li>
+          <li><strong style="color:#c9cdd6">Traces de liens :</strong> Marques de ligature aux poignets et aux chevilles — victime séquestrée avant exécution.</li>
+          <li><strong style="color:#c9cdd6">Tatouage identifiant :</strong> Tête de mort stylisée Los Espectros sur l'avant-bras gauche.</li>
+          <li><strong style="color:#c9cdd6">Éléments retrouvés :</strong> Téléphone chiffré (déverrouillé en cours), 4 200 USD en liquide, document chiffré non identifié.</li>
+        </ul>
+        <!-- Analysis -->
+        <div style="margin-top:14px;background:#0d1018;border:1px solid #1e2330;border-left:3px solid #cf4040;border-radius:3px;padding:12px 16px">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#cf4040;letter-spacing:1px;margin-bottom:6px">ANALYSE CRIMINOLOGIQUE</div>
+          <p style="font-size:12px;color:#8a90a0;line-height:1.8">El Chivo occupait le poste de coordinateur logistique des expéditions maritimes. Son exécution survient 48h après le rapport de terrain du 17/06 signalant un possible soupçon de trahison interne. La méthode (séquestration + tir de grâce) correspond au modus operandi documenté des représailles internes ordonnées par <span style="color:#c9cdd6">MONTOYA</span>. L'absence de mise en scène suggère un message volontairement envoyé aux membres du réseau.</p>
+        </div>
+        <div style="margin-top:12px;display:flex;justify-content:space-between;font-size:10px;color:#3a4060;font-family:'Share Tech Mono',monospace">
+          <span>Médecin légiste : Dr. <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">████████████</span></span>
+          <span>Dossier transmis INTERPOL — Réf. INTP/ML/2026/047</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 21. SAISIES ET PREUVES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">21</div>
+      <div class="section-title">Saisies et preuves matérielles</div>
+    </div>
+    <p class="prose">Éléments saisis lors des opérations menées contre le réseau Los Espectros entre 2024 et 2026. Chaque pièce est placée sous scellé judiciaire et répertoriée dans le dossier pénal principal (réf. DOJ/PÉNAL/2026/EF).</p>
+    <table class="data-table" style="margin-top:10px">
+      <thead>
+        <tr><th style="width:60px">Réf.</th><th>Description</th><th>Lieu de saisie</th><th>Date</th><th>Valeur probante</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="chef-num">P-001</td><td>480 kg de cocaïne conditionnée en briques — marquage « LE » (Los Espectros)</td><td>Entrepôt portuaire n°7</td><td style="font-family:'Share Tech Mono',monospace">04/02/2024</td><td><span class="risk-badge risk-rouge">CRITIQUE</span></td></tr>
+        <tr><td class="chef-num">P-002</td><td>32 kg de fentanyl synthétique en poudre — emballage sous vide</td><td>Ferme de Paleto Bay</td><td style="font-family:'Share Tech Mono',monospace">17/09/2024</td><td><span class="risk-badge risk-rouge">CRITIQUE</span></td></tr>
+        <tr><td class="chef-num">P-003</td><td>Armement : 14 fusils d'assaut (AK-103), 6 pistolets, 3 Lance-roquettes RPG-7, 40 000 munitions</td><td>Cache Cayo Perico nord</td><td style="font-family:'Share Tech Mono',monospace">11/01/2025</td><td><span class="risk-badge risk-rouge">CRITIQUE</span></td></tr>
+        <tr><td class="chef-num">P-004</td><td>$2,3M en espèces, billets de 100 USD — traces de cocaïne confirmées</td><td>Villa Rockford Hills (coffre)</td><td style="font-family:'Share Tech Mono',monospace">03/03/2025</td><td><span class="risk-badge risk-rouge">CRITIQUE</span></td></tr>
+        <tr><td class="chef-num">P-005</td><td>8 téléphones chiffrés — 3 partiellement décryptés, communications cartel</td><td>Opération Paleto Bay</td><td style="font-family:'Share Tech Mono',monospace">19/06/2026</td><td><span class="risk-badge risk-orange">ÉLEVÉE</span></td></tr>
+        <tr><td class="chef-num">P-006</td><td>Registres comptables manuscrits — flux financiers 2021–2024, noms codés</td><td>Entrepôt Sandy Shores</td><td style="font-family:'Share Tech Mono',monospace">22/06/2026</td><td><span class="risk-badge risk-rouge">CRITIQUE</span></td></tr>
+        <tr><td class="chef-num">P-007</td><td>Passeports et cartes d'identité falsifiés (×11) — dont alias Montoya confirmés</td><td>Villa Rockford Hills</td><td style="font-family:'Share Tech Mono',monospace">03/03/2025</td><td><span class="risk-badge risk-rouge">CRITIQUE</span></td></tr>
+        <tr><td class="chef-num">P-008</td><td>Ordinateur portable chiffré — clé de déchiffrement obtenue during the investigation</td><td>Ferme de Paleto Bay</td><td style="font-family:'Share Tech Mono',monospace">19/06/2026</td><td><span class="risk-badge risk-orange">ÉLEVÉE</span></td></tr>
+        <tr><td class="chef-num">P-009</td><td>Contrats immobiliers via sociétés-écrans — liens confirmés avec La Contadora</td><td>Entrepôt portuaire n°7</td><td style="font-family:'Share Tech Mono',monospace">04/02/2024</td><td><span class="risk-badge risk-orange">ÉLEVÉE</span></td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px;padding:10px 16px;background:#0e1018;border:1px solid #1a2640;border-left:3px solid #003087;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#4a7abf">
+      TOTAL : 9 pièces à conviction majeures — Conservées sous scellés judiciaires DOJ/SASP — Salle des preuves B3
+    </div>
+  </div>
+
+  <!-- 22. PROFIL PSYCHOLOGIQUE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">22</div>
+      <div class="section-title">Profil psychologique — analyse comportementale</div>
+    </div>
+    <p class="prose">Analyse établie par l'Unité des Sciences du Comportement d'INTERPOL (USC/COT) à partir des dépositions de sources, des écoutes, des observations de terrain et des antécédents documentés. Ce profil est destiné à guider la stratégie d'approche lors de l'interpellation.</p>
+    <div style="background:#0a0c10;border:1px solid #1e2330;border-left:3px solid #4a7abf;border-radius:4px;padding:10px 16px;margin-bottom:18px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068">
+      CLASSIFICATION USC/COT — RÉSERVÉ ÉQUIPE OPÉRATIONNELLE — Réf. INTP/PSY/2026/EF-004
+    </div>
+
+    <div style="margin-bottom:20px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#4a7abf;letter-spacing:2px;border-bottom:1px solid #1e2330;padding-bottom:6px;margin-bottom:12px">▸ STRUCTURE DE PERSONNALITÉ</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:#0a0c10;border:1px solid #1e2330;border-radius:3px;padding:12px 16px">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a7abf;letter-spacing:1px;margin-bottom:8px">DIAGNOSTIC PRÉSUMÉ</div>
+          <ul class="bullet-list" style="margin:0">
+            <li>Personnalité antisociale sévère</li>
+            <li>Traits psychopathiques marqués (PCL-R estimé : 28–34/40)</li>
+            <li>Narcissisme grandiose — besoin de statut absolu</li>
+            <li>Affect plat en situation de violence — absence d'empathie confirmée</li>
+          </ul>
+        </div>
+        <div style="background:#0a0c10;border:1px solid #1e2330;border-radius:3px;padding:12px 16px">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a7abf;letter-spacing:1px;margin-bottom:8px">TRAITS DOMINANTS</div>
+          <ul class="bullet-list" style="margin:0">
+            <li>Intelligence analytique supérieure à la moyenne</li>
+            <li>Patience stratégique — capacité à attendre des années</li>
+            <li>Charisme froid — loyal à ses intérêts uniquement</li>
+            <li>Contrôle émotionnel exceptionnel en public</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#4a7abf;letter-spacing:2px;border-bottom:1px solid #1e2330;padding-bottom:6px;margin-bottom:12px">▸ STYLE DE COMMANDEMENT</div>
+      <p class="prose">Montoya dirige par <strong style="color:#c9cdd6">la peur et la récompense</strong>, jamais par idéologie. Son autorité repose sur l'imprévisibilité calculée : ses subordonnés ne savent jamais ce qui déclenchera une représaille, ce qui génère une loyauté par défaut.</p>
+      <ul class="bullet-list">
+        <li><strong style="color:#c9cdd6">Cloisonnement total :</strong> aucun subordonné ne connaît l'ensemble de l'organisation — chaque cellule ignore les autres.</li>
+        <li><strong style="color:#c9cdd6">Délégation calculée :</strong> confie l'exécution, jamais la décision. Les chefs intermédiaires ont de l'autonomie tactique, zéro autonomie stratégique.</li>
+        <li><strong style="color:#c9cdd6">Punition exemplaire :</strong> chaque trahison connue est punie de façon visible pour avertir le réseau (cf. rapport autopsie El Chivo — section 20).</li>
+        <li><strong style="color:#c9cdd6">Loyauté testée :</strong> les nouvelles recrues sont contraintes de commettre un acte irréversible pour brûler les ponts et assurer leur silence.</li>
+      </ul>
+    </div>
+
+    <div style="margin-bottom:20px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#cf4040;letter-spacing:2px;border-bottom:1px solid #1e2330;padding-bottom:6px;margin-bottom:12px">▸ DÉCLENCHEURS DE VIOLENCE</div>
+      <table class="data-table">
+        <thead><tr><th>Déclencheur</th><th>Description</th><th>Réponse typique</th><th>Niveau</th></tr></thead>
+        <tbody>
+          <tr><td style="color:#c9cdd6;font-weight:500">Trahison perçue</td><td>Tout comportement interprété comme une disloyauté, même infondée</td><td>Exécution immédiate, sans procès interne</td><td><span class="risk-badge risk-rouge">MAXIMAL</span></td></tr>
+          <tr><td style="color:#c9cdd6;font-weight:500">Perte de contrôle opérationnel</td><td>Arrestation d'un membre, livraison perturbée</td><td>Représailles sur les responsables + paranoïa renforcée</td><td><span class="risk-badge risk-rouge">ÉLEVÉ</span></td></tr>
+          <tr><td style="color:#c9cdd6;font-weight:500">Humiliation publique</td><td>Être contredit ou sous-estimé devant des tiers</td><td>Réaction différée — revanche froide et disproportionnée</td><td><span class="risk-badge risk-rouge">ÉLEVÉ</span></td></tr>
+          <tr><td style="color:#c9cdd6;font-weight:500">Menace sur son cercle intime</td><td>Action contre sa famille ou ses proches directs</td><td>Escalade immédiate — réponse totale, sans négociation</td><td><span class="risk-badge risk-rouge">MAXIMAL</span></td></tr>
+          <tr><td style="color:#c9cdd6;font-weight:500">Tentative d'arrestation directe</td><td>Approche des forces de l'ordre sur sa personne</td><td>Usage de boucliers humains, fuite prioritaire</td><td><span class="risk-badge risk-orange">MODÉRÉ–ÉLEVÉ</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-bottom:8px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#00a040;letter-spacing:2px;border-bottom:1px solid #1e2330;padding-bottom:6px;margin-bottom:12px">▸ FAILLES EXPLOITABLES</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="background:#0a100a;border:1px solid #1a2a1a;border-left:3px solid #00a040;border-radius:3px;padding:12px 16px">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#00a040;margin-bottom:6px">FAILLE 01 — PARANOÏA CHRONIQUE</div>
+          <p style="font-size:12px;color:#8a90a0;line-height:1.8">Sa méfiance pathologique le pousse à voir des traîtres partout. L'introduction de fausses informations ciblées dans son réseau peut déclencher des purges internes, fragilisant l'organisation de l'intérieur. <strong style="color:#c9cdd6">Recommandation : opération de désinformation contrôlée.</strong></p>
+        </div>
+        <div style="background:#0a100a;border:1px solid #1a2a1a;border-left:3px solid #00a040;border-radius:3px;padding:12px 16px">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#00a040;margin-bottom:6px">FAILLE 02 — BESOIN DE CONTRÔLE DIRECT</div>
+          <p style="font-size:12px;color:#8a90a0;line-height:1.8">Malgré le cloisonnement, Montoya exige d'être informé personnellement des opérations majeures. Cette centralisation crée une dépendance à ses canaux de communication — point d'interception privilégié. Les écoutes actives exploitent déjà cette faille (cf. section 11).</p>
+        </div>
+        <div style="background:#0a100a;border:1px solid #1a2a1a;border-left:3px solid #00a040;border-radius:3px;padding:12px 16px">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#00a040;margin-bottom:6px">FAILLE 03 — ATTACHEMENT À UN CERCLE TRÈS RESTREINT</div>
+          <p style="font-size:12px;color:#8a90a0;line-height:1.8">Montoya maintient un lien de protection avec un entourage immédiat non identifié — probablement familial. Ce lien constitue le seul vecteur émotionnel documenté. Une pression sur ce cercle pourrait être utilisée en négociation lors d'une reddition, si la capture vivante est prioritaire.</p>
+        </div>
+        <div style="background:#0a100a;border:1px solid #1a2a1a;border-left:3px solid #00a040;border-radius:3px;padding:12px 16px">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#00a040;margin-bottom:6px">FAILLE 04 — ROUTINE ET SENTIMENT DE SÉCURITÉ</div>
+          <p style="font-size:12px;color:#8a90a0;line-height:1.8">Malgré son statut de fugitif, Montoya a établi des routines prévisibles sur la propriété de Cayo Perico — sortie sur la terrasse en soirée confirmée (cf. capture CAM-04, 19h03). Ce sentiment de sécurité dans son fief crée une fenêtre d'intervention à faible résistance initiale.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;padding:10px 16px;background:#0e1018;border:1px solid #1e2330;border-left:3px solid #4a7abf;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#4a5068">
+      Profil validé par l'USC/INTERPOL — Psychologue criminaliste Sr. <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">█████████████</span> — Ce profil est une synthèse opérationnelle et ne constitue pas un diagnostic clinique certifié.
+    </div>
+  </div>
+
+  <!-- 23. RAPPORT AGENT INFILTRÉ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">23</div>
+      <div class="section-title">Rapport d'agent infiltré — opération SOMBRA</div>
+    </div>
+    <p class="prose">Rapport de mission rédigé à l'issue d'une infiltration de 9 semaines au sein du réseau Los Espectros. L'agent, opérant sous couverture en tant que coordinateur logistique, a intégré l'échelon intermédiaire du cartel. Son identité est protégée sous le protocole INTP/COVER/OMEGA.</p>
+    <div style="background:#0a0c10;border:1px solid #2a1a00;border-left:3px solid #c87d30;border-radius:4px;padding:10px 16px;margin-bottom:20px;font-family:'Share Tech Mono',monospace;font-size:10px">
+      <span style="color:#c87d30">OPÉRATION SOMBRA</span><span style="color:#4a5068"> — DURÉE : 9 semaines (12/04/2026 → 15/06/2026) — AGENT : </span><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████████</span><span style="color:#4a5068"> — GRADE : </span><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <div style="background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden">
+        <div style="background:#0d1018;padding:8px 16px;border-bottom:1px solid #1a2640;display:flex;justify-content:space-between">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a7abf;letter-spacing:1px">ENTRÉE EN COUVERTURE — SEMAINE 1</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a4f6a">14/04/2026</span>
+        </div>
+        <div style="padding:14px 18px">
+          <p style="font-size:13px;color:#8a90a0;line-height:1.9;font-style:italic">"Premier contact établi via l'intermédiaire <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 5px;user-select:none">████████</span> à Sandy Shores. Couverture : ancien chauffeur de camion frigorifique, sans antécédents judiciaires, recommandé par une source locale. L'entretien a duré vingt minutes. On m'a posé des questions sur mes convictions, mes dettes, mes liens familiaux. Ils cherchaient quelqu'un d'isolé et sans attaches. J'ai décroché le poste."</p>
+        </div>
+      </div>
+
+      <div style="background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden">
+        <div style="background:#0d1018;padding:8px 16px;border-bottom:1px solid #1a2640;display:flex;justify-content:space-between">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a7abf;letter-spacing:1px">ORGANISATION INTERNE — SEMAINE 3</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a4f6a">28/04/2026</span>
+        </div>
+        <div style="padding:14px 18px">
+          <p style="font-size:13px;color:#8a90a0;line-height:1.9;font-style:italic">"Le réseau est beaucoup plus discipliné que prévu. Aucun nom réel entre membres — uniquement les alias. Personne ne parle de El Fantasma directement. On dit 'le patron' ou rien du tout. J'ai compté au moins douze hommes armés rien que pour le secteur de Sandy Shores. Les rotations de gardes changent sans préavis — pensé pour contrer toute surveillance extérieure. Les livraisons se font de nuit, toujours."</p>
+        </div>
+      </div>
+
+      <div style="background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden">
+        <div style="background:#0d1018;padding:8px 16px;border-bottom:1px solid #1a2640;display:flex;justify-content:space-between">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a7abf;letter-spacing:1px">PREMIER CONTACT AVEC EL VERDUGO — SEMAINE 5</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a4f6a">12/05/2026</span>
+        </div>
+        <div style="padding:14px 18px">
+          <p style="font-size:13px;color:#8a90a0;line-height:1.9;font-style:italic">"On m'a conduit sur la propriété de Paleto Bay. El Verdugo était là — grand, environ 40 ans, cicatrice sur la joue droite. Il ne m'a pas adressé la parole directement. Il m'a observé pendant tout le déchargement. J'ai su à ce moment-là que j'étais en phase de test. Toute hésitation et c'était terminé. J'ai gardé le rythme. Il est reparti sans un mot."</p>
+        </div>
+      </div>
+
+      <div style="background:#0a0c10;border:1px solid #2a1500;border-radius:4px;overflow:hidden">
+        <div style="background:#120d00;padding:8px 16px;border-bottom:1px solid #2a1500;display:flex;justify-content:space-between">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#c87d30;letter-spacing:1px">DÉCOUVERTE MAJEURE — SEMAINE 7</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#5a3a10">28/05/2026</span>
+        </div>
+        <div style="padding:14px 18px">
+          <p style="font-size:13px;color:#8a90a0;line-height:1.9;font-style:italic">"J'ai eu accès à une réunion de second niveau — par erreur, semble-t-il. Quatre hommes, registres manuscrits, chiffres en milliers. J'ai compris qu'une livraison exceptionnelle était prévue début juillet — environ <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 5px;user-select:none">██</span> kg par voie maritime, point de drop à <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 5px;user-select:none">████████████</span>. J'ai transmis par canal sécurisé cette nuit-là. C'est la donnée la plus importante de toute la mission."</p>
+        </div>
+      </div>
+
+      <div style="background:#0a0c10;border:1px solid #2a0a0a;border-radius:4px;overflow:hidden">
+        <div style="background:#120808;padding:8px 16px;border-bottom:1px solid #2a0a0a;display:flex;justify-content:space-between">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#cf4040;letter-spacing:1px">EXFILTRATION D'URGENCE — SEMAINE 9</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#5a1a1a">14/06/2026</span>
+        </div>
+        <div style="padding:14px 18px">
+          <p style="font-size:13px;color:#8a90a0;line-height:1.9;font-style:italic">"El Chivo avait commencé à poser des questions sur mes trajets. Il me regardait différemment. Deux jours plus tard, son corps a été retrouvé. J'avais demandé l'exfiltration immédiate dès le premier signe. L'extraction s'est faite à <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 5px;user-select:none">02h14</span> par voie maritime, point <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:1px 5px;user-select:none">█████</span>. Je suis convaincu que ma couverture n'a pas été compromise — mais je ne le saurai jamais avec certitude."</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="background:#0a100a;border:1px solid #1a2a1a;border-left:3px solid #00a040;border-radius:3px;padding:12px 16px">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#00a040;margin-bottom:6px">INFORMATIONS VALIDÉES</div>
+        <ul class="bullet-list" style="margin:0">
+          <li>Présence de Montoya confirmée à Cayo Perico</li>
+          <li>Route maritime de livraison — juillet 2026</li>
+          <li>Identité probable de El Verdugo (signalement physique)</li>
+          <li>Existence d'une cellule financière distincte à LS</li>
+        </ul>
+      </div>
+      <div style="background:#100a0a;border:1px solid #2a1a1a;border-left:3px solid #cf4040;border-radius:3px;padding:12px 16px">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#cf4040;margin-bottom:6px">ÉLÉMENTS NON CONFIRMÉS</div>
+        <ul class="bullet-list" style="margin:0">
+          <li>Identité réelle de La Contadora</li>
+          <li>Localisation du stock principal de fentanyl</li>
+          <li>Contacts politiques présumés du réseau</li>
+          <li>Volume exact de la livraison juillet</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;padding:10px 16px;background:#0e1018;border:1px solid #1e2330;border-left:3px solid #c87d30;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#4a5068">
+      Rapport validé par le coordinateur de mission — Réf. INTP/OP/SOMBRA/2026 — ACCÈS RESTREINT — 3 personnes autorisées
+    </div>
+  </div>
+
+  <!-- 24. ACTES PROCÉDURAUX -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">24</div>
+      <div class="section-title">Actes et ordonnances procéduraux</div>
+    </div>
+    <p class="prose">Documents judiciaires encadrant légalement les opérations d'enquête, les saisies et la protection des sources. Ces actes conditionnent la recevabilité des preuves et témoignages en audience correctionnelle ou criminelle.</p>
+
+    <!-- MANDATS DE PERQUISITION -->
+    <div style="margin-bottom:22px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#4a7abf;letter-spacing:2px;border-bottom:1px solid #1e2330;padding-bottom:6px;margin-bottom:12px">▸ MANDATS DE PERQUISITION — TABLEAU RÉCAPITULATIF</div>
+      <p class="prose" style="margin-bottom:10px">Chaque saisie est rattachée à un mandat délivré par un Federal Judge indépendant conformément au Federal Rules of Criminal Procedure. Les originaux sont versés au dossier pénal principal (DOJ/PÉNAL/2026/EF).</p>
+      <table class="data-table">
+        <thead>
+          <tr><th>N° Mandat</th><th>Délivré le</th><th>Juge signataire</th><th>Bien visé</th><th>Pièces issues</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name-code" style="font-size:11px">MP-2024-SA-0201</td><td style="font-family:'Share Tech Mono',monospace">01/02/2024</td><td style="font-family:'Share Tech Mono',monospace">Hon. Claire Beaumont</td><td>Entrepôt portuaire n°7 — LS</td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">P-001, P-009</td></tr>
+          <tr><td class="name-code" style="font-size:11px">MP-2024-SA-0915</td><td style="font-family:'Share Tech Mono',monospace">14/09/2024</td><td style="font-family:'Share Tech Mono',monospace">Hon. Claire Beaumont</td><td>Ferme isolée — Paleto Bay</td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">P-002, P-005, P-008</td></tr>
+          <tr><td class="name-code" style="font-size:11px">MP-2025-SA-0109</td><td style="font-family:'Share Tech Mono',monospace">09/01/2025</td><td style="font-family:'Share Tech Mono',monospace">Hon. Claire Beaumont</td><td>Cache nord — Cayo Perico</td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">P-003</td></tr>
+          <tr><td class="name-code" style="font-size:11px">MP-2025-SA-0301</td><td style="font-family:'Share Tech Mono',monospace">01/03/2025</td><td style="font-family:'Share Tech Mono',monospace">Hon. Claire Beaumont</td><td>Villa Rockford Hills — LS</td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">P-004, P-007</td></tr>
+          <tr><td class="name-code" style="font-size:11px">MP-2026-SA-0620</td><td style="font-family:'Share Tech Mono',monospace">20/06/2026</td><td style="font-family:'Share Tech Mono',monospace">Hon. Claire Beaumont</td><td>Entrepôt industriel — Sandy Shores</td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">P-006</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px;padding:8px 14px;background:#0e1018;border:1px solid #1a2640;border-left:3px solid #00a040;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#00a040">
+        ✓ CHAÎNE DE GARDE VALIDÉE — 9 pièces à conviction sous scellés judiciaires — Salle des preuves B3, DOJ San Andreas
+      </div>
+    </div>
+
+    <!-- MANDAT FÉDÉRAL D'INTERVENTION -->
+    <div style="margin-bottom:22px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#4a7abf;letter-spacing:2px;border-bottom:1px solid #1e2330;padding-bottom:6px;margin-bottom:12px">▸ MANDAT FÉDÉRAL D'INTERVENTION — TERRITOIRE FÉDÉRAL DE CAYO PERICO</div>
+      <p class="prose" style="margin-bottom:10px">Cayo Perico relevant de la juridiction fédérale des États-Unis, l'intervention du SASP sur ce territoire nécessite une autorisation fédérale distincte des mandats étatiques. Ce mandat est délivré par la Cour fédérale de district en vertu de la Rule 41 des <em>Federal Rules of Criminal Procedure</em>.</p>
+      <div style="background:#0a0c10;border:1px solid #1e2330;border-radius:4px;overflow:hidden;max-width:620px">
+        <div style="background:#0d1018;padding:10px 18px;border-bottom:1px solid #1e2330;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#e8eaf0;letter-spacing:1px">FEDERAL SEARCH AND ARREST WARRANT</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068">FED/WARRANT/2026/CP-0047</div>
+        </div>
+        <div style="padding:16px 20px">
+          <div style="display:grid;grid-template-columns:200px 1fr;gap:1px;background:#1e2330;border:1px solid #1e2330;border-radius:3px;overflow:hidden;margin-bottom:14px">
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">COUR ÉMETTRICE</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">US District Court — District of San Andreas</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">JUGE SIGNATAIRE</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Hon. James R. Whitaker — US Magistrate Judge</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">DATE DE DÉLIVRANCE</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">01 juillet 2026</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">BASE LÉGALE</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Rule 41, Federal Rules of Criminal Procedure — 18 U.S.C. § 3231 (compétence fédérale) — 18 U.S.C. § 3041 (mandat d'arrêt fédéral) — 21 U.S.C. § 878 (pouvoirs d'arrestation DEA)</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">AUTORITÉ EXÉCUTANTE</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">SASP — agents déclarés <em>Deputized Federal Officers</em> pour la durée de l'opération — en coordination avec le FBI (Section Crime Organisé) et la DEA (Division internationale)</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">PÉRIMÈTRE COUVERT</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Île de Cayo Perico (territoire fédéral) — Villa El Rubio et dépendances — installations portuaires nord et sud — entrepôts à usage de stockage de stupéfiants</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">OBJET DU MANDAT</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Arrestation de MONTOYA REYES, Alejandro — Saisie de stupéfiants, armes, documents comptables et actifs financiers — Neutralisation de la chaîne de commandement Los Espectros</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">SUITE À L'ARRESTATION</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Présentation devant l'US District Court — transfert en garde à vue étatique sous Accord FED/SA/2026/TPC-01 — poursuite judiciaire devant le DOJ et the USDC of San Andreas</div>
+          </div>
+          <div style="padding:10px 14px;background:#0a100a;border:1px solid #1a2a1a;border-left:3px solid #00a040;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#00a040">
+            ✓ MANDAT FÉDÉRAL VALIDE — Autorité judiciaire fédérale compétente — Exécutoire sur l'ensemble du territoire fédéral de Cayo Perico
+          </div>
+          <p style="margin-top:10px;font-size:10px;color:#3a4060;font-family:'Share Tech Mono',monospace">US District Court — District of San Andreas — Dossier pénal fédéral n° 2026-CR-SA-0847</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUTORISATION SOMBRA -->
+    <div style="margin-bottom:22px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#4a7abf;letter-spacing:2px;border-bottom:1px solid #1e2330;padding-bottom:6px;margin-bottom:12px">▸ AUTORISATION JUDICIAIRE — OPÉRATION SOMBRA</div>
+      <div style="background:#0a0c10;border:1px solid #1e2330;border-radius:4px;overflow:hidden;max-width:620px">
+        <div style="background:#0d1018;padding:10px 18px;border-bottom:1px solid #1e2330;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#e8eaf0;letter-spacing:1px">ORDONNANCE D'AUTORISATION D'INFILTRATION</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068">DOJ/INF/2026/SA-0047</div>
+        </div>
+        <div style="padding:16px 20px">
+          <div style="display:grid;grid-template-columns:180px 1fr;gap:1px;background:#1e2330;border:1px solid #1e2330;border-radius:3px;overflow:hidden;margin-bottom:14px">
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">AUTORITÉ ÉMETTRICE</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Procureur Général de San Andreas — <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">████████████</span></div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">DATE D'AUTORISATION</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">10 avril 2026</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">DURÉE AUTORISÉE</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">90 jours — du 12/04/2026 au 10/07/2026</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">BASE LÉGALE</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">18 U.S.C. § 2511 et seq. — Infiltration autorisée en matière de crime organisé</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">PORTÉE</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Participation aux activités du réseau Los Espectros sans engagement de la responsabilité pénale de l'agent</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">CONTRAINTES</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Interdiction de commettre des crimes contre les personnes — Rapport hebdomadaire obligatoire au coordinateur</div>
+          </div>
+          <div style="padding:10px 14px;background:#0a100a;border:1px solid #1a2a1a;border-left:3px solid #00a040;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#00a040">
+            ✓ INFILTRATION LÉGALEMENT ENCADRÉE — Exclut toute exception de provocation policière
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CERTIFICATION BIOMÉTRIQUE -->
+    <div style="margin-bottom:22px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#4a7abf;letter-spacing:2px;border-bottom:1px solid #1e2330;padding-bottom:6px;margin-bottom:12px">▸ CERTIFICATION BIOMÉTRIQUE — EXPERT JUDICIAIRE INDÉPENDANT</div>
+      <div style="background:#0a0c10;border:1px solid #1e2330;border-radius:4px;overflow:hidden;max-width:620px">
+        <div style="background:#0d1018;padding:10px 18px;border-bottom:1px solid #1e2330;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#e8eaf0;letter-spacing:1px">RAPPORT D'EXPERTISE EN IDENTIFICATION BIOMÉTRIQUE</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068">BIO/EXP/2026/0089</div>
+        </div>
+        <div style="padding:16px 20px">
+          <div style="display:grid;grid-template-columns:180px 1fr;gap:1px;background:#1e2330;border:1px solid #1e2330;border-radius:3px;overflow:hidden;margin-bottom:14px">
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">EXPERT DÉSIGNÉ</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Dr. <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">████████████████</span> — Inscrit liste Cour d'appel SA, spécialité biométrie faciale</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">SUPPORT ANALYSÉ</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Capture CAM-04 — INTP/SURV/CAM04/2026-0701 (résolution 4K, horodatée)</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">RÉFÉRENTIEL</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Photo judiciaire 2021 — dossier MX-INTERPOL-2021-AM — 68 points de concordance analysés</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">MÉTHODE</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">Analyse morphologique 3D — logiciel FaceID Expert v7.2 — certifié Norme ISO/IEC 19794-5</div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">RÉSULTAT</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c87d30;font-weight:600">Correspondance à 94,7 % — Seuil légal de certitude : 85 % — <span style="color:#00a040">SEUIL DÉPASSÉ</span></div>
+            <div style="background:#0e1018;padding:8px 12px;font-size:10px;color:#4a5068;font-family:'Share Tech Mono',monospace">CONCLUSION</div>
+            <div style="background:#0a0c10;padding:8px 12px;font-size:12px;color:#c9cdd6">L'individu capturé sur la séquence CAM-04 est, avec un degré de certitude scientifique élevé, <strong style="color:#e8eaf0">Alejandro Ricardo Montoya Salcedo</strong>. Identification confirmée.</div>
+          </div>
+          <p style="font-size:11px;color:#4a5068;font-family:'Share Tech Mono',monospace">Fait à San Andreas, le 2 juillet 2026 — Signature de l'expert : <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">████████████</span> — Réf. greffe : BIO/EXP/2026/0089</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDONNANCES DE PROTECTION TÉMOINS -->
+    <div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#4a7abf;letter-spacing:2px;border-bottom:1px solid #1e2330;padding-bottom:6px;margin-bottom:12px">▸ ORDONNANCES DE PROTECTION — TÉMOINS A, B ET C</div>
+      <p class="prose" style="margin-bottom:10px">Ordonnances rendues par le Président du US District Court of San Andreas sur requête du US Attorney, conformément au statut de protection des témoins menacés (Art. 18 U.S.C. § 3521 et seq.).</p>
+      <table class="data-table">
+        <thead>
+          <tr><th>Témoin</th><th>N° Ordonnance</th><th>Rendue le</th><th>Mesures accordées</th><th>Validité</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="name-code">ALPHA-1</td>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:11px">PROT/USDC/2026/T-001</td>
+            <td style="font-family:'Share Tech Mono',monospace">15/05/2026</td>
+            <td>Anonymisation totale · Changement d'identité · Protection physique 24h/24</td>
+            <td style="font-family:'Share Tech Mono',monospace;color:#00a040">5 ans — renouvelable</td>
+          </tr>
+          <tr>
+            <td class="name-code">BRAVO-4</td>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:11px">PROT/USDC/2026/T-002</td>
+            <td style="font-family:'Share Tech Mono',monospace">08/06/2026</td>
+            <td>Anonymisation totale · Huis clos lors de l'audition · Déposition par liaison sécurisée</td>
+            <td style="font-family:'Share Tech Mono',monospace;color:#00a040">5 ans — renouvelable</td>
+          </tr>
+          <tr>
+            <td class="name-code">CHARLIE-7</td>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:11px">PROT/USDC/2026/T-003</td>
+            <td style="font-family:'Share Tech Mono',monospace">22/06/2026</td>
+            <td>Anonymisation partielle · Déposition par vidéo · Domicile confidentiel</td>
+            <td style="font-family:'Share Tech Mono',monospace;color:#c87d30">2 ans — réévaluation prévue</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px;padding:8px 14px;background:#0e1018;border:1px solid #1a2640;border-left:3px solid #00a040;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#00a040">
+        ✓ TÉMOIGNAGES RECEVABLES EN AUDIENCE — Protection formellement établie — Droit à la confrontation aménagé par ordonnance
+      </div>
+    </div>
+
+    <!-- ORDONNANCES ÉCOUTE -->
+    <div style="margin-top:22px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#4a7abf;letter-spacing:2px;border-bottom:1px solid #1e2330;padding-bottom:6px;margin-bottom:12px">▸ ORDONNANCES D'INTERCEPTION TÉLÉPHONIQUE</div>
+      <p class="prose" style="margin-bottom:10px">Autorisations délivrées conformément à l'18 U.S.C. § 2516 — Interceptions électroniques en matière de criminalité organisée. Couvrent l'ensemble des écoutes produites aux sections 11 et 25 du présent dossier.</p>
+      <table class="data-table">
+        <thead>
+          <tr><th>N° Ordonnance</th><th>Délivrée le</th><th>Validité</th><th>Cibles autorisées</th><th>Écoutes couvertes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name-code" style="font-size:11px">OIT-2023-SA-1101</td><td style="font-family:'Share Tech Mono',monospace">01/11/2023</td><td style="font-family:'Share Tech Mono',monospace">4 mois</td><td>Communications réseau Los Espectros — lignes El Verdugo et associés directs</td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">Section 25 — 15/11/2023</td></tr>
+          <tr><td class="name-code" style="font-size:11px">OIT-2026-SA-0601</td><td style="font-family:'Share Tech Mono',monospace">01/06/2026</td><td style="font-family:'Share Tech Mono',monospace">3 mois</td><td>Lignes attribuées à El Fantasma et El Ingeniero — téléphones chiffrés identifiés</td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">Section 11 — 19/06/2026</td></tr>
+          <tr><td class="name-code" style="font-size:11px">OIT-2026-SA-0620</td><td style="font-family:'Share Tech Mono',monospace">20/06/2026</td><td style="font-family:'Share Tech Mono',monospace">3 mois</td><td>Extension — confirmation empreinte vocale El Verdugo</td><td style="color:#c87d30;font-family:'Share Tech Mono',monospace">Section 11 — 28/06/2026</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px;padding:8px 14px;background:#0e1018;border:1px solid #1a2640;border-left:3px solid #00a040;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#00a040">
+        ✓ TOUTES LES INTERCEPTIONS LÉGALEMENT COUVERTES — Exception de nullité irrecevable — Juge signataire : <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">████████████</span>
+      </div>
+    </div>
+
+    <!-- COMPÉTENCE TERRITORIALE -->
+    <div style="margin-top:22px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#4a7abf;letter-spacing:2px;border-bottom:1px solid #1e2330;padding-bottom:6px;margin-bottom:12px">▸ NOTE DE DROIT — COMPÉTENCE TERRITORIALE SUR CAYO PERICO</div>
+      <p class="prose" style="margin-bottom:12px">Note révisée le 1er juillet 2026 suite à la confirmation de la juridiction fédérale américaine sur Cayo Perico. Rédigée par le Procureur Général adjoint du DOJ de San Andreas en réponse à l'exception d'incompétence soulevée par la défense.</p>
+      <div style="background:#0a0c10;border:1px solid #1e2330;border-radius:4px;overflow:hidden;max-width:620px">
+        <div style="background:#0d1018;padding:10px 18px;border-bottom:1px solid #1e2330;display:flex;justify-content:space-between">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#e8eaf0;letter-spacing:1px">NOTE DE DROIT — COMPÉTENCE & JURIDICTION FÉDÉRALE</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068">DOJ/NOTE/2026/TERR-01 (rév. 1)</div>
+        </div>
+        <div style="padding:16px 20px">
+          <p class="prose" style="margin-bottom:12px">Cayo Perico étant placé sous juridiction fédérale des États-Unis, le cadre légal de l'opération repose sur quatre fondements articulés :</p>
+          <ul class="bullet-list">
+            <li><strong style="color:#c9cdd6">Juridiction fédérale primaire — 18 U.S.C. § 3231 :</strong> Cayo Perico constitue un territoire fédéral américain. La compétence principale appartient aux juridictions fédérales (US District Court). Le SASP ne peut y intervenir qu'en qualité d'<em>Deputized Federal Officers</em>, sous couvert du Mandat fédéral FED/WARRANT/2026/CP-0047 délivré par un US Magistrate Judge. Les mandats étatiques (MP-2025-SA-0109) ont été émis en coordination avec la Cour fédérale et ne valent qu'à titre complémentaire pour les éléments de preuve rapatriés sur territoire SA.</li>
+            <li><strong style="color:#c9cdd6">Dual Sovereignty Doctrine — Double poursuite licite :</strong> en droit constitutionnel américain, la doctrine de la souveraineté duale (<em>Heath v. Alabama</em>, 1985 ; <em>Gamble v. United States</em>, 2019) permet des poursuites distinctes et simultanées devant la juridiction fédérale ET devant la juridiction de l'État de San Andreas pour les mêmes faits, sans violation du principe <em>ne bis in idem</em>. Les infractions commises sur Cayo Perico (territoire fédéral) sont jugées devant l'US District Court ; les infractions commises sur territoire SA (homicides, trafic, corruption, enlèvements) relèvent du US District Court, Dist. of San Andreas.</li>
+            <li><strong style="color:#c9cdd6">Accord de transfert de compétence FED/SA/2026/TPC-01 :</strong> cet accord bilatéral entre le Gouvernement fédéral et l'État de San Andreas organise le transfert de Montoya en garde à vue étatique à l'issue de la procédure fédérale initiale, permettant au DOJ de San Andreas et au US District Court, Dist. of San Andreas d'instruire et de juger les chefs d'inculpation relevant de leur compétence territoriale. C'est ce mécanisme qui autorise un procès "chez nous" pour les faits commis en État SA.</li>
+            <li><strong style="color:#c9cdd6">Principe de personnalité passive (fondement complémentaire) :</strong> les victimes directes — agents COBRA et VIPER (fonctionnaires SA), ressortissants portuaires, familles des 40 homicides documentés — confèrent à San Andreas une compétence personnelle passive additionnelle, indépendante du lieu de commission des faits.</li>
+          </ul>
+          <div style="margin-top:12px;padding:8px 14px;background:#0a100a;border:1px solid #1a2a1a;border-left:3px solid #00a040;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#00a040">
+            ✓ CADRE LÉGAL COMPLET — Mandat fédéral + Dual Sovereignty + Accord TPC-01 — Exception d'incompétence irrecevable — Procès en État SA juridiquement fondé
+          </div>
+          <p style="margin-top:10px;font-size:10px;color:#3a4060;font-family:'Share Tech Mono',monospace">Procureur Général adjoint Me. Sandra Torres — DOJ San Andreas — 1er juillet 2026</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 25. DOSSIER COBRA / VIPER -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">25</div>
+      <div class="section-title">Dossier disparition — agents « Cobra » et « Viper »</div>
+    </div>
+    <p class="prose">Dossier ouvert le 14 novembre 2023 à la suite de la disparition de deux agents infiltrés opérant sous les noms de code COBRA et VIPER au sein du réseau Los Espectros. Ce dossier constitue la pièce à charge principale pour le chef d'inculpation n°07 (enlèvement et séquestration en bande organisée).</p>
+
+    <div style="background:#1a0808;border:1px solid #3a1010;border-radius:4px;padding:10px 16px;margin-bottom:18px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#cf4040">
+      STATUT : PRÉSUMÉS EXÉCUTÉS — AUCUN CORPS RETROUVÉ À CE JOUR — ENQUÊTE OUVERTE SOUS LA RÉFERENCE DOJ/DISP/2023/EF-CV
+    </div>
+
+    <!-- Identités -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+      <div style="background:#0a0c10;border:1px solid #1e2330;border-radius:4px;overflow:hidden">
+        <div style="background:#1a0808;padding:8px 16px;border-bottom:1px solid #3a1010">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#cf4040;letter-spacing:1px">AGENT — NOM DE CODE : COBRA</span>
+        </div>
+        <div style="padding:12px 16px">
+          <div style="display:grid;grid-template-columns:90px 1fr;gap:1px;font-size:11px">
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">IDENTITÉ</span><span style="color:#c9cdd6"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">████████████████</span></span>
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">GRADE</span><span style="color:#c9cdd6"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">████████████</span></span>
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">ANCIENNETÉ</span><span style="color:#c9cdd6">11 ans de service</span>
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">RÔLE</span><span style="color:#c9cdd6">Collecteur de renseignements — cellule logistique</span>
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">DERNIER CONTACT</span><span style="color:#cf4040">07/11/2023 — 03h22</span>
+          </div>
+        </div>
+      </div>
+      <div style="background:#0a0c10;border:1px solid #1e2330;border-radius:4px;overflow:hidden">
+        <div style="background:#1a0808;padding:8px 16px;border-bottom:1px solid #3a1010">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#cf4040;letter-spacing:1px">AGENT — NOM DE CODE : VIPER</span>
+        </div>
+        <div style="padding:12px 16px">
+          <div style="display:grid;grid-template-columns:90px 1fr;gap:1px;font-size:11px">
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">IDENTITÉ</span><span style="color:#c9cdd6"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">████████████████</span></span>
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">GRADE</span><span style="color:#c9cdd6"><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">████████████</span></span>
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">ANCIENNETÉ</span><span style="color:#c9cdd6">7 ans de service</span>
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">RÔLE</span><span style="color:#c9cdd6">Surveillance financière — suivi blanchiment</span>
+            <span style="color:#4a5068;font-family:'Share Tech Mono',monospace">DERNIER CONTACT</span><span style="color:#cf4040">07/11/2023 — 04h41</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:#cf4040;letter-spacing:2px;margin-bottom:10px">▸ CHRONOLOGIE DES DERNIÈRES HEURES</div>
+    <div class="chrono">
+      <div class="chrono-item">
+        <div class="chrono-year">06/11/2023 — 22h15</div>
+        <div class="chrono-desc">COBRA transmet un rapport partiel : il a eu accès à une liste de noms de fonctionnaires corrompus. Signale une réunion imprévue convoquée par El Verdugo pour le lendemain matin.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">07/11/2023 — 03h22</div>
+        <div class="chrono-desc">Dernière transmission de COBRA — message tronqué : <em style="color:#c9cdd6">"Ils savent que — "</em>. Signal coupé. Tentative de rappel immédiate : aucune réponse.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">07/11/2023 — 04h41</div>
+        <div class="chrono-desc">VIPER envoie un unique SMS chiffré : <em style="color:#c9cdd6">"COMPROMIS. EXFIL IMPOSSIBLE."</em> Puis silence total. Aucune transmission ultérieure.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">07/11/2023 — 07h00</div>
+        <div class="chrono-desc">Déclenchement du protocole d'urgence. Équipe d'extraction dépêchée — aucune trace des agents sur site. Véhicules de couverture retrouvés abandonnés à 4 km du point de rendez-vous.</div>
+      </div>
+      <div class="chrono-item">
+        <div class="chrono-year">15/11/2023 — INTERCEPTION</div>
+        <div class="chrono-desc">Écoute passive capte une conversation entre El Verdugo et un inconnu : <em style="color:#c9cdd6">"Le problème des deux </em><span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 3px;user-select:none">██████</span><em style="color:#c9cdd6"> est réglé. Le patron est satisfait."</em> Corrélation directe avec la disparition des agents.</div>
+      </div>
+    </div>
+
+    <!-- Éléments de preuve liant Montoya -->
+    <div style="margin-top:18px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:#cf4040;letter-spacing:2px;margin-bottom:10px">▸ ÉLÉMENTS LIANT MONTOYA À CES DISPARITIONS</div>
+      <ul class="bullet-list">
+        <li><strong style="color:#c9cdd6">Interception 15/11/2023 :</strong> La formule "le patron est satisfait" corrobore un ordre de la hiérarchie suprême — Montoya est le seul à être désigné ainsi dans le réseau.</li>
+        <li><strong style="color:#c9cdd6">Registre P-006 :</strong> Les registres saisis à Sandy Shores contiennent une ligne datée du 08/11/2023 mentionnant deux entrées biffées avec la mention codée <em>"solucionado"</em>.</li>
+        <li><strong style="color:#c9cdd6">Témoignage ALPHA-1 :</strong> Confirme que les purges internes sont exclusivement ordonnées par El Fantasma en personne — El Verdugo n'a pas autorité autonome pour une telle décision.</li>
+        <li><strong style="color:#c9cdd6">Chronologie :</strong> La disparition survient 36h après la transmission de COBRA sur la liste des fonctionnaires corrompus — donnée directement nuisible à Montoya (cf. chef 06, corruption).</li>
+      </ul>
+    </div>
+
+    <div style="margin-top:14px;padding:12px 16px;background:#1a0808;border:1px solid #3a1010;border-radius:4px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#cf4040;letter-spacing:1px;margin-bottom:6px">QUALIFICATION JURIDIQUE</div>
+      <p style="font-size:12px;color:#8a90a0;line-height:1.8">Les éléments réunis permettent de retenir contre MONTOYA, A.R. le chef d'enlèvement et séquestration en bande organisée suivis de mort (Art. 224-2 CP) — peine maximale : <strong style="color:#cf4040">réclusion criminelle à perpétuité</strong>. L'absence de corps ne fait pas obstacle aux poursuites dès lors que les éléments matériels et circonstanciels établissent la disparition forcée avec un degré de certitude suffisant (jurisprudence constante).</p>
+    </div>
+  </div>
+
+  <!-- 26. MENTIONS LÉGALES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">26</div>
+      <div class="section-title">Mentions légales et clause de confidentialité</div>
+    </div>
+    <p class="prose">Le présent dossier est classé confidentiel et destiné exclusivement aux services autorisés du SASP et du Department of Justice dans le cadre de la procédure visée. Toute reproduction, diffusion ou transmission à un tiers non autorisé est strictement interdite et pourra faire l'objet de sanctions internes. Les éléments présentés reposent sur des renseignements croisés et sont susceptibles d'évolution au fil de l'enquête.</p>
+  </div>
+
+  <!-- SÉPARATEUR ANALYSE JUDICIAIRE -->
+  <div style="margin:40px 0 32px;background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden">
+    <div style="background:#003087;padding:10px 22px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#fff;letter-spacing:3px">ANALYSE JUDICIAIRE — DOSSIER SA-2026-CO-0147</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(255,255,255,.55)">AJ/DOJ/2026/0147 — Établi par DOJ San Andreas — Pôle CO</div>
+    </div>
+    <div style="padding:12px 22px;font-size:12px;color:#5c6275">Document établi à l'usage exclusif de l'autorité judiciaire saisie (Madame la Procureure & Federal Judge). Non communicable à la défense without a court order. Sections 27 à 36.</div>
+  </div>
+
+  <!-- 27. VALEUR PROBANTE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">27</div>
+      <div class="section-title">Valeur probante des éléments</div>
+    </div>
+    <p class="prose">Évaluation de la force probante de chaque catégorie d'éléments au regard des standards judiciaires de San Andreas. Cote établie par le DOJ — Pôle Crime Organisé.</p>
+    <div style="background:#0a0c10;border:1px solid #1e2330;border-radius:4px;padding:18px 22px;margin-top:8px">
+      <div class="score-row">
+        <div class="score-label">Saisies matérielles (P-001 à P-009)</div>
+        <div class="score-track"><div class="score-fill critical" style="width:98%"></div></div>
+        <div class="score-pct" style="color:#cf4040">98 %</div>
+        <span class="score-badge badge-critical">CRITIQUE</span>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Expertise comptable — 59,4 M$</div>
+        <div class="score-track"><div class="score-fill critical" style="width:95%"></div></div>
+        <div class="score-pct" style="color:#cf4040">95 %</div>
+        <span class="score-badge badge-critical">TRÈS FORTE</span>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Identification biométrique (94,7 %)</div>
+        <div class="score-track"><div class="score-fill high" style="width:88%"></div></div>
+        <div class="score-pct" style="color:#c87d30">88 %</div>
+        <span class="score-badge badge-high">FORTE</span>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Interceptions téléphoniques</div>
+        <div class="score-track"><div class="score-fill high" style="width:82%"></div></div>
+        <div class="score-pct" style="color:#c87d30">82 %</div>
+        <span class="score-badge badge-high">FORTE</span>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Rapport agent infiltré (SOMBRA)</div>
+        <div class="score-track"><div class="score-fill high" style="width:78%"></div></div>
+        <div class="score-pct" style="color:#c87d30">78 %</div>
+        <span class="score-badge badge-high">FORTE</span>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Témoignages protégés (A, B, C)</div>
+        <div class="score-track"><div class="score-fill medium" style="width:68%"></div></div>
+        <div class="score-pct" style="color:#3a9a3a">68 %</div>
+        <span class="score-badge badge-medium">MOYENNE-FORTE</span>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Responsabilité directe — homicides</div>
+        <div class="score-track"><div class="score-fill low" style="width:42%"></div></div>
+        <div class="score-pct" style="color:#6a7abf">42 %</div>
+        <span class="score-badge badge-low">FAIBLE–MOYENNE</span>
+      </div>
+      <div style="margin-top:14px;padding:10px 14px;background:#0e1018;border:1px solid #1e2330;border-left:3px solid #c87d30;border-radius:3px;font-size:11px;color:#5c6275">
+        Note d'analyse : les saisies matérielles et l'expertise comptable constituent l'armature centrale du dossier. La valeur biométrique dépasse le seuil légal de 85 %. La responsabilité directe de Montoya sur les homicides individualisés reste le point le plus vulnérable du dossier.
+      </div>
+    </div>
+  </div>
+
+  <!-- 28. CRÉDIBILITÉ DES SOURCES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">28</div>
+      <div class="section-title">Crédibilité des sources</div>
+    </div>
+    <p class="prose">Notation établie sur 100 points. Critères : cohérence interne, recoupements croisés, fiabilité institutionnelle, expositions aux biais.</p>
+    <div class="cred-grid">
+      <div class="cred-card">
+        <div class="cred-source">TÉMOINS PROTÉGÉS — ALPHA / BRAVO / CHARLIE</div>
+        <div class="cred-score-wrap">
+          <div><div class="cred-score-big" style="color:#c87d30">80</div><div class="cred-score-max">/100</div></div>
+          <div class="cred-bar-track" style="flex:1"><div class="cred-bar-fill" style="width:80%;background:linear-gradient(90deg,#5a3010,#c87d30);height:6px;border-radius:2px"></div></div>
+        </div>
+        <div class="cred-desc">Déclarations cohérentes avec les autres preuves. Recoupement croisé satisfaisant. L'anonymisation limite la contradiction directe par la défense — vecteur d'attaque attendu mais réponse procédurale encadrée.</div>
+      </div>
+      <div class="cred-card">
+        <div class="cred-source">AGENTS SASP — RAPPORTS TERRAIN</div>
+        <div class="cred-score-wrap">
+          <div><div class="cred-score-big" style="color:#c87d30">85</div><div class="cred-score-max">/100</div></div>
+          <div class="cred-bar-track" style="flex:1"><div class="cred-bar-fill" style="width:85%;background:linear-gradient(90deg,#5a3010,#c87d30);height:6px;border-radius:2px"></div></div>
+        </div>
+        <div class="cred-desc">Observations datées, structurées et recoupées entre elles. Provenance institutionnelle identifiable. Chaîne de garde documentaire solide. Rapport SOMBRA légalement encadré.</div>
+      </div>
+      <div class="cred-card">
+        <div class="cred-source">EXPERTISES JUDICIAIRES INDÉPENDANTES</div>
+        <div class="cred-score-wrap">
+          <div><div class="cred-score-big" style="color:#2ecc71">90</div><div class="cred-score-max">/100</div></div>
+          <div class="cred-bar-track" style="flex:1"><div class="cred-bar-fill" style="width:90%;background:linear-gradient(90deg,#1a4a1a,#2ecc71);height:6px;border-radius:2px"></div></div>
+        </div>
+        <div class="cred-desc">Expertise biométrique (94,7 % — seuil légal 85 %) et expertise comptable certifiée. Éléments les plus solides du dossier. Experts certifiés, méthodes normalisées (ISO/IEC 19794-5, norme FATF/GAFI).</div>
+      </div>
+      <div class="cred-card">
+        <div class="cred-source">DÉCLARATIONS DE MONTOYA</div>
+        <div class="cred-score-wrap">
+          <div><div class="cred-score-big" style="color:#cf4040">N/A</div><div class="cred-score-max">/100</div></div>
+          <div class="cred-bar-track" style="flex:1"><div class="cred-bar-fill" style="width:0%;background:#cf4040;height:6px;border-radius:2px"></div></div>
+        </div>
+        <div class="cred-desc">Aucun aveu, aucune audition, aucune déclaration spontanée dans le dossier. L'absence de contradiction directe de sa part ne constitue pas un avantage pour la défense, mais fragilise les chefs individualisés.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 29. QUALIFICATION JURIDIQUE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">29</div>
+      <div class="section-title">Qualification juridique — Analyse détaillée par chef</div>
+    </div>
+    <p class="prose">Évaluation de la solidité de chaque chef d'inculpation au regard des éléments disponibles. Légende : <span class="qual-badge qual-retenu">✓ RETENU</span> charge solide · <span class="qual-badge qual-partiel">◎ RETENABLE</span> charges partielles · <span class="qual-badge qual-consolider">⚠ À CONSOLIDER</span> fragilité identifiée.</p>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Direction d'une organisation criminelle transnationale</div><span class="qual-badge qual-retenu">✓ RETENU</span></div>
+      <div class="qual-desc">Montoya est présenté comme chef suprême avec autorité absolue sur le réseau. Le dossier valide ce rôle par les interceptions, l'organigramme, le rapport SOMBRA et les témoignages. C'est le chef le plus solidement étayé. La structure hiérarchique Los Espectros est suffisamment documentée pour écarter tout doute raisonnable sur la direction.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Trafic international de stupéfiants en bande organisée</div><span class="qual-badge qual-retenu">✓ RETENU</span></div>
+      <div class="qual-desc">480 kg de cocaïne et 32 kg de fentanyl sous scellés judiciaires (P-001, P-002). Routes maritimes documentées depuis 2006. Convergence complète entre saisies, témoignages et interceptions. L'appartenance à une bande organisée est acquise par l'existence établie de Los Espectros.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Blanchiment aggravé en bande organisée — 59,4 M$</div><span class="qual-badge qual-retenu">✓ RETENU</span></div>
+      <div class="qual-desc">L'expertise comptable CPT/EXP/2026/0034 certifie 59,4 millions de dollars blanchis via sociétés-écrans, casinos offshore et flux internationaux. Conclusion explicite sur le blanchiment en bande organisée. Circonstances aggravantes de réitération et de dissimulation caractérisées.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Détention et trafic d'armes de guerre</div><span class="qual-badge qual-retenu">✓ RETENU</span></div>
+      <div class="qual-desc">Saisie d'armement lourd documentée (P-003 : 14 AK-103, 3 RPG-7, 40 000 munitions). Infrastructure militaire de Cayo Perico confirmée par le rapport SOMBRA et les recommandations opérationnelles. Chef solidement retenu, aucune fragilité procédurale.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Faux documents et usage de faux</div><span class="qual-badge qual-retenu">✓ RETENU</span></div>
+      <div class="qual-desc">11 faux documents saisis (P-007), dont 5 alias Montoya confirmés par expertise biométrique. Chef accessoire mais facilement retenu en audience. Aucune contestation sérieuse possible sur ce chef.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Enlèvement et séquestration — agents Cobra et Viper</div><span class="qual-badge qual-partiel">◎ RETENABLE</span></div>
+      <div class="qual-desc">Preuves circonstancielles convergentes : dernières transmissions documentées, interception 15/11/2023 ("le patron est satisfait"), registre P-006 mention "solucionado" 36h après disparition, témoignage Alpha-1 confirmant que les purges relèvent exclusivement de El Fantasma. Fragilité principale : absence de corps. Risque de requalification en "séquestration suivie de mort présumée" si corps non retrouvés.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Assassinats multiples (≈ 40 homicides)</div><span class="qual-badge qual-partiel">◎ PARTIELLEMENT RETENABLE</span></div>
+      <div class="qual-desc">Responsabilité du réseau Los Espectros largement établie. Mais la responsabilité directe et individualisée de Montoya pour chaque victime est insuffisante. 11 cas documentés dans ce dossier, sans fiche victimologique individuelle complète pour la majorité. Pour les cas les mieux documentés (El Chivo, Cobra/Viper), la culpabilité est plausible. Complément d'instruction nécessaire — voir <a href="dossiers-victimologiques.html" style="color:#4a7abf">dossiers victimologiques annexes</a>.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Corruption active d'agents publics</div><span class="qual-badge qual-consolider">⚠ À CONSOLIDER</span></div>
+      <div class="qual-desc">Un fonctionnaire portuaire reconnaît avoir reçu des versements réguliers. Aucun contact direct avec Montoya documenté — lien indirect via La Contadora, dont l'identité réelle est inconnue. Charge suffisante pour poursuivre, mais la défense attaquera l'absence de lien nominatif direct. Dépend de l'identification de La Contadora.</div>
+    </div>
+  </div>
+
+  <!-- 30. CIRCONSTANCES AGGRAVANTES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">30</div>
+      <div class="section-title">Circonstances aggravantes et atténuantes</div>
+    </div>
+    <div class="circonstances-grid">
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Usage d'armes lourdes</div><div class="circonstance-desc">Établi par les saisies P-003 et l'infrastructure militaire de Cayo Perico — 3 RPG-7, 14 fusils d'assaut</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Bande organisée constituée</div><div class="circonstance-desc">Largement établie — organigramme à 5 niveaux, hiérarchie, divisions opérationnelles distinctes documentées</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Préméditation établie</div><div class="circonstance-desc">Fortement documentée pour les disparitions Cobra/Viper (36h entre rapport COBRA et "solucionado") et les représailles internes</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Dimension transnationale</div><div class="circonstance-desc">Connexions Sinaloa, Clan del Golfo, HK, Italie (Camorra), Moyen-Orient — réseau actif sur 4 continents</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Statut de fugitif actif</div><div class="circonstance-desc">Notice rouge INTERPOL RN-2026/A-15487 — 5 alias confirmés, multiples fausses identités, fuite organisée</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Dangerosité extrême</div><div class="circonstance-desc">Milice armée de 60–80 hommes, antécédents de représailles violentes, profil psychopathique documenté (PCL-R : 28–34/40)</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Victimes — fonctionnaires d'État</div><div class="circonstance-desc">Agents infiltrés COBRA et VIPER — fonctionnaires SA dans l'exercice de leurs fonctions. Circonstance aggravante spéciale.</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Réitération et durée</div><div class="circonstance-desc">Infractions commises de manière continue depuis 2001, sur 25 ans — réitération aggravée caractérisée.</div></div>
+      </div>
+    </div>
+    <div style="margin-top:14px;background:#0a0c10;border:1px solid #1e2330;border-left:3px solid #2ecc71;border-radius:4px;padding:12px 18px;font-size:12px;color:#5c6275">
+      <strong style="color:#3a8a3a">Circonstances atténuantes :</strong> aucune circonstance atténuante sérieuse identifiée dans le dossier. Ni aveu, ni coopération, ni contrainte, ni légitime défense. La défense ne dispose pas de levier atténuant structurel.
+    </div>
+  </div>
+
+  <!-- 31. SOLIDITÉ PROCÉDURALE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">31</div>
+      <div class="section-title">Solidité procédurale — Recevabilité des preuves</div>
+    </div>
+    <p class="prose">Évaluation de la recevabilité des preuves et de la couverture judiciaire des actes d'enquête. Chaque acte est auditable en audience.</p>
+    <table class="data-table">
+      <thead>
+        <tr><th>Acte procédural</th><th>Référence</th><th>Couverture</th><th>Solidité</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Mandats de perquisition (5)</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">MP-2024→2026</td><td>Toutes saisies rattachées à un mandat valide — juge signataire : Hon. Claire Beaumont</td><td style="color:#2ecc71">✓ Solide</td></tr>
+        <tr><td>Mandat fédéral Cayo Perico</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">FED/WARRANT/2026/CP-0047</td><td>Rule 41 FRCP — US Magistrate Judge Whitaker — territoire fédéral entièrement couvert</td><td style="color:#2ecc71">✓ Solide</td></tr>
+        <tr><td>Autorisation infiltration SOMBRA</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">DOJ/INF/2026/SA-0047</td><td>18 U.S.C. § 2511 — 90 jours autorisés — provocation policière écartée</td><td style="color:#2ecc71">✓ Solide</td></tr>
+        <tr><td>Ordonnances écoutes téléphoniques</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">OIT-2023 / 0601 / 0620</td><td>18 U.S.C. § 2516 — couverture judiciaire sur les 3 séries d'interceptions</td><td style="color:#2ecc71">✓ Solide</td></tr>
+        <tr><td>Certification biométrique</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">BIO/EXP/2026/0089</td><td>Expert certifié — 94,7 % — seuil légal 85 % dépassé — norme ISO/IEC 19794-5</td><td style="color:#2ecc71">✓ Solide</td></tr>
+        <tr><td>Expertise comptable</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">CPT/EXP/2026/0034</td><td>Expert-comptable judiciaire inscrit Cour d'appel SA — 14 établissements, 7 pays</td><td style="color:#2ecc71">✓ Solide</td></tr>
+        <tr><td>Protection des témoins (A, B, C)</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">PROT/USDC/2026/T-001/002/003</td><td>18 U.S.C. § 3521 — anonymisation légalement encadrée — droit à confrontation aménagé</td><td style="color:#c87d30">⚠ Contestable (forme)</td></tr>
+        <tr><td>Compétence territoriale Cayo Perico</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">DOJ/NOTE/2026/TERR-01 rév.1</td><td>Dual Sovereignty + Accord TPC-01 + mandat fédéral — note de droit opposable</td><td style="color:#c87d30">⚠ À verrouiller</td></tr>
+        <tr><td>Lien Montoya → Los Espectros LLC</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">Non documenté formellement</td><td>Lien inféré depuis expertise comptable, non prouvé documentairement de façon directe</td><td style="color:#cf4040">✗ À compléter</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px;padding:10px 14px;background:#0a100a;border:1px solid #1a2a1a;border-left:3px solid #00a040;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#00a040">
+      ✓ CHAÎNE DE GARDE VALIDÉE SUR 9 PIÈCES À CONVICTION — Procédure solide sur les chefs principaux — 2 points de fragilité identifiés à consolider avant audience
+    </div>
+  </div>
+
+  <!-- 32. ARGUMENTS DÉFENSE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">32</div>
+      <div class="section-title">Arguments de la défense — Analyse anticipatoire</div>
+    </div>
+    <p class="prose">Analyse des vecteurs d'attaque probables du conseil de la défense et de leur impact estimé sur les chefs d'inculpation. À transmettre au US Attorney's Office for preparation.</p>
+    <table class="data-table">
+      <thead>
+        <tr><th>Argument de la défense</th><th>Impact estimé</th><th>Parade disponible</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Absence de corps — agents Cobra et Viper</td>
+          <td style="color:#c87d30">Moyen — risque requalification</td>
+          <td>Registre P-006 "solucionado" + interception 15/11 + témoignage Alpha-1 + jurisprudence sur disparition forcée</td>
+        </tr>
+        <tr>
+          <td>Témoins anonymes — contradiction impossible</td>
+          <td style="color:#c87d30">Moyen — contestable sur la forme</td>
+          <td>Ordonnances PROT/USDC/2026/T-001/002/003 légalement encadrées — recoupement croisé avec preuves objectives</td>
+        </tr>
+        <tr>
+          <td>Responsabilité indirecte de Montoya sur les homicides</td>
+          <td style="color:#c87d30">Moyen-fort sur les cas non individualisés</td>
+          <td>Chef de direction CO — responsabilité de commandement établie — Alpha-1 confirme les purges relèvent exclusivement de El Fantasma</td>
+        </tr>
+        <tr>
+          <td>Confusion de compétences fédérale / étatique</td>
+          <td style="color:#3a9a3a">Faible — note TERR-01 rév.1</td>
+          <td>Dual Sovereignty Doctrine (Heath v. Alabama 1985, Gamble 2019) + Accord TPC-01 + mandat fédéral CP-0047</td>
+        </tr>
+        <tr>
+          <td>Absence d'ordre écrit ou audio direct de Montoya</td>
+          <td style="color:#c87d30">Moyen — sur les assassinats</td>
+          <td>Rapport SOMBRA + témoignages + modus operandi documenté — délégation calculée typique du profil psychologique</td>
+        </tr>
+        <tr>
+          <td>Identification biométrique non certaine à 100 %</td>
+          <td style="color:#3a9a3a">Faible — 94,7 % &gt; seuil 85 %</td>
+          <td>BIO/EXP/2026/0089 — expert certifié — norme ISO/IEC 19794-5 — 68 points de concordance</td>
+        </tr>
+        <tr>
+          <td>Provocation policière (opération SOMBRA)</td>
+          <td style="color:#3a9a3a">Très faible</td>
+          <td>Autorisation judiciaire DOJ/INF/2026/SA-0047 — 18 U.S.C. § 2511 — l'agent n'a commis aucun acte constitutif d'infraction</td>
+        </tr>
+        <tr>
+          <td>Irrégularité des écoutes</td>
+          <td style="color:#3a9a3a">Très faible</td>
+          <td>3 ordonnances OIT couvertes — 18 U.S.C. § 2516 — exception de nullité irrecevable</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px;padding:10px 14px;background:#0e1018;border:1px solid #1e2330;border-left:3px solid #c87d30;border-radius:3px;font-size:11px;color:#5c6275">
+      Ces arguments peuvent réduire les chefs secondaires (assassinats non individualisés). Ils ne sont pas de nature à faire tomber les chefs principaux : organisation criminelle, trafic, blanchiment, armes, faux documents.
+    </div>
+  </div>
+
+  <!-- 33. POSITION MINISTÈRE PUBLIC -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">33</div>
+      <div class="section-title">Position du US Attorney — Stratégie de poursuite</div>
+    </div>
+    <p class="prose">Le US Attorney dispose d'un dossier très fort sur les chefs principaux. La stratégie de poursuite recommandée par le DOJ — Pôle CO est la suivante :</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px">
+      <div style="background:#0a100a;border:1px solid #1a2a1a;border-radius:4px;padding:14px 18px">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#2a5a2a;letter-spacing:2px;margin-bottom:10px">CHEFS PRIORITAIRES — BASE TRÈS SOLIDE</div>
+        <ul class="bullet-list" style="margin:0">
+          <li style="border-color:#1a2a1a">Direction d'organisation criminelle transnationale</li>
+          <li style="border-color:#1a2a1a">Trafic international de stupéfiants (cocaïne + fentanyl)</li>
+          <li style="border-color:#1a2a1a">Blanchiment aggravé — 59,4 M$ certifiés</li>
+          <li style="border-color:#1a2a1a">Détention et trafic d'armes de guerre</li>
+          <li style="border-color:#1a2a1a">Faux documents et usage de faux</li>
+          <li style="border-color:#1a2a1a">Enlèvement Cobra/Viper — séquestration suivie de mort présumée</li>
+        </ul>
+      </div>
+      <div style="background:#1a0e08;border:1px solid #3a2010;border-radius:4px;padding:14px 18px">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#5a3010;letter-spacing:2px;margin-bottom:10px">CHEFS SECONDAIRES — À CONSOLIDER EN INSTRUCTION</div>
+        <ul class="bullet-list" style="margin:0">
+          <li style="border-color:#3a2010">Corruption active — lien indirect via La Contadora</li>
+          <li style="border-color:#3a2010">Assassinats individualisés — dossiers victimologiques incomplets</li>
+          <li style="border-color:#3a2010">Lien documentaire Montoya → Los Espectros LLC</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top:16px;background:#0e1018;border:1px solid #1e2330;border-left:3px solid #003087;border-radius:4px;padding:14px 18px;font-size:12px;color:#5c6275">
+      <strong style="color:#c9cdd6">Recommandation du DOJ :</strong> procéder for immediate referral before the US District Court — Criminal Div. pour les chefs prioritaires. Ouvrir un supplemental investigation parallèle sur les assassinats et la corruption pour renforcer le dossier avant le procès au fond.
+    </div>
+  </div>
+
+  <!-- 34. ÉVALUATION PROBABILISTE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">34</div>
+      <div class="section-title">Évaluation probabiliste — Risques et certitudes</div>
+    </div>
+    <div class="probability-block">
+      <div class="prob-label">PROBABILITÉ DE CONDAMNATION — CHEFS PRINCIPAUX</div>
+      <div class="prob-gauge-wrap">
+        <div class="prob-gauge">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="66" fill="none" stroke="#1e2330" stroke-width="10"/>
+            <circle cx="80" cy="80" r="66" fill="none" stroke="#003087" stroke-width="10"
+              stroke-dasharray="414" stroke-dashoffset="62" stroke-linecap="round"/>
+          </svg>
+          <div class="prob-number">85</div>
+          <div class="prob-unit">%</div>
+        </div>
+      </div>
+      <div class="prob-comment">Niveau de certitude <strong style="color:#e8eaf0">élevé</strong> sur les chefs d'organisation criminelle, trafic, blanchiment et armes. Le dossier est suffisamment étayé pour obtenir une condamnation ferme sur ces infractions.</div>
+      <div class="prob-sub-grid">
+        <div class="prob-sub">
+          <div class="prob-sub-label">ORGANISATION CRIMINELLE + TRAFIC + BLANCHIMENT</div>
+          <div class="prob-sub-value">90–95 %</div>
+          <div class="prob-sub-desc">Preuves matérielles, expertise comptable et témoignages convergents. Très forte probabilité de condamnation.</div>
+        </div>
+        <div class="prob-sub">
+          <div class="prob-sub-label">ASSASSINATS MULTIPLES — PAR DOSSIER INDIVIDUEL</div>
+          <div class="prob-sub-value" style="color:#6a7abf">60–70 %</div>
+          <div class="prob-sub-desc">Dépend de l'individualisation de la responsabilité pour chaque victime. Supplemental investigation recommended.</div>
+        </div>
+        <div class="prob-sub">
+          <div class="prob-sub-label">DISPARITION COBRA / VIPER</div>
+          <div class="prob-sub-value" style="color:#c87d30">75 %</div>
+          <div class="prob-sub-desc">Indices sérieux et convergents. Fragilité résiduelle : absence de corps. Risque de requalification en séquestration.</div>
+        </div>
+        <div class="prob-sub">
+          <div class="prob-sub-label">CORRUPTION ACTIVE</div>
+          <div class="prob-sub-value" style="color:#c87d30">70 %</div>
+          <div class="prob-sub-desc">Faits établis mais lien Montoya-fonctionnaire indirect. Dépend de l'identification de La Contadora.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 35. RÉQUISITOIRE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">35</div>
+      <div class="section-title">Criminal Information formel — US Attorney's Office of San Andreas</div>
+    </div>
+    <div class="decision-proc">
+      <div class="decision-proc-header">
+        <div class="decision-proc-title">CRIMINAL INFORMATION — US ATTORNEY OF SAN ANDREAS</div>
+        <div class="decision-proc-ref">SA-2026-CO-0147 / Réq. n° 2026-MPC-0389</div>
+      </div>
+      <div class="decision-proc-body">
+        <div class="decision-stamp">POURSUITES RETENUES</div>
+        <p style="font-size:12px;color:#8a90a0;margin-bottom:16px;line-height:1.7">Au vu de l'ensemble des éléments du dossier transmis par le SASP à l'issue de l'Opération SPECTRE, le US Attorney retient les infractions suivantes et requests their referral before the US District Court — Criminal Div., Dist. of San Andreas :</p>
+        <ul class="decision-proc-list">
+          <li>Direction d'une organisation criminelle transnationale — crime aggravé</li>
+          <li>Trafic international de stupéfiants en bande organisée — cocaïne (480 kg) et fentanyl (32 kg)</li>
+          <li>Blanchiment aggravé en bande organisée — 59,4 millions de dollars certifiés</li>
+          <li>Corruption active d'agents publics en charge d'une mission de service public</li>
+          <li>Détention et trafic d'armes de guerre et de matériel de guerre</li>
+          <li>Faux documents officiels et usage de faux — 11 documents saisis</li>
+          <li>Enlèvement et séquestration avec actes de torture ou de barbarie — agents Cobra et Viper</li>
+        </ul>
+        <div style="margin-top:14px;padding:8px 14px;background:#1a0808;border:1px solid #3a1010;border-radius:3px;font-size:11px;color:#7a4040">
+          Sur les assassinats multiples : le US Attorney requiert un supplemental investigation pour individualiser la responsabilité de Montoya sur chaque victime. Les cas disposant d'un dossier suffisant (Cobra, Viper, El Chivo, cas DOJ/HOM documentés) sont renvoyés directement en US District Court — Criminal Div..
+        </div>
+        <div class="requisition-box">
+          RÉQUISITION PRINCIPALE : RÉCLUSION CRIMINELLE À PERPÉTUITÉ<br>
+          <span style="font-size:12px;font-family:'Share Tech Mono',monospace;color:#9a4040;letter-spacing:1px">+ SAISIE ET CONFISCATION INTÉGRALE DES AVOIRS IDENTIFIÉS (+59,4 M$)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 36. ORDONNANCE JUGE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">36</div>
+      <div class="section-title">Federal Indictment — Federal Judge USDC-SA</div>
+    </div>
+    <div class="decision-juge">
+      <div class="decision-juge-header">
+        <div class="decision-juge-title">FEDERAL INDICTMENT — USDC SAN ANDREAS</div>
+        <div class="decision-juge-ref">USDC-SA / Cab. n°7 / JI-2026-CO-0147</div>
+      </div>
+      <div class="decision-juge-body">
+        <div class="jugement-section">
+          <div class="jugement-label">FAITS</div>
+          <div class="jugement-text">Le dossier établit l'existence d'une organisation criminelle structurée, armée et transnationale, opérant depuis Cayo Perico (territoire fédéral) dans le trafic international de stupéfiants, le blanchiment de capitaux, la corruption d'agents publics, la détention d'armes et plusieurs enlèvements présumés suivis de mort. La cible, <strong>MONTOYA REYES, Alejandro</strong>, est présentée comme chef suprême de cette organisation avec autorité décisionnelle absolue.</div>
+        </div>
+        <div class="jugement-section">
+          <div class="jugement-label">DISCUSSION</div>
+          <div class="jugement-text">Les preuves matérielles (P-001 à P-009), financières (CPT/EXP/2026/0034), biométriques (BIO/EXP/2026/0089 — 94,7 %) et testimoniales convergent de manière cohérente vers la mise en cause de Montoya. La défense conserve des marges d'attaque sur les homicides non individualisés et l'anonymisation des témoins. Ces éléments peuvent conduire à des aménagements sur certains chefs secondaires, mais n'affectent pas la solidité des chefs principaux.</div>
+        </div>
+        <div class="jugement-section">
+          <div class="jugement-label">MOTIFS</div>
+          <div class="jugement-text">La culpabilité est suffisamment établie pour la <strong>direction du cartel</strong>, le <strong>trafic de stupéfiants</strong>, le <strong>blanchiment aggravé</strong>, la <strong>détention d'armes</strong> et la <strong>corruption active</strong>. Les disparitions des agents Cobra et Viper sont <strong>graves et fortement étayées</strong> malgré l'absence de corps — les indices sont graves, précis et concordants au sens de la jurisprudence. Sur les 40 homicides attribués au réseau, seuls les cas suffisamment documentés individuellement sont renvoyés directement.</div>
+        </div>
+        <div class="jugement-section">
+          <div class="jugement-label">DÉCISION</div>
+          <div class="jugement-verdict">
+            Le Tribunal retient la culpabilité de <strong>MONTOYA REYES, Alejandro</strong> sur les chefs principaux. Il est renvoyé devant la US District Court — Criminal Div. du US District Court, Dist. of San Andreas. Un <strong>supplemental investigation</strong> est ordonné pour les assassinats multiples ne disposant pas de dossier victimologique individuel complet. <strong>La détention provisoire est maintenue</strong> en raison du risque de fuite caractérisé et de la dangerosité extrême de la cible. La saisie conservatoire des avoirs identifiés est confirmée.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="doc-footer">
+    <div class="footer-sig">
+      <p style="color:#4a5068;font-size:11px;margin-bottom:8px">Fait à Lyon, le 2 juillet 2026.</p>
+      <p style="color:#4a5068;font-size:11px">Pour INTERPOL,</p>
+      <p class="sig-name">Division Criminalité Organisée Transnationale</p>
+      <p style="color:#4a5068;font-size:11px;margin-top:8px">Transmis officiellement au SASP — San Andreas<br>et au Department of Justice — Bureau des affaires transnationales.</p>
+    </div>
+    <div class="footer-classify">
+      SASP-INT-2026-0702-EF<br>
+      SECRET — DIFFUSION RESTREINTE<br>
+      ──────────────────────────<br>
+      INTERPOL — DIVISION COT<br>
+      TRANSMIS PAR SASP SAN ANDREAS<br>
+      ──────────────────────────<br>
+      © 2026 INTERPOL — TOUS DROITS RÉSERVÉS
+    </div>
+  </div>
+
+  <div style="margin-top:24px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:10px;color:#2a2f3f;letter-spacing:2px">
+    ✦ SECRET — DIFFUSION RESTREINTE — INTERPOL / SASP SAN ANDREAS ✦
+  </div>
+
+</div>
+</body>
+</html>
