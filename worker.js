@@ -45,30 +45,6 @@ function countGradesFromRoleCounts(roleCounts) {
   for (const [grade, roleId] of Object.entries(GRADE_ROLES)) counts[grade] = roleCounts[roleId] || 0;
   return counts;
 }
-async function getGuildMembers(env, guildId) {
-  const members = [];
-  let after = "0";
-  for (let i = 0; i < 20; i++) {
-    const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members?limit=1000&after=${after}`, {
-      headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
-    });
-    if (!res.ok) throw new Error(`Discord members list failed: ${res.status}`);
-    const batch = await res.json();
-    members.push(...batch);
-    if (batch.length < 1000) break;
-    after = batch[batch.length - 1]?.user?.id || after;
-  }
-  return members;
-}
-
-function countGradesFromMembers(members) {
-  const counts = Object.fromEntries(Object.keys(GRADE_ROLES).map(g => [g, 0]));
-  for (const member of members || []) {
-    const grade = gradeFromRoles(member.roles || []);
-    if (grade) counts[grade]++;
-  }
-  return counts;
-}
 
 const STAFF_ROLE_IDS = [
   '1519507318188933140', // rôle gestionnaire
@@ -308,15 +284,6 @@ export default {
     }
 
     // Sync divisions Discord → intranet
-    if (url.pathname === "/grade-role-counts" && request.method === "GET") {
-      const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
-      try {
-        const members = await getGuildMembers(env, guildId);
-        return json({ ok: true, counts: countGradesFromMembers(members), total: members.length });
-      } catch (e) {
-        return json({ ok: false, error: e.message }, 500);
-      }
-    }
 
     if (url.pathname === "/grade-role-counts" && request.method === "GET") {
       const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
