@@ -60,6 +60,30 @@ function syncDiscordRoles(discordId, addCodes, removeCodes) {
   }).catch(function(e) { console.warn('Discord role sync error:', e); });
 }
 
+var _discordRosterCache = { key: '', ts: 0, map: {} };
+async function getDiscordRosterMap(agents) {
+  var ids = (agents || []).map(function(a){ return a.discord_id; }).filter(Boolean).sort();
+  if (!ids.length) return {};
+  var key = ids.join(',');
+  if (_discordRosterCache.key === key && Date.now() - _discordRosterCache.ts < 60000) return _discordRosterCache.map;
+  var res = await fetch(WORKER_BASE + '/sync-all-from-discord', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+    body: JSON.stringify({ discord_ids: ids })
+  });
+  var data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Erreur Discord');
+  _discordRosterCache = { key: key, ts: Date.now(), map: data.map || {} };
+  return _discordRosterCache.map;
+}
+function applyDiscordGrades(agents, roleMap) {
+  roleMap = roleMap || {};
+  return (agents || []).map(function(a) {
+    var entry = a.discord_id ? roleMap[a.discord_id] : null;
+    return entry && entry.grade ? Object.assign({}, a, { grade: entry.grade }) : a;
+  });
+}
+
 async function syncAllAgentsToDiscord() {
   if (!confirm('Synchroniser les rôles Discord vers les fiches SASP ?\n\nLes grades, divisions CID/SWAT/PA/CNU/TU/SYND et PPA seront mis à jour pour chaque agent qui a un Discord ID.')) return;
   var loader = toastLoading('Synchronisation en cours…');
@@ -569,6 +593,8 @@ function countAgentsByGrade(agents) {
 async function renderDashboard() {
   _grades = await DB.getGrades();
   var agents = visibleRosterAgents(await DB.getAgents());
+  try { agents = applyDiscordGrades(agents, await getDiscordRosterMap(agents)); }
+  catch(e) { console.warn('dashboard Discord grades:', e); }
   var hist = [];
   try {
     var { data: histData } = await getDb().from('agent_historique')
@@ -1392,6 +1418,8 @@ async function delArme(armeId, agentId) {
 async function renderGrades() {
   _grades = await DB.getGrades();
   var agents = visibleRosterAgents(await DB.getAgents());
+  try { agents = applyDiscordGrades(agents, await getDiscordRosterMap(agents)); }
+  catch(e) { console.warn('grades Discord grades:', e); }
 
   var gradeCounts = countAgentsByGrade(agents);
 
