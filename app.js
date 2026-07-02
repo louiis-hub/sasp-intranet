@@ -539,10 +539,31 @@ function typeDotClass(t) {
 }
 function ppaCount(a) { return [a.ppa1,a.ppa2,a.ppa3].filter(Boolean).length; }
 
+function normRosterText(v) {
+  return String(v || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+function gradeKey(v) { return normRosterText(v); }
+function isArchivedStatus(statut) { return normRosterText(statut) === 'archive'; }
+function visibleRosterAgents(agents) {
+  return (agents || []).filter(function(a){ return !isArchivedStatus(a.statut); });
+}
+function countAgentsByGrade(agents) {
+  var counts = {};
+  visibleRosterAgents(agents).forEach(function(a){
+    var key = gradeKey(a.grade);
+    if (key) counts[key] = (counts[key] || 0) + 1;
+  });
+  return counts;
+}
+
 // ══ DASHBOARD ══════════════════════════════════════════════════════
 async function renderDashboard() {
   _grades = await DB.getGrades();
-  var agents = await DB.getAgents();
+  var agents = visibleRosterAgents(await DB.getAgents());
   var hist = [];
   try {
     var { data: histData } = await getDb().from('agent_historique')
@@ -557,10 +578,9 @@ async function renderDashboard() {
   var recentR = agents.slice().sort(function(a,b){ return new Date(b.date_recrutement)-new Date(a.date_recrutement); }).slice(0,5);
 
   // Grade counts — tous les grades dans l'ordre hiérarchique
-  var gradeCounts = {};
-  agents.forEach(function(a){ if (a.grade) gradeCounts[a.grade] = (gradeCounts[a.grade]||0)+1; });
+  var gradeCounts = countAgentsByGrade(agents);
   var gradesSorted = _grades.slice().sort(function(a,b){ return (b.ordre||0)-(a.ordre||0); });
-  var topGrades = gradesSorted.map(function(g){ return [g.nom, gradeCounts[g.nom]||0]; });
+  var topGrades = gradesSorted.map(function(g){ return [g.nom, gradeCounts[gradeKey(g.nom)]||0]; });
 
   var activityHtml = hist.length ? hist.map(function(h) {
     var dot = typeDotClass(h.type);
@@ -625,7 +645,7 @@ function renderOrgChart(agents) {
   }
 
   var sections = gradesSorted.map(function(g, idx) {
-    var members = agents.filter(function(a){ return a.grade === g.nom && a.statut !== 'Archivé'; });
+    var members = agents.filter(function(a){ return gradeKey(a.grade) === gradeKey(g.nom) && !isArchivedStatus(a.statut); });
     var ac = gradeAccent(g.ordre||0);
 
     var header = '<div style="display:flex;align-items:center;gap:10px;margin:' + (idx===0?'4px':'22px') + ' 0 10px 0">' +
@@ -1366,17 +1386,16 @@ async function delArme(armeId, agentId) {
 // ══ GRADES ═════════════════════════════════════════════════════════
 async function renderGrades() {
   _grades = await DB.getGrades();
-  var agents = await DB.getAgents();
+  var agents = visibleRosterAgents(await DB.getAgents());
 
-  var gradeCounts = {};
-  agents.forEach(function(a){ gradeCounts[a.grade] = (gradeCounts[a.grade]||0)+1; });
+  var gradeCounts = countAgentsByGrade(agents);
 
   var rows = _grades.length ? _grades.map(function(g, i){
     return '<tr>' +
       '<td class="mono text-gold" style="width:40px">' + (i+1) + '</td>' +
       '<td style="font-weight:600;color:var(--t0)">' + esc(g.nom) + '</td>' +
       '<td class="mono">' + esc(g.abrev||'—') + '</td>' +
-      '<td>' + (gradeCounts[g.nom]||0) + ' agent(s)</td>' +
+      '<td>' + (gradeCounts[gradeKey(g.nom)]||0) + ' agent(s)</td>' +
       (isAdmin() ?
         '<td onclick="event.stopPropagation()" style="white-space:nowrap">' +
           '<button class="btn btn-ghost btn-sm" onclick="openGradeModal(\'' + g.id + '\')">✏️</button>' +
