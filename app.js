@@ -84,7 +84,7 @@ function applyDiscordGrades(agents, roleMap) {
   });
 }
 async function getDiscordGradeCounts() {
-  var res = await fetch(WORKER_BASE + '/grade-role-counts');
+  var res = await fetch(WORKER_BASE + '/grade-role-counts?t=' + Date.now(), { cache: 'no-store' });
   var data = await res.json();
   if (!data.ok) throw new Error(data.error || 'Erreur Discord');
   return data.counts || {};
@@ -587,6 +587,19 @@ function countAgentsByGrade(agents) {
   });
   return counts;
 }
+async function getDashboardGradeCounts(grades, agents, logLabel) {
+  try {
+    var discordGradeCounts = await getDiscordGradeCounts();
+    if (Object.keys(discordGradeCounts).length) {
+      var counts = {};
+      (grades || []).forEach(function(g) {
+        counts[gradeKey(g.nom)] = discordGradeCounts[g.nom] || 0;
+      });
+      return counts;
+    }
+  } catch(e) { console.warn(logLabel + ' Discord grade counts:', e); }
+  return countAgentsByGrade(agents);
+}
 
 // ══ DASHBOARD ══════════════════════════════════════════════════════
 async function renderDashboard() {
@@ -606,12 +619,8 @@ async function renderDashboard() {
   var recentR = agents.slice().sort(function(a,b){ return new Date(b.date_recrutement)-new Date(a.date_recrutement); }).slice(0,5);
 
   // Grade counts — tous les grades dans l'ordre hiérarchique
-  var gradeCounts = countAgentsByGrade(agents);
-  try {
-    var discordGradeCounts = await getDiscordGradeCounts();
-    Object.keys(discordGradeCounts).forEach(function(g){ gradeCounts[gradeKey(g)] = discordGradeCounts[g] || 0; });
-  } catch(e) { console.warn('dashboard Discord grade counts:', e); }
   var gradesSorted = _grades.slice().sort(function(a,b){ return (b.ordre||0)-(a.ordre||0); });
+  var gradeCounts = await getDashboardGradeCounts(gradesSorted, agents, 'dashboard');
   var topGrades = gradesSorted.map(function(g){ return [g.nom, gradeCounts[gradeKey(g.nom)]||0]; });
 
   var activityHtml = hist.length ? hist.map(function(h) {
@@ -1420,11 +1429,7 @@ async function renderGrades() {
   _grades = await DB.getGrades();
   var agents = visibleRosterAgents(await DB.getAgents());
 
-  var gradeCounts = countAgentsByGrade(agents);
-  try {
-    var discordGradeCounts = await getDiscordGradeCounts();
-    Object.keys(discordGradeCounts).forEach(function(g){ gradeCounts[gradeKey(g)] = discordGradeCounts[g] || 0; });
-  } catch(e) { console.warn('grades Discord grade counts:', e); }
+  var gradeCounts = await getDashboardGradeCounts(_grades, agents, 'grades');
 
   var rows = _grades.length ? _grades.map(function(g, i){
     return '<tr>' +
