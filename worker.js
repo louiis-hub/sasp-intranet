@@ -36,6 +36,11 @@ const ROLE_TO_GRADE = Object.fromEntries(Object.entries(GRADE_ROLES).map(([k,v])
 
 const ALL_SYNCABLE_ROLES = { ...DIVISION_ROLES, ...PPA_ROLES, ...GRADE_ROLES };
 
+function gradeFromRoles(roles) {
+  const hit = Object.entries(GRADE_ROLES).find(([, roleId]) => roles.includes(roleId));
+  return hit ? hit[0] : null;
+}
+
 const STAFF_ROLE_IDS = [
   '1519507318188933140', // rôle gestionnaire
   '1500975725153620033', // Command Staff
@@ -284,7 +289,6 @@ export default {
       if (!res.ok) return json({ ok: false, error: "Membre non trouvé" }, 404);
       const member = await res.json();
       const roles = member.roles || [];
-      const gradeRoleId = roles.find(r => ROLE_TO_GRADE[r]);
       const divisions = roles.filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]);
       return json({
         ok: true,
@@ -292,7 +296,7 @@ export default {
         ppa1: roles.includes(PPA_ROLES.ppa1),
         ppa2: roles.includes(PPA_ROLES.ppa2),
         ppa3: roles.includes(PPA_ROLES.ppa3a) || roles.includes(PPA_ROLES.ppa3b),
-        grade: gradeRoleId ? ROLE_TO_GRADE[gradeRoleId] : null
+        grade: gradeFromRoles(roles)
       });
     }
 
@@ -310,13 +314,12 @@ export default {
         if (!res.ok) continue;
         const m = await res.json();
         const roles = m.roles || [];
-        const gradeRoleId = roles.find(r => ROLE_TO_GRADE[r]);
         map[discordId] = {
           divisions: roles.filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]),
           ppa1:  roles.includes(PPA_ROLES.ppa1),
           ppa2:  roles.includes(PPA_ROLES.ppa2),
           ppa3:  roles.includes(PPA_ROLES.ppa3a) || roles.includes(PPA_ROLES.ppa3b),
-          grade: gradeRoleId ? ROLE_TO_GRADE[gradeRoleId] : null
+          grade: gradeFromRoles(roles)
         };
       }
       return json({ ok: true, map });
