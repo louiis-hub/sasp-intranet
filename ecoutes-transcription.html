@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>TRANSCRIPTIONS ÉCOUTES — Affaire Montoya — CONFIDENTIEL</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6}
+.page{max-width:900px;margin:0 auto;padding:40px 20px}
+.doc-header{background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden;margin-bottom:8px}
+.classify-bar{background:#003087;color:#fff;text-align:center;padding:7px;font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:3px;font-weight:bold}
+.header-inner{display:grid;grid-template-columns:100px 1fr 100px;align-items:center;padding:24px 32px;gap:20px}
+.header-logo{text-align:center}.header-logo img{width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(0,48,135,.5))}
+.header-text{text-align:center}
+.header-org{font-family:'Rajdhani',sans-serif;font-size:12px;letter-spacing:4px;color:#4a7abf;font-weight:600;margin-bottom:4px}
+.header-title{font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:#e8eaf0;letter-spacing:4px}
+.header-sub{font-family:'Rajdhani',sans-serif;font-size:11px;letter-spacing:3px;color:#5c6275;margin-top:4px}
+.header-sasp{text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+.header-sasp img{width:50px;height:50px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(0,48,135,.3))}
+.header-sasp-label{font-family:'Share Tech Mono',monospace;font-size:8px;color:#3a4f6a;line-height:1.5;letter-spacing:1px}
+.doc-meta{background:#0e1018;border:1px solid #1e2330;border-radius:4px;display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-bottom:8px}
+.meta-item{padding:14px 20px;border-right:1px solid #1e2330}.meta-item:last-child{border-right:none}
+.meta-label{font-size:10px;letter-spacing:2px;color:#4a5068;font-family:'Share Tech Mono',monospace;text-transform:uppercase;margin-bottom:4px}
+.meta-value{font-size:13px;color:#c9cdd6;font-weight:500}
+.meta-value.red{color:#cf4040}.meta-value.orange{color:#c87d30}
+.disclaimer{background:#0e1018;border:1px solid #1e2330;border-left:3px solid #003087;border-radius:4px;padding:10px 16px;margin-bottom:28px;font-size:11px;color:#4a5068;font-family:'Share Tech Mono',monospace;text-align:center;line-height:1.8}
+.back-link{display:inline-flex;align-items:center;gap:8px;color:#4a7abf;font-family:'Share Tech Mono',monospace;font-size:11px;text-decoration:none;padding:8px 16px;border:1px solid #1a2640;border-radius:3px;margin-bottom:24px}
+.back-link:hover{color:#6a9adf;border-color:#4a7abf}
+.section{margin-bottom:36px}
+.section-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #1e2330}
+.section-num{background:#003087;color:#fff;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:2px;flex-shrink:0}
+.section-title{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#e8eaf0;letter-spacing:1px}
+.prose{color:#8a90a0;font-size:13px;margin-bottom:12px}
+.bullet-list{list-style:none;margin:8px 0}
+.bullet-list li{padding:5px 0 5px 20px;position:relative;color:#8a90a0;font-size:13px;border-bottom:1px solid #131620}
+.bullet-list li:before{content:'▸';position:absolute;left:0;color:#003087}
+/* INTERCEPTIONS */
+.intercept-block{background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden;margin-bottom:18px}
+.intercept-header{background:#0d1320;padding:10px 18px;border-bottom:1px solid #1a2640;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.intercept-ref{font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a7abf;letter-spacing:1px}
+.intercept-meta{display:flex;gap:14px;align-items:center}
+.intercept-meta span{font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a4f6a}
+.intercept-body{padding:16px 20px}
+.intercept-grid{display:grid;grid-template-columns:120px 1fr;gap:8px;font-size:12px;margin-bottom:14px}
+.intercept-key{color:#4a5068;font-family:'Share Tech Mono',monospace;padding:4px 0}
+.intercept-val{color:#8a90a0;padding:4px 0;border-bottom:1px solid #131620}
+.transcript-box{background:#060810;border:1px solid #1a1f30;border-radius:3px;padding:14px 18px;margin-top:10px}
+.transcript-line{display:grid;grid-template-columns:80px 1fr;gap:12px;padding:7px 0;border-bottom:1px solid #0d1018;font-size:12px}
+.transcript-line:last-child{border-bottom:none}
+.transcript-speaker{font-family:'Share Tech Mono',monospace;color:#003087;font-size:10px;letter-spacing:1px;padding-top:2px}
+.transcript-speaker.unknown{color:#4a5068}
+.transcript-speaker.verdugo{color:#c87d30}
+.transcript-text{color:#8a90a0;line-height:1.7;font-style:italic}
+.transcript-text .redact{background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none}
+.intercept-analysis{margin-top:12px;padding:10px 14px;background:#0e1018;border:1px solid #1e2330;border-left:3px solid #c87d30;border-radius:3px}
+.intercept-analysis-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:#5a3010;letter-spacing:2px;margin-bottom:5px}
+.intercept-analysis-text{font-size:11px;color:#5c6275;line-height:1.6}
+.verdict-tag{display:inline-block;font-family:'Share Tech Mono',monospace;font-size:9px;padding:2px 8px;border-radius:2px}
+.verdict-direct{background:#0a2010;color:#2ecc71;border:1px solid #1a4a20}
+.verdict-indirect{background:#2d2008;color:#c87d30;border:1px solid #5a3010}
+.verdict-context{background:#0e0e30;color:#6a7abf;border:1px solid #1a2050}
+/* TECH META */
+.tech-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px}
+.tech-card{background:#0a0c10;border:1px solid #1e2330;border-radius:4px;padding:12px 16px;text-align:center}
+.tech-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068;letter-spacing:2px;margin-bottom:6px}
+.tech-value{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#4a7abf}
+.tech-sub{font-size:10px;color:#3a4f6a;margin-top:2px}
+/* RAPPORT TERRAIN */
+.rapport-block{background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden;margin-bottom:18px}
+.rapport-header{background:#0d1320;padding:10px 18px;border-bottom:1px solid #1a2640;display:flex;justify-content:space-between}
+.rapport-body{padding:16px 20px;font-size:12px;color:#8a90a0;line-height:1.9}
+.data-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.data-table th{background:#0e1018;color:#4a5068;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:10px 14px;border:1px solid #1e2330;text-align:left;font-weight:normal}
+.data-table td{background:#0a0c10;color:#8a90a0;padding:9px 14px;border:1px solid #161922}
+.doc-footer{margin-top:48px;border-top:1px solid #1e2330;padding-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.footer-sig{font-size:12px;color:#4a5068}.footer-sig p{margin-bottom:4px}
+.footer-sig .sig-name{color:#c9cdd6;font-weight:500;font-size:13px}
+.footer-classify{text-align:right;font-family:'Share Tech Mono',monospace;font-size:10px;color:#3a3f52;line-height:2}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <a href="dossier-montoya.html" class="back-link">← Retour au dossier principal</a>
+
+  <div class="doc-header">
+    <div class="classify-bar">✦ SECRET — USAGE JUDICIAIRE EXCLUSIF — INTERCEPTIONS CERTIFIÉES ✦</div>
+    <div class="header-inner">
+      <div class="header-logo"><img src="https://i.imgur.com/QsngJ4w.png" alt="SASP"></div>
+      <div class="header-text">
+        <div class="header-org">INTERPOL — SASP SAN ANDREAS — UNITÉ TECHNIQUE D'INTERCEPTION</div>
+        <div class="header-title">TRANSCRIPTIONS ÉCOUTES</div>
+        <div class="header-sub">AFFAIRE MONTOYA / CARTEL LOS ESPECTROS — DOSSIER SASP-INT-2026-0702-EF</div>
+      </div>
+      <div class="header-sasp">
+        <img src="https://i.imgur.com/QsngJ4w.png" alt="SASP">
+        <div class="header-sasp-label">UNITÉ TECHNIQUE<br>INTERCEPTIONS<br>SASP / INTERPOL</div>
+      </div>
+    </div>
+    <div class="classify-bar">TRANSCRIPTIONS CERTIFIÉES — ACCÈS NIVEAU SECRET — 4 PERSONNES AUTORISÉES</div>
+  </div>
+
+  <div class="doc-meta">
+    <div class="meta-item">
+      <div class="meta-label">Dossier principal</div>
+      <div class="meta-value" style="font-family:'Share Tech Mono',monospace;font-size:11px">SASP-INT-2026-0702-EF</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Période couverte</div>
+      <div class="meta-value">Nov. 2023 — Juill. 2026</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Classification</div>
+      <div class="meta-value red">SECRET — Usage judiciaire</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Interceptions totales</div>
+      <div class="meta-value orange">47 interceptions archivées</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Retenues au dossier</div>
+      <div class="meta-value">12 — Valeur probante élevée</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Ordonnances couvrant</div>
+      <div class="meta-value">OIT-2023-1101 / 0601 / 0620</div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    Document établi par l'Unité Technique d'Interception SASP/INTERPOL. Transcriptions certifiées conformes aux enregistrements archivés sous scellés. Non communicable à la défense sans ordonnance du juge d'instruction. — Fictif / RP GTA San Andreas
+  </div>
+
+  <!-- SECTION STATISTIQUES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">I</div>
+      <div class="section-title">Statistiques techniques — Vue d'ensemble</div>
+    </div>
+    <div class="tech-grid">
+      <div class="tech-card">
+        <div class="tech-label">DURÉE TOTALE ARCHIVÉE</div>
+        <div class="tech-value">148h</div>
+        <div class="tech-sub">Toutes interceptions confondues</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-label">INTERCEPTIONS RETENUES</div>
+        <div class="tech-value">12 / 47</div>
+        <div class="tech-sub">Sélection valeur probante ≥ élevée</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-label">IDENTIFICATION VOCALE</div>
+        <div class="tech-value">9 / 12</div>
+        <div class="tech-sub">Confirmée par empreinte vocale</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-label">MENTIONS « EL FANTASMA »</div>
+        <div class="tech-value">23</div>
+        <div class="tech-sub">Occurrences directes ou codées</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-label">RÉFÉRENCES OPÉRATION JUIL.</div>
+        <div class="tech-value">6</div>
+        <div class="tech-sub">Livraison prévue début juillet 2026</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-label">QUALITÉ AUDIO MOYENNE</div>
+        <div class="tech-value">84 %</div>
+        <div class="tech-sub">Taux d'intelligibilité certifié</div>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th>Réf. ordonnance</th><th>Cibles autorisées</th><th>Période</th><th>Interceptions</th><th>Retenues au dossier</th></tr>
+      </thead>
+      <tbody>
+        <tr><td style="font-family:'Share Tech Mono',monospace">OIT-2023-SA-1101</td><td>El Verdugo + associés directs</td><td>Nov. 2023 — Fév. 2024</td><td style="text-align:center">9</td><td style="text-align:center;color:#2ecc71">3</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace">OIT-2026-SA-0601</td><td>El Fantasma + El Ingeniero — téléphones chiffrés</td><td>Juin — Août 2026</td><td style="text-align:center">28</td><td style="text-align:center;color:#2ecc71">7</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace">OIT-2026-SA-0620</td><td>Extension — empreinte vocale El Verdugo</td><td>Juin — Août 2026</td><td style="text-align:center">10</td><td style="text-align:center;color:#2ecc71">2</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- INTERCEPTIONS CERTIFIÉES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">II</div>
+      <div class="section-title">Interceptions certifiées — Transcriptions complètes</div>
+    </div>
+
+    <!-- ECO/0011 -->
+    <div class="intercept-block">
+      <div class="intercept-header">
+        <div class="intercept-ref">INTP/ECO/0011 — 15/11/2023 à 02h37 — OIT-2023-SA-1101</div>
+        <div class="intercept-meta">
+          <span>DURÉE : 2min 14s</span>
+          <span>QUALITÉ : 91 %</span>
+          <span class="verdict-tag verdict-direct">PREUVE DIRECTE</span>
+        </div>
+      </div>
+      <div class="intercept-body">
+        <div class="intercept-grid">
+          <div class="intercept-key">APPELANT</div><div class="intercept-val">El Verdugo — confirmé empreinte vocale (EV/CERT/2026/003)</div>
+          <div class="intercept-key">DESTINATAIRE</div><div class="intercept-val"><span class="transcript-text"><span class="redact">+1 (███) ███-████</span></span> — non identifié (présumé intermédiaire logistique)</div>
+          <div class="intercept-key">LOCALISATION</div><div class="intercept-val">Triangulation : secteur Paleto Bay — tour <span class="transcript-text"><span class="redact">███</span></span></div>
+          <div class="intercept-key">CONTEXTE</div><div class="intercept-val">36h après dernière transmission de COBRA (07/11/2023 — 03h22)</div>
+        </div>
+        <div class="transcript-box">
+          <div class="transcript-line">
+            <div class="transcript-speaker verdugo">EL VERDUGO</div>
+            <div class="transcript-text">"Le problème des deux <span class="redact">██████</span> est réglé. Le patron est satisfait."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker unknown">INCONNU</div>
+            <div class="transcript-text">"Aucune trace ?"</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker verdugo">EL VERDUGO</div>
+            <div class="transcript-text">"Aucune. C'est propre. Le <span class="redact">████</span> ne parlera plus à personne. Préviens <span class="redact">████████</span> que le secteur est de nouveau sécurisé."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker unknown">INCONNU</div>
+            <div class="transcript-text">"Et les familles ?"</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker verdugo">EL VERDUGO</div>
+            <div class="transcript-text">"Le patron a dit non. On ne touche pas aux familles. On ne cherche pas les ennuis inutilement. Mais ils ne retrouveront rien." <em style="color:#4a5068;font-size:11px">[coupure 4 secondes]</em> "Fais passer le mot. Celui qui parle finit pareil."</div>
+          </div>
+        </div>
+        <div class="intercept-analysis">
+          <div class="intercept-analysis-label">ANALYSE PROBANTE — OIT-2023-SA-1101</div>
+          <div class="intercept-analysis-text">Cette interception est la pièce centrale du chef d'enlèvement et séquestration suivis de mort présumée des agents COBRA et VIPER. L'expression "le patron est satisfait" désigne exclusivement Montoya dans le lexique interne du cartel (confirmé par Alpha-1). La formulation "aucune trace" et "ils ne retrouveront rien" constitue un aveu implicite de dissimulation des corps. Date : 36h après la dernière transmission de COBRA. Corrélation directe avec la mention "solucionado" du registre P-006 (08/11/2023). <strong style="color:#c9cdd6">Valeur probante : TRÈS ÉLEVÉE pour chef 07.</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ECO/0023 -->
+    <div class="intercept-block">
+      <div class="intercept-header">
+        <div class="intercept-ref">INTP/ECO/0023 — 19/06/2026 à 23h12 — OIT-2026-SA-0601</div>
+        <div class="intercept-meta">
+          <span>DURÉE : 4min 37s</span>
+          <span>QUALITÉ : 87 %</span>
+          <span class="verdict-tag verdict-indirect">PREUVE INDIRECTE</span>
+        </div>
+      </div>
+      <div class="intercept-body">
+        <div class="intercept-grid">
+          <div class="intercept-key">APPELANT</div><div class="intercept-val"><span class="transcript-text"><span class="redact">+1 (███) ███-████</span></span> — identifié comme El Fantasma (empreinte vocale EV/CERT/2026/001 — 89,2 %)</div>
+          <div class="intercept-key">DESTINATAIRE</div><div class="intercept-val"><span class="transcript-text"><span class="redact">+██ (███) ███-████</span></span> — El Ingeniero (présumé — recoupement fréquence/contexte)</div>
+          <div class="intercept-key">LOCALISATION</div><div class="intercept-val">Signal satellite — relayé via <span class="transcript-text"><span class="redact">████████</span></span> — zone Cayo Perico</div>
+          <div class="intercept-key">CONTEXTE</div><div class="intercept-val">Conversation de coordination logistique — ref. à livraison juillet 2026</div>
+        </div>
+        <div class="transcript-box">
+          <div class="transcript-line">
+            <div class="transcript-speaker">EL FANTASMA</div>
+            <div class="transcript-text">"La livraison de <span class="redact">████████</span> est confirmée pour vendredi. Assure-toi que <span class="redact">██████</span> soit en place avant l'aube."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker unknown">EL INGENIERO</div>
+            <div class="transcript-text">"On a un problème avec le <span class="redact">████</span>. Le transitaire réclame vingt de plus."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker">EL FANTASMA</div>
+            <div class="transcript-text">"Donne-lui quinze. Pas plus. Et rappelle-lui ce qui est arrivé au dernier qui a demandé trop. Si ça merde encore une fois, tu sais ce qui arrive."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker unknown">EL INGENIERO</div>
+            <div class="transcript-text">"Compris. Et pour Cayo — tu restes ?"</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker">EL FANTASMA</div>
+            <div class="transcript-text">"Jusqu'à la livraison. Après on verra. <span class="redact">████████</span> doit régler la situation à Los Santos d'abord. Dis à <span class="redact">████████</span> que je veux un rapport ce soir."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker unknown">EL INGENIERO</div>
+            <div class="transcript-text">"Reçu." <em style="color:#4a5068;font-size:11px">[fin de communication]</em></div>
+          </div>
+        </div>
+        <div class="intercept-analysis">
+          <div class="intercept-analysis-label">ANALYSE PROBANTE — OIT-2026-SA-0601</div>
+          <div class="intercept-analysis-text">Confirmation de la présence de Montoya à Cayo Perico au moment de la conversation ("jusqu'à la livraison"). Référence à une livraison de début juillet — recoupée avec le rapport SOMBRA semaine 7 (28/05/2026). La formule "tu sais ce qui arrive" constitue une menace implicite documentant le modus operandi de représailles internes. L'identification vocale à 89,2 % dépasse le seuil légal (85 %). <strong style="color:#c9cdd6">Valeur probante : ÉLEVÉE pour chefs 01, 03 et 08.</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ECO/0027 -->
+    <div class="intercept-block">
+      <div class="intercept-header">
+        <div class="intercept-ref">INTP/ECO/0027 — 24/06/2026 à 11h58 — OIT-2026-SA-0601</div>
+        <div class="intercept-meta">
+          <span>DURÉE : 1min 09s</span>
+          <span>QUALITÉ : 79 %</span>
+          <span class="verdict-tag verdict-indirect">PREUVE INDIRECTE</span>
+        </div>
+      </div>
+      <div class="intercept-body">
+        <div class="intercept-grid">
+          <div class="intercept-key">APPELANT</div><div class="intercept-val">La Contadora — présumée (voix féminine non encore certifiée — en cours d'analyse EV/CERT/2026/007)</div>
+          <div class="intercept-key">DESTINATAIRE</div><div class="intercept-val"><span class="transcript-text"><span class="redact">+1 (███) ███-████</span></span> — non identifié (présumé cellule financière Los Santos)</div>
+          <div class="intercept-key">LOCALISATION</div><div class="intercept-val">Non déterminée — relais mobile, signal masqué</div>
+          <div class="intercept-key">CONTEXTE</div><div class="intercept-val">Coordination financière — journée de la réunion à Cayo Perico (hélicoptère immatriculé <span class="transcript-text"><span class="redact">██-███</span></span>)</div>
+        </div>
+        <div class="transcript-box">
+          <div class="transcript-line">
+            <div class="transcript-speaker" style="color:#9a50a0">LA CONTADORA</div>
+            <div class="transcript-text">"Le virement de <span class="redact">████████</span> est passé. Trois lots. Total <span class="redact">████</span>. C'est propre."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker unknown">INTERLOCUTEUR</div>
+            <div class="transcript-text">"Et les <span class="redact">████</span> de la douane ?"</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker" style="color:#9a50a0">LA CONTADORA</div>
+            <div class="transcript-text">"Réglé ce matin. Le directeur a accepté. Comme d'habitude — espèces, pas de trace. Il sait ce qu'il risque s'il fait des histoires."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker unknown">INTERLOCUTEUR</div>
+            <div class="transcript-text">"Le patron est au courant ?"</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker" style="color:#9a50a0">LA CONTADORA</div>
+            <div class="transcript-text">"Il sera informé ce soir. La réunion de Cayo se passe bien. Ne rappelle pas sur ce numéro." <em style="color:#4a5068;font-size:11px">[communication coupée]</em></div>
+          </div>
+        </div>
+        <div class="intercept-analysis">
+          <div class="intercept-analysis-label">ANALYSE PROBANTE — OIT-2026-SA-0601</div>
+          <div class="intercept-analysis-text">Première interception attribuée à La Contadora — voix féminine, rôle financier confirmé (virements, paiement fonctionnaire douanier). Corrobore le témoignage BRAVO-4 sur les versements en espèces. La mention "le patron sera informé ce soir" et la référence à la réunion de Cayo établissent un lien indirect avec Montoya pour le chef de corruption (06). L'identification vocale non encore certifiée fragilise cette pièce — à consolider. <strong style="color:#c9cdd6">Valeur probante : MOYENNE pour chef 06 (corruption). HAUTE pour identification La Contadora.</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ECO/0031 -->
+    <div class="intercept-block">
+      <div class="intercept-header">
+        <div class="intercept-ref">INTP/ECO/0031 — 28/06/2026 à 02h14 — OIT-2026-SA-0601</div>
+        <div class="intercept-meta">
+          <span>DURÉE : 1min 52s</span>
+          <span>QUALITÉ : 94 %</span>
+          <span class="verdict-tag verdict-direct">PREUVE DIRECTE</span>
+        </div>
+      </div>
+      <div class="intercept-body">
+        <div class="intercept-grid">
+          <div class="intercept-key">APPELANT</div><div class="intercept-val">El Verdugo — confirmé empreinte vocale (EV/CERT/2026/003 — 96,1 %)</div>
+          <div class="intercept-key">DESTINATAIRE</div><div class="intercept-val"><span class="transcript-text"><span class="redact">+1 (███) ███-████</span></span> — non identifié</div>
+          <div class="intercept-key">LOCALISATION</div><div class="intercept-val">Cayo Perico — zone villa El Rubio (triangulation GPS)</div>
+          <div class="intercept-key">CONTEXTE</div><div class="intercept-val">Renforcement du dispositif de sécurité — surveillance INTERPOL possiblement détectée</div>
+        </div>
+        <div class="transcript-box">
+          <div class="transcript-line">
+            <div class="transcript-speaker verdugo">EL VERDUGO</div>
+            <div class="transcript-text">"Il y a du mouvement autour de la propriété. Pas des locaux. Renforce le périmètre nord avec <span class="redact">██</span> hommes supplémentaires."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker unknown">INTERLOCUTEUR</div>
+            <div class="transcript-text">"D'où ils viennent ?"</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker verdugo">EL VERDUGO</div>
+            <div class="transcript-text">"Je sais pas encore. Peut-être des fédéraux. Peut-être rien. Mais le patron ne veut pas être surpris. Personne n'entre, personne ne sort sans mon accord jusqu'à nouvel ordre."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker unknown">INTERLOCUTEUR</div>
+            <div class="transcript-text">"Et lui ?"</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker verdugo">EL VERDUGO</div>
+            <div class="transcript-text">"Il reste. Il ne part pas à cause d'une ombre. Mais on garde les bateaux prêts." <em style="color:#4a5068;font-size:11px">[4 secondes silence]</em> "Et si quelqu'un parle, c'est lui qui répond devant le patron."</div>
+          </div>
+        </div>
+        <div class="intercept-analysis">
+          <div class="intercept-analysis-label">ANALYSE PROBANTE — OIT-2026-SA-0601</div>
+          <div class="intercept-analysis-text">Confirmation de la présence de Montoya à Cayo Perico le 28/06/2026 — "il reste" désigne le chef suprême. Référence à une possible surveillance externe ("peut-être des fédéraux") — les équipes INTERPOL étaient effectivement en position le 28/06. Ce changement de comportement est cohérent avec l'interception INTP/ECO/0023 et corrobore la chronologie de surveillance (rapport terrain du 28/06). La mention des bateaux "prêts" documente la préparation d'une fuite maritime. <strong style="color:#c9cdd6">Valeur probante : TRÈS ÉLEVÉE pour localisation de Montoya le 28/06.</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ECO/0038 -->
+    <div class="intercept-block">
+      <div class="intercept-header">
+        <div class="intercept-ref">INTP/ECO/0038 — 01/07/2026 à 21h43 — OIT-2026-SA-0601</div>
+        <div class="intercept-meta">
+          <span>DURÉE : 3min 02s</span>
+          <span>QUALITÉ : 82 %</span>
+          <span class="verdict-tag verdict-direct">PREUVE DIRECTE</span>
+        </div>
+      </div>
+      <div class="intercept-body">
+        <div class="intercept-grid">
+          <div class="intercept-key">APPELANT</div><div class="intercept-val"><span class="transcript-text"><span class="redact">+1 (███) ███-████</span></span> — El Fantasma (empreinte vocale EV/CERT/2026/001 — 91,4 %)</div>
+          <div class="intercept-key">DESTINATAIRE</div><div class="intercept-val"><span class="transcript-text"><span class="redact">+██ (███) ███-████</span></span> — inconnu — probablement un haut responsable du Cartel de Sinaloa</div>
+          <div class="intercept-key">LOCALISATION</div><div class="intercept-val">Signal Cayo Perico — 2h après la capture biométrique CAM-04 (19h03)</div>
+          <div class="intercept-key">CONTEXTE</div><div class="intercept-val">Conversation stratégique — mandat fédéral délivré à 19h00 ce soir même</div>
+        </div>
+        <div class="transcript-box">
+          <div class="transcript-line">
+            <div class="transcript-speaker">EL FANTASMA</div>
+            <div class="transcript-text">"Je vais avoir besoin du couloir nord d'ici trois jours. La pression monte. J'ai des informations qui disent que des renforts sont en route."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker unknown">INTERLOCUTEUR</div>
+            <div class="transcript-text">"Qu'est-ce que tu veux faire ?"</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker">EL FANTASMA</div>
+            <div class="transcript-text">"Rester. Je ne fuis pas de chez moi. Si ils viennent, ils paieront le prix. J'ai <span class="redact">████</span> hommes et l'île. Qu'ils viennent."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker unknown">INTERLOCUTEUR</div>
+            <div class="transcript-text">"Et la livraison ?"</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker">EL FANTASMA</div>
+            <div class="transcript-text">"On reporte pas. Elle part comme prévu. J'ai trop investi pour reculer maintenant. Cayo c'est ma maison — ils peuvent pas me toucher ici." <em style="color:#4a5068;font-size:11px">[5 secondes silence]</em> "Dis à <span class="redact">████████</span> que si ça tourne mal, les fonds passent par <span class="redact">████████</span> comme convenu."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker unknown">INTERLOCUTEUR</div>
+            <div class="transcript-text">"Il sera prévenu." <em style="color:#4a5068;font-size:11px">[fin de communication]</em></div>
+          </div>
+        </div>
+        <div class="intercept-analysis">
+          <div class="intercept-analysis-label">ANALYSE PROBANTE — OIT-2026-SA-0601</div>
+          <div class="intercept-analysis-text">Enregistrement le plus important du dossier avec INTP/ECO/0011. Montoya est conscient d'une menace imminente mais refuse de fuir — confirme le sentiment de sécurité identifié dans le profil psychologique (section 22). La référence aux "fonds" et à une procédure de contingence financière préétablie constitue un aveu supplémentaire d'activité criminelle. Cette interception a été déterminante pour la décision d'exécuter l'Opération SPECTRE dans la nuit du 2 au 3 juillet. <strong style="color:#c9cdd6">Valeur probante : TRÈS ÉLEVÉE — chefs 01, 03, 05 et 10.</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ECO/0042 -->
+    <div class="intercept-block">
+      <div class="intercept-header">
+        <div class="intercept-ref">INTP/ECO/0042 — 02/07/2026 à 14h20 — OIT-2026-SA-0620</div>
+        <div class="intercept-meta">
+          <span>DURÉE : 47s</span>
+          <span>QUALITÉ : 96 %</span>
+          <span class="verdict-tag verdict-context">CONTEXTE</span>
+        </div>
+      </div>
+      <div class="intercept-body">
+        <div class="intercept-grid">
+          <div class="intercept-key">APPELANT</div><div class="intercept-val">El Verdugo — confirmé empreinte vocale (96,1 %)</div>
+          <div class="intercept-key">DESTINATAIRE</div><div class="intercept-val">El Verdugo s'adresse à des gardes — interception ambiante</div>
+          <div class="intercept-key">LOCALISATION</div><div class="intercept-val">Intérieur de la villa El Rubio — microphone positionné par SOMBRA — dispositif actif</div>
+          <div class="intercept-key">CONTEXTE</div><div class="intercept-val">Briefing de sécurité — 10h avant l'Opération SPECTRE</div>
+        </div>
+        <div class="transcript-box">
+          <div class="transcript-line">
+            <div class="transcript-speaker verdugo">EL VERDUGO</div>
+            <div class="transcript-text">"Ce soir — rotation toutes les deux heures. Personne ne dort. Le patron a dit : si quelque chose bouge sur l'eau, on tire d'abord. Les bateaux restent armés. <span class="redact">████</span>, tu prends le secteur est avec <span class="redact">██</span> hommes. On ne prend aucun risque cette nuit."</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker unknown">GARDE</div>
+            <div class="transcript-text">"C'est quoi la menace ?"</div>
+          </div>
+          <div class="transcript-line">
+            <div class="transcript-speaker verdugo">EL VERDUGO</div>
+            <div class="transcript-text">"Je sais pas exactement. Mais le patron sent quelque chose. Et quand il sent quelque chose — on obéit. C'est tout." <em style="color:#4a5068;font-size:11px">[fin d'enregistrement ambiant — durée maximale atteinte]</em></div>
+          </div>
+        </div>
+        <div class="intercept-analysis">
+          <div class="intercept-analysis-label">ANALYSE PROBANTE — OIT-2026-SA-0620</div>
+          <div class="intercept-analysis-text">Interception ambiante obtenue via le dispositif technique installé par l'agent SOMBRA — légalité couverte par DOJ/INF/2026/SA-0047 (Art. 706-81 CPP). Confirme les dispositions défensives de Cayo Perico la nuit de l'opération. La formule "si quelque chose bouge sur l'eau, on tire d'abord" documente la résistance armée anticipée et justifie rétrospectivement les modalités tactiques de l'Opération SPECTRE. <strong style="color:#c9cdd6">Valeur probante : CONTEXTE OPÉRATIONNEL — corrobore chefs 10 et 11.</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RAPPORTS TERRAIN COMPLETS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">III</div>
+      <div class="section-title">Rapports de terrain — Version complète</div>
+    </div>
+    <p class="prose">Rapports détaillés des agents SASP/INTERPOL en position de surveillance autour de Cayo Perico. Complément des extraits versés au dossier principal (section 11).</p>
+
+    <div class="rapport-block">
+      <div class="rapport-header">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a7abf">RAPPORT TERRAIN — AGENT <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████</span> — SASP INTERPOL COT — 14/06/2026</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a4f6a">RT-2026/CAYO/001</span>
+      </div>
+      <div class="rapport-body">
+        À 06h20, une vedette rapide de type go-fast (<span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none;font-size:11px">██████████</span>) a accosté sur le ponton sud de la propriété. Deux individus ont été aperçus supervisant le déchargement de <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none;font-size:11px">██</span> caisses hermétiques non identifiées, d'environ 50 kg chacune. L'opération a duré 47 minutes. Aucun document douanier. Quatre gardes armés en sécurité périmétrique. La vedette est repartie cap au <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none;font-size:11px">███</span> à 08h12. Photographié depuis position ALPHA-7, distance 310 mètres. Qualité optique : 78 %. <br><br><strong style="color:#c9cdd6">Interprétation :</strong> livraison de marchandise à haute valeur — cohérente avec le profil de transit de stupéfiants. Recoupée avec les données de surveillance satellitataire REF: INT/SAT/CAYO/2026-0614.
+        <div style="margin-top:10px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#3a4060">AGENT : <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████</span> — Validé coordinateur mission — RT-2026/CAYO/001</div>
+      </div>
+    </div>
+
+    <div class="rapport-block">
+      <div class="rapport-header">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a7abf">RAPPORT TERRAIN — AGENT <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████</span> — SASP INTERPOL COT — 24/06/2026</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a4f6a">RT-2026/CAYO/004</span>
+      </div>
+      <div class="rapport-body">
+        À 14h10, un aéronef privé immatriculé <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none;font-size:11px">██-███</span> (Airbus H135 — îles Caïmans, société <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none;font-size:11px">████████</span> Aviation) a atterri sur la terrasse hélipad de la villa. Trois individus en sont descendus. Le premier, <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none;font-size:11px">████████████</span>, est connu de nos services comme intermédiaire financier du réseau — référencé INTP/FIN/2024/003. Les deux autres n'ont pas pu être formellement identifiés malgré capture photographique (qualité insuffisante, contre-jour). L'un d'eux portait une mallette rigide noire.<br><br>La réunion a duré approximativement <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none;font-size:11px">██</span> minutes, à l'intérieur de la villa. À 16h45, les visiteurs sont ressortis. L'intermédiaire financier semblait satisfait — gestes et posture décontractés, rires audibles à distance. La mallette avait été échangée contre une autre à serrure combinée. L'aéronef a décollé en direction du nord-ouest à 17h42.<br><br><strong style="color:#c9cdd6">Interprétation :</strong> réunion de coordination financière de haut niveau. Échange physique de documents ou d'espèces consistent avec les flux identifiés dans CPT/EXP/2026/0034. Recoupé avec l'interception INTP/ECO/0027 du même jour (La Contadora — 11h58).
+        <div style="margin-top:10px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#3a4060">AGENT : <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████</span> — Validé coordinateur mission — RT-2026/CAYO/004</div>
+      </div>
+    </div>
+
+    <div class="rapport-block">
+      <div class="rapport-header">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#cf4040">RAPPORT TERRAIN PRIORITAIRE — AGENTS <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████</span> & <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████</span> — 01/07/2026</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#5a1a1a">RT-2026/CAYO/008 — PRIORITÉ MAX</span>
+      </div>
+      <div class="rapport-body">
+        À 19h03, lors d'une session de surveillance longue durée depuis la position ALPHA-7 (cap 224°, distance 178 mètres), l'individu connu sous le nom d'El Fantasma a été observé sur la terrasse principale de la villa El Rubio. Il était seul. Il fumait et conversait sur un téléphone portable. Il est resté visible pendant 22 minutes.<br><br>La capture a été effectuée par la caméra longue portée CAM-04 (vision nocturne amplifiée, résolution 4K). Une expertise biométrique a été immédiatement demandée — résultat BIO/EXP/2026/0089 : 94,7 % de concordance avec la photo judiciaire de référence MX-INTERPOL-2021-AM.<br><br>À 19h25, Montoya a été rejoint par El Verdugo et deux individus non identifiés. Ils ont brièvement discuté puis Montoya est rentré dans la villa. Aucune interaction visible avec l'extérieur de la propriété.<br><br><strong style="color:#cf4040">NOTE URGENTE :</strong> Cette observation a déclenché la décision d'engagement de l'Opération SPECTRE. Le mandat fédéral FED/WARRANT/2026/CP-0047 a été signé par le juge Whitaker à 19h00 — <em>soit 3 minutes avant la capture visuelle</em>. La chronologie confirme que le mandat n'a pas été obtenu sur la base de cette capture mais d'un faisceau d'éléments préexistants — aucun argument de procédure rétroactive possible pour la défense.
+        <div style="margin-top:10px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#3a4060">AGENTS : <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████</span> & <span style="background:#0d1018;color:#0d1018;border-radius:2px;padding:0 4px;user-select:none">████████</span> — Validé directeur opérations — RT-2026/CAYO/008</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLEAU RÉCAPITULATIF -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">IV</div>
+      <div class="section-title">Tableau récapitulatif — Valeur probante par chef</div>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th>Réf. interception</th><th>Date</th><th>Interlocuteurs</th><th>Chefs concernés</th><th>Valeur probante</th></tr>
+      </thead>
+      <tbody>
+        <tr><td style="font-family:'Share Tech Mono',monospace;font-size:11px">INTP/ECO/0011</td><td style="font-family:'Share Tech Mono',monospace">15/11/2023</td><td>El Verdugo → inconnu</td><td>Chef 07 (Cobra/Viper)</td><td style="color:#cf4040">✦ CRITIQUE</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace;font-size:11px">INTP/ECO/0023</td><td style="font-family:'Share Tech Mono',monospace">19/06/2026</td><td>El Fantasma → El Ingeniero</td><td>Chefs 01, 03, 08</td><td style="color:#cf4040">✦ TRÈS ÉLEVÉE</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace;font-size:11px">INTP/ECO/0027</td><td style="font-family:'Share Tech Mono',monospace">24/06/2026</td><td>La Contadora → cellule LS</td><td>Chef 06 (corruption)</td><td style="color:#c87d30">◆ MOYENNE</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace;font-size:11px">INTP/ECO/0031</td><td style="font-family:'Share Tech Mono',monospace">28/06/2026</td><td>El Verdugo → inconnu</td><td>Localisation Montoya</td><td style="color:#cf4040">✦ TRÈS ÉLEVÉE</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace;font-size:11px">INTP/ECO/0038</td><td style="font-family:'Share Tech Mono',monospace">01/07/2026</td><td>El Fantasma → Sinaloa</td><td>Chefs 01, 03, 05, 10</td><td style="color:#cf4040">✦ CRITIQUE</td></tr>
+        <tr><td style="font-family:'Share Tech Mono',monospace;font-size:11px">INTP/ECO/0042</td><td style="font-family:'Share Tech Mono',monospace">02/07/2026</td><td>El Verdugo (ambiant)</td><td>Chefs 10, 11 (contexte)</td><td style="color:#3a9a3a">● CONTEXTE</td></tr>
+        <tr><td style="color:#4a5068;font-style:italic" colspan="5">+ 6 interceptions supplémentaires versées au dossier pénal principal — accès sur ordonnance spéciale du juge d'instruction</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px;padding:10px 14px;background:#0a100a;border:1px solid #1a2a1a;border-left:3px solid #00a040;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#00a040">
+      ✓ TOUTES LES INTERCEPTIONS LÉGALEMENT COUVERTES — Exception de nullité irrecevable — Chaîne de garde transcription validée — Archivage sous scellés INTP/SCELL/2026/ECO
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <div class="footer-sig">
+      <p style="color:#4a5068;font-size:11px;margin-bottom:8px">Document établi le 3 juillet 2026.</p>
+      <p style="color:#4a5068;font-size:11px">Unité Technique d'Interception</p>
+      <p class="sig-name">SASP San Andreas — Division INTERPOL COT</p>
+      <p style="color:#4a5068;font-size:11px;margin-top:8px">Transcriptions certifiées conformes aux enregistrements originaux archivés sous scellés.</p>
+    </div>
+    <div class="footer-classify">
+      DOSSIER PRINCIPAL : SASP-INT-2026-0702-EF<br>
+      ANNEXE ÉCOUTES : INTP/ECO/TRANS/2026<br>
+      ──────────────────────────<br>
+      SECRET — DIFFUSION RESTREINTE<br>
+      INTERCEPTIONS CERTIFIÉES<br>
+      ──────────────────────────<br>
+      © 2026 INTERPOL / SASP SAN ANDREAS
+    </div>
+  </div>
+
+  <div style="margin-top:24px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:10px;color:#2a2f3f;letter-spacing:2px">
+    ✦ SECRET — DIFFUSION RESTREINTE — INTERCEPTIONS CERTIFIÉES — SASP SAN ANDREAS ✦
+  </div>
+
+</div>
+</body>
+</html>

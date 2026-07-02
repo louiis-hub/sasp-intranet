@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>DOSSIERS VICTIMOLOGIQUES — Affaire Montoya — CONFIDENTIEL</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6}
+.page{max-width:960px;margin:0 auto;padding:40px 20px}
+.doc-header{background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden;margin-bottom:8px}
+.classify-bar{background:#003087;color:#fff;text-align:center;padding:7px;font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:3px;font-weight:bold}
+.header-inner{display:grid;grid-template-columns:100px 1fr 100px;align-items:center;padding:24px 32px;gap:20px}
+.header-logo{text-align:center}.header-logo img{width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(0,48,135,.5))}
+.header-text{text-align:center}
+.header-org{font-family:'Rajdhani',sans-serif;font-size:12px;letter-spacing:4px;color:#4a7abf;font-weight:600;margin-bottom:4px}
+.header-title{font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:#e8eaf0;letter-spacing:4px}
+.header-sub{font-family:'Rajdhani',sans-serif;font-size:11px;letter-spacing:3px;color:#5c6275;margin-top:4px}
+.header-sasp{text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+.header-sasp img{width:50px;height:50px;object-fit:contain;filter:drop-shadow(0 0 4px rgba(0,48,135,.3))}
+.header-sasp-label{font-family:'Share Tech Mono',monospace;font-size:8px;color:#3a4f6a;line-height:1.5;letter-spacing:1px}
+.doc-meta{background:#0e1018;border:1px solid #1e2330;border-radius:4px;display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-bottom:8px}
+.meta-item{padding:14px 20px;border-right:1px solid #1e2330}.meta-item:last-child{border-right:none}
+.meta-label{font-size:10px;letter-spacing:2px;color:#4a5068;font-family:'Share Tech Mono',monospace;text-transform:uppercase;margin-bottom:4px}
+.meta-value{font-size:13px;color:#c9cdd6;font-weight:500}
+.meta-value.red{color:#cf4040}.meta-value.orange{color:#c87d30}
+.disclaimer{background:#0e1018;border:1px solid #1e2330;border-left:3px solid #003087;border-radius:4px;padding:10px 16px;margin-bottom:28px;font-size:11px;color:#4a5068;font-family:'Share Tech Mono',monospace;text-align:center;line-height:1.8}
+.back-link{display:inline-flex;align-items:center;gap:8px;color:#4a7abf;font-family:'Share Tech Mono',monospace;font-size:11px;text-decoration:none;padding:8px 16px;border:1px solid #1a2640;border-radius:3px;margin-bottom:24px}
+.back-link:hover{color:#6a9adf;border-color:#4a7abf}
+.section{margin-bottom:36px}
+.section-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #1e2330}
+.section-num{background:#003087;color:#fff;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:2px;flex-shrink:0}
+.section-title{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#e8eaf0;letter-spacing:1px}
+.prose{color:#8a90a0;font-size:13px;margin-bottom:12px}
+/* STATS OVERVIEW */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px}
+.stat-card{background:#0a0c10;border:1px solid #1e2330;border-radius:4px;padding:14px 16px;text-align:center}
+.stat-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068;letter-spacing:2px;margin-bottom:6px}
+.stat-value{font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:700;color:#4a7abf}
+.stat-sub{font-size:10px;color:#3a4f6a;margin-top:2px}
+/* VICTIM FICHE */
+.victim-fiche{background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden;margin-bottom:20px}
+.victim-header{background:#0d1320;padding:0;border-bottom:1px solid #1a2640;display:grid;grid-template-columns:8px 1fr auto;align-items:stretch}
+.victim-accent{width:8px}.victim-accent.fonct{background:#cf4040}.victim-accent.civ{background:#c87d30}.victim-accent.agent{background:#003087}.victim-accent.inconnu{background:#4a5068}
+.victim-header-inner{padding:12px 18px}
+.victim-ref{font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068;letter-spacing:1px;margin-bottom:4px}
+.victim-name{font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:#e8eaf0;letter-spacing:1px}
+.victim-alias{font-family:'Share Tech Mono',monospace;font-size:11px;color:#4a7abf;margin-top:2px}
+.victim-badges{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;padding:12px 16px;gap:6px}
+.badge{display:inline-block;font-family:'Share Tech Mono',monospace;font-size:9px;padding:3px 8px;border-radius:2px;letter-spacing:1px}
+.badge-fonct{background:#3d0e0e;color:#cf4040;border:1px solid #5a1a1a}
+.badge-civ{background:#2d2008;color:#c87d30;border:1px solid #5a3010}
+.badge-agent{background:#0a1530;color:#4a7abf;border:1px solid #1a2640}
+.badge-incomplet{background:#1a1a20;color:#5c6275;border:1px solid #2a2a30}
+.victim-body{padding:18px 22px}
+.victim-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.victim-info-col{padding-right:16px}
+.victim-info-col:last-child{padding-right:0;padding-left:16px;border-left:1px solid #1e2330}
+.info-row{display:grid;grid-template-columns:140px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid #0e1018;font-size:12px}
+.info-row:last-child{border-bottom:none}
+.info-key{color:#4a5068;font-family:'Share Tech Mono',monospace;font-size:10px;padding-top:2px}
+.info-val{color:#8a90a0;line-height:1.5}
+.victim-narr{margin-top:14px;padding:12px 16px;background:#060810;border:1px solid #1a1f30;border-radius:3px;font-size:12px;color:#8a90a0;line-height:1.8}
+.victim-narr strong{color:#c9cdd6}
+.victim-evidence{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.evid-tag{font-family:'Share Tech Mono',monospace;font-size:9px;padding:3px 9px;background:#0a100a;color:#2ecc71;border:1px solid #1a3a1a;border-radius:2px}
+.evid-tag.partial{background:#1a1000;color:#c87d30;border-color:#3a2000}
+.evid-tag.missing{background:#1a0000;color:#5c3030;border-color:#3a0000}
+.victim-status-bar{margin-top:12px;padding:8px 14px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;display:flex;align-items:center;gap:10px}
+.victim-status-bar.resolved{background:#0a2010;color:#2ecc71;border:1px solid #1a4a20}
+.victim-status-bar.partial{background:#2d2008;color:#c87d30;border:1px solid #5a3010}
+.victim-status-bar.cold{background:#1a0000;color:#cf4040;border:1px solid #5a1a1a}
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{background:#0e1018;color:#4a5068;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:10px 14px;border:1px solid #1e2330;text-align:left;font-weight:normal}
+.data-table td{background:#0a0c10;color:#8a90a0;padding:9px 14px;border:1px solid #161922}
+/* FOOTER */
+.doc-footer{margin-top:48px;border-top:1px solid #1e2330;padding-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.footer-sig{font-size:12px;color:#4a5068}.footer-sig p{margin-bottom:4px}
+.footer-sig .sig-name{color:#c9cdd6;font-weight:500;font-size:13px}
+.footer-classify{text-align:right;font-family:'Share Tech Mono',monospace;font-size:10px;color:#3a3f52;line-height:2}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <a href="dossier-montoya.html" class="back-link">← Retour au dossier principal</a>
+
+  <div class="doc-header">
+    <div class="classify-bar">✦ CONFIDENTIEL — USAGE JUDICIAIRE EXCLUSIF — DOSSIERS VICTIMOLOGIQUES ✦</div>
+    <div class="header-inner">
+      <div class="header-logo"><img src="https://i.imgur.com/QsngJ4w.png" alt="SASP"></div>
+      <div class="header-text">
+        <div class="header-org">SASP SAN ANDREAS — UNITÉ CRIMINOLOGIE — DIVISION INTERPOL COT</div>
+        <div class="header-title">DOSSIERS VICTIMOLOGIQUES</div>
+        <div class="header-sub">AFFAIRE MONTOYA — LOS ESPECTROS — DOSSIER SA-2026-CO-0147</div>
+      </div>
+      <div class="header-sasp">
+        <img src="https://i.imgur.com/QsngJ4w.png" alt="SASP">
+        <div class="header-sasp-label">UNITÉ CRIMINOLOGIE<br>VICTIMOLOGIE<br>SASP / INTERPOL</div>
+      </div>
+    </div>
+    <div class="classify-bar">DOSSIERS INDIVIDUELS — 11 HOMICIDES DOCUMENTÉS + 29 NON RÉSOLUS — ACCÈS RESTREINT</div>
+  </div>
+
+  <div class="doc-meta">
+    <div class="meta-item">
+      <div class="meta-label">Dossier principal</div>
+      <div class="meta-value" style="font-family:'Share Tech Mono',monospace;font-size:11px">SA-2026-CO-0147</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Victimes documentées</div>
+      <div class="meta-value red">40 homicides — 11 identifiés</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Classification</div>
+      <div class="meta-value red">CONFIDENTIEL — Usage judiciaire</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Victimes fonctionnaires</div>
+      <div class="meta-value orange">3 sur 11 documentés</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Corps retrouvés</div>
+      <div class="meta-value">4 sur 11 (36 %)</div>
+    </div>
+    <div class="meta-item">
+      <div class="meta-label">Dernière mise à jour</div>
+      <div class="meta-value">3 juillet 2026</div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    Document établi par la cellule criminologie SASP/INTERPOL. Fiches victimologiques individuelles — Affaire Montoya / Los Espectros. Contenu sensible — accès strictement limité aux personnes habilitées. — Fictif / RP GTA San Andreas
+  </div>
+
+  <!-- VUE D'ENSEMBLE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">I</div>
+      <div class="section-title">Vue d'ensemble — Bilan victimaire</div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">HOMICIDES TOTAUX ATTRIBUÉS</div>
+        <div class="stat-value">40</div>
+        <div class="stat-sub">Période 2001–2026</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">IDENTITÉS ÉTABLIES</div>
+        <div class="stat-value">11</div>
+        <div class="stat-sub">Dossiers complets ci-après</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">CORPS RETROUVÉS</div>
+        <div class="stat-value">4</div>
+        <div class="stat-sub">Dont 1 à Cayo Perico (partiel)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">NON RÉSOLUS / ANONYMES</div>
+        <div class="stat-value">29</div>
+        <div class="stat-sub">Chiffre issu rapport SOMBRA</div>
+      </div>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th>Catégorie</th><th>Nombre</th><th>Identification</th><th>Corps retrouvés</th><th>Dossier</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Fonctionnaires / Forces de l'ordre</td><td style="text-align:center">3</td><td style="color:#2ecc71">3 / 3 (100 %)</td><td style="color:#c87d30">1 / 3 (33 %)</td><td style="color:#2ecc71">Complets</td></tr>
+        <tr><td>Civils — témoins / informateurs</td><td style="text-align:center">4</td><td style="color:#2ecc71">4 / 4 (100 %)</td><td style="color:#2ecc71">3 / 4 (75 %)</td><td style="color:#c87d30">Partiels</td></tr>
+        <tr><td>Membres cartel — exécutions internes</td><td style="text-align:center">4</td><td style="color:#c87d30">4 / 4 (100 %)</td><td style="color:#c87d30">0 / 4 (0 %)</td><td style="color:#c87d30">Partiels</td></tr>
+        <tr><td>Non identifiés (rapport SOMBRA)</td><td style="text-align:center">29</td><td style="color:#cf4040">0 / 29</td><td style="color:#cf4040">—</td><td style="color:#cf4040">Absents</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:10px;padding:8px 14px;background:#0a100a;border:1px solid #1a3a1a;border-left:3px solid #2ecc71;border-radius:3px;font-size:11px;color:#4a7068;font-family:'Share Tech Mono',monospace">
+      ✓ Note procédurale : chaque dossier ci-dessous a été soumis au procureur Reyes. Le chef "assassinat" (chef 05 — art. 231 IPC San Andreas) est retenu pour les 11 victimes identifiées. Pour les 29 cas non résolus : qualification "tentative d'identification" en cours — complément d'instruction demandé (REC-02 dossier principal).
+    </div>
+  </div>
+
+  <!-- FICHES INDIVIDUELLES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">II</div>
+      <div class="section-title">Fiches individuelles — Victimes identifiées</div>
+    </div>
+
+    <!-- VIC-001 COBRA -->
+    <div class="victim-fiche">
+      <div class="victim-header">
+        <div class="victim-accent fonct"></div>
+        <div class="victim-header-inner">
+          <div class="victim-ref">VIC-001 — FONCTIONNAIRE EN EXERCICE — SASP INTERPOL COT</div>
+          <div class="victim-name">Agent « COBRA »</div>
+          <div class="victim-alias">Identité réelle protégée — Décision CA-SAS-2026/VIC-001-PROT</div>
+        </div>
+        <div class="victim-badges">
+          <span class="badge badge-fonct">FONCTIONNAIRE</span>
+          <span class="badge badge-incomplet">CORPS NON RETROUVÉ</span>
+        </div>
+      </div>
+      <div class="victim-body">
+        <div class="victim-grid">
+          <div class="victim-info-col">
+            <div class="info-row"><div class="info-key">GRADE</div><div class="info-val">Agent de renseignement — Niveau 3 — SASP COT</div></div>
+            <div class="info-row"><div class="info-key">UNITÉ</div><div class="info-val">Opération SOMBRA — infiltration Los Espectros</div></div>
+            <div class="info-row"><div class="info-key">DATE DISPARITION</div><div class="info-val">07/11/2023 — 03h22 (dernière transmission)</div></div>
+            <div class="info-row"><div class="info-key">LIEU PROBABLE</div><div class="info-val">Secteur Paleto Bay / zone industrielle nord</div></div>
+          </div>
+          <div class="victim-info-col">
+            <div class="info-row"><div class="info-key">CORPS</div><div class="info-val" style="color:#cf4040">Non retrouvé — Recherches actives — REC-07</div></div>
+            <div class="info-row"><div class="info-key">CAUSE DU DÉCÈS</div><div class="info-val">Présumée : exécution — absence de corps</div></div>
+            <div class="info-row"><div class="info-key">LIEN MONTOYA</div><div class="info-val">Direct — INTP/ECO/0011 "patron satisfait"</div></div>
+            <div class="info-row"><div class="info-key">DOSSIER PIÈCE</div><div class="info-val" style="font-family:'Share Tech Mono',monospace;font-size:11px">P-009-COB / INTP/ECO/0011</div></div>
+          </div>
+        </div>
+        <div class="victim-narr">
+          COBRA opérait en infiltration profonde au sein de Los Espectros depuis l'automne 2022. Sa dernière transmission chiffrée, reçue le 07/11/2023 à 03h22, indiquait une "menace imminente" et une demande d'extraction d'urgence. <strong>L'extraction n'a pu être exécutée.</strong> Le réseau de contact a été mis silencieux 17 minutes après. L'interception INTP/ECO/0011 (15/11/2023) dans laquelle El Verdugo déclare "le problème des deux est réglé, le patron est satisfait" constitue la preuve principale de son décès. Aucun corps n'a été retrouvé malgré les fouilles dans un rayon de 30 km autour de la dernière position connue. La Recommandation REC-07 demande des fouilles sur l'île de Cayo Perico (informations confidentielles issues d'Alpha-1).
+        </div>
+        <div class="victim-evidence">
+          <span class="evid-tag">INTP/ECO/0011 — CLEF</span>
+          <span class="evid-tag">P-009-COB</span>
+          <span class="evid-tag partial">CORPS ABSENT</span>
+          <span class="evid-tag">ALPHA-1 TÉMOIGNAGE</span>
+        </div>
+        <div class="victim-status-bar cold">✗ DOSSIER INCOMPLET — CORPS NON RETROUVÉ — COMPLÉMENT D'INSTRUCTION EN COURS (REC-07)</div>
+      </div>
+    </div>
+
+    <!-- VIC-002 VIPER -->
+    <div class="victim-fiche">
+      <div class="victim-header">
+        <div class="victim-accent fonct"></div>
+        <div class="victim-header-inner">
+          <div class="victim-ref">VIC-002 — FONCTIONNAIRE EN EXERCICE — SASP INTERPOL COT</div>
+          <div class="victim-name">Agent « VIPER »</div>
+          <div class="victim-alias">Identité réelle protégée — Décision CA-SAS-2026/VIC-002-PROT</div>
+        </div>
+        <div class="victim-badges">
+          <span class="badge badge-fonct">FONCTIONNAIRE</span>
+          <span class="badge badge-incomplet">CORPS NON RETROUVÉ</span>
+        </div>
+      </div>
+      <div class="victim-body">
+        <div class="victim-grid">
+          <div class="victim-info-col">
+            <div class="info-row"><div class="info-key">GRADE</div><div class="info-val">Agent de renseignement — Niveau 2 — SASP COT</div></div>
+            <div class="info-row"><div class="info-key">UNITÉ</div><div class="info-val">Opération SOMBRA — binôme COBRA</div></div>
+            <div class="info-row"><div class="info-key">DATE DISPARITION</div><div class="info-val">07/11/2023 — (même événement que COBRA)</div></div>
+            <div class="info-row"><div class="info-key">LIEU PROBABLE</div><div class="info-val">Secteur Paleto Bay — identique VIC-001</div></div>
+          </div>
+          <div class="victim-info-col">
+            <div class="info-row"><div class="info-key">CORPS</div><div class="info-val" style="color:#cf4040">Non retrouvé — Recherches actives — REC-07</div></div>
+            <div class="info-row"><div class="info-key">CAUSE DU DÉCÈS</div><div class="info-val">Présumée : exécution conjointe avec COBRA</div></div>
+            <div class="info-row"><div class="info-key">LIEN MONTOYA</div><div class="info-val">Direct — INTP/ECO/0011 "les deux"</div></div>
+            <div class="info-row"><div class="info-key">DOSSIER PIÈCE</div><div class="info-val" style="font-family:'Share Tech Mono',monospace;font-size:11px">P-009-VIP / INTP/ECO/0011</div></div>
+          </div>
+        </div>
+        <div class="victim-narr">
+          VIPER formait binôme avec COBRA au sein de l'Opération SOMBRA. Sa disparition est concomitante à celle de COBRA — aucun contact individuel depuis le 07/11/2023 03h22. L'interception ECO/0011 mentionne explicitement "les deux" — référence confirmée par l'agent Alpha-1 comme désignant COBRA et VIPER. <strong>L'élimination conjointe des deux agents constitue le chef d'accusation le plus grave du dossier</strong> : assassinat de fonctionnaires en mission, aggravé par la qualité d'officier infiltré. Ce chef entraîne une circonstance aggravante automatique en droit de San Andreas (art. 232 §3 IPC-SA).
+        </div>
+        <div class="victim-evidence">
+          <span class="evid-tag">INTP/ECO/0011 — CLEF</span>
+          <span class="evid-tag">P-009-VIP</span>
+          <span class="evid-tag partial">CORPS ABSENT</span>
+          <span class="evid-tag">ALPHA-1 TÉMOIGNAGE</span>
+        </div>
+        <div class="victim-status-bar cold">✗ DOSSIER INCOMPLET — CORPS NON RETROUVÉ — CIRCONSTANCE AGGRAVANTE — REC-07</div>
+      </div>
+    </div>
+
+    <!-- VIC-003 -->
+    <div class="victim-fiche">
+      <div class="victim-header">
+        <div class="victim-accent civ"></div>
+        <div class="victim-header-inner">
+          <div class="victim-ref">VIC-003 — CIVIL — INFORMATEUR ENREGISTRÉ</div>
+          <div class="victim-name">Marco Estévez</div>
+          <div class="victim-alias">Alias : « El Contador » (non lié à La Contadora) — INF/REG/2022/SA-0048</div>
+        </div>
+        <div class="victim-badges">
+          <span class="badge badge-civ">CIVIL</span>
+          <span class="badge badge-agent" style="background:#0a2010;color:#2ecc71;border:1px solid #1a4a20">CORPS RETROUVÉ</span>
+        </div>
+      </div>
+      <div class="victim-body">
+        <div class="victim-grid">
+          <div class="victim-info-col">
+            <div class="info-row"><div class="info-key">IDENTITÉ</div><div class="info-val">Marco Estévez, 41 ans — comptable agréé Los Santos</div></div>
+            <div class="info-row"><div class="info-key">RÔLE</div><div class="info-val">Informateur — activité comptable pour le cartel</div></div>
+            <div class="info-row"><div class="info-key">DATE DU DÉCÈS</div><div class="info-val">3 mars 2024 — estimée</div></div>
+            <div class="info-row"><div class="info-key">LIEU</div><div class="info-val">Arrière-port de Los Santos — conteneur frigorifique</div></div>
+          </div>
+          <div class="victim-info-col">
+            <div class="info-row"><div class="info-key">CORPS</div><div class="info-val" style="color:#2ecc71">Retrouvé — 12/03/2024 — Rapport légiste RL/2024/0089</div></div>
+            <div class="info-row"><div class="info-key">CAUSE DU DÉCÈS</div><div class="info-val">Balle calibre .45 — nuque — exécution caractérisée</div></div>
+            <div class="info-row"><div class="info-key">LIEN MONTOYA</div><div class="info-val">Indirect — registre P-006 mention "EC — réglé" (04/03/2024)</div></div>
+            <div class="info-row"><div class="info-key">DOSSIER PIÈCE</div><div class="info-val" style="font-family:'Share Tech Mono',monospace;font-size:11px">P-006 / RL/2024/0089</div></div>
+          </div>
+        </div>
+        <div class="victim-narr">
+          Estévez avait commencé à transmettre des informations au SASP en décembre 2023, motivé par la peur après l'élimination d'un associé. Il avait communiqué plusieurs relevés de transferts internes au cartel — documents partiellement intégrés au rapport CPT/EXP/2026/0034. Il a vraisemblablement été démasqué lors d'une vérification interne du cartel. Son corps a été retrouvé dans un conteneur frigorifique à l'arrière-port le 12 mars 2024 — 9 jours après sa mort estimée. <strong>La mention dans le registre P-006 "EC — réglé — 04/03" constitue une preuve indirecte de l'implication de la chaîne de commandement.</strong> La lettre calibre utilisée (.45) correspond à l'armement standard des gardes de corps d'El Verdugo selon le rapport balistique P-007.
+        </div>
+        <div class="victim-evidence">
+          <span class="evid-tag">RL/2024/0089 — RAPPORT LÉGISTE</span>
+          <span class="evid-tag">P-006 REGISTRE</span>
+          <span class="evid-tag">BALISTIQUE P-007</span>
+          <span class="evid-tag partial">LIEN INDIRECT</span>
+        </div>
+        <div class="victim-status-bar partial">◆ DOSSIER PARTIEL — CORPS RETROUVÉ — LIEN MONTOYA INDIRECT — À CONSOLIDER</div>
+      </div>
+    </div>
+
+    <!-- VIC-004 -->
+    <div class="victim-fiche">
+      <div class="victim-header">
+        <div class="victim-accent fonct"></div>
+        <div class="victim-header-inner">
+          <div class="victim-ref">VIC-004 — FONCTIONNAIRE — DOUANES DE SAN ANDREAS</div>
+          <div class="victim-name">Officier Raúl Medina Torres</div>
+          <div class="victim-alias">Grade : Inspecteur Principal — Douanes / Port de Los Santos</div>
+        </div>
+        <div class="victim-badges">
+          <span class="badge badge-fonct">FONCTIONNAIRE</span>
+          <span class="badge badge-agent" style="background:#0a2010;color:#2ecc71;border:1px solid #1a4a20">CORPS RETROUVÉ</span>
+        </div>
+      </div>
+      <div class="victim-body">
+        <div class="victim-grid">
+          <div class="victim-info-col">
+            <div class="info-row"><div class="info-key">IDENTITÉ</div><div class="info-val">Raúl Medina Torres, 48 ans — Douanes San Andreas</div></div>
+            <div class="info-row"><div class="info-key">RÔLE</div><div class="info-val">Inspecteur principal — Terminal maritime Los Santos</div></div>
+            <div class="info-row"><div class="info-key">DATE DU DÉCÈS</div><div class="info-val">17 septembre 2024</div></div>
+            <div class="info-row"><div class="info-key">LIEU</div><div class="info-val">Parking souterrain — résidence personnelle</div></div>
+          </div>
+          <div class="victim-info-col">
+            <div class="info-row"><div class="info-key">CORPS</div><div class="info-val" style="color:#2ecc71">Retrouvé sur place — RL/2024/0341</div></div>
+            <div class="info-row"><div class="info-key">CAUSE DU DÉCÈS</div><div class="info-val">Deux balles calibre 9mm — thorax — mise en scène</div></div>
+            <div class="info-row"><div class="info-key">CONTEXTE</div><div class="info-val" style="color:#c87d30">Avait cessé de coopérer avec le cartel — refus d'un nouveau lot</div></div>
+            <div class="info-row"><div class="info-key">DOSSIER PIÈCE</div><div class="info-val" style="font-family:'Share Tech Mono',monospace;font-size:11px">P-006 / RL/2024/0341 / BRAVO-4</div></div>
+          </div>
+        </div>
+        <div class="victim-narr">
+          Medina Torres avait été corrompu par le cartel dès 2021, percevant des versements réguliers en espèces pour faciliter le passage de containers non inspectés. En août 2024, il a tenté de mettre fin à sa collaboration, informant confidentiellement un supérieur de sa situation. <strong>Il a été exécuté trois semaines après ce signalement</strong> — mise en scène en "agression à main armée". Le témoin protégé BRAVO-4 a formellement déclaré avoir entendu El Verdugo confirmer que "celui qui veut sortir sort les pieds devant". Cette déclaration, combinée au rapport légiste, établit la circonstance aggravante de représailles contre un fonctionnaire. Le cas Medina Torres alimente directement le chef de corruption (chef 06) du dossier Montoya.
+        </div>
+        <div class="victim-evidence">
+          <span class="evid-tag">RL/2024/0341</span>
+          <span class="evid-tag">BRAVO-4 TÉMOIGNAGE</span>
+          <span class="evid-tag">P-006 — "RMT — sortie"</span>
+          <span class="evid-tag partial">LIEN EL VERDUGO</span>
+        </div>
+        <div class="victim-status-bar partial">◆ DOSSIER CONSOLIDÉ — LIEN MONTOYA PAR CHAÎNE HIÉRARCHIQUE — COMPLÉMENT DEMANDÉ</div>
+      </div>
+    </div>
+
+    <!-- VIC-005 -->
+    <div class="victim-fiche">
+      <div class="victim-header">
+        <div class="victim-accent civ"></div>
+        <div class="victim-header-inner">
+          <div class="victim-ref">VIC-005 — CIVIL — TRAFIQUANT — EXÉCUTION INTERNE</div>
+          <div class="victim-name">Diego « El Rápido » Fuentes</div>
+          <div class="victim-alias">Membre mid-level — réseau de distribution Los Espectros — Los Santos</div>
+        </div>
+        <div class="victim-badges">
+          <span class="badge badge-civ">EXÉCUTION INTERNE</span>
+          <span class="evid-tag missing" style="font-size:9px;margin:0">CORPS ABSENT</span>
+        </div>
+      </div>
+      <div class="victim-body">
+        <div class="victim-grid">
+          <div class="victim-info-col">
+            <div class="info-row"><div class="info-key">IDENTITÉ</div><div class="info-val">Diego Fuentes, 29 ans — connu de nos services</div></div>
+            <div class="info-row"><div class="info-key">RÔLE</div><div class="info-val">Distributeur de stupéfiants — niveau intermédiaire</div></div>
+            <div class="info-row"><div class="info-key">DATE PRÉSUMÉE</div><div class="info-val">Entre le 10 et le 17 janvier 2025</div></div>
+            <div class="info-row"><div class="info-key">RAISON</div><div class="info-val" style="color:#cf4040">Soupçonné de détournement de fonds — 45 000 $</div></div>
+          </div>
+          <div class="victim-info-col">
+            <div class="info-row"><div class="info-key">CORPS</div><div class="info-val" style="color:#cf4040">Non retrouvé</div></div>
+            <div class="info-row"><div class="info-key">SOURCE</div><div class="info-val">Alpha-1 — déclaration sous serment — janv. 2026</div></div>
+            <div class="info-row"><div class="info-key">LIEN MONTOYA</div><div class="info-val">Indirect — décision attribuée à El Verdugo sur ordre</div></div>
+            <div class="info-row"><div class="info-key">DOSSIER PIÈCE</div><div class="info-val" style="font-family:'Share Tech Mono',monospace;font-size:11px">ALPHA-1 / P-006</div></div>
+          </div>
+        </div>
+        <div class="victim-narr">
+          Selon le témoignage de l'agent Alpha-1, Diego Fuentes avait détourné environ 45 000 $ issus des recettes du réseau de distribution de Los Santos. La découverte du manquant par La Contadora lors d'un audit interne en janvier 2025 aurait conduit à une "décision d'élimination" validée au niveau de la direction. <strong>Alpha-1 déclare que l'ordre venait "d'en haut" — El Verdugo était le relais direct.</strong> Aucun corps retrouvé — signalement de disparition déposé par la famille le 22/01/2025. La qualification du chef d'assassinat sur cette victime dépend de l'identification formelle du corps et de la corroboration de la déclaration Alpha-1 par un second témoin. À consolider.
+        </div>
+        <div class="victim-evidence">
+          <span class="evid-tag">ALPHA-1 DÉCLARATION</span>
+          <span class="evid-tag partial">P-006 — PARTIEL</span>
+          <span class="evid-tag missing">CORPS ABSENT</span>
+          <span class="evid-tag missing">SECOND TÉMOIN MANQUANT</span>
+        </div>
+        <div class="victim-status-bar cold">✗ DOSSIER FAIBLE — TÉMOIN UNIQUE — CORPS NON RETROUVÉ — À CONSOLIDER AVANT RÉQUISITOIRE</div>
+      </div>
+    </div>
+
+    <!-- VIC-006 -->
+    <div class="victim-fiche">
+      <div class="victim-header">
+        <div class="victim-accent civ"></div>
+        <div class="victim-header-inner">
+          <div class="victim-ref">VIC-006 — CIVIL — JOURNALISTE</div>
+          <div class="victim-name">Sofia Ramírez</div>
+          <div class="victim-alias">Journaliste d'investigation — LS Tribune — enquête Los Espectros (2023)</div>
+        </div>
+        <div class="victim-badges">
+          <span class="badge badge-civ">CIVIL</span>
+          <span class="badge badge-agent" style="background:#0a2010;color:#2ecc71;border:1px solid #1a4a20">CORPS RETROUVÉ</span>
+        </div>
+      </div>
+      <div class="victim-body">
+        <div class="victim-grid">
+          <div class="victim-info-col">
+            <div class="info-row"><div class="info-key">IDENTITÉ</div><div class="info-val">Sofia Ramírez, 36 ans — journaliste LS Tribune</div></div>
+            <div class="info-row"><div class="info-key">RÔLE</div><div class="info-val">Enquête Los Espectros — articles non publiés retrouvés</div></div>
+            <div class="info-row"><div class="info-key">DATE DU DÉCÈS</div><div class="info-val">8 août 2023</div></div>
+            <div class="info-row"><div class="info-key">LIEU</div><div class="info-val">Appartement Los Santos — mise en scène suicide</div></div>
+          </div>
+          <div class="victim-info-col">
+            <div class="info-row"><div class="info-key">CORPS</div><div class="info-val" style="color:#2ecc71">Retrouvé — RL/2023/0812 — suicide contesté par légiste</div></div>
+            <div class="info-row"><div class="info-key">CAUSE DU DÉCÈS</div><div class="info-val" style="color:#c87d30">Classé suicide (PD) — réouverture SASP 2025 — homicide présumé</div></div>
+            <div class="info-row"><div class="info-key">LIEN MONTOYA</div><div class="info-val">Faisceau d'indices — appels interceptés à son numéro</div></div>
+            <div class="info-row"><div class="info-key">DOSSIER PIÈCE</div><div class="info-val" style="font-family:'Share Tech Mono',monospace;font-size:11px">RL/2023/0812 / RL-REVISION/2025</div></div>
+          </div>
+        </div>
+        <div class="victim-narr">
+          Sofia Ramírez avait publié deux articles préliminaires sur le cartel Los Espectros en juin 2023 — les sources internes lui avaient fourni des informations qui recoupent les éléments figurant aujourd'hui dans P-004. Elle a été retrouvée dans son appartement le 8 août 2023, classée suicide par la PD locale. <strong>Le SASP a rouvert le dossier en 2025 sur la base d'un rapport légiste révisé (RL-REVISION/2025) concluant à des "incohérences incompatibles avec un acte suicidaire volontaire."</strong> Trois appels non identifiés depuis des numéros liés au réseau Los Espectros avaient été effectués sur son téléphone dans les 72h précédant sa mort. Articles non publiés retrouvés sur un disque chiffré — transmis à la cellule d'analyse comme élément de contexte (non versé au dossier pénal).
+        </div>
+        <div class="victim-evidence">
+          <span class="evid-tag">RL-REVISION/2025</span>
+          <span class="evid-tag partial">APPELS RÉSEAU ESPECTROS</span>
+          <span class="evid-tag partial">DOSSIER ROUVERT</span>
+          <span class="evid-tag missing">LIEN DIRECT ABSENT</span>
+        </div>
+        <div class="victim-status-bar partial">◆ DOSSIER EN RÉVISION — QUALIFICATION HOMICIDE NON ENCORE RETENUE — INSTRUCTION EN COURS</div>
+      </div>
+    </div>
+
+    <!-- VIC-007 à 011 — FORMAT RÉSUMÉ -->
+    <div style="background:#0a0c10;border:1px solid #1a2640;border-radius:4px;padding:18px 22px;margin-bottom:20px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#e8eaf0;margin-bottom:14px;letter-spacing:1px">Fiches abrégées — VIC-007 à VIC-011</div>
+      <table class="data-table">
+        <thead>
+          <tr><th>Réf.</th><th>Identité</th><th>Date</th><th>Statut</th><th>Corps</th><th>Lien Montoya</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:11px">VIC-007</td>
+            <td>Rodrigo « El Viejo » Vargas<br><span style="color:#4a5068;font-size:11px">Ex-associé cartel — lanceur alerte</span></td>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:10px">Fév. 2022</td>
+            <td><span class="badge badge-incomplet">INCOMPLET</span></td>
+            <td style="color:#cf4040">Non retrouvé</td>
+            <td style="color:#c87d30">Alpha-1 — indirect</td>
+          </tr>
+          <tr>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:11px">VIC-008</td>
+            <td>Anastasia Vo<br><span style="color:#4a5068;font-size:11px">Ingénieure — blanchiment immobilier</span></td>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:10px">Juin 2022</td>
+            <td><span class="badge badge-incomplet">INCOMPLET</span></td>
+            <td style="color:#cf4040">Non retrouvé</td>
+            <td style="color:#c87d30">Finances — P-006</td>
+          </tr>
+          <tr>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:11px">VIC-009</td>
+            <td>Kevin Okafor<br><span style="color:#4a5068;font-size:11px">Trafiquant mid-level — dette interne</span></td>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:10px">Nov. 2022</td>
+            <td><span class="badge" style="background:#0a2010;color:#2ecc71;border:1px solid #1a4a20">COMPLET</span></td>
+            <td style="color:#2ecc71">Retrouvé — RL/2022/1189</td>
+            <td style="color:#c87d30">P-006 "KO — liquidé"</td>
+          </tr>
+          <tr>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:11px">VIC-010</td>
+            <td>Lukas Strömberg<br><span style="color:#4a5068;font-size:11px">Diplomate — poste Los Santos 2001–2004</span></td>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:10px">Oct. 2004</td>
+            <td><span class="badge badge-incomplet">COLD CASE</span></td>
+            <td style="color:#c87d30">Retrouvé — RL/2004/0892</td>
+            <td style="color:#cf4040">Corrélation ancienne — à valider</td>
+          </tr>
+          <tr>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:11px">VIC-011</td>
+            <td>Inconnu — « John Doe — Cayo Perico »<br><span style="color:#4a5068;font-size:11px">Restes osseux partiels — zone bunker sud</span></td>
+            <td style="font-family:'Share Tech Mono',monospace;font-size:10px">Datation : 2018–2020</td>
+            <td><span class="badge badge-incomplet">IDENTIFICATION EN COURS</span></td>
+            <td style="color:#c87d30">Retrouvé partiellement — forensique</td>
+            <td style="color:#c87d30">Localisation Cayo — lien géographique</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SYNTHÈSE PROBANTE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">III</div>
+      <div class="section-title">Synthèse — Impact sur les qualifications pénales</div>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th>Chef d'accusation</th><th>Victimes concernées</th><th>Solidité</th><th>Action requise</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Chef 05 — Assassinat (fonctionnaires)</td>
+          <td>VIC-001 (COBRA), VIC-002 (VIPER), VIC-004 (Medina)</td>
+          <td style="color:#cf4040">✦ FORTE — circonstance aggravante auto</td>
+          <td style="color:#2ecc71">Corps COBRA/VIPER (REC-07)</td>
+        </tr>
+        <tr>
+          <td>Chef 05 — Assassinat (civils)</td>
+          <td>VIC-003, VIC-006 (révision), VIC-009</td>
+          <td style="color:#c87d30">◆ MOYENNE — 2 corps + 1 révision</td>
+          <td style="color:#c87d30">Confirmation VIC-006 (instruction)</td>
+        </tr>
+        <tr>
+          <td>Chef 05 — Assassinat (exécutions internes)</td>
+          <td>VIC-005, VIC-007, VIC-008, VIC-011</td>
+          <td style="color:#cf4040">✗ FAIBLE — témoins uniques ou corps absents</td>
+          <td style="color:#cf4040">Consolider avant réquisitoire</td>
+        </tr>
+        <tr>
+          <td>Chef 06 — Corruption / Intimidation</td>
+          <td>VIC-004 (représailles)</td>
+          <td style="color:#c87d30">◆ SOLIDE — corps + témoignage BRAVO-4</td>
+          <td style="color:#2ecc71">Dossier prêt</td>
+        </tr>
+        <tr>
+          <td>Chef 07 — Enlèvement + séquestration</td>
+          <td>VIC-001 (COBRA), VIC-002 (VIPER)</td>
+          <td style="color:#c87d30">◆ SOLIDE — ECO/0011 + Alpha-1</td>
+          <td style="color:#c87d30">Corps à retrouver pour clôturer</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:14px;background:#0e1018;border:1px solid #1a2640;border-left:3px solid #003087;border-radius:3px;padding:12px 16px;font-size:12px;color:#6a7abf">
+      <strong style="color:#c9cdd6">Note du procureur Reyes :</strong> Les dossiers VIC-001 et VIC-002 constituent le coeur émotionnel et juridique de l'affaire. L'assassinat d'agents en mission infiltrée est le chef le plus grave dans la hiérarchie des peines du droit de San Andreas. Même en l'absence des corps, l'interception ECO/0011 et le témoignage Alpha-1 permettent de retenir le chef d'accusation — la jurisprudence SA v. Torres (2018) admet la preuve de décès sans corps lorsque les éléments circonstanciels sont concordants et multiples. Je requiers néanmoins que les fouilles à Cayo Perico (REC-07) soient exécutées dès que la situation sécuritaire le permettra.
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <div class="footer-sig">
+      <p style="color:#4a5068;font-size:11px;margin-bottom:8px">Document établi le 3 juillet 2026.</p>
+      <p style="color:#4a5068;font-size:11px">Cellule Criminologie & Victimologie</p>
+      <p class="sig-name">SASP San Andreas — Division INTERPOL COT</p>
+      <p style="color:#4a5068;font-size:11px;margin-top:8px">Dossiers établis sous la supervision du procureur E. Reyes — Tribunal de Los Santos.</p>
+    </div>
+    <div class="footer-classify">
+      DOSSIER PRINCIPAL : SA-2026-CO-0147<br>
+      ANNEXE VICTIMES : SASP/VICT/2026/AM<br>
+      ──────────────────────────<br>
+      CONFIDENTIEL — DIFFUSION RESTREINTE<br>
+      USAGE JUDICIAIRE EXCLUSIF<br>
+      ──────────────────────────<br>
+      © 2026 SASP SAN ANDREAS / INTERPOL
+    </div>
+  </div>
+
+  <div style="margin-top:24px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:10px;color:#2a2f3f;letter-spacing:2px">
+    ✦ CONFIDENTIEL — USAGE JUDICIAIRE EXCLUSIF — DOSSIERS VICTIMOLOGIQUES — SASP SAN ANDREAS ✦
+  </div>
+
+</div>
+</body>
+</html>

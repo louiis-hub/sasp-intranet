@@ -108,6 +108,90 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
 .footer-classify{text-align:right;font-family:'Share Tech Mono',monospace;font-size:10px;color:#3a3f52;line-height:2}
 
 .divider{height:1px;background:#1e2330;margin:24px 0}
+
+/* ANALYSE JUDICIAIRE — styles supplémentaires */
+.score-row{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid #131620}
+.score-row:last-child{border-bottom:none}
+.score-label{min-width:220px;font-size:12px;color:#c9cdd6;font-weight:500}
+.score-track{flex:1;background:#131620;border-radius:2px;height:8px;overflow:hidden}
+.score-fill{height:100%;border-radius:2px}
+.score-fill.critical{background:linear-gradient(90deg,#8b0000,#cf4040)}
+.score-fill.high{background:linear-gradient(90deg,#5a2800,#c87d30)}
+.score-fill.medium{background:linear-gradient(90deg,#1a3a1a,#3a8a3a)}
+.score-fill.low{background:linear-gradient(90deg,#1a1a3a,#3a4a8a)}
+.score-pct{font-family:'Share Tech Mono',monospace;font-size:11px;min-width:36px;text-align:right}
+.score-badge{font-family:'Share Tech Mono',monospace;font-size:9px;padding:2px 8px;border-radius:2px;min-width:90px;text-align:center}
+.badge-critical{background:#3d0e0e;color:#cf4040;border:1px solid #5a1a1a}
+.badge-high{background:#3d2008;color:#c87d30;border:1px solid #5a3010}
+.badge-medium{background:#0e2010;color:#3a9a3a;border:1px solid #1a4a1a}
+.badge-low{background:#0e0e30;color:#6a7abf;border:1px solid #1a2050}
+.cred-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+.cred-card{background:#0a0c10;border:1px solid #1e2330;border-radius:4px;padding:14px 18px}
+.cred-source{font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068;letter-spacing:2px;margin-bottom:8px}
+.cred-score-wrap{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.cred-score-big{font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;line-height:1}
+.cred-score-max{font-family:'Share Tech Mono',monospace;font-size:11px;color:#4a5068;margin-top:6px}
+.cred-bar-track{flex:1;background:#131620;border-radius:2px;height:6px}
+.cred-bar-fill{height:100%;border-radius:2px}
+.cred-desc{font-size:11px;color:#5c6275;line-height:1.5}
+.qual-item{background:#0a0c10;border:1px solid #1e2330;border-radius:4px;padding:14px 18px;margin-bottom:10px}
+.qual-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.qual-name{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#e8eaf0;letter-spacing:1px}
+.qual-badge{font-family:'Share Tech Mono',monospace;font-size:9px;padding:3px 10px;border-radius:2px}
+.qual-retenu{background:#0a2010;color:#2ecc71;border:1px solid #1a4a20}
+.qual-partiel{background:#2d2008;color:#c87d30;border:1px solid #5a3010}
+.qual-consolider{background:#0e0e30;color:#6a7abf;border:1px solid #1a2050}
+.qual-desc{font-size:12px;color:#5c6275;line-height:1.6}
+.circonstances-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.circonstance-item{background:#0a0c10;border:1px solid #1e2330;border-radius:4px;padding:12px 16px;display:flex;align-items:flex-start;gap:10px}
+.circonstance-label{font-size:12px;color:#c9cdd6;font-weight:500;margin-bottom:2px}
+.circonstance-desc{font-size:11px;color:#5c6275}
+.probability-block{background:#0a0c10;border:1px solid #1e2330;border-radius:6px;padding:28px;margin-top:12px;text-align:center}
+.prob-gauge-wrap{display:flex;justify-content:center;margin-bottom:20px}
+.prob-gauge{position:relative;width:160px;height:160px}
+.prob-gauge svg{transform:rotate(-90deg)}
+.prob-number{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Rajdhani',sans-serif;font-size:48px;font-weight:700;color:#e8eaf0;line-height:1}
+.prob-unit{position:absolute;bottom:34%;left:50%;transform:translateX(-50%);font-family:'Share Tech Mono',monospace;font-size:11px;color:#4a5068}
+.prob-label{font-family:'Share Tech Mono',monospace;font-size:10px;color:#4a5068;letter-spacing:2px;margin-bottom:6px}
+.prob-comment{font-size:12px;color:#8a90a0;max-width:500px;margin:0 auto}
+.prob-sub-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px;text-align:left}
+.prob-sub{background:#0e1018;border:1px solid #1e2330;border-radius:4px;padding:12px 16px}
+.prob-sub-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068;letter-spacing:2px;margin-bottom:6px}
+.prob-sub-value{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:#c87d30;margin-bottom:4px}
+.prob-sub-desc{font-size:11px;color:#5c6275}
+.decision-proc{background:#0a0c10;border:1px solid #5a1010;border-radius:6px;overflow:hidden;margin-top:12px}
+.decision-proc-header{background:#1a0808;padding:14px 22px;border-bottom:1px solid #5a1010;display:flex;justify-content:space-between;align-items:center}
+.decision-proc-title{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#cf4040;letter-spacing:2px}
+.decision-proc-ref{font-family:'Share Tech Mono',monospace;font-size:10px;color:#6b3030}
+.decision-proc-body{padding:20px 24px}
+.decision-stamp{display:inline-block;border:2px solid #cf4040;color:#cf4040;font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;letter-spacing:3px;padding:6px 20px;transform:rotate(-2deg);margin-bottom:16px}
+.decision-proc-list{list-style:none;margin:10px 0}
+.decision-proc-list li{padding:6px 0 6px 22px;position:relative;font-size:12px;color:#8a90a0;border-bottom:1px solid #1a0808}
+.decision-proc-list li:before{content:'■';position:absolute;left:0;color:#cf4040;font-size:8px;top:9px}
+.requisition-box{margin-top:16px;background:#1a0808;border:1px solid #5a1010;border-radius:4px;padding:14px 18px;text-align:center;font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:#cf4040;letter-spacing:2px}
+.decision-juge{background:#0a0c10;border:1px solid #1a2640;border-radius:6px;overflow:hidden;margin-top:12px}
+.decision-juge-header{background:#0d1220;padding:14px 22px;border-bottom:1px solid #1a2640;display:flex;justify-content:space-between;align-items:center}
+.decision-juge-title{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#4a7abf;letter-spacing:2px}
+.decision-juge-ref{font-family:'Share Tech Mono',monospace;font-size:10px;color:#2a3a5a}
+.decision-juge-body{padding:20px 24px}
+.jugement-section{margin-bottom:16px}
+.jugement-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068;letter-spacing:3px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #1e2330}
+.jugement-text{font-size:13px;color:#8a90a0;line-height:1.7}
+.jugement-text strong{color:#c9cdd6}
+.jugement-verdict{background:#0d1220;border:1px solid #1a2640;border-left:3px solid #4a7abf;border-radius:4px;padding:14px 18px;font-size:13px;color:#c9cdd6;line-height:1.7}
+.faiblesse-list{list-style:none;margin:8px 0}
+.faiblesse-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #131620;align-items:flex-start}
+.faiblesse-item:last-child{border-bottom:none}
+.faiblesse-dot{width:8px;height:8px;border-radius:50%;background:#c87d30;flex-shrink:0;margin-top:5px}
+.faiblesse-text{font-size:12px;color:#8a90a0;line-height:1.5}
+.reco-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.reco-item{background:#0a0c10;border:1px solid #1e2330;border-left:3px solid #003087;border-radius:4px;padding:12px 16px}
+.reco-num{font-family:'Share Tech Mono',monospace;font-size:9px;color:#4a5068;margin-bottom:4px}
+.reco-text{font-size:12px;color:#8a90a0;line-height:1.5}
+.reco-text strong{color:#c9cdd6}
+.ext-link{display:inline-flex;align-items:center;gap:8px;color:#4a7abf;font-family:'Share Tech Mono',monospace;font-size:11px;text-decoration:none;padding:8px 16px;border:1px solid #1a2640;border-radius:3px;margin-top:12px}
+.ext-link:hover{color:#6a9adf;border-color:#4a7abf}
+@keyframes drawCircle{to{stroke-dashoffset:62}}
 </style>
 </head>
 <body>
@@ -219,7 +303,7 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
         DOSSIER FÉDÉRAL CONNEXE<br><span style="color:#c9cdd6">2026-CR-SA-0847 — US District Court, District of SA</span>
       </div>
       <div style="flex:1;background:#0a100a;border:1px solid #1a2a1a;border-radius:4px;padding:10px 14px;font-family:'Share Tech Mono',monospace;font-size:10px;color:#00a040">
-        ✓ DOSSIER COMPLET<br>26 sections — pièces P-001 à P-009
+        ✓ DOSSIER COMPLET<br>38 sections + 2 annexes — pièces P-001 à P-009
       </div>
     </div>
   </div>
@@ -254,6 +338,20 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
       <div class="sommaire-item"><span class="sommaire-num">24</span><span class="sommaire-label">Actes et ordonnances procéduraux</span></div>
       <div class="sommaire-item"><span class="sommaire-num">25</span><span class="sommaire-label">Dossier disparition — agents « Cobra » et « Viper »</span></div>
       <div class="sommaire-item"><span class="sommaire-num">26</span><span class="sommaire-label">Mentions légales et confidentialité</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">27</span><span class="sommaire-label">Valeur probante des éléments</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">28</span><span class="sommaire-label">Crédibilité des sources</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">29</span><span class="sommaire-label">Qualification juridique détaillée</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">30</span><span class="sommaire-label">Circonstances aggravantes</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">31</span><span class="sommaire-label">Solidité procédurale</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">32</span><span class="sommaire-label">Défense — arguments anticipés</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">33</span><span class="sommaire-label">Position du Ministère Public</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">34</span><span class="sommaire-label">Évaluation probabiliste</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">35</span><span class="sommaire-label">Réquisitoire — Parquet de SA</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">36</span><span class="sommaire-label">Ordonnance de renvoi — TGI-LS</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">37</span><span class="sommaire-label">Points faibles résiduels</span></div>
+      <div class="sommaire-item"><span class="sommaire-num">38</span><span class="sommaire-label">Recommandations — compléments</span></div>
+      <div class="sommaire-item"><span class="sommaire-num" style="color:#c87d30">↗</span><span class="sommaire-label"><a href="ecoutes-transcription.html" style="color:#4a7abf;text-decoration:none">Transcriptions complètes des écoutes</a></span></div>
+      <div class="sommaire-item"><span class="sommaire-num" style="color:#c87d30">↗</span><span class="sommaire-label"><a href="dossiers-victimologiques.html" style="color:#4a7abf;text-decoration:none">Dossiers victimologiques individuels</a></span></div>
     </div>
   </div>
 
@@ -499,6 +597,7 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
     <div class="requete-box">
       LE MINISTÈRE PUBLIC REQUIERT UNE PEINE DE RÉCLUSION CRIMINELLE À PERPÉTUITÉ INCOMPRESSIBLE
     </div>
+    <a href="dossiers-victimologiques.html" class="ext-link">→ VOIR DOSSIERS VICTIMOLOGIQUES — Fiches individuelles par homicide documenté</a>
   </div>
 
   <!-- 10. TÉMOIGNAGES -->
@@ -599,6 +698,7 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
       </div>
 
     </div>
+    <a href="ecoutes-transcription.html" class="ext-link" style="margin-top:16px">→ VOIR TRANSCRIPTIONS COMPLÈTES — Toutes les interceptions + analyses techniques</a>
   </div>
 
   <!-- 12. ANALYSE FINANCIÈRE -->
@@ -1533,6 +1633,526 @@ body{background:#0d0f14;color:#c9cdd6;font-family:'Inter',sans-serif;font-size:1
       <div class="section-title">Mentions légales et clause de confidentialité</div>
     </div>
     <p class="prose">Le présent dossier est classé confidentiel et destiné exclusivement aux services autorisés du SASP et du Department of Justice dans le cadre de la procédure visée. Toute reproduction, diffusion ou transmission à un tiers non autorisé est strictement interdite et pourra faire l'objet de sanctions internes. Les éléments présentés reposent sur des renseignements croisés et sont susceptibles d'évolution au fil de l'enquête.</p>
+  </div>
+
+  <!-- SÉPARATEUR ANALYSE JUDICIAIRE -->
+  <div style="margin:40px 0 32px;background:#0a0c10;border:1px solid #1a2640;border-radius:4px;overflow:hidden">
+    <div style="background:#003087;padding:10px 22px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#fff;letter-spacing:3px">ANALYSE JUDICIAIRE — DOSSIER SA-2026-CO-0147</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(255,255,255,.55)">AJ/DOJ/2026/0147 — Établi par DOJ San Andreas — Pôle CO</div>
+    </div>
+    <div style="padding:12px 22px;font-size:12px;color:#5c6275">Document établi à l'usage exclusif de l'autorité judiciaire saisie (Madame la Procureure & Monsieur le Juge d'instruction). Non communicable à la défense sans ordonnance du juge. Sections 27 à 38.</div>
+  </div>
+
+  <!-- 27. VALEUR PROBANTE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">27</div>
+      <div class="section-title">Valeur probante des éléments</div>
+    </div>
+    <p class="prose">Évaluation de la force probante de chaque catégorie d'éléments au regard des standards judiciaires de San Andreas. Cote établie par le DOJ — Pôle Crime Organisé.</p>
+    <div style="background:#0a0c10;border:1px solid #1e2330;border-radius:4px;padding:18px 22px;margin-top:8px">
+      <div class="score-row">
+        <div class="score-label">Saisies matérielles (P-001 à P-009)</div>
+        <div class="score-track"><div class="score-fill critical" style="width:98%"></div></div>
+        <div class="score-pct" style="color:#cf4040">98 %</div>
+        <span class="score-badge badge-critical">CRITIQUE</span>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Expertise comptable — 59,4 M$</div>
+        <div class="score-track"><div class="score-fill critical" style="width:95%"></div></div>
+        <div class="score-pct" style="color:#cf4040">95 %</div>
+        <span class="score-badge badge-critical">TRÈS FORTE</span>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Identification biométrique (94,7 %)</div>
+        <div class="score-track"><div class="score-fill high" style="width:88%"></div></div>
+        <div class="score-pct" style="color:#c87d30">88 %</div>
+        <span class="score-badge badge-high">FORTE</span>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Interceptions téléphoniques</div>
+        <div class="score-track"><div class="score-fill high" style="width:82%"></div></div>
+        <div class="score-pct" style="color:#c87d30">82 %</div>
+        <span class="score-badge badge-high">FORTE</span>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Rapport agent infiltré (SOMBRA)</div>
+        <div class="score-track"><div class="score-fill high" style="width:78%"></div></div>
+        <div class="score-pct" style="color:#c87d30">78 %</div>
+        <span class="score-badge badge-high">FORTE</span>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Témoignages protégés (A, B, C)</div>
+        <div class="score-track"><div class="score-fill medium" style="width:68%"></div></div>
+        <div class="score-pct" style="color:#3a9a3a">68 %</div>
+        <span class="score-badge badge-medium">MOYENNE-FORTE</span>
+      </div>
+      <div class="score-row">
+        <div class="score-label">Responsabilité directe — homicides</div>
+        <div class="score-track"><div class="score-fill low" style="width:42%"></div></div>
+        <div class="score-pct" style="color:#6a7abf">42 %</div>
+        <span class="score-badge badge-low">FAIBLE–MOYENNE</span>
+      </div>
+      <div style="margin-top:14px;padding:10px 14px;background:#0e1018;border:1px solid #1e2330;border-left:3px solid #c87d30;border-radius:3px;font-size:11px;color:#5c6275">
+        Note d'analyse : les saisies matérielles et l'expertise comptable constituent l'armature centrale du dossier. La valeur biométrique dépasse le seuil légal de 85 %. La responsabilité directe de Montoya sur les homicides individualisés reste le point le plus vulnérable du dossier.
+      </div>
+    </div>
+  </div>
+
+  <!-- 28. CRÉDIBILITÉ DES SOURCES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">28</div>
+      <div class="section-title">Crédibilité des sources</div>
+    </div>
+    <p class="prose">Notation établie sur 100 points. Critères : cohérence interne, recoupements croisés, fiabilité institutionnelle, expositions aux biais.</p>
+    <div class="cred-grid">
+      <div class="cred-card">
+        <div class="cred-source">TÉMOINS PROTÉGÉS — ALPHA / BRAVO / CHARLIE</div>
+        <div class="cred-score-wrap">
+          <div><div class="cred-score-big" style="color:#c87d30">80</div><div class="cred-score-max">/100</div></div>
+          <div class="cred-bar-track" style="flex:1"><div class="cred-bar-fill" style="width:80%;background:linear-gradient(90deg,#5a3010,#c87d30);height:6px;border-radius:2px"></div></div>
+        </div>
+        <div class="cred-desc">Déclarations cohérentes avec les autres preuves. Recoupement croisé satisfaisant. L'anonymisation limite la contradiction directe par la défense — vecteur d'attaque attendu mais réponse procédurale encadrée.</div>
+      </div>
+      <div class="cred-card">
+        <div class="cred-source">AGENTS SASP — RAPPORTS TERRAIN</div>
+        <div class="cred-score-wrap">
+          <div><div class="cred-score-big" style="color:#c87d30">85</div><div class="cred-score-max">/100</div></div>
+          <div class="cred-bar-track" style="flex:1"><div class="cred-bar-fill" style="width:85%;background:linear-gradient(90deg,#5a3010,#c87d30);height:6px;border-radius:2px"></div></div>
+        </div>
+        <div class="cred-desc">Observations datées, structurées et recoupées entre elles. Provenance institutionnelle identifiable. Chaîne de garde documentaire solide. Rapport SOMBRA légalement encadré.</div>
+      </div>
+      <div class="cred-card">
+        <div class="cred-source">EXPERTISES JUDICIAIRES INDÉPENDANTES</div>
+        <div class="cred-score-wrap">
+          <div><div class="cred-score-big" style="color:#2ecc71">90</div><div class="cred-score-max">/100</div></div>
+          <div class="cred-bar-track" style="flex:1"><div class="cred-bar-fill" style="width:90%;background:linear-gradient(90deg,#1a4a1a,#2ecc71);height:6px;border-radius:2px"></div></div>
+        </div>
+        <div class="cred-desc">Expertise biométrique (94,7 % — seuil légal 85 %) et expertise comptable certifiée. Éléments les plus solides du dossier. Experts certifiés, méthodes normalisées (ISO/IEC 19794-5, norme FATF/GAFI).</div>
+      </div>
+      <div class="cred-card">
+        <div class="cred-source">DÉCLARATIONS DE MONTOYA</div>
+        <div class="cred-score-wrap">
+          <div><div class="cred-score-big" style="color:#cf4040">N/A</div><div class="cred-score-max">/100</div></div>
+          <div class="cred-bar-track" style="flex:1"><div class="cred-bar-fill" style="width:0%;background:#cf4040;height:6px;border-radius:2px"></div></div>
+        </div>
+        <div class="cred-desc">Aucun aveu, aucune audition, aucune déclaration spontanée dans le dossier. L'absence de contradiction directe de sa part ne constitue pas un avantage pour la défense, mais fragilise les chefs individualisés.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 29. QUALIFICATION JURIDIQUE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">29</div>
+      <div class="section-title">Qualification juridique — Analyse détaillée par chef</div>
+    </div>
+    <p class="prose">Évaluation de la solidité de chaque chef d'inculpation au regard des éléments disponibles. Légende : <span class="qual-badge qual-retenu">✓ RETENU</span> charge solide · <span class="qual-badge qual-partiel">◎ RETENABLE</span> charges partielles · <span class="qual-badge qual-consolider">⚠ À CONSOLIDER</span> fragilité identifiée.</p>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Direction d'une organisation criminelle transnationale</div><span class="qual-badge qual-retenu">✓ RETENU</span></div>
+      <div class="qual-desc">Montoya est présenté comme chef suprême avec autorité absolue sur le réseau. Le dossier valide ce rôle par les interceptions, l'organigramme, le rapport SOMBRA et les témoignages. C'est le chef le plus solidement étayé. La structure hiérarchique Los Espectros est suffisamment documentée pour écarter tout doute raisonnable sur la direction.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Trafic international de stupéfiants en bande organisée</div><span class="qual-badge qual-retenu">✓ RETENU</span></div>
+      <div class="qual-desc">480 kg de cocaïne et 32 kg de fentanyl sous scellés judiciaires (P-001, P-002). Routes maritimes documentées depuis 2006. Convergence complète entre saisies, témoignages et interceptions. L'appartenance à une bande organisée est acquise par l'existence établie de Los Espectros.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Blanchiment aggravé en bande organisée — 59,4 M$</div><span class="qual-badge qual-retenu">✓ RETENU</span></div>
+      <div class="qual-desc">L'expertise comptable CPT/EXP/2026/0034 certifie 59,4 millions de dollars blanchis via sociétés-écrans, casinos offshore et flux internationaux. Conclusion explicite sur le blanchiment en bande organisée. Circonstances aggravantes de réitération et de dissimulation caractérisées.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Détention et trafic d'armes de guerre</div><span class="qual-badge qual-retenu">✓ RETENU</span></div>
+      <div class="qual-desc">Saisie d'armement lourd documentée (P-003 : 14 AK-103, 3 RPG-7, 40 000 munitions). Infrastructure militaire de Cayo Perico confirmée par le rapport SOMBRA et les recommandations opérationnelles. Chef solidement retenu, aucune fragilité procédurale.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Faux documents et usage de faux</div><span class="qual-badge qual-retenu">✓ RETENU</span></div>
+      <div class="qual-desc">11 faux documents saisis (P-007), dont 5 alias Montoya confirmés par expertise biométrique. Chef accessoire mais facilement retenu en audience. Aucune contestation sérieuse possible sur ce chef.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Enlèvement et séquestration — agents Cobra et Viper</div><span class="qual-badge qual-partiel">◎ RETENABLE</span></div>
+      <div class="qual-desc">Preuves circonstancielles convergentes : dernières transmissions documentées, interception 15/11/2023 ("le patron est satisfait"), registre P-006 mention "solucionado" 36h après disparition, témoignage Alpha-1 confirmant que les purges relèvent exclusivement de El Fantasma. Fragilité principale : absence de corps. Risque de requalification en "séquestration suivie de mort présumée" si corps non retrouvés.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Assassinats multiples (≈ 40 homicides)</div><span class="qual-badge qual-partiel">◎ PARTIELLEMENT RETENABLE</span></div>
+      <div class="qual-desc">Responsabilité du réseau Los Espectros largement établie. Mais la responsabilité directe et individualisée de Montoya pour chaque victime est insuffisante. 11 cas documentés dans ce dossier, sans fiche victimologique individuelle complète pour la majorité. Pour les cas les mieux documentés (El Chivo, Cobra/Viper), la culpabilité est plausible. Complément d'instruction nécessaire — voir <a href="dossiers-victimologiques.html" style="color:#4a7abf">dossiers victimologiques annexes</a>.</div>
+    </div>
+
+    <div class="qual-item">
+      <div class="qual-header"><div class="qual-name">Corruption active d'agents publics</div><span class="qual-badge qual-consolider">⚠ À CONSOLIDER</span></div>
+      <div class="qual-desc">Un fonctionnaire portuaire reconnaît avoir reçu des versements réguliers. Aucun contact direct avec Montoya documenté — lien indirect via La Contadora, dont l'identité réelle est inconnue. Charge suffisante pour poursuivre, mais la défense attaquera l'absence de lien nominatif direct. Dépend de l'identification de La Contadora.</div>
+    </div>
+  </div>
+
+  <!-- 30. CIRCONSTANCES AGGRAVANTES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">30</div>
+      <div class="section-title">Circonstances aggravantes et atténuantes</div>
+    </div>
+    <div class="circonstances-grid">
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Usage d'armes lourdes</div><div class="circonstance-desc">Établi par les saisies P-003 et l'infrastructure militaire de Cayo Perico — 3 RPG-7, 14 fusils d'assaut</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Bande organisée constituée</div><div class="circonstance-desc">Largement établie — organigramme à 5 niveaux, hiérarchie, divisions opérationnelles distinctes documentées</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Préméditation établie</div><div class="circonstance-desc">Fortement documentée pour les disparitions Cobra/Viper (36h entre rapport COBRA et "solucionado") et les représailles internes</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Dimension transnationale</div><div class="circonstance-desc">Connexions Sinaloa, Clan del Golfo, HK, Italie (Camorra), Moyen-Orient — réseau actif sur 4 continents</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Statut de fugitif actif</div><div class="circonstance-desc">Notice rouge INTERPOL RN-2026/A-15487 — 5 alias confirmés, multiples fausses identités, fuite organisée</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Dangerosité extrême</div><div class="circonstance-desc">Milice armée de 60–80 hommes, antécédents de représailles violentes, profil psychopathique documenté (PCL-R : 28–34/40)</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Victimes — fonctionnaires d'État</div><div class="circonstance-desc">Agents infiltrés COBRA et VIPER — fonctionnaires SA dans l'exercice de leurs fonctions. Circonstance aggravante spéciale.</div></div>
+      </div>
+      <div class="circonstance-item" style="border-left:3px solid #cf4040">
+        <div><div class="circonstance-label">Réitération et durée</div><div class="circonstance-desc">Infractions commises de manière continue depuis 2001, sur 25 ans — réitération aggravée caractérisée.</div></div>
+      </div>
+    </div>
+    <div style="margin-top:14px;background:#0a0c10;border:1px solid #1e2330;border-left:3px solid #2ecc71;border-radius:4px;padding:12px 18px;font-size:12px;color:#5c6275">
+      <strong style="color:#3a8a3a">Circonstances atténuantes :</strong> aucune circonstance atténuante sérieuse identifiée dans le dossier. Ni aveu, ni coopération, ni contrainte, ni légitime défense. La défense ne dispose pas de levier atténuant structurel.
+    </div>
+  </div>
+
+  <!-- 31. SOLIDITÉ PROCÉDURALE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">31</div>
+      <div class="section-title">Solidité procédurale — Recevabilité des preuves</div>
+    </div>
+    <p class="prose">Évaluation de la recevabilité des preuves et de la couverture judiciaire des actes d'enquête. Chaque acte est auditable en audience.</p>
+    <table class="data-table">
+      <thead>
+        <tr><th>Acte procédural</th><th>Référence</th><th>Couverture</th><th>Solidité</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Mandats de perquisition (5)</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">MP-2024→2026</td><td>Toutes saisies rattachées à un mandat valide — juge signataire : Hon. Claire Beaumont</td><td style="color:#2ecc71">✓ Solide</td></tr>
+        <tr><td>Mandat fédéral Cayo Perico</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">FED/WARRANT/2026/CP-0047</td><td>Rule 41 FRCP — US Magistrate Judge Whitaker — territoire fédéral entièrement couvert</td><td style="color:#2ecc71">✓ Solide</td></tr>
+        <tr><td>Autorisation infiltration SOMBRA</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">DOJ/INF/2026/SA-0047</td><td>Art. 706-81 CPP — 90 jours autorisés — provocation policière écartée</td><td style="color:#2ecc71">✓ Solide</td></tr>
+        <tr><td>Ordonnances écoutes téléphoniques</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">OIT-2023 / 0601 / 0620</td><td>Art. 706-95 CPP — couverture judiciaire sur les 3 séries d'interceptions</td><td style="color:#2ecc71">✓ Solide</td></tr>
+        <tr><td>Certification biométrique</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">BIO/EXP/2026/0089</td><td>Expert certifié — 94,7 % — seuil légal 85 % dépassé — norme ISO/IEC 19794-5</td><td style="color:#2ecc71">✓ Solide</td></tr>
+        <tr><td>Expertise comptable</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">CPT/EXP/2026/0034</td><td>Expert-comptable judiciaire inscrit Cour d'appel SA — 14 établissements, 7 pays</td><td style="color:#2ecc71">✓ Solide</td></tr>
+        <tr><td>Protection des témoins (A, B, C)</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">PROT/TGI/2026/T-001/002/003</td><td>Art. 706-57 CPP — anonymisation légalement encadrée — droit à confrontation aménagé</td><td style="color:#c87d30">⚠ Contestable (forme)</td></tr>
+        <tr><td>Compétence territoriale Cayo Perico</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">DOJ/NOTE/2026/TERR-01 rév.1</td><td>Dual Sovereignty + Accord TPC-01 + mandat fédéral — note de droit opposable</td><td style="color:#c87d30">⚠ À verrouiller</td></tr>
+        <tr><td>Lien Montoya → Los Espectros LLC</td><td style="font-family:'Share Tech Mono',monospace;font-size:10px">Non documenté formellement</td><td>Lien inféré depuis expertise comptable, non prouvé documentairement de façon directe</td><td style="color:#cf4040">✗ À compléter</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px;padding:10px 14px;background:#0a100a;border:1px solid #1a2a1a;border-left:3px solid #00a040;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#00a040">
+      ✓ CHAÎNE DE GARDE VALIDÉE SUR 9 PIÈCES À CONVICTION — Procédure solide sur les chefs principaux — 2 points de fragilité identifiés à consolider avant audience
+    </div>
+  </div>
+
+  <!-- 32. ARGUMENTS DÉFENSE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">32</div>
+      <div class="section-title">Arguments de la défense — Analyse anticipatoire</div>
+    </div>
+    <p class="prose">Analyse des vecteurs d'attaque probables du conseil de la défense et de leur impact estimé sur les chefs d'inculpation. À transmettre au Parquet pour préparation.</p>
+    <table class="data-table">
+      <thead>
+        <tr><th>Argument de la défense</th><th>Impact estimé</th><th>Parade disponible</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Absence de corps — agents Cobra et Viper</td>
+          <td style="color:#c87d30">Moyen — risque requalification</td>
+          <td>Registre P-006 "solucionado" + interception 15/11 + témoignage Alpha-1 + jurisprudence sur disparition forcée</td>
+        </tr>
+        <tr>
+          <td>Témoins anonymes — contradiction impossible</td>
+          <td style="color:#c87d30">Moyen — contestable sur la forme</td>
+          <td>Ordonnances PROT/TGI/2026/T-001/002/003 légalement encadrées — recoupement croisé avec preuves objectives</td>
+        </tr>
+        <tr>
+          <td>Responsabilité indirecte de Montoya sur les homicides</td>
+          <td style="color:#c87d30">Moyen-fort sur les cas non individualisés</td>
+          <td>Chef de direction CO — responsabilité de commandement établie — Alpha-1 confirme les purges relèvent exclusivement de El Fantasma</td>
+        </tr>
+        <tr>
+          <td>Confusion de compétences fédérale / étatique</td>
+          <td style="color:#3a9a3a">Faible — note TERR-01 rév.1</td>
+          <td>Dual Sovereignty Doctrine (Heath v. Alabama 1985, Gamble 2019) + Accord TPC-01 + mandat fédéral CP-0047</td>
+        </tr>
+        <tr>
+          <td>Absence d'ordre écrit ou audio direct de Montoya</td>
+          <td style="color:#c87d30">Moyen — sur les assassinats</td>
+          <td>Rapport SOMBRA + témoignages + modus operandi documenté — délégation calculée typique du profil psychologique</td>
+        </tr>
+        <tr>
+          <td>Identification biométrique non certaine à 100 %</td>
+          <td style="color:#3a9a3a">Faible — 94,7 % &gt; seuil 85 %</td>
+          <td>BIO/EXP/2026/0089 — expert certifié — norme ISO/IEC 19794-5 — 68 points de concordance</td>
+        </tr>
+        <tr>
+          <td>Provocation policière (opération SOMBRA)</td>
+          <td style="color:#3a9a3a">Très faible</td>
+          <td>Autorisation judiciaire DOJ/INF/2026/SA-0047 — Art. 706-81 CPP — l'agent n'a commis aucun acte constitutif d'infraction</td>
+        </tr>
+        <tr>
+          <td>Irrégularité des écoutes</td>
+          <td style="color:#3a9a3a">Très faible</td>
+          <td>3 ordonnances OIT couvertes — Art. 706-95 CPP — exception de nullité irrecevable</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:12px;padding:10px 14px;background:#0e1018;border:1px solid #1e2330;border-left:3px solid #c87d30;border-radius:3px;font-size:11px;color:#5c6275">
+      Ces arguments peuvent réduire les chefs secondaires (assassinats non individualisés). Ils ne sont pas de nature à faire tomber les chefs principaux : organisation criminelle, trafic, blanchiment, armes, faux documents.
+    </div>
+  </div>
+
+  <!-- 33. POSITION MINISTÈRE PUBLIC -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">33</div>
+      <div class="section-title">Position du Ministère Public — Stratégie de poursuite</div>
+    </div>
+    <p class="prose">Le Ministère Public dispose d'un dossier très fort sur les chefs principaux. La stratégie de poursuite recommandée par le DOJ — Pôle CO est la suivante :</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px">
+      <div style="background:#0a100a;border:1px solid #1a2a1a;border-radius:4px;padding:14px 18px">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#2a5a2a;letter-spacing:2px;margin-bottom:10px">CHEFS PRIORITAIRES — BASE TRÈS SOLIDE</div>
+        <ul class="bullet-list" style="margin:0">
+          <li style="border-color:#1a2a1a">Direction d'organisation criminelle transnationale</li>
+          <li style="border-color:#1a2a1a">Trafic international de stupéfiants (cocaïne + fentanyl)</li>
+          <li style="border-color:#1a2a1a">Blanchiment aggravé — 59,4 M$ certifiés</li>
+          <li style="border-color:#1a2a1a">Détention et trafic d'armes de guerre</li>
+          <li style="border-color:#1a2a1a">Faux documents et usage de faux</li>
+          <li style="border-color:#1a2a1a">Enlèvement Cobra/Viper — séquestration suivie de mort présumée</li>
+        </ul>
+      </div>
+      <div style="background:#1a0e08;border:1px solid #3a2010;border-radius:4px;padding:14px 18px">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#5a3010;letter-spacing:2px;margin-bottom:10px">CHEFS SECONDAIRES — À CONSOLIDER EN INSTRUCTION</div>
+        <ul class="bullet-list" style="margin:0">
+          <li style="border-color:#3a2010">Corruption active — lien indirect via La Contadora</li>
+          <li style="border-color:#3a2010">Assassinats individualisés — dossiers victimologiques incomplets</li>
+          <li style="border-color:#3a2010">Lien documentaire Montoya → Los Espectros LLC</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top:16px;background:#0e1018;border:1px solid #1e2330;border-left:3px solid #003087;border-radius:4px;padding:14px 18px;font-size:12px;color:#5c6275">
+      <strong style="color:#c9cdd6">Recommandation du DOJ :</strong> procéder au renvoi immédiat en chambre criminelle pour les chefs prioritaires. Ouvrir un complément d'instruction parallèle sur les assassinats et la corruption pour renforcer le dossier avant le procès au fond.
+    </div>
+  </div>
+
+  <!-- 34. ÉVALUATION PROBABILISTE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">34</div>
+      <div class="section-title">Évaluation probabiliste — Risques et certitudes</div>
+    </div>
+    <div class="probability-block">
+      <div class="prob-label">PROBABILITÉ DE CONDAMNATION — CHEFS PRINCIPAUX</div>
+      <div class="prob-gauge-wrap">
+        <div class="prob-gauge">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="66" fill="none" stroke="#1e2330" stroke-width="10"/>
+            <circle cx="80" cy="80" r="66" fill="none" stroke="#003087" stroke-width="10"
+              stroke-dasharray="414" stroke-dashoffset="62" stroke-linecap="round"/>
+          </svg>
+          <div class="prob-number">85</div>
+          <div class="prob-unit">%</div>
+        </div>
+      </div>
+      <div class="prob-comment">Niveau de certitude <strong style="color:#e8eaf0">élevé</strong> sur les chefs d'organisation criminelle, trafic, blanchiment et armes. Le dossier est suffisamment étayé pour obtenir une condamnation ferme sur ces infractions.</div>
+      <div class="prob-sub-grid">
+        <div class="prob-sub">
+          <div class="prob-sub-label">ORGANISATION CRIMINELLE + TRAFIC + BLANCHIMENT</div>
+          <div class="prob-sub-value">90–95 %</div>
+          <div class="prob-sub-desc">Preuves matérielles, expertise comptable et témoignages convergents. Très forte probabilité de condamnation.</div>
+        </div>
+        <div class="prob-sub">
+          <div class="prob-sub-label">ASSASSINATS MULTIPLES — PAR DOSSIER INDIVIDUEL</div>
+          <div class="prob-sub-value" style="color:#6a7abf">60–70 %</div>
+          <div class="prob-sub-desc">Dépend de l'individualisation de la responsabilité pour chaque victime. Complément d'instruction recommandé.</div>
+        </div>
+        <div class="prob-sub">
+          <div class="prob-sub-label">DISPARITION COBRA / VIPER</div>
+          <div class="prob-sub-value" style="color:#c87d30">75 %</div>
+          <div class="prob-sub-desc">Indices sérieux et convergents. Fragilité résiduelle : absence de corps. Risque de requalification en séquestration.</div>
+        </div>
+        <div class="prob-sub">
+          <div class="prob-sub-label">CORRUPTION ACTIVE</div>
+          <div class="prob-sub-value" style="color:#c87d30">70 %</div>
+          <div class="prob-sub-desc">Faits établis mais lien Montoya-fonctionnaire indirect. Dépend de l'identification de La Contadora.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 35. RÉQUISITOIRE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">35</div>
+      <div class="section-title">Réquisitoire formel — Parquet de San Andreas</div>
+    </div>
+    <div class="decision-proc">
+      <div class="decision-proc-header">
+        <div class="decision-proc-title">RÉQUISITOIRE — PARQUET DE SAN ANDREAS</div>
+        <div class="decision-proc-ref">SA-2026-CO-0147 / Réq. n° 2026-MPC-0389</div>
+      </div>
+      <div class="decision-proc-body">
+        <div class="decision-stamp">POURSUITES RETENUES</div>
+        <p style="font-size:12px;color:#8a90a0;margin-bottom:16px;line-height:1.7">Au vu de l'ensemble des éléments du dossier transmis par le SASP à l'issue de l'Opération SPECTRE, le Ministère Public retient les infractions suivantes et requiert leur renvoi devant la chambre criminelle du TGI de Los Santos :</p>
+        <ul class="decision-proc-list">
+          <li>Direction d'une organisation criminelle transnationale — crime aggravé</li>
+          <li>Trafic international de stupéfiants en bande organisée — cocaïne (480 kg) et fentanyl (32 kg)</li>
+          <li>Blanchiment aggravé en bande organisée — 59,4 millions de dollars certifiés</li>
+          <li>Corruption active d'agents publics en charge d'une mission de service public</li>
+          <li>Détention et trafic d'armes de guerre et de matériel de guerre</li>
+          <li>Faux documents officiels et usage de faux — 11 documents saisis</li>
+          <li>Enlèvement et séquestration avec actes de torture ou de barbarie — agents Cobra et Viper</li>
+        </ul>
+        <div style="margin-top:14px;padding:8px 14px;background:#1a0808;border:1px solid #3a1010;border-radius:3px;font-size:11px;color:#7a4040">
+          Sur les assassinats multiples : le Ministère Public requiert un complément d'instruction pour individualiser la responsabilité de Montoya sur chaque victime. Les cas disposant d'un dossier suffisant (Cobra, Viper, El Chivo, cas DOJ/HOM documentés) sont renvoyés directement en chambre criminelle.
+        </div>
+        <div class="requisition-box">
+          RÉQUISITION PRINCIPALE : RÉCLUSION CRIMINELLE À PERPÉTUITÉ<br>
+          <span style="font-size:12px;font-family:'Share Tech Mono',monospace;color:#9a4040;letter-spacing:1px">+ SAISIE ET CONFISCATION INTÉGRALE DES AVOIRS IDENTIFIÉS (+59,4 M$)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 36. ORDONNANCE JUGE -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">36</div>
+      <div class="section-title">Ordonnance de renvoi — Juge d'instruction TGI-LS</div>
+    </div>
+    <div class="decision-juge">
+      <div class="decision-juge-header">
+        <div class="decision-juge-title">ORDONNANCE DE RENVOI — TGI LOS SANTOS</div>
+        <div class="decision-juge-ref">TGI-LS / Cab. n°7 / JI-2026-CO-0147</div>
+      </div>
+      <div class="decision-juge-body">
+        <div class="jugement-section">
+          <div class="jugement-label">FAITS</div>
+          <div class="jugement-text">Le dossier établit l'existence d'une organisation criminelle structurée, armée et transnationale, opérant depuis Cayo Perico (territoire fédéral) dans le trafic international de stupéfiants, le blanchiment de capitaux, la corruption d'agents publics, la détention d'armes et plusieurs enlèvements présumés suivis de mort. La cible, <strong>MONTOYA REYES, Alejandro</strong>, est présentée comme chef suprême de cette organisation avec autorité décisionnelle absolue.</div>
+        </div>
+        <div class="jugement-section">
+          <div class="jugement-label">DISCUSSION</div>
+          <div class="jugement-text">Les preuves matérielles (P-001 à P-009), financières (CPT/EXP/2026/0034), biométriques (BIO/EXP/2026/0089 — 94,7 %) et testimoniales convergent de manière cohérente vers la mise en cause de Montoya. La défense conserve des marges d'attaque sur les homicides non individualisés et l'anonymisation des témoins. Ces éléments peuvent conduire à des aménagements sur certains chefs secondaires, mais n'affectent pas la solidité des chefs principaux.</div>
+        </div>
+        <div class="jugement-section">
+          <div class="jugement-label">MOTIFS</div>
+          <div class="jugement-text">La culpabilité est suffisamment établie pour la <strong>direction du cartel</strong>, le <strong>trafic de stupéfiants</strong>, le <strong>blanchiment aggravé</strong>, la <strong>détention d'armes</strong> et la <strong>corruption active</strong>. Les disparitions des agents Cobra et Viper sont <strong>graves et fortement étayées</strong> malgré l'absence de corps — les indices sont graves, précis et concordants au sens de la jurisprudence. Sur les 40 homicides attribués au réseau, seuls les cas suffisamment documentés individuellement sont renvoyés directement.</div>
+        </div>
+        <div class="jugement-section">
+          <div class="jugement-label">DÉCISION</div>
+          <div class="jugement-verdict">
+            Le Tribunal retient la culpabilité de <strong>MONTOYA REYES, Alejandro</strong> sur les chefs principaux. Il est renvoyé devant la chambre criminelle du TGI de Los Santos. Un <strong>complément d'instruction</strong> est ordonné pour les assassinats multiples ne disposant pas de dossier victimologique individuel complet. <strong>La détention provisoire est maintenue</strong> en raison du risque de fuite caractérisé et de la dangerosité extrême de la cible. La saisie conservatoire des avoirs identifiés est confirmée.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 37. POINTS FAIBLES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">37</div>
+      <div class="section-title">Points faibles résiduels du dossier</div>
+    </div>
+    <p class="prose">Fragilités identifiées par le DOJ — Pôle CO. Ces points doivent être adressés avant l'audience au fond.</p>
+    <div style="background:#0a0c10;border:1px solid #1e2330;border-radius:4px;padding:16px 20px">
+      <ul class="faiblesse-list">
+        <li class="faiblesse-item"><div class="faiblesse-dot"></div><div class="faiblesse-text"><strong style="color:#c9cdd6">Aucun aveu de Montoya.</strong> Pas d'audition, pas de déclaration spontanée. L'accusé n'a fourni aucune explication sur les faits — fragilise les chefs individualisés les moins documentés.</div></li>
+        <li class="faiblesse-item"><div class="faiblesse-dot"></div><div class="faiblesse-text"><strong style="color:#c9cdd6">Pas d'ordre direct signé ou enregistré.</strong> La responsabilité de Montoya repose sur une responsabilité de commandement, non sur des preuves de direction explicite d'opérations précises. La défense exploitera ce point sur les homicides.</div></li>
+        <li class="faiblesse-item"><div class="faiblesse-dot"></div><div class="faiblesse-text"><strong style="color:#c9cdd6">Témoins anonymisés.</strong> La défense peut contester l'impossibilité de contradire directement les témoins protégés, même si la protection est légalement encadrée par les ordonnances PROT/TGI/2026/T-001/002/003.</div></li>
+        <li class="faiblesse-item"><div class="faiblesse-dot"></div><div class="faiblesse-text"><strong style="color:#c9cdd6">Registres P-006 non intégralement transcrits.</strong> La mention "solucionado" est centrale mais les registres ne sont pas exploités complètement. Une transcription intégrale aurait une valeur probante supplémentaire pour les disparitions Cobra/Viper.</div></li>
+        <li class="faiblesse-item"><div class="faiblesse-dot"></div><div class="faiblesse-text"><strong style="color:#c9cdd6">40 homicides — dossiers incomplets.</strong> Sans fiche victimologique individuelle pour chaque victime, le chef d'assassinats multiples ne peut être retenu en totalité. Voir <a href="dossiers-victimologiques.html" style="color:#4a7abf">dossiers victimologiques annexes</a>.</div></li>
+        <li class="faiblesse-item"><div class="faiblesse-dot"></div><div class="faiblesse-text"><strong style="color:#c9cdd6">Identité de La Contadora inconnue.</strong> Ce chaînon manquant fragilise le chef de corruption active et empêche de reconstituer complètement la chaîne de commandement financier du réseau.</div></li>
+        <li class="faiblesse-item"><div class="faiblesse-dot"></div><div class="faiblesse-text"><strong style="color:#c9cdd6">Lien Montoya → Los Espectros LLC non documenté formellement.</strong> L'appartenance de Montoya aux sociétés-écrans est inférée depuis l'expertise comptable, non prouvée documentairement par acte nominatif direct.</div></li>
+        <li class="faiblesse-item"><div class="faiblesse-dot"></div><div class="faiblesse-text"><strong style="color:#c9cdd6">Absence de corps — Cobra et Viper.</strong> Sans corps retrouvés, le chef d'assassinat est difficile à retenir directement. Risque de requalification en "séquestration suivie de mort présumée" — peine identique, mais argumentation différente.</div></li>
+        <li class="faiblesse-item"><div class="faiblesse-dot"></div><div class="faiblesse-text"><strong style="color:#c9cdd6">Téléphones P-005 et P-008 partiellement décryptés.</strong> 3 appareils sur 8 déchiffrés à ce stade — la totalité des données pourrait contenir des ordres directs de Montoya essentiels pour les chefs d'assassinat.</div></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 38. RECOMMANDATIONS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">38</div>
+      <div class="section-title">Recommandations — Compléments d'instruction</div>
+    </div>
+    <p class="prose">Éléments complémentaires prioritaires pour bétonner le dossier en vue du procès. À coordonner entre le SASP — Direction Enquêtes et le juge d'instruction.</p>
+    <div class="reco-grid">
+      <div class="reco-item">
+        <div class="reco-num">REC-01 — PRIORITÉ HAUTE</div>
+        <div class="reco-text"><strong>Transcription intégrale des écoutes</strong> — exploiter la totalité des interceptions archivées, pas seulement les extraits retenus. Recherche d'ordre direct de Montoya. Voir <a href="ecoutes-transcription.html" style="color:#4a7abf">annexe transcriptions complètes</a>.</div>
+      </div>
+      <div class="reco-item">
+        <div class="reco-num">REC-02 — PRIORITÉ HAUTE</div>
+        <div class="reco-text"><strong>Dossiers victimologiques individuels</strong> — constituer une fiche complète par homicide avec éléments propres à chaque victime pour retenir les assassinats individuellement. Voir <a href="dossiers-victimologiques.html" style="color:#4a7abf">annexe victimologique</a>.</div>
+      </div>
+      <div class="reco-item">
+        <div class="reco-num">REC-03 — PRIORITÉ HAUTE</div>
+        <div class="reco-text"><strong>Identification de La Contadora</strong> — élément clé pour consolider la corruption active et compléter la chaîne de commandement financier de Los Espectros.</div>
+      </div>
+      <div class="reco-item">
+        <div class="reco-num">REC-04 — PRIORITÉ MOYENNE</div>
+        <div class="reco-text"><strong>Transcription complète des registres P-006</strong> — exploiter intégralement les registres saisis, notamment les mentions codées dont "solucionado" relié aux dates de disparition de Cobra et Viper.</div>
+      </div>
+      <div class="reco-item">
+        <div class="reco-num">REC-05 — PRIORITÉ MOYENNE</div>
+        <div class="reco-text"><strong>Preuves bancaires nominatives</strong> — établir un lien documentaire direct entre Montoya et les flux financiers identifiés par l'expertise comptable CPT/EXP/2026/0034.</div>
+      </div>
+      <div class="reco-item">
+        <div class="reco-num">REC-06 — PRIORITÉ HAUTE</div>
+        <div class="reco-text"><strong>Déchiffrement des téléphones P-005 et P-008</strong> — les 5 appareils non déchiffrés doivent être analysés par expert informatique judiciaire pour extraire communications et ordres directs.</div>
+      </div>
+      <div class="reco-item">
+        <div class="reco-num">REC-07 — PRIORITÉ MOYENNE</div>
+        <div class="reco-text"><strong>Recherche des corps Cobra/Viper sur Cayo Perico</strong> — une fouille des zones connues permettrait de transformer le chef de séquestration en assassinat constitué et d'éliminer la principale fragilité.</div>
+      </div>
+      <div class="reco-item">
+        <div class="reco-num">REC-08 — PRIORITÉ BASSE</div>
+        <div class="reco-text"><strong>Audition contradictoire de Montoya</strong> — même en cas de refus prévisible, la mise en examen formelle produit un procès-verbal qui peut révéler des contradictions exploitables à l'audience.</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;background:#0a0c10;border:1px solid #1e2330;border-radius:6px;padding:24px;text-align:center">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#e8eaf0;letter-spacing:2px;margin-bottom:10px">DOSSIER TRÈS SOLIDE — PROCÈS ENGAGÉ</div>
+      <div style="font-size:13px;color:#8a90a0;line-height:1.7;max-width:640px;margin:0 auto">
+        Le dossier constitué par le SASP à l'issue de l'Opération SPECTRE est <span style="color:#c87d30">très solide sur les chefs principaux</span> — organisation criminelle, trafic de stupéfiants, blanchiment aggravé, armes et faux documents. La probabilité de condamnation sur ces chefs dépasse <span style="color:#c87d30">90 %</span>.<br><br>
+        Le dossier est <span style="color:#6a7abf">plus fragile sur les assassinats multiples</span> pris individuellement, faute de dossier victimologique complet pour chaque victime. Les disparitions de Cobra et Viper sont sérieusement étayées malgré l'absence de corps.
+      </div>
+      <div style="margin-top:20px;display:flex;justify-content:center;gap:16px;flex-wrap:wrap">
+        <div style="background:#0a100a;border:1px solid #1a3a1a;border-radius:4px;padding:10px 20px;text-align:center">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#2a5a2a;margin-bottom:4px">CONDAMNATION GLOBALE</div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:#2ecc71">85 %</div>
+        </div>
+        <div style="background:#1a0e08;border:1px solid #3a2010;border-radius:4px;padding:10px 20px;text-align:center">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#5a3010;margin-bottom:4px">RÉQUISITION</div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#c87d30">PERPÉTUITÉ</div>
+        </div>
+        <div style="background:#0d1220;border:1px solid #1a2640;border-radius:4px;padding:10px 20px;text-align:center">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#2a3a5a;margin-bottom:4px">COMPÉTENCE</div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#4a7abf">TGI LOS SANTOS</div>
+        </div>
+        <div style="background:#0d0a18;border:1px solid #1a1530;border-radius:4px;padding:10px 20px;text-align:center">
+          <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:#3a2a6a;margin-bottom:4px">AVOIRS SAISIS</div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:#9a7abf">+59,4 M$</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;font-size:11px;color:#3a4060;font-family:'Share Tech Mono',monospace">
+        AJ/DOJ/2026/0147 — DOJ San Andreas — Pôle Crime Organisé & Transnationale — 3 juillet 2026
+      </div>
+    </div>
   </div>
 
   <div class="doc-footer">
