@@ -571,8 +571,9 @@ function normRosterText(v) {
   return String(v || '')
     .trim()
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
 }
 function gradeKey(v) { return normRosterText(v); }
 function isArchivedStatus(statut) { return normRosterText(statut) === 'archive'; }
@@ -826,10 +827,11 @@ async function openAgentModal(id) {
   var formateurs = await DB.getFormateurs();
   var v = ag || {};
 
-  var gradeInList = _grades.some(function(g){ return g.nom === v.grade; });
+  var currentGradeKey = gradeKey(v.grade);
+  var gradeInList = _grades.some(function(g){ return gradeKey(g.nom) === currentGradeKey; });
   var gradeOpts = (v.grade && !gradeInList ? '<option value="' + esc(v.grade) + '" selected>' + esc(v.grade) + '</option>' : '') +
     _grades.map(function(g){
-      return '<option value="' + esc(g.nom) + '"' + (v.grade===g.nom?' selected':'') + '>' + esc(g.nom) + '</option>';
+      return '<option value="' + esc(g.nom) + '"' + (currentGradeKey && currentGradeKey===gradeKey(g.nom)?' selected':'') + '>' + esc(g.nom) + '</option>';
     }).join('');
 
   var uniteChecks = _units.filter(function(u){ return u.code !== 'LP'; }).map(function(u){
