@@ -591,9 +591,13 @@ async function getDashboardGradeCounts(grades, agents, logLabel) {
   try {
     var discordGradeCounts = await getDiscordGradeCounts();
     if (Object.keys(discordGradeCounts).length) {
+      var discordByKey = {};
+      Object.keys(discordGradeCounts).forEach(function(name) {
+        discordByKey[gradeKey(name)] = discordGradeCounts[name] || 0;
+      });
       var counts = {};
       (grades || []).forEach(function(g) {
-        counts[gradeKey(g.nom)] = discordGradeCounts[g.nom] || 0;
+        counts[gradeKey(g.nom)] = discordByKey[gradeKey(g.nom)] || 0;
       });
       return counts;
     }
