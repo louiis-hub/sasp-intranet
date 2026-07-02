@@ -40,6 +40,11 @@ function gradeFromRoles(roles) {
   const hit = Object.entries(GRADE_ROLES).find(([, roleId]) => roles.includes(roleId));
   return hit ? hit[0] : null;
 }
+function countGradesFromRoleCounts(roleCounts) {
+  const counts = {};
+  for (const [grade, roleId] of Object.entries(GRADE_ROLES)) counts[grade] = roleCounts[roleId] || 0;
+  return counts;
+}
 async function getGuildMembers(env, guildId) {
   const members = [];
   let after = "0";
@@ -308,6 +313,20 @@ export default {
       try {
         const members = await getGuildMembers(env, guildId);
         return json({ ok: true, counts: countGradesFromMembers(members), total: members.length });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/grade-role-counts" && request.method === "GET") {
+      const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+      try {
+        const res = await fetch(`${DISCORD_API}/guilds/${guildId}/roles/member-counts`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        if (!res.ok) throw new Error(`Discord role counts failed: ${res.status}`);
+        const roleCounts = await res.json();
+        return json({ ok: true, counts: countGradesFromRoleCounts(roleCounts), role_counts: roleCounts });
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
