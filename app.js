@@ -66,14 +66,14 @@ async function getDiscordRosterMap(agents) {
   if (!ids.length) return {};
   var key = ids.join(',');
   if (_discordRosterCache.key === key && Date.now() - _discordRosterCache.ts < 60000) return _discordRosterCache.map;
-  var res = await fetch(WORKER_BASE + '/sync-all-from-discord', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
-    body: JSON.stringify({ discord_ids: ids })
-  });
-  var data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'Erreur Discord');
-  _discordRosterCache = { key: key, ts: Date.now(), map: data.map || {} };
+  var pairs = await Promise.all(ids.map(async function(id) {
+    var res = await fetch(WORKER_BASE + '/get-member-roles?discord_id=' + encodeURIComponent(id));
+    var data = await res.json();
+    return data && data.ok ? [id, data] : null;
+  }));
+  var map = {};
+  pairs.forEach(function(pair){ if (pair) map[pair[0]] = pair[1]; });
+  _discordRosterCache = { key: key, ts: Date.now(), map: map };
   return _discordRosterCache.map;
 }
 function applyDiscordGrades(agents, roleMap) {
@@ -92,14 +92,7 @@ async function syncAllAgentsToDiscord() {
     var withId = agents.filter(function(a) { return a.discord_id; });
     if (!withId.length) { loader.done('Aucun agent avec un Discord ID.', 'error'); return; }
     loader.update('Synchronisation en cours…');
-    var discordRes = await fetch(WORKER_BASE + '/sync-all-from-discord', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
-      body: JSON.stringify({ discord_ids: withId.map(function(a) { return a.discord_id; }) })
-    });
-    var discordData = await discordRes.json();
-    if (!discordData.ok) throw new Error(discordData.error || 'Erreur Discord');
-    var roleMap = discordData.map;
+    var roleMap = await getDiscordRosterMap(withId);
     var updated = 0;
     var changeLines = [];
     for (var i = 0; i < withId.length; i++) {
