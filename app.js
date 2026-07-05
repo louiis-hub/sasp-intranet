@@ -30,7 +30,7 @@ var GRADE_SALAIRE = {
   'Rookie':              100
 };
 function calcSalaire(grade, seconds) {
-  var rate = GRADE_SALAIRE[grade] || 0;
+  var rate = GRADE_SALAIRE[grade] || GRADE_SALAIRE['Trooper II'];
   return Math.round((seconds / 3600) * rate);
 }
 function fmtMoney(n) { return '$' + n.toLocaleString('fr-FR'); }
