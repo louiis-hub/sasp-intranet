@@ -3248,7 +3248,8 @@ async function renderPointeuseHistorique() {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div></div>');
     return;
   }
-  var all = await DB.getAllPointages();
+  var [all, actives] = await Promise.all([DB.getAllPointages(), DB.getActivePointages()]);
+  var activeAgentIds = new Set(actives.map(function(p){ return p.agent_id; }));
 
   // Grouper par semaine (lundi de la semaine)
   var byWeek = {};
@@ -3307,8 +3308,10 @@ async function renderPointeuseHistorique() {
       var sal = calcSalaire(a.grade, sec);
       var paidKey = 'paid_' + key + '_' + (a.id || a.matricule || (a.prenom + a.nom));
       var isPaid = localStorage.getItem(paidKey) === '1';
+      var enService = a.id && activeAgentIds.has(a.id);
+      var dot = '<span title="' + (enService ? 'En service' : 'Hors service') + '" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + (enService ? '#2ecc71' : '#e74c3c') + ';box-shadow:0 0 ' + (enService ? '6px #2ecc71' : '0px') + '"></span>';
       return '<tr style="' + (isPaid ? 'opacity:.5' : '') + '">' +
-        '<td><strong>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule || '') + '</small></td>' +
+        '<td style="white-space:nowrap">' + dot + ' <strong>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule || '') + '</small></td>' +
         '<td style="font-family:monospace;font-size:.8rem;color:var(--t2)">' + esc(a.iban || '—') + '</td>' +
         '<td style="text-align:center"><strong>' + fmtSec(sec) + '</strong>' + (entry.ongoing ? ' <span style="color:var(--gold);font-size:.75rem">+en cours</span>' : '') + '</td>' +
         '<td style="text-align:center;color:var(--gold);font-weight:700">' + fmtMoney(sal) + '</td>' +
