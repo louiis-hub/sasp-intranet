@@ -3228,25 +3228,38 @@ async function renderPointeuseHistorique() {
       week.monday.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' }) +
       ' au ' + sun.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
 
+    // Regrouper les pointages par agent
+    var byAgent = {};
+    week.entries.forEach(function(p) {
+      var a = p.agents || {};
+      var agId = a.id || (a.prenom + '_' + a.nom);
+      if (!byAgent[agId]) byAgent[agId] = { agent: a, sec: 0, ongoing: false };
+      if (p.clock_out) {
+        byAgent[agId].sec += Math.floor((new Date(p.clock_out) - new Date(p.clock_in)) / 1000);
+      } else {
+        byAgent[agId].ongoing = true;
+      }
+    });
+
     var totalSec = 0;
     var totalSalaire = 0;
+    var agentList = Object.values(byAgent).sort(function(x, y) {
+      return parseInt(x.agent.matricule || 999) - parseInt(y.agent.matricule || 999);
+    });
+    agentList.forEach(function(e) { totalSec += e.sec; totalSalaire += calcSalaire(e.agent.grade, e.sec); });
 
-    var rows = week.entries.map(function(p) {
-      var a = p.agents || {};
-      var sec = p.clock_out ? Math.floor((new Date(p.clock_out) - new Date(p.clock_in)) / 1000) : 0;
-      totalSec += sec;
+    var rows = agentList.map(function(entry) {
+      var a = entry.agent;
+      var sec = entry.sec;
       var sal = calcSalaire(a.grade, sec);
-      totalSalaire += sal;
-      var dur = p.clock_out ? fmtSec(sec) : '<span style="color:var(--gold)">En cours</span>';
-      var cin = new Date(p.clock_in).toLocaleString('fr-FR', { weekday:'short', day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
-      var cout = p.clock_out ? new Date(p.clock_out).toLocaleString('fr-FR', { hour:'2-digit', minute:'2-digit' }) : '—';
-      return '<tr>' +
-        '<td>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</td>' +
-        '<td style="color:var(--t2)">' + esc(a.matricule || '') + '</td>' +
-        '<td>' + cin + '</td>' +
-        '<td>' + cout + '</td>' +
-        '<td style="text-align:center"><strong>' + dur + '</strong></td>' +
-        '<td style="text-align:center;color:var(--gold);font-weight:700">' + (p.clock_out ? fmtMoney(sal) : '—') + '</td>' +
+      var paidKey = 'paid_' + key + '_' + (a.id || a.matricule || (a.prenom + a.nom));
+      var isPaid = localStorage.getItem(paidKey) === '1';
+      return '<tr style="' + (isPaid ? 'opacity:.5' : '') + '">' +
+        '<td><strong>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule || '') + '</small></td>' +
+        '<td style="font-family:monospace;font-size:.8rem;color:var(--t2)">' + esc(a.iban || '—') + '</td>' +
+        '<td style="text-align:center"><strong>' + fmtSec(sec) + '</strong>' + (entry.ongoing ? ' <span style="color:var(--gold);font-size:.75rem">+en cours</span>' : '') + '</td>' +
+        '<td style="text-align:center;color:var(--gold);font-weight:700">' + fmtMoney(sal) + '</td>' +
+        '<td style="text-align:center"><input type="checkbox"' + (isPaid ? ' checked' : '') + ' onchange="togglePaidHisto(\'' + paidKey + '\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--green,#2ecc71)"></td>' +
       '</tr>';
     }).join('');
 
@@ -3255,14 +3268,14 @@ async function renderPointeuseHistorique() {
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;background:var(--bg1)" onclick="toggleWeek(\'' + panelId + '\')">' +
         '<div>' +
           '<span style="font-weight:600;color:var(--t0)">' + label + '</span>' +
-          '<span style="margin-left:12px;font-size:.8rem;color:var(--t3)">' + week.entries.length + ' pointage' + (week.entries.length > 1 ? 's' : '') + ' · ' + fmtSec(totalSec) + ' total</span>' +
+          '<span style="margin-left:12px;font-size:.8rem;color:var(--t3)">' + agentList.length + ' agent' + (agentList.length > 1 ? 's' : '') + ' · ' + fmtSec(totalSec) + ' total</span>' +
           '<span style="margin-left:10px;font-size:.8rem;color:var(--gold);font-weight:700">' + fmtMoney(totalSalaire) + '</span>' +
         '</div>' +
         '<span id="' + panelId + '_ico">▼</span>' +
       '</div>' +
       '<div id="' + panelId + '" style="display:none">' +
         '<div class="table-wrap"><table>' +
-          '<thead><tr><th>AGENT</th><th>MATRICULE</th><th>ENTRÉE</th><th>SORTIE</th><th style="text-align:center">DURÉE</th><th style="text-align:center">SALAIRE</th></tr></thead>' +
+          '<thead><tr><th>AGENT</th><th>IBAN</th><th style="text-align:center">DURÉE</th><th style="text-align:center">SALAIRE</th><th style="text-align:center">PAYÉ</th></tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table></div>' +
       '</div>' +
@@ -3275,6 +3288,13 @@ async function renderPointeuseHistorique() {
     '<button class="btn btn-ghost btn-sm" onclick="navigate(\'pointeuse\')">← Retour</button></div>' +
     '<div>' + accordionHtml + '</div>'
   );
+}
+
+function togglePaidHisto(key, cb) {
+  if (cb.checked) localStorage.setItem(key, '1');
+  else localStorage.removeItem(key);
+  var row = cb.closest('tr');
+  if (row) row.style.opacity = cb.checked ? '.5' : '';
 }
 
 function toggleWeek(id) {
