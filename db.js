@@ -194,7 +194,7 @@ var DB = {
   },
   async getAllPointages() {
     var { data } = await getDb().from('pointages')
-      .select('*, agents(nom, prenom, matricule, grade)')
+      .select('*, agents(id, nom, prenom, matricule, grade, iban)')
       .not('clock_out', 'is', null)
       .order('clock_in', { ascending: false });
     return data || [];
