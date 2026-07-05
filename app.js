@@ -195,6 +195,7 @@ var NAV = [
   { divider: true },
   { group: 'RESSOURCES HUMAINES' },
   { id: 'recap',    icon: '📋', label: 'Récap agents', staffOnly: true },
+  { id: 'completude', icon: '🗂️', label: 'Complétude fiches', staffOnly: true },
   { id: 'agents',   icon: '👮', label: 'Agents' },
   { id: 'grades',   icon: '🎖️', label: 'Grades' },
   { id: 'units',     icon: '🚔', label: 'Divisions' },
@@ -214,7 +215,7 @@ var PAGE_TITLES = {
   dashboard:'Tableau de bord', agents:'Agents', 'agent-profile':'Fiche agent',
   grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', 'pointeuse-historique':'Historique pointages', mdt:'Guide MDT', vehicles:'Véhicules', cartes:'Cartes',
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
-  archives:'Archives', ceremonie:'Prépa Cérémonie',
+  archives:'Archives', ceremonie:'Prépa Cérémonie', completude:'Complétude fiches',
   'global-settings':'Réglages globaux',
   stats:'Statistiques', search:'Recherche', settings:'Mon compte'
 };
@@ -351,7 +352,7 @@ function buildNav() {
   var isCeremony = S.role === 'admin' || S.role === 'rh';
   var isVisiteur = S.role === 'visiteur';
   var VISITEUR_NAV = ['dashboard', 'pointeuse', 'cartes'];
-  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'cartes', 'stats', 'archives', 'recap', 'ceremonie'];
+  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'cartes', 'stats', 'archives', 'recap', 'ceremonie', 'completude'];
   var html = '';
   NAV.forEach(function(item) {
     if (item.staffOnly && !isStaff) return;
@@ -447,6 +448,7 @@ async function navigate(page, pd) {
       cartes:                  renderCartes,
       ceremonie:      renderCeremonie,
       archives:       renderArchives,
+      completude:     renderCompletude,
       'global-settings': renderGlobalSettings,
       stats:          renderStats,
       search:         renderSearch,
@@ -782,6 +784,7 @@ async function renderAgents() {
         (canWrite() ? '<button class="btn btn-primary btn-sm" onclick="openAgentModal(null)">+ Ajouter un agent</button>' : '') +
         '<button class="btn btn-ghost btn-sm" onclick="showMatriculesDispos()">🔢 Matricules dispo</button>' +
         (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="syncAllAgentsToDiscord()">🔄 Sync Discord</button>' : '') +
+        (canWrite() ? '<button class="btn btn-ghost btn-sm" onclick="navigate(\'completude\')">🗂️ Complétude</button>' : '') +
       '</div>' +
     '</div>' +
     '<div class="filter-bar">' +
@@ -1931,6 +1934,56 @@ async function createVehiclePage() {
     renderVehicleList();
     if (r.data) await openVehiclePage(r.data.id);
   } catch(e) { toast(e.message,'error'); }
+}
+
+// ══ COMPLÉTUDE FICHES ═══════════════════════════════════════════════
+async function renderCompletude() {
+  var agents = await DB.getAgents({});
+  var FIELDS = [
+    { key: 'iban',            label: 'IBAN' },
+    { key: 'telephone',       label: 'Téléphone' },
+    { key: 'date_naissance',  label: 'Date naiss.' },
+    { key: 'date_recrutement',label: 'Date recrut.' },
+    { key: 'discord_id',      label: 'Discord' },
+  ];
+  var ok   = '<span style="color:#2ecc71;font-size:1rem">✓</span>';
+  var nok  = '<span style="color:#e74c3c;font-size:1rem;font-weight:700">✗</span>';
+
+  var rows = agents.map(function(a) {
+    var missing = FIELDS.filter(function(f){ return !a[f.key]; }).length;
+    var rowStyle = missing > 0 ? 'cursor:pointer' : 'cursor:pointer;opacity:.6';
+    return '<tr onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})" style="' + rowStyle + '">' +
+      '<td class="mono text-gold">' + esc(a.matricule) + '</td>' +
+      '<td style="font-weight:600;color:var(--t0)">' + esc(a.prenom) + ' ' + esc(a.nom) + '</td>' +
+      '<td>' + gradeBadge(a.grade) + '</td>' +
+      FIELDS.map(function(f){ return '<td style="text-align:center">' + (a[f.key] ? ok : nok) + '</td>'; }).join('') +
+      '<td style="text-align:center"><span class="badge ' + (missing===0?'badge-green':'badge-red') + '" style="font-size:.65rem">' + (missing===0?'Complet':missing+' manquant'+(missing>1?'s':'')) + '</span></td>' +
+    '</tr>';
+  }).join('');
+
+  var incomplete = agents.filter(function(a){ return FIELDS.some(function(f){ return !a[f.key]; }); }).length;
+
+  setContent(
+    '<div class="flex-between mb-20 flex-wrap gap-8">' +
+      '<div>' +
+        '<h2 style="font-size:1.15rem;font-weight:700;color:var(--t0);margin:0">Complétude des fiches agents</h2>' +
+        '<div style="font-size:.78rem;color:var(--t3);margin-top:3px">' + agents.length + ' agents actifs — ' +
+          '<span style="color:' + (incomplete?'#e74c3c':'#2ecc71') + '">' + incomplete + ' fiche' + (incomplete!==1?'s':'') + ' incomplète' + (incomplete!==1?'s':'') + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<button class="btn btn-ghost btn-sm" onclick="navigate(\'agents\')">← Retour agents</button>' +
+    '</div>' +
+    '<div class="card" style="padding:0;overflow:hidden">' +
+      '<table class="table">' +
+        '<thead><tr>' +
+          '<th>Matricule</th><th>Agent</th><th>Grade</th>' +
+          FIELDS.map(function(f){ return '<th style="text-align:center">' + f.label + '</th>'; }).join('') +
+          '<th style="text-align:center">Statut</th>' +
+        '</tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>' +
+    '</div>'
+  );
 }
 
 // ══ DISCIPLINARY ═══════════════════════════════════════════════════
