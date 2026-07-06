@@ -40,6 +40,7 @@ function gradeFromRoles(roles) {
   const hit = Object.entries(GRADE_ROLES).find(([, roleId]) => roles.includes(roleId));
   return hit ? hit[0] : null;
 }
+
 function countGradesFromRoleCounts(roleCounts) {
   const counts = {};
   for (const [grade, roleId] of Object.entries(GRADE_ROLES)) counts[grade] = roleCounts[roleId] || 0;
@@ -284,7 +285,6 @@ export default {
     }
 
     // Sync divisions Discord → intranet
-
     if (url.pathname === "/grade-role-counts" && request.method === "GET") {
       const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
       try {
@@ -322,27 +322,31 @@ export default {
 
     // Récupère les rôles de membres Discord par IDs (Discord → Intranet)
     if (url.pathname === "/sync-all-from-discord" && request.method === "POST") {
-      const token = request.headers.get("x-log-token");
-      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
-      const { discord_ids } = await request.json();
-      const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
-      const map = {};
-      for (const discordId of (discord_ids || [])) {
-        const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
-          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
-        });
-        if (!res.ok) continue;
-        const m = await res.json();
-        const roles = m.roles || [];
-        map[discordId] = {
-          divisions: roles.filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]),
-          ppa1:  roles.includes(PPA_ROLES.ppa1),
-          ppa2:  roles.includes(PPA_ROLES.ppa2),
-          ppa3:  roles.includes(PPA_ROLES.ppa3a) || roles.includes(PPA_ROLES.ppa3b),
-          grade: gradeFromRoles(roles)
-        };
+      try {
+        const token = request.headers.get("x-log-token");
+        if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+        const { discord_ids } = await request.json();
+        const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+        const map = {};
+        for (const discordId of (discord_ids || [])) {
+          const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          if (!res.ok) continue;
+          const m = await res.json();
+          const roles = m.roles || [];
+          map[discordId] = {
+            divisions: roles.filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]),
+            ppa1:  roles.includes(PPA_ROLES.ppa1),
+            ppa2:  roles.includes(PPA_ROLES.ppa2),
+            ppa3:  roles.includes(PPA_ROLES.ppa3a) || roles.includes(PPA_ROLES.ppa3b),
+            grade: gradeFromRoles(roles)
+          };
+        }
+        return json({ ok: true, map });
+      } catch (e) {
+        return json({ ok: false, error: e.message || String(e) }, 500);
       }
-      return json({ ok: true, map });
     }
 
     // Sync tous les agents intranet → Discord
@@ -475,6 +479,8 @@ export default {
     }
 
     const STICKY_PROC_CHANNEL = "1521575058500489478";
+    const BRACELET_COMMAND_CHANNEL = "1521575058500489478";
+    const BRACELET_FORUM_CHANNEL = "1518656285074128926";
     const STICKY_PROC_EMBED = { embeds: [{ title: "⚖️ Demande de procureur", color: 0x2c3e50, description: "Utilisez la commande `/proc` pour commencer la procédure de demande de procureur.\n\nRemplissez le formulaire et validez — le dossier sera automatiquement créé dans <#1521565049729187961>.", footer: { text: "SASP • Service judiciaire" } }] };
     if (url.pathname === "/admin/send-sticky-proc" && request.method === "GET") {
       const res = await fetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages`, {
@@ -504,6 +510,22 @@ export default {
       }
     }
 
+    if (url.pathname === "/admin/install-bracelet-command" && request.method === "GET") {
+      try {
+        const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const res = await fetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "bracelet", description: "Créer un bracelet électronique sans proc" })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, data });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/install-proc-command" && request.method === "GET") {
       try {
         const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
@@ -650,6 +672,68 @@ export default {
         return json({ type: 4, data: { content: `✅ Demande procureur créée pour **${suspect}**.`, flags: 64 } });
       }
 
+      // Slash command /bracelet standalone
+      if (interaction.type === 2 && interaction.data.name === "bracelet") {
+        if (interaction.channel_id !== BRACELET_COMMAND_CHANNEL) {
+          return json({ type: 4, data: { content: `❌ Utilise cette commande dans <#${BRACELET_COMMAND_CHANNEL}>.`, flags: 64 } });
+        }
+        const now = new Date();
+        const dateDefault = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+        return json({
+          type: 9,
+          data: {
+            custom_id: "bracelet_standalone_modal",
+            title: "Bracelet Électronique",
+            components: [
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_suspect", label: "Nom Prénom du suspect", style: 1, required: true, placeholder: "Ex : Morrison James", max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "Posé le", style: 1, required: true, value: dateDefault, max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "Numéro de téléphone", style: 1, required: true, placeholder: "Ex : 555-0198", max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, required: true, placeholder: "Infractions retenues…", max_length: 500 }] }
+            ]
+          }
+        });
+      }
+
+      // Modal submit bracelet standalone (sans proc)
+      if (interaction.type === 5 && interaction.data.custom_id === "bracelet_standalone_modal") {
+        const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
+        const suspect = getValue("bracelet_suspect");
+        const date    = getValue("bracelet_date");
+        const tel     = getValue("bracelet_tel");
+        const raison  = getValue("bracelet_raison");
+
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        let agentDisplay = `<@${userId}>`;
+        try {
+          const agent = await getAgentByDiscordId(env, userId);
+          if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
+        } catch {}
+
+        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nPosé le : ${date}\nNuméro de téléphone : ${tel}\nRaison : ${raison}\nPosé par : ${agentDisplay}\n\nPensez à bien noter quand les individus viennent pointer\n\nℹ️ Les bracelets peuvent être activés pour voir la position une fois toutes les 24h via un message "BIP" sur le téléphone de l'individu.`;
+
+        const forumRes = await fetch(`${DISCORD_API}/channels/${BRACELET_FORUM_CHANNEL}/threads`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: suspect,
+            message: {
+              content,
+              components: [
+                { type: 1, components: [{ type: 2, style: 3, label: "📍 Pointage", custom_id: "bracelet_pointage" }] }
+              ]
+            }
+          })
+        });
+
+        if (!forumRes.ok) {
+          const err = await forumRes.text();
+          return json({ type: 4, data: { content: `❌ Erreur création bracelet (${forumRes.status}): ${err}`, flags: 64 } });
+        }
+        const braceletData = await forumRes.json();
+        const braceletThreadId = braceletData.id;
+        return json({ type: 4, data: { content: `✅ Bracelet électronique créé pour **${suspect}** : <#${braceletThreadId}>`, flags: 64 } });
+      }
+
       // Bouton bracelet depuis un post proc
       if (interaction.type === 3 && interaction.data.custom_id === "proc_bracelet") {
         const embed = interaction.message?.embeds?.[0] || {};
@@ -691,7 +775,7 @@ export default {
 
         const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nPosé le : ${date}\nNuméro de téléphone : ${tel}\nRaison : ${raison}\nPosé par : ${agentDisplay}\n\nPensez à bien noter quand les individus viennent pointer\n\nℹ️ Les bracelets peuvent être activés pour voir la position une fois toutes les 24h via un message "BIP" sur le téléphone de l'individu.`;
 
-        const forumRes = await fetch(`${DISCORD_API}/channels/1518656285074128926/threads`, {
+        const forumRes = await fetch(`${DISCORD_API}/channels/${BRACELET_FORUM_CHANNEL}/threads`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -882,7 +966,7 @@ export default {
             components: [
               { type: 1, components: [{ type: 4, custom_id: "plaignant", label: "Plaignant — Nom Prénom", style: 1, required: true, placeholder: "Ex : James Morrison", min_length: 2, max_length: 80 }] },
               { type: 1, components: [{ type: 4, custom_id: "misen_cause", label: "Mis en cause (Nom Prénom ou entreprise)", style: 1, required: true, placeholder: "Ex : John Smith", min_length: 2, max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "desc_misen_cause", label: "Description du mis en cause", style: 2, required: false, placeholder: "Apparence, véhicule, signalement...", max_length: 500 }] },
+              { type: 1, components: [{ type: 4, custom_id: "tel_misen_cause", label: "Tél. mis en cause (facultatif)", style: 1, required: false, placeholder: "Ex : +1 555 123 4567", max_length: 30 }] },
               { type: 1, components: [{ type: 4, custom_id: "motif", label: "Motif de la plainte", style: 1, required: true, placeholder: "Ex : Vol à main armée", min_length: 2, max_length: 200 }] },
               { type: 1, components: [{ type: 4, custom_id: "resume", label: "Résumé des faits", style: 2, required: true, placeholder: "Décrivez les faits...", min_length: 10, max_length: 2000 }] }
             ]
@@ -895,7 +979,7 @@ export default {
         const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
         const plaignant      = getValue("plaignant");
         const misenCause     = getValue("misen_cause");
-        const descMisenCause = getValue("desc_misen_cause");
+        const telMisenCause  = getValue("tel_misen_cause");
         const motif          = getValue("motif");
         const resume         = getValue("resume");
         const now = new Date();
@@ -914,12 +998,13 @@ export default {
           if (idData && idData[0]) plainteId = idData[0].id;
         } catch {}
 
-        const misenCauseVal = descMisenCause ? `${misenCause}\n${descMisenCause}` : misenCause;
+        const misenCauseVal = misenCause;
         const fields = [
           { name: "📅 Date & Heure",      value: `${dateStr} à ${heureStr}`, inline: true },
           { name: "👮 Agent en charge",   value: agentDisplay, inline: true },
           { name: "🙋 Plaignant",         value: plaignant, inline: false },
           { name: "🎯 Mis en cause",      value: misenCauseVal, inline: false },
+          { name: "📞 Téléphone",          value: telMisenCause || "—", inline: true },
           { name: "📋 Motif",             value: motif, inline: false },
           { name: "📝 Résumé des faits",  value: resume.slice(0, 1024), inline: false },
           { name: "⚖️ Note",              value: "La Cour est respectueusement saisie de ce dossier et invitée à statuer sur les suites judiciaires à y apporter. Le SASP demeure à disposition pour toute information complémentaire jugée nécessaire à l'instruction de cette affaire.", inline: false }
@@ -971,7 +1056,7 @@ export default {
         const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
         const plaignant      = getValue("plaignant");
         const misenCause     = getValue("misen_cause");
-        const descMisenCause = getValue("desc_misen_cause");
+        const telMisenCause  = getValue("tel_misen_cause");
         const motif          = getValue("motif");
         const resume         = getValue("resume");
 
@@ -986,12 +1071,13 @@ export default {
         const agentStr = origGetField("Agent");
         const dateStr  = origGetField("Date");
 
-        const misenCauseVal = descMisenCause ? `${misenCause}\n${descMisenCause}` : misenCause;
+        const misenCauseVal = misenCause;
         const newFields = [
           { name: "📅 Date & Heure",      value: dateStr, inline: true },
           { name: "👮 Agent en charge",   value: agentStr, inline: true },
           { name: "🙋 Plaignant",         value: plaignant, inline: false },
           { name: "🎯 Mis en cause",      value: misenCauseVal, inline: false },
+          { name: "📞 Téléphone",          value: telMisenCause || "—", inline: true },
           { name: "📋 Motif",             value: motif, inline: false },
           { name: "📝 Résumé des faits",  value: resume.slice(0, 1024), inline: false },
           { name: "⚖️ Note",              value: "La Cour est respectueusement saisie de ce dossier et invitée à statuer sur les suites judiciaires à y apporter. Le SASP demeure à disposition pour toute information complémentaire jugée nécessaire à l'instruction de cette affaire.", inline: false }
@@ -1025,10 +1111,9 @@ export default {
           }
           const embed = interaction.message.embeds?.[0] || {};
           const getField = (kw) => (embed.fields || []).find(f => f.name.includes(kw))?.value || "";
-          const misenCauseRaw = getField("Mis en cause");
-          const misenLines = misenCauseRaw.split("\n");
-          const misenVal = misenLines[0] || "";
-          const descVal  = misenLines.slice(1).join("\n");
+          const misenVal = getField("Mis en cause");
+          const telRaw   = getField("Téléphone");
+          const telVal   = telRaw === "—" ? "" : telRaw;
           const channelId = interaction.channel_id;
           const messageId = interaction.message.id;
           return json({
@@ -1039,7 +1124,7 @@ export default {
               components: [
                 { type: 1, components: [{ type: 4, custom_id: "plaignant", label: "Plaignant — Nom Prénom", style: 1, required: true, value: getField("Plaignant"), min_length: 2, max_length: 80 }] },
                 { type: 1, components: [{ type: 4, custom_id: "misen_cause", label: "Mis en cause", style: 1, required: true, value: misenVal, min_length: 2, max_length: 80 }] },
-                { type: 1, components: [{ type: 4, custom_id: "desc_misen_cause", label: "Description du mis en cause", style: 2, required: false, value: descVal, max_length: 500 }] },
+                { type: 1, components: [{ type: 4, custom_id: "tel_misen_cause", label: "Tél. mis en cause (facultatif)", style: 1, required: false, value: telVal, max_length: 30 }] },
                 { type: 1, components: [{ type: 4, custom_id: "motif", label: "Motif de la plainte", style: 1, required: true, value: getField("Motif"), min_length: 2, max_length: 200 }] },
                 { type: 1, components: [{ type: 4, custom_id: "resume", label: "Résumé des faits", style: 2, required: true, value: getField("Résumé"), min_length: 10, max_length: 2000 }] }
               ]
