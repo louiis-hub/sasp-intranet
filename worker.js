@@ -761,25 +761,25 @@ function buildPointeuseMessage(active) {
   const count = active.length;
   const list = active.map(p => {
     const a = p.agents || {};
-    return `â€¢ ${(a.prenom + " " + a.nom).trim()} (${a.matricule || "â€”"})`;
+    return `\u2022 ${(a.prenom + " " + a.nom).trim()} (${a.matricule || "\u2014"})`;
   }).join("\n");
 
   return {
     embeds: [{
-      title: "ðŸš” SASP â€” Tableau de service",
+      title: "\ud83d\ude94 SASP \u2014 Tableau de service",
       description: count > 0
-        ? `**En service Â· ${count} agent${count > 1 ? "s" : ""}**\n${list}`
+        ? `**En service \u00b7 ${count} agent${count > 1 ? "s" : ""}**\n${list}`
         : "*Aucun agent en service*",
       color: count > 0 ? 0x3A9B4E : 0x3A4E64,
-      footer: { text: "SASP Â· Mis Ã  jour automatiquement" },
+      footer: { text: "SASP \u00b7 Mis \u00e0 jour automatiquement" },
       timestamp: new Date().toISOString()
     }],
     components: [{
       type: 1,
       components: [
-        { type: 2, style: 3, label: "Prise de service", emoji: { name: "ðŸŸ¢" }, custom_id: "prise_service" },
-        { type: 2, style: 4, label: "Fin de service",   emoji: { name: "ðŸ”´" }, custom_id: "fin_service" },
-        { type: 2, style: 2, label: "Retirer un agent", emoji: { name: "ðŸ›‘" }, custom_id: "admin_remove" }
+        { type: 2, style: 3, label: "Prise de service", emoji: { name: "\ud83d\udfe2" }, custom_id: "prise_service" },
+        { type: 2, style: 4, label: "Fin de service",   emoji: { name: "\ud83d\udd34" }, custom_id: "fin_service" },
+        { type: 2, style: 2, label: "Retirer un agent", emoji: { name: "\ud83d\uded1" }, custom_id: "admin_remove" }
       ]
     }]
   };
@@ -809,7 +809,7 @@ async function autoClockout6h(env) {
   }
   const lines = expired.map(p => {
     const a = p.agents || {};
-    return `â€¢ **${(a.prenom + ' ' + a.nom).trim()}** (${a.matricule || 'â€”'}) a oubliÃ© de terminer son service et a bien Ã©tÃ© dÃ©connectÃ© automatiquement.`;
+    return `\u2022 **${(a.prenom + ' ' + a.nom).trim()}** (${a.matricule || '\u2014'}) a oubli\u00e9 de terminer son service et a bien \u00e9t\u00e9 d\u00e9connect\u00e9 automatiquement.`;
   }).join('\n');
   await fetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
     method: 'POST',
@@ -817,10 +817,10 @@ async function autoClockout6h(env) {
     body: JSON.stringify({
       content: `<@&1500975725153620033>`,
       embeds: [{
-        title: 'â±ï¸ Fin de service automatique â€” 6h dÃ©passÃ©es',
+        title: '\u23f1\ufe0f Fin de service automatique \u2014 6h d\u00e9pass\u00e9es',
         description: lines,
         color: 0xe67e22,
-        footer: { text: 'SASP Â· Auto clock-out 6h' },
+        footer: { text: 'SASP \u00b7 Auto clock-out 6h' },
         timestamp: now
       }]
     })
@@ -844,17 +844,17 @@ async function autoClockoutAll(env) {
   }
   const names = active.map(p => {
     const a = p.agents || {};
-    return `â€¢ ${(a.prenom + ' ' + a.nom).trim()} (${a.matricule || 'â€”'})`;
+    return `\u2022 ${(a.prenom + ' ' + a.nom).trim()} (${a.matricule || '\u2014'})`;
   }).join('\n');
   await fetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
     method: 'POST',
     headers: { 'Authorization': `Bot ${env.DISCORD_BOT_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       embeds: [{
-        title: 'ðŸ•— Fin de service automatique â€” Dimanche 20h',
-        description: `**${active.length} agent${active.length > 1 ? 's' : ''} dÃ©connectÃ©${active.length > 1 ? 's' : ''} automatiquement :**\n${names}`,
+        title: '\ud83d\udd57 Fin de service automatique \u2014 Dimanche 20h',
+        description: `**${active.length} agent${active.length > 1 ? 's' : ''} d\u00e9connect\u00e9${active.length > 1 ? 's' : ''} automatiquement :**\n${names}`,
         color: 0xe74c3c,
-        footer: { text: 'CENTRALE PA Â· Auto clock-out hebdomadaire' },
+        footer: { text: 'CENTRALE PA \u00b7 Auto clock-out hebdomadaire' },
         timestamp: now
       }]
     })
