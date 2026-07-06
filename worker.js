@@ -62,6 +62,45 @@ const ADMIN_ROLE_IDS = [
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────
+const ENTERPRISE_GUILD_ID = "1523759012623941746";
+const ENTERPRISE_ADMIN_ROLE_ID = "1523759223761010858";
+const ENTERPRISES = [
+  "Burgershot (Sandy)",
+  "Hornys",
+  "Pizzathis",
+  "Rex's Dinner",
+  "LiquorBar (Sandy)",
+  "Bahamas",
+  "Kebab Amir",
+  "Unicorn",
+  "Restaurant Triade",
+  "Avocat",
+  "PawnShop",
+  "Logistic (grossiste mati\u00e8res premi\u00e8res)",
+  "Taxi",
+  "Casino",
+  "Ammunation",
+  "Agence Immobili\u00e8re",
+  "Weazel News",
+  "Tabac",
+  "Vignerons",
+  "Brasserie",
+  "Benny's",
+  "Tuner Shop",
+  "Garage GM Motor",
+  "SASP-SUD",
+  "SASP-NORD",
+  "Gouvernement",
+  "D.O.J",
+  "SAMS"
+];
+const ENTERPRISE_COLORS = [
+  0xe74c3c, 0xe67e22, 0xf1c40f, 0x2ecc71, 0x1abc9c, 0x3498db, 0x9b59b6,
+  0xfd79a8, 0x00cec9, 0x6c5ce7, 0x55efc4, 0xff7675, 0x74b9ff, 0xa29bfe,
+  0xffb142, 0x33d9b2, 0x34ace0, 0x706fd3, 0xb33939, 0x218c74, 0x227093,
+  0x40407a, 0xcc8e35, 0x84817a, 0x3c6382, 0x0a3d62, 0x78e08f, 0xfa983a
+];
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -92,6 +131,131 @@ async function verifyDiscordSignature(request, body, publicKey) {
 function hasStaffRole(member) {
   const roles = member?.roles || [];
   return STAFF_ROLE_IDS.some(r => roles.includes(r));
+}
+
+async function discordRequest(env, method, path, body, reason) {
+  const res = await fetch(`${DISCORD_API}${path}`, {
+    method,
+    headers: {
+      "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
+      "Content-Type": "application/json",
+      ...(reason ? { "X-Audit-Log-Reason": reason } : {})
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const text = await res.text();
+  let data = null;
+  if (text) {
+    try { data = JSON.parse(text); } catch { data = text; }
+  }
+  if (!res.ok) throw new Error(`${method} ${path} failed (${res.status}): ${typeof data === "string" ? data : JSON.stringify(data)}`);
+  return data;
+}
+
+async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminRoleId = ENTERPRISE_ADMIN_ROLE_ID) {
+  const VIEW = 1024n;
+  const MANAGE_CHANNELS = 16n;
+  const MANAGE_ROLES = 268435456n;
+  const SEND = 2048n;
+  const READ_HISTORY = 65536n;
+  const BASE = VIEW | SEND | READ_HISTORY;
+  const PATRON = BASE | MANAGE_CHANNELS | MANAGE_ROLES;
+  const ADMIN = BASE | MANAGE_CHANNELS | MANAGE_ROLES;
+
+  const roles = await discordRequest(env, "GET", `/guilds/${guildId}/roles`, null, "Setup entreprises");
+  const channels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, "Setup entreprises");
+  const roleByName = new Map(roles.map(r => [r.name, r]));
+  const categoryByName = new Map();
+  const channelByParentNameType = new Map();
+  for (const channel of channels) {
+    if (channel.type === 4) categoryByName.set(channel.name, channel);
+    if (channel.parent_id) channelByParentNameType.set(`${channel.parent_id}:${channel.name}:${channel.type}`, channel);
+  }
+
+  const findOrCreateRole = async (name, color) => {
+    if (roleByName.has(name)) return { item: roleByName.get(name), created: false };
+    const item = await discordRequest(env, "POST", `/guilds/${guildId}/roles`, {
+      name,
+      color,
+      hoist: false,
+      mentionable: true
+    }, "Setup entreprises - role");
+    roleByName.set(name, item);
+    return { item, created: true };
+  };
+
+  const findOrCreateCategory = async (name, overwrites) => {
+    if (categoryByName.has(name)) return { item: categoryByName.get(name), created: false };
+    const item = await discordRequest(env, "POST", `/guilds/${guildId}/channels`, {
+      name,
+      type: 4,
+      permission_overwrites: overwrites
+    }, "Setup entreprises - categorie");
+    categoryByName.set(name, item);
+    return { item, created: true };
+  };
+
+  const findOrCreateChannel = async (parentId, name, type, overwrites) => {
+    const key = `${parentId}:${name}:${type}`;
+    if (channelByParentNameType.has(key)) return { item: channelByParentNameType.get(key), created: false };
+    const item = await discordRequest(env, "POST", `/guilds/${guildId}/channels`, {
+      name,
+      type,
+      parent_id: parentId,
+      permission_overwrites: overwrites
+    }, "Setup entreprises - salon");
+    channelByParentNameType.set(key, item);
+    return { item, created: true };
+  };
+
+  let createdRoles = 0;
+  let createdCategories = 0;
+  let createdChannels = 0;
+  const details = [];
+
+  for (let i = 0; i < ENTERPRISES.length; i++) {
+    const enterprise = ENTERPRISES[i];
+    const color = ENTERPRISE_COLORS[i % ENTERPRISE_COLORS.length];
+    const patron = await findOrCreateRole(`Patron ${enterprise}`, color);
+    const coPatron = await findOrCreateRole(`Co Patron ${enterprise}`, color);
+    const employe = await findOrCreateRole(`Employ\u00e9 ${enterprise}`, color);
+    createdRoles += [patron, coPatron, employe].filter(x => x.created).length;
+
+    const categoryOverwrites = [
+      { id: guildId, type: 0, deny: VIEW.toString() },
+      { id: adminRoleId, type: 0, allow: ADMIN.toString() },
+      { id: patron.item.id, type: 0, allow: PATRON.toString() },
+      { id: coPatron.item.id, type: 0, allow: BASE.toString() },
+      { id: employe.item.id, type: 0, allow: BASE.toString() }
+    ];
+    const category = await findOrCreateCategory(enterprise, categoryOverwrites);
+    if (category.created) createdCategories++;
+
+    const patronOnly = [{ id: employe.item.id, type: 0, deny: VIEW.toString() }];
+    const desiredChannels = [
+      { name: "discussion-patron", type: 0, overwrites: patronOnly },
+      { name: "liaison-staff", type: 0, overwrites: patronOnly },
+      { name: "discussion-employe", type: 0, overwrites: [] },
+      { name: "documents", type: 15, overwrites: [] },
+      { name: "ticket", type: 0, overwrites: [] }
+    ];
+    for (const channel of desiredChannels) {
+      const made = await findOrCreateChannel(category.item.id, channel.name, channel.type, channel.overwrites);
+      if (made.created) createdChannels++;
+    }
+    details.push({ enterprise, category_id: category.item.id });
+  }
+
+  return {
+    ok: true,
+    guild_id: guildId,
+    admin_role_id: adminRoleId,
+    enterprises: ENTERPRISES.length,
+    created_roles: createdRoles,
+    created_categories: createdCategories,
+    created_channels: createdChannels,
+    details
+  };
 }
 
 // ── Supabase ───────────────────────────────────────────────────────
@@ -295,6 +459,24 @@ export default {
     }
 
     // Sync divisions intranet → Discord
+    if (url.pathname === "/admin/enterprise-invite-url" && request.method === "GET") {
+      const appId = env.DISCORD_APPLICATION_ID;
+      if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+      const inviteUrl = `https://discord.com/oauth2/authorize?client_id=${appId}&permissions=8&integration_type=0&scope=bot+applications.commands`;
+      return json({ ok: true, invite_url: inviteUrl });
+    }
+
+    if (url.pathname === "/admin/setup-enterprises" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild") || ENTERPRISE_GUILD_ID;
+        const adminRoleId = url.searchParams.get("admin_role") || ENTERPRISE_ADMIN_ROLE_ID;
+        const result = await setupEnterpriseDiscord(env, guildId, adminRoleId);
+        return json(result);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     if (url.pathname === "/sync-member-roles" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
