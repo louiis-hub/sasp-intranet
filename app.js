@@ -34,6 +34,11 @@ function calcSalaire(grade, seconds) {
   return Math.round((seconds / 3600) * rate);
 }
 function fmtMoney(n) { return '$' + n.toLocaleString('fr-FR'); }
+function parseMoneyInput(v) {
+  var cleaned = String(v || '').replace(/\D/g, '');
+  var n = parseInt(cleaned || '0', 10);
+  return Math.max(0, n);
+}
 
 // ── Discord logs ────────────────────────────────────────────────────
 var WORKER_BASE = 'https://sasp-intranet-bot.louisleurin.workers.dev';
@@ -3297,15 +3302,28 @@ async function renderPointeuseHistorique() {
 
     var totalSec = 0;
     var totalSalaire = 0;
+    var totalPrimes = 0;
     var agentList = Object.values(byAgent).sort(function(x, y) {
       return parseInt(x.agent.matricule || 999) - parseInt(y.agent.matricule || 999);
     });
-    agentList.forEach(function(e) { totalSec += e.sec; totalSalaire += calcSalaire(e.agent.grade, e.sec); });
+    agentList.forEach(function(e) {
+      var a = e.agent || {};
+      var agentKey = a.id || a.matricule || ((a.prenom || '') + (a.nom || ''));
+      var primeKey = 'prime_' + key + '_' + agentKey;
+      var prime = parseMoneyInput(localStorage.getItem(primeKey));
+      totalSec += e.sec;
+      totalPrimes += prime;
+      totalSalaire += calcSalaire(a.grade, e.sec) + prime;
+    });
 
     var rows = agentList.map(function(entry) {
       var a = entry.agent;
       var sec = entry.sec;
       var sal = calcSalaire(a.grade, sec);
+      var agentKey = a.id || a.matricule || ((a.prenom || '') + (a.nom || ''));
+      var primeKey = 'prime_' + key + '_' + agentKey;
+      var prime = parseMoneyInput(localStorage.getItem(primeKey));
+      var totalAgent = sal + prime;
       var paidKey = 'paid_' + key + '_' + (a.id || a.matricule || (a.prenom + a.nom));
       var isPaid = localStorage.getItem(paidKey) === '1';
       var enService = a.id && activeAgentIds.has(a.id);
@@ -3315,23 +3333,27 @@ async function renderPointeuseHistorique() {
         '<td style="font-family:monospace;font-size:.8rem;color:var(--t2)">' + esc(a.iban || '—') + '</td>' +
         '<td style="text-align:center"><strong>' + fmtSec(sec) + '</strong>' + (entry.ongoing ? ' <span style="color:var(--gold);font-size:.75rem">+en cours</span>' : '') + '</td>' +
         '<td style="text-align:center;color:var(--gold);font-weight:700">' + fmtMoney(sal) + '</td>' +
+        '<td style="text-align:center"><input type="number" min="0" step="1" value="' + prime + '" onchange="setPrimeHisto(\'' + primeKey + '\',this.value)" style="width:92px;background:var(--bg2);color:var(--t0);border:1px solid var(--border0);border-radius:6px;padding:5px 7px;text-align:right"></td>' +
+        '<td style="text-align:center;color:var(--green,#2ecc71);font-weight:700">' + fmtMoney(totalAgent) + '</td>' +
         '<td style="text-align:center"><input type="checkbox"' + (isPaid ? ' checked' : '') + ' onchange="togglePaidHisto(\'' + paidKey + '\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--green,#2ecc71)"></td>' +
       '</tr>';
     }).join('');
 
     var panelId = 'wk_' + key.replace(/-/g, '');
+    var panelOpen = sessionStorage.getItem('histo_open_' + panelId) === '1';
     return '<div style="border:1px solid var(--border1);border-radius:var(--rSm);margin-bottom:8px;overflow:hidden">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;background:var(--bg1)" onclick="toggleWeek(\'' + panelId + '\')">' +
         '<div>' +
           '<span style="font-weight:600;color:var(--t0)">' + label + '</span>' +
           '<span style="margin-left:12px;font-size:.8rem;color:var(--t3)">' + agentList.length + ' agent' + (agentList.length > 1 ? 's' : '') + ' · ' + fmtSec(totalSec) + ' total</span>' +
+          (totalPrimes ? '<span style="margin-left:10px;font-size:.8rem;color:var(--blue);font-weight:700">Primes ' + fmtMoney(totalPrimes) + '</span>' : '') +
           '<span style="margin-left:10px;font-size:.8rem;color:var(--gold);font-weight:700">' + fmtMoney(totalSalaire) + '</span>' +
         '</div>' +
-        '<span id="' + panelId + '_ico">▼</span>' +
+        '<span id="' + panelId + '_ico">' + (panelOpen ? '▲' : '▼') + '</span>' +
       '</div>' +
-      '<div id="' + panelId + '" style="display:none">' +
+      '<div id="' + panelId + '" style="display:' + (panelOpen ? 'block' : 'none') + '">' +
         '<div class="table-wrap"><table>' +
-          '<thead><tr><th>AGENT</th><th>IBAN</th><th style="text-align:center">DURÉE</th><th style="text-align:center">SALAIRE</th><th style="text-align:center">PAYÉ</th></tr></thead>' +
+          '<thead><tr><th>AGENT</th><th>IBAN</th><th style="text-align:center">DURÉE</th><th style="text-align:center">SALAIRE</th><th style="text-align:center">PRIME</th><th style="text-align:center">TOTAL</th><th style="text-align:center">PAYÉ</th></tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table></div>' +
       '</div>' +
@@ -3353,6 +3375,13 @@ function togglePaidHisto(key, cb) {
   if (row) row.style.opacity = cb.checked ? '.5' : '';
 }
 
+async function setPrimeHisto(key, value) {
+  var amount = parseMoneyInput(value);
+  if (amount) localStorage.setItem(key, String(amount));
+  else localStorage.removeItem(key);
+  await renderPointeuseHistorique();
+}
+
 function toggleWeek(id) {
   var el = document.getElementById(id);
   var ico = document.getElementById(id + '_ico');
@@ -3360,6 +3389,7 @@ function toggleWeek(id) {
   var open = el.style.display !== 'none';
   el.style.display = open ? 'none' : 'block';
   if (ico) ico.textContent = open ? '▼' : '▲';
+  try { sessionStorage.setItem('histo_open_' + id, open ? '0' : '1'); } catch(e) {}
 }
 
 function fmtDuration(startIso) {
