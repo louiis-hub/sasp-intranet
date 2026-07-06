@@ -114,6 +114,7 @@ function enterpriseCategoryName(enterprise, index) {
 }
 const ENTERPRISE_GENERAL_CATEGORY = "\ud83c\udf10\u30fbG\u00e9n\u00e9ral";
 const ENTERPRISE_GENERAL_CHANNELS = ["arriver", "depart", "demande-de-role", "discussion", "ticket"];
+const ENTERPRISE_CITIZEN_ROLE = "Citoyen";
 
 function isEnterpriseCategoryName(name) {
   return ENTERPRISES.some(enterprise =>
@@ -309,6 +310,19 @@ async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminR
   const BASE = VIEW | SEND | READ_HISTORY;
   const ADMIN = BASE | MANAGE_CHANNELS | MANAGE_ROLES;
 
+  const roles = await discordRequest(env, "GET", `/guilds/${guildId}/roles`, null, "Setup role citoyen entreprises");
+  let citizenRole = roles.find(role => role.name === ENTERPRISE_CITIZEN_ROLE);
+  let createdCitizenRole = false;
+  if (!citizenRole) {
+    citizenRole = await discordRequest(env, "POST", `/guilds/${guildId}/roles`, {
+      name: ENTERPRISE_CITIZEN_ROLE,
+      color: 0x95a5a6,
+      hoist: false,
+      mentionable: true
+    }, "Setup role citoyen entreprises");
+    createdCitizenRole = true;
+  }
+
   const channels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, "Setup entreprises general");
   const categories = channels.filter(channel => channel.type === 4);
   const enterpriseCategories = categories
@@ -331,6 +345,7 @@ async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminR
   let createdCategory = false;
   const generalOverwrites = [
     { id: guildId, type: 0, allow: BASE.toString() },
+    { id: citizenRole.id, type: 0, allow: BASE.toString() },
     { id: adminRoleId, type: 0, allow: ADMIN.toString() }
   ];
   if (generalCategory) {
@@ -371,6 +386,8 @@ async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminR
     deleted_channels: deletedChannels,
     created_general_category: createdCategory,
     created_general_channels: createdGeneralChannels,
+    created_citizen_role: createdCitizenRole,
+    citizen_role_id: citizenRole.id,
     general_category_id: generalCategory.id
   };
 }
