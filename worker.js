@@ -337,13 +337,19 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
 
     const patronOnly = [{ id: employe.item.id, type: 0, deny: VIEW.toString() }];
     const citizenReadOnly = [{ id: citizenRole.id, type: 0, allow: (VIEW | READ_HISTORY).toString(), deny: SEND.toString() }];
+    const announceOverwrites = [
+      { id: citizenRole.id, type: 0, allow: (VIEW | READ_HISTORY).toString(), deny: SEND.toString() },
+      { id: patron.item.id, type: 0, allow: BASE.toString() },
+      { id: coPatron.item.id, type: 0, allow: BASE.toString() },
+      { id: employe.item.id, type: 0, allow: (VIEW | READ_HISTORY).toString(), deny: SEND.toString() }
+    ];
     const desiredChannels = isPublicServiceEnterprise(enterprise)
       ? [
-          { legacy: ["annonce"], name: "\ud83d\udce2annonce", type: 0, overwrites: citizenReadOnly },
+          { legacy: ["annonce"], name: "\ud83d\udce2annonce", type: 0, overwrites: announceOverwrites },
           { legacy: ["discussion"], name: "\ud83d\udde8\ufe0fdiscussion", type: 0, overwrites: [] }
         ]
       : [
-          { legacy: ["annonce"], name: "\ud83d\udce2annonce", type: 0, overwrites: citizenReadOnly },
+          { legacy: ["annonce"], name: "\ud83d\udce2annonce", type: 0, overwrites: announceOverwrites },
           { legacy: ["discussion-patron", "discussions-patron"], name: "\ud83d\udde8\ufe0fdiscussions-patron", type: 0, overwrites: patronOnly },
           { legacy: ["discussion-employe"], name: "\ud83d\udde8\ufe0fdiscussion-employe", type: 0, overwrites: [] },
           { legacy: ["liaison-staff", "liaisson-staff"], name: "\ud83d\udd1eliaison-staff", type: 0, overwrites: patronOnly },
@@ -558,6 +564,63 @@ async function setupPublicServiceCategories(env, guildId = ENTERPRISE_GUILD_ID) 
     created_channels: createdChannels,
     category_ids: targets.map(target => target.category.id)
   };
+}
+
+async function cleanupEnterpriseDuplicates(env, guildId = ENTERPRISE_GUILD_ID, start = 0, limit = ENTERPRISES.length) {
+  const channels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, "Cleanup doublons entreprises");
+  const categories = channels.filter(channel => channel.type === 4);
+  let deletedCategories = 0;
+  let deletedChannels = 0;
+  let renamedChannels = 0;
+
+  for (let i = start; i < Math.min(start + limit, ENTERPRISES.length); i++) {
+    const enterprise = ENTERPRISES[i];
+    const matchingCategories = categories.filter(category => category.name.includes(enterprise));
+    if (!matchingCategories.length) continue;
+
+    const desiredCategoryName = enterpriseCategoryName(enterprise, i);
+    const keeper = matchingCategories.find(category => category.name === desiredCategoryName) || matchingCategories[0];
+    const duplicateCategories = matchingCategories.filter(category => category.id !== keeper.id);
+    for (const category of duplicateCategories) {
+      const children = channels.filter(channel => channel.parent_id === category.id);
+      for (const child of children) {
+        await discordRequest(env, "DELETE", `/channels/${child.id}`, null, "Cleanup salons categorie doublon");
+        deletedChannels++;
+      }
+      await discordRequest(env, "DELETE", `/channels/${category.id}`, null, "Cleanup categorie doublon");
+      deletedCategories++;
+    }
+
+    const desired = isPublicServiceEnterprise(enterprise)
+      ? [
+          { names: ["annonce", "\ud83d\udce2annonce"], display: "\ud83d\udce2annonce", type: 0 },
+          { names: ["discussion", "\ud83d\udde8\ufe0fdiscussion"], display: "\ud83d\udde8\ufe0fdiscussion", type: 0 }
+        ]
+      : [
+          { names: ["annonce", "\ud83d\udce2annonce"], display: "\ud83d\udce2annonce", type: 0 },
+          { names: ["discussion-patron", "discussions-patron", "\ud83d\udde8\ufe0fdiscussions-patron"], display: "\ud83d\udde8\ufe0fdiscussions-patron", type: 0 },
+          { names: ["discussion-employe", "\ud83d\udde8\ufe0fdiscussion-employe"], display: "\ud83d\udde8\ufe0fdiscussion-employe", type: 0 },
+          { names: ["liaison-staff", "liaisson-staff", "\ud83d\udd1eliaison-staff"], display: "\ud83d\udd1eliaison-staff", type: 0 },
+          { names: ["documents", "document", "\ud83d\uddc3\ufe0fdocument"], display: "\ud83d\uddc3\ufe0fdocument", type: 15 }
+        ];
+
+    const keeperChildren = channels.filter(channel => channel.parent_id === keeper.id);
+    for (const wanted of desired) {
+      const matches = keeperChildren.filter(channel => channel.type === wanted.type && wanted.names.includes(channel.name));
+      if (!matches.length) continue;
+      const keep = matches.find(channel => channel.name === wanted.display) || matches[0];
+      if (keep.name !== wanted.display) {
+        await discordRequest(env, "PATCH", `/channels/${keep.id}`, { name: wanted.display }, "Cleanup nom salon entreprise");
+        renamedChannels++;
+      }
+      for (const extra of matches.filter(channel => channel.id !== keep.id)) {
+        await discordRequest(env, "DELETE", `/channels/${extra.id}`, null, "Cleanup salon doublon entreprise");
+        deletedChannels++;
+      }
+    }
+  }
+
+  return { ok: true, guild_id: guildId, start, limit, processed_enterprises: Math.max(0, Math.min(start + limit, ENTERPRISES.length) - start), deleted_categories: deletedCategories, deleted_channels: deletedChannels, renamed_channels: renamedChannels };
 }
 
 async function sb(env, method, path, body) {
@@ -797,6 +860,18 @@ export default {
       try {
         const guildId = url.searchParams.get("guild") || ENTERPRISE_GUILD_ID;
         const result = await setupPublicServiceCategories(env, guildId);
+        return json(result);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/cleanup-enterprises" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild") || ENTERPRISE_GUILD_ID;
+        const start = Math.max(0, parseInt(url.searchParams.get("start") || "0", 10) || 0);
+        const limit = Math.max(1, Math.min(5, parseInt(url.searchParams.get("limit") || "3", 10) || 3));
+        const result = await cleanupEnterpriseDuplicates(env, guildId, start, limit);
         return json(result);
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
