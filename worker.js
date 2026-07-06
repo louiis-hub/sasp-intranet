@@ -100,6 +100,18 @@ const ENTERPRISE_COLORS = [
   0xffb142, 0x33d9b2, 0x34ace0, 0x706fd3, 0xb33939, 0x218c74, 0x227093,
   0x40407a, 0xcc8e35, 0x84817a, 0x3c6382, 0x0a3d62, 0x78e08f, 0xfa983a
 ];
+const ENTERPRISE_EMOJIS = [
+  "\ud83c\udf54", "\ud83c\udf57", "\ud83c\udf55", "\ud83c\udf7d\ufe0f", "\ud83c\udf7a",
+  "\ud83c\udf79", "\ud83c\udf2f", "\ud83e\udd84", "\ud83e\udd62", "\u2696\ufe0f",
+  "\ud83d\udc8e", "\ud83d\udce6", "\ud83d\ude95", "\ud83c\udfb0", "\ud83d\udd2b",
+  "\ud83c\udfe0", "\ud83d\udcf0", "\ud83d\udeac", "\ud83c\udf77", "\ud83c\udf7b",
+  "\ud83d\udd27", "\ud83c\udfce\ufe0f", "\ud83d\ude97", "\ud83c\udfdb\ufe0f", "\ud83d\ude93",
+  "\ud83c\udfdb\ufe0f", "\u2696\ufe0f", "\ud83d\ude91"
+];
+
+function enterpriseCategoryName(enterprise, index) {
+  return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]} ${enterprise}`;
+}
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -184,15 +196,25 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     return { item, created: true };
   };
 
-  const findOrCreateCategory = async (name, overwrites) => {
-    if (categoryByName.has(name)) return { item: categoryByName.get(name), created: false };
+  const findOrCreateCategory = async (legacyName, displayName, overwrites) => {
+    if (categoryByName.has(displayName)) return { item: categoryByName.get(displayName), created: false, renamed: false };
+    if (categoryByName.has(legacyName)) {
+      const existing = categoryByName.get(legacyName);
+      const item = await discordRequest(env, "PATCH", `/channels/${existing.id}`, {
+        name: displayName,
+        permission_overwrites: overwrites
+      }, "Setup entreprises - emoji categorie");
+      categoryByName.delete(legacyName);
+      categoryByName.set(displayName, item);
+      return { item, created: false, renamed: true };
+    }
     const item = await discordRequest(env, "POST", `/guilds/${guildId}/channels`, {
-      name,
+      name: displayName,
       type: 4,
       permission_overwrites: overwrites
     }, "Setup entreprises - categorie");
-    categoryByName.set(name, item);
-    return { item, created: true };
+    categoryByName.set(displayName, item);
+    return { item, created: true, renamed: false };
   };
 
   const findOrCreateChannel = async (parentId, name, type, overwrites) => {
@@ -210,6 +232,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
 
   let createdRoles = 0;
   let createdCategories = 0;
+  let renamedCategories = 0;
   let createdChannels = 0;
   const details = [];
 
@@ -230,8 +253,10 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
       { id: coPatron.item.id, type: 0, allow: BASE.toString() },
       { id: employe.item.id, type: 0, allow: BASE.toString() }
     ];
-    const category = await findOrCreateCategory(enterprise, categoryOverwrites);
+    const displayCategoryName = enterpriseCategoryName(enterprise, i);
+    const category = await findOrCreateCategory(enterprise, displayCategoryName, categoryOverwrites);
     if (category.created) createdCategories++;
+    if (category.renamed) renamedCategories++;
 
     const patronOnly = [{ id: employe.item.id, type: 0, deny: VIEW.toString() }];
     const desiredChannels = [
@@ -258,6 +283,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     processed_enterprises: selectedEnterprises.length,
     created_roles: createdRoles,
     created_categories: createdCategories,
+    renamed_categories: renamedCategories,
     created_channels: createdChannels,
     details
   };
