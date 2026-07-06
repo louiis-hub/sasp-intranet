@@ -112,6 +112,16 @@ const ENTERPRISE_EMOJIS = [
 function enterpriseCategoryName(enterprise, index) {
   return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]}・${enterprise}`;
 }
+const ENTERPRISE_GENERAL_CATEGORY = "\ud83c\udf10\u30fbG\u00e9n\u00e9ral";
+const ENTERPRISE_GENERAL_CHANNELS = ["arriver", "depart", "demande-de-role", "discussion", "ticket"];
+
+function isEnterpriseCategoryName(name) {
+  return ENTERPRISES.some(enterprise =>
+    name === enterprise ||
+    name.endsWith(` ${enterprise}`) ||
+    name.endsWith(`・${enterprise}`)
+  );
+}
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -198,7 +208,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
 
   const findOrCreateCategory = async (legacyName, displayName, overwrites) => {
     if (categoryByName.has(displayName)) return { item: categoryByName.get(displayName), created: false, renamed: false };
-    const existingName = [...categoryByName.keys()].find(name => name === legacyName || name.endsWith(` ${legacyName}`));
+    const existingName = [...categoryByName.keys()].find(name => name === legacyName || name.endsWith(` ${legacyName}`) || name.endsWith(`・${legacyName}`));
     if (existingName) {
       const existing = categoryByName.get(existingName);
       const item = await discordRequest(env, "PATCH", `/channels/${existing.id}`, {
@@ -261,15 +271,10 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
 
     const patronOnly = [{ id: employe.item.id, type: 0, deny: VIEW.toString() }];
     const desiredChannels = [
-      { name: "arriver", type: 0, overwrites: [] },
-      { name: "depart", type: 0, overwrites: [] },
-      { name: "demande-de-role", type: 0, overwrites: [] },
-      { name: "discussion", type: 0, overwrites: [] },
       { name: "discussion-patron", type: 0, overwrites: patronOnly },
       { name: "liaison-staff", type: 0, overwrites: patronOnly },
       { name: "discussion-employe", type: 0, overwrites: [] },
-      { name: "documents", type: 15, overwrites: [] },
-      { name: "ticket", type: 0, overwrites: [] }
+      { name: "documents", type: 15, overwrites: [] }
     ];
     for (const channel of desiredChannels) {
       const made = await findOrCreateChannel(category.item.id, channel.name, channel.type, channel.overwrites);
@@ -295,6 +300,81 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
 }
 
 // ── Supabase ───────────────────────────────────────────────────────
+async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminRoleId = ENTERPRISE_ADMIN_ROLE_ID, start = 0, limit = ENTERPRISES.length) {
+  const VIEW = 1024n;
+  const MANAGE_CHANNELS = 16n;
+  const MANAGE_ROLES = 268435456n;
+  const SEND = 2048n;
+  const READ_HISTORY = 65536n;
+  const BASE = VIEW | SEND | READ_HISTORY;
+  const ADMIN = BASE | MANAGE_CHANNELS | MANAGE_ROLES;
+
+  const channels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, "Setup entreprises general");
+  const categories = channels.filter(channel => channel.type === 4);
+  const enterpriseCategories = categories
+    .filter(channel => isEnterpriseCategoryName(channel.name))
+    .slice(start, start + limit);
+
+  let deletedChannels = 0;
+  for (const category of enterpriseCategories) {
+    const children = channels.filter(channel =>
+      channel.parent_id === category.id &&
+      ENTERPRISE_GENERAL_CHANNELS.includes(channel.name)
+    );
+    for (const channel of children) {
+      await discordRequest(env, "DELETE", `/channels/${channel.id}`, null, "Cleanup salons generaux entreprises");
+      deletedChannels++;
+    }
+  }
+
+  let generalCategory = categories.find(channel => channel.name === ENTERPRISE_GENERAL_CATEGORY || channel.name === "General" || channel.name === "Général");
+  let createdCategory = false;
+  const generalOverwrites = [
+    { id: guildId, type: 0, allow: BASE.toString() },
+    { id: adminRoleId, type: 0, allow: ADMIN.toString() }
+  ];
+  if (generalCategory) {
+    generalCategory = await discordRequest(env, "PATCH", `/channels/${generalCategory.id}`, {
+      name: ENTERPRISE_GENERAL_CATEGORY,
+      permission_overwrites: generalOverwrites
+    }, "Setup categorie general entreprises");
+  } else {
+    generalCategory = await discordRequest(env, "POST", `/guilds/${guildId}/channels`, {
+      name: ENTERPRISE_GENERAL_CATEGORY,
+      type: 4,
+      permission_overwrites: generalOverwrites
+    }, "Setup categorie general entreprises");
+    createdCategory = true;
+  }
+
+  let createdGeneralChannels = 0;
+  const refreshedChannels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, "Setup salons general entreprises");
+  for (const name of ENTERPRISE_GENERAL_CHANNELS) {
+    const exists = refreshedChannels.some(channel => channel.parent_id === generalCategory.id && channel.name === name && channel.type === 0);
+    if (exists) continue;
+    await discordRequest(env, "POST", `/guilds/${guildId}/channels`, {
+      name,
+      type: 0,
+      parent_id: generalCategory.id,
+      permission_overwrites: []
+    }, "Setup salons general entreprises");
+    createdGeneralChannels++;
+  }
+
+  return {
+    ok: true,
+    guild_id: guildId,
+    admin_role_id: adminRoleId,
+    start,
+    limit,
+    processed_categories: enterpriseCategories.length,
+    deleted_channels: deletedChannels,
+    created_general_category: createdCategory,
+    created_general_channels: createdGeneralChannels,
+    general_category_id: generalCategory.id
+  };
+}
+
 async function sb(env, method, path, body) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
     method,
@@ -509,6 +589,19 @@ export default {
         const start = Math.max(0, parseInt(url.searchParams.get("start") || "0", 10) || 0);
         const limit = Math.max(1, Math.min(5, parseInt(url.searchParams.get("limit") || "3", 10) || 3));
         const result = await setupEnterpriseDiscord(env, guildId, adminRoleId, start, limit);
+        return json(result);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/setup-enterprises-general" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild") || ENTERPRISE_GUILD_ID;
+        const adminRoleId = url.searchParams.get("admin_role") || ENTERPRISE_ADMIN_ROLE_ID;
+        const start = Math.max(0, parseInt(url.searchParams.get("start") || "0", 10) || 0);
+        const limit = Math.max(1, Math.min(5, parseInt(url.searchParams.get("limit") || "3", 10) || 3));
+        const result = await setupEnterpriseGeneral(env, guildId, adminRoleId, start, limit);
         return json(result);
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
