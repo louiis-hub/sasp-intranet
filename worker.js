@@ -1,4 +1,4 @@
-// SASP Intranet — Cloudflare Worker (auth + pointeuse Discord)
+﻿// SASP Intranet â€” Cloudflare Worker (auth + pointeuse Discord)
 const DISCORD_API = "https://discord.com/api/v10";
 const SUPABASE_URL = "https://ufxhxptzcnvelnbprwng.supabase.co";
 
@@ -48,20 +48,20 @@ function countGradesFromRoleCounts(roleCounts) {
 }
 
 const STAFF_ROLE_IDS = [
-  '1519507318188933140', // rôle gestionnaire
+  '1519507318188933140', // rÃ´le gestionnaire
   '1500975725153620033', // Command Staff
-  '1504451288065118248', // État Major
+  '1504451288065118248', // Ã‰tat Major
   '1504452141518032956', // Supervisor Team
   '1518631987462668358'  // Police Academy
 ];
 
 const ADMIN_ROLE_IDS = [
   '1500975725153620033', // Command Staff
-  '1504451288065118248', // État Major
+  '1504451288065118248', // Ã‰tat Major
   '1504452141518032956'  // Supervisor Team
 ];
 
-// ── Helpers ────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ENTERPRISE_GUILD_ID = "1523759012623941746";
 const ENTERPRISE_ADMIN_ROLE_ID = "1523759223761010858";
 const ENTERPRISES = [
@@ -110,13 +110,20 @@ const ENTERPRISE_EMOJIS = [
 ];
 
 function enterpriseCategoryName(enterprise, index) {
-  return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]}・${enterprise}`;
+  return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]}ãƒ»${enterprise}`;
 }
 function enterpriseRoleName(baseName, index) {
-  return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]}・${baseName}`;
+  return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]}ãƒ»${baseName}`;
 }
 const ENTERPRISE_GENERAL_CATEGORY = "\ud83c\udf10\u30fbG\u00e9n\u00e9ral";
 const ENTERPRISE_GENERAL_CHANNELS = ["arriver", "depart", "demande-de-role", "discussion", "ticket"];
+const ENTERPRISE_GENERAL_CHANNEL_LABELS = [
+  { legacy: ["arriver"], name: "\ud83d\udeecarriver" },
+  { legacy: ["depart"], name: "\ud83d\udeebdepart" },
+  { legacy: ["demande-de-role"], name: "\ud83e\udeaademande-de-role" },
+  { legacy: ["discussion"], name: "\ud83d\udde8\ufe0fdiscussion" },
+  { legacy: ["ticket"], name: "\ud83c\udfabticket" }
+];
 const ENTERPRISE_CITIZEN_ROLE = "Citoyen";
 const PUBLIC_SERVICE_ENTERPRISES = ["SASP-SUD", "SASP-NORD", "Gouvernement", "D.O.J", "SAMS"];
 const PUBLIC_SERVICE_CHANNELS = ["annonce", "discussion"];
@@ -125,7 +132,7 @@ function isEnterpriseCategoryName(name) {
   return ENTERPRISES.some(enterprise =>
     name === enterprise ||
     name.endsWith(` ${enterprise}`) ||
-    name.endsWith(`・${enterprise}`)
+    name.endsWith(`ãƒ»${enterprise}`)
   );
 }
 
@@ -216,7 +223,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
 
   const findOrCreateRole = async (legacyName, displayName, color) => {
     if (roleByName.has(displayName)) return { item: roleByName.get(displayName), created: false, renamed: false };
-    const existingName = [...roleByName.keys()].find(name => name === legacyName || name.endsWith(` ${legacyName}`) || name.endsWith(`・${legacyName}`));
+    const existingName = [...roleByName.keys()].find(name => name === legacyName || name.endsWith(` ${legacyName}`) || name.endsWith(`ãƒ»${legacyName}`));
     if (existingName) {
       const existing = roleByName.get(existingName);
       const item = await discordRequest(env, "PATCH", `/guilds/${guildId}/roles/${existing.id}`, {
@@ -241,7 +248,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
 
   const findOrCreateCategory = async (legacyName, displayName, overwrites) => {
     if (categoryByName.has(displayName)) return { item: categoryByName.get(displayName), created: false, renamed: false };
-    const existingName = [...categoryByName.keys()].find(name => name === legacyName || name.endsWith(` ${legacyName}`) || name.endsWith(`・${legacyName}`));
+    const existingName = [...categoryByName.keys()].find(name => name === legacyName || name.endsWith(` ${legacyName}`) || name.endsWith(`ãƒ»${legacyName}`));
     if (existingName) {
       const existing = categoryByName.get(existingName);
       const item = await discordRequest(env, "PATCH", `/channels/${existing.id}`, {
@@ -374,7 +381,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
   };
 }
 
-// ── Supabase ───────────────────────────────────────────────────────
+// â”€â”€ Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminRoleId = ENTERPRISE_ADMIN_ROLE_ID, start = 0, limit = ENTERPRISES.length) {
   const VIEW = 1024n;
   const MANAGE_CHANNELS = 16n;
@@ -415,7 +422,7 @@ async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminR
     }
   }
 
-  let generalCategory = categories.find(channel => channel.name === ENTERPRISE_GENERAL_CATEGORY || channel.name === "General" || channel.name === "Général");
+  let generalCategory = categories.find(channel => channel.name === ENTERPRISE_GENERAL_CATEGORY || channel.name === "General" || channel.name === "GÃ©nÃ©ral");
   let createdCategory = false;
   const generalOverwrites = [
     { id: guildId, type: 0, allow: BASE.toString() },
@@ -437,18 +444,35 @@ async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminR
   }
 
   let createdGeneralChannels = 0;
+  let renamedGeneralChannels = 0;
   const refreshedChannels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, "Setup salons general entreprises");
-  for (const name of ENTERPRISE_GENERAL_CHANNELS) {
-    const exists = refreshedChannels.some(channel => channel.parent_id === generalCategory.id && channel.name === name && channel.type === 0);
-    if (exists) continue;
-    await discordRequest(env, "POST", `/guilds/${guildId}/channels`, {
-      name,
-      type: 0,
-      parent_id: generalCategory.id,
-      permission_overwrites: []
-    }, "Setup salons general entreprises");
-    createdGeneralChannels++;
+  const orderedGeneralChannels = [];
+  for (const wanted of ENTERPRISE_GENERAL_CHANNEL_LABELS) {
+    let channel = refreshedChannels.find(ch => ch.parent_id === generalCategory.id && ch.name === wanted.name && ch.type === 0);
+    if (!channel) {
+      channel = refreshedChannels.find(ch => ch.parent_id === generalCategory.id && wanted.legacy.includes(ch.name) && ch.type === 0);
+      if (channel) {
+        channel = await discordRequest(env, "PATCH", `/channels/${channel.id}`, {
+          name: wanted.name
+        }, "Setup salons general entreprises");
+        renamedGeneralChannels++;
+      }
+    }
+    if (!channel) {
+      channel = await discordRequest(env, "POST", `/guilds/${guildId}/channels`, {
+        name: wanted.name,
+        type: 0,
+        parent_id: generalCategory.id,
+        permission_overwrites: []
+      }, "Setup salons general entreprises");
+      createdGeneralChannels++;
+    }
+    orderedGeneralChannels.push(channel);
   }
+  await discordRequest(env, "PATCH", `/guilds/${guildId}/channels`, orderedGeneralChannels.map((channel, index) => ({
+    id: channel.id,
+    position: index
+  })), "Reorder salons general entreprises");
 
   return {
     ok: true,
@@ -460,6 +484,7 @@ async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminR
     deleted_channels: deletedChannels,
     created_general_category: createdCategory,
     created_general_channels: createdGeneralChannels,
+    renamed_general_channels: renamedGeneralChannels,
     created_citizen_role: createdCitizenRole,
     citizen_role_id: citizenRole.id,
     general_category_id: generalCategory.id
@@ -474,8 +499,8 @@ async function setupPublicServiceCategories(env, guildId = ENTERPRISE_GUILD_ID) 
     category: categories.find(channel =>
       channel.name === enterprise ||
       channel.name.endsWith(` ${enterprise}`) ||
-      channel.name.endsWith(`・${enterprise}`) ||
-      channel.name.endsWith(`ãƒ»${enterprise}`)
+      channel.name.endsWith(`Ã£Æ’Â»${enterprise}`) ||
+      channel.name.endsWith(`ÃƒÂ£Ã†â€™Ã‚Â»${enterprise}`)
     )
   })).filter(item => item.category);
 
@@ -560,7 +585,7 @@ async function getAgentByDiscordId(env, discordId) {
 function parseAgentIdentityFromDiscordName(name) {
   const clean = String(name || "")
     .replace(/\[[^\]]+\]|\([^)]*\)/g, " ")
-    .replace(/[|•·_]+/g, " ")
+    .replace(/[|â€¢Â·_]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   const matriculeMatch = clean.match(/(?:^|\s)(?:#|mle\.?|mat\.?|matricule)?\s*(\d{1,5})(?=\s|$)/i);
@@ -606,36 +631,36 @@ async function getAllActivePointages(env) {
   return data || [];
 }
 
-// ── Message pointeuse ──────────────────────────────────────────────
+// â”€â”€ Message pointeuse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function buildPointeuseMessage(active) {
   const count = active.length;
   const list = active.map(p => {
     const a = p.agents || {};
-    return `• ${(a.prenom + " " + a.nom).trim()} (${a.matricule || "—"})`;
+    return `â€¢ ${(a.prenom + " " + a.nom).trim()} (${a.matricule || "â€”"})`;
   }).join("\n");
 
   return {
     embeds: [{
-      title: "🚔 SASP — Tableau de service",
+      title: "ðŸš” SASP â€” Tableau de service",
       description: count > 0
-        ? `**En service · ${count} agent${count > 1 ? "s" : ""}**\n${list}`
+        ? `**En service Â· ${count} agent${count > 1 ? "s" : ""}**\n${list}`
         : "*Aucun agent en service*",
       color: count > 0 ? 0x3A9B4E : 0x3A4E64,
-      footer: { text: "SASP · Mis à jour automatiquement" },
+      footer: { text: "SASP Â· Mis Ã  jour automatiquement" },
       timestamp: new Date().toISOString()
     }],
     components: [{
       type: 1,
       components: [
-        { type: 2, style: 3, label: "Prise de service", emoji: { name: "🟢" }, custom_id: "prise_service" },
-        { type: 2, style: 4, label: "Fin de service",   emoji: { name: "🔴" }, custom_id: "fin_service" },
-        { type: 2, style: 2, label: "Retirer un agent", emoji: { name: "🛑" }, custom_id: "admin_remove" }
+        { type: 2, style: 3, label: "Prise de service", emoji: { name: "ðŸŸ¢" }, custom_id: "prise_service" },
+        { type: 2, style: 4, label: "Fin de service",   emoji: { name: "ðŸ”´" }, custom_id: "fin_service" },
+        { type: 2, style: 2, label: "Retirer un agent", emoji: { name: "ðŸ›‘" }, custom_id: "admin_remove" }
       ]
     }]
   };
 }
 
-// ── Discord message edit ───────────────────────────────────────────
+// â”€â”€ Discord message edit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function editMessage(env, channelId, messageId, payload) {
   await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
     method: "PATCH",
@@ -647,7 +672,7 @@ async function editMessage(env, channelId, messageId, payload) {
   });
 }
 
-// ── Auto clock-out agents en service depuis +6h ────────────────────
+// â”€â”€ Auto clock-out agents en service depuis +6h â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function autoClockout6h(env) {
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
   const data = await sb(env, "GET", `/pointages?clock_out=is.null&clock_in=lt.${encodeURIComponent(sixHoursAgo)}&select=id,agent_id,clock_in,agents(nom,prenom,matricule)&order=clock_in.asc`);
@@ -659,7 +684,7 @@ async function autoClockout6h(env) {
   }
   const lines = expired.map(p => {
     const a = p.agents || {};
-    return `• **${(a.prenom + ' ' + a.nom).trim()}** (${a.matricule || '—'}) a oublié de terminer son service et a bien été déconnecté automatiquement.`;
+    return `â€¢ **${(a.prenom + ' ' + a.nom).trim()}** (${a.matricule || 'â€”'}) a oubliÃ© de terminer son service et a bien Ã©tÃ© dÃ©connectÃ© automatiquement.`;
   }).join('\n');
   await fetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
     method: 'POST',
@@ -667,10 +692,10 @@ async function autoClockout6h(env) {
     body: JSON.stringify({
       content: `<@&1500975725153620033>`,
       embeds: [{
-        title: '⏱️ Fin de service automatique — 6h dépassées',
+        title: 'â±ï¸ Fin de service automatique â€” 6h dÃ©passÃ©es',
         description: lines,
         color: 0xe67e22,
-        footer: { text: 'SASP · Auto clock-out 6h' },
+        footer: { text: 'SASP Â· Auto clock-out 6h' },
         timestamp: now
       }]
     })
@@ -684,7 +709,7 @@ async function autoClockout6h(env) {
   return expired.length;
 }
 
-// ── Auto clock-out tous les agents actifs ──────────────────────────
+// â”€â”€ Auto clock-out tous les agents actifs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function autoClockoutAll(env) {
   const active = await getAllActivePointages(env);
   if (!active.length) return 0;
@@ -694,22 +719,22 @@ async function autoClockoutAll(env) {
   }
   const names = active.map(p => {
     const a = p.agents || {};
-    return `• ${(a.prenom + ' ' + a.nom).trim()} (${a.matricule || '—'})`;
+    return `â€¢ ${(a.prenom + ' ' + a.nom).trim()} (${a.matricule || 'â€”'})`;
   }).join('\n');
   await fetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
     method: 'POST',
     headers: { 'Authorization': `Bot ${env.DISCORD_BOT_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       embeds: [{
-        title: '🕗 Fin de service automatique — Dimanche 20h',
-        description: `**${active.length} agent${active.length > 1 ? 's' : ''} déconnecté${active.length > 1 ? 's' : ''} automatiquement :**\n${names}`,
+        title: 'ðŸ•— Fin de service automatique â€” Dimanche 20h',
+        description: `**${active.length} agent${active.length > 1 ? 's' : ''} dÃ©connectÃ©${active.length > 1 ? 's' : ''} automatiquement :**\n${names}`,
         color: 0xe74c3c,
-        footer: { text: 'CENTRALE PA · Auto clock-out hebdomadaire' },
+        footer: { text: 'CENTRALE PA Â· Auto clock-out hebdomadaire' },
         timestamp: now
       }]
     })
   });
-  // Mise à jour du message pointeuse Discord si env vars présentes
+  // Mise Ã  jour du message pointeuse Discord si env vars prÃ©sentes
   const chId = env.POINTEUSE_CHANNEL_ID;
   const msgId = env.POINTEUSE_MESSAGE_ID;
   if (chId && msgId) {
@@ -718,7 +743,7 @@ async function autoClockoutAll(env) {
   return active.length;
 }
 
-// ── Main ───────────────────────────────────────────────────────────
+// â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -734,7 +759,7 @@ export default {
       });
     }
 
-    // Sync divisions intranet → Discord
+    // Sync divisions intranet â†’ Discord
     if (url.pathname === "/admin/enterprise-invite-url" && request.method === "GET") {
       const appId = env.DISCORD_APPLICATION_ID;
       if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
@@ -787,21 +812,21 @@ export default {
       for (const code of (add_codes || [])) {
         const roleId = ALL_SYNCABLE_ROLES[code]; if (!roleId) continue;
         const r = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
-          method: "PUT", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet — sync" }
+          method: "PUT", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet â€” sync" }
         });
         results.push({ code, action: "add", status: r.status });
       }
       for (const code of (remove_codes || [])) {
         const roleId = ALL_SYNCABLE_ROLES[code]; if (!roleId) continue;
         const r = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
-          method: "DELETE", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet — sync" }
+          method: "DELETE", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet â€” sync" }
         });
         results.push({ code, action: "remove", status: r.status });
       }
       return json({ ok: true, results });
     }
 
-    // Sync divisions Discord → intranet
+    // Sync divisions Discord â†’ intranet
     if (url.pathname === "/grade-role-counts" && request.method === "GET") {
       const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
       try {
@@ -823,7 +848,7 @@ export default {
       const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
-      if (!res.ok) return json({ ok: false, error: "Membre non trouvé" }, 404);
+      if (!res.ok) return json({ ok: false, error: "Membre non trouvÃ©" }, 404);
       const member = await res.json();
       const roles = member.roles || [];
       const divisions = roles.filter(r => ROLE_TO_DIVISION[r]).map(r => ROLE_TO_DIVISION[r]);
@@ -837,7 +862,7 @@ export default {
       });
     }
 
-    // Récupère les rôles de membres Discord par IDs (Discord → Intranet)
+    // RÃ©cupÃ¨re les rÃ´les de membres Discord par IDs (Discord â†’ Intranet)
     if (url.pathname === "/sync-all-from-discord" && request.method === "POST") {
       try {
         const token = request.headers.get("x-log-token");
@@ -866,7 +891,7 @@ export default {
       }
     }
 
-    // Sync tous les agents intranet → Discord
+    // Sync tous les agents intranet â†’ Discord
     if (url.pathname === "/sync-all-agents" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
@@ -881,7 +906,7 @@ export default {
           const roleId = DIVISION_ROLES[code];
           const method = hasDivisions.includes(code) ? "PUT" : "DELETE";
           const r = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${ag.discord_id}/roles/${roleId}`, {
-            method, headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet — sync global" }
+            method, headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet â€” sync global" }
           });
           if (r.ok || r.status === 204) ok++; else errors++;
         }
@@ -889,8 +914,8 @@ export default {
       return json({ ok: true, synced: ok, errors });
     }
 
-    // Logs intranet → Discord
-    // Liste agents → Discord (message auto-mis à jour)
+    // Logs intranet â†’ Discord
+    // Liste agents â†’ Discord (message auto-mis Ã  jour)
     if (url.pathname === "/update-agent-list" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
@@ -899,20 +924,20 @@ export default {
       const lines = (agents || [])
         .filter(a => a.telephone)
         .sort((a, b) => (a.matricule || '').localeCompare(b.matricule || ''))
-        .map(a => `**${a.matricule || '—'}** ${a.prenom} ${a.nom} — \`${a.telephone}\``);
-      const description = lines.length ? lines.join('\n').slice(0, 4000) : '*Aucun agent avec un numéro de téléphone.*';
+        .map(a => `**${a.matricule || 'â€”'}** ${a.prenom} ${a.nom} â€” \`${a.telephone}\``);
+      const description = lines.length ? lines.join('\n').slice(0, 4000) : '*Aucun agent avec un numÃ©ro de tÃ©lÃ©phone.*';
       const embed = {
-        title: "📋 Liste des agents — Téléphones",
+        title: "ðŸ“‹ Liste des agents â€” TÃ©lÃ©phones",
         description,
         color: 0x2c3e50,
-        footer: { text: `SASP Intranet • ${lines.length} agent(s) répertorié(s)` },
+        footer: { text: `SASP Intranet â€¢ ${lines.length} agent(s) rÃ©pertoriÃ©(s)` },
         timestamp: new Date().toISOString()
       };
       const msgsRes = await fetch(`${DISCORD_API}/channels/${channelId}/messages?limit=50`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
       const msgs = await msgsRes.json();
-      const existing = Array.isArray(msgs) && msgs.find(m => m.author?.bot && m.embeds?.[0]?.title?.includes('Téléphones'));
+      const existing = Array.isArray(msgs) && msgs.find(m => m.author?.bot && m.embeds?.[0]?.title?.includes('TÃ©lÃ©phones'));
       if (existing) {
         await fetch(`${DISCORD_API}/channels/${channelId}/messages/${existing.id}`, {
           method: "PATCH",
@@ -984,7 +1009,7 @@ export default {
 
     // Envoyer le message sticky plainte
     const STICKY_PLAINTE_CHANNEL = "1519510826233364500";
-    const STICKY_PLAINTE_EMBED = { embeds: [{ title: "📋 Déposer une plainte", color: 0x3498db, description: "Utilisez la commande `/plainte` pour déposer une plainte officielle.\n\nUne fois le formulaire validé, **copiez-collez** le message généré et envoyez-le ici :\nhttps://discord.com/channels/1512185605805703179/1517219854724235477", footer: { text: "SASP • Service des plaintes" } }] };
+    const STICKY_PLAINTE_EMBED = { embeds: [{ title: "ðŸ“‹ DÃ©poser une plainte", color: 0x3498db, description: "Utilisez la commande `/plainte` pour dÃ©poser une plainte officielle.\n\nUne fois le formulaire validÃ©, **copiez-collez** le message gÃ©nÃ©rÃ© et envoyez-le ici :\nhttps://discord.com/channels/1512185605805703179/1517219854724235477", footer: { text: "SASP â€¢ Service des plaintes" } }] };
     if (url.pathname === "/admin/send-sticky-plainte" && request.method === "GET") {
       const res = await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages`, {
         method: "POST",
@@ -999,13 +1024,13 @@ export default {
     const BRACELET_COMMAND_CHANNEL = "1521575058500489478";
     const BRACELET_FORUM_CHANNEL = "1518656285074128926";
     const SUBVENTION_CHANNEL = "1523726862075953353";
-    const STICKY_PROC_EMBED = { embeds: [{ title: "⚖️ Procureur & bracelet", color: 0x2c3e50, description: "**Commandes disponibles dans ce salon :**\n\n• `/proc` — créer une demande procureur complète. Le dossier sera automatiquement créé dans <#1521565049729187961>.\n\n• `/bracelet` — créer uniquement un bracelet électronique, sans ouvrir de dossier procureur.\n\nPour un dossier procureur déjà ouvert, utilisez le bouton **Bracelet Électronique** dans le thread du `/proc` afin de garder la liaison entre les deux dossiers.", footer: { text: "SASP • Service judiciaire" } }] };
+    const STICKY_PROC_EMBED = { embeds: [{ title: "âš–ï¸ Procureur & bracelet", color: 0x2c3e50, description: "**Commandes disponibles dans ce salon :**\n\nâ€¢ `/proc` â€” crÃ©er une demande procureur complÃ¨te. Le dossier sera automatiquement crÃ©Ã© dans <#1521565049729187961>.\n\nâ€¢ `/bracelet` â€” crÃ©er uniquement un bracelet Ã©lectronique, sans ouvrir de dossier procureur.\n\nPour un dossier procureur dÃ©jÃ  ouvert, utilisez le bouton **Bracelet Ã‰lectronique** dans le thread du `/proc` afin de garder la liaison entre les deux dossiers.", footer: { text: "SASP â€¢ Service judiciaire" } }] };
     async function refreshProcSticky() {
       const msgsRes = await fetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages?limit=20`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
       const msgs = await msgsRes.json();
-      const sticky = Array.isArray(msgs) && msgs.find(m => ["⚖️ Demande de procureur", "⚖️ Procureur & bracelet"].includes(m.embeds?.[0]?.title));
+      const sticky = Array.isArray(msgs) && msgs.find(m => ["âš–ï¸ Demande de procureur", "âš–ï¸ Procureur & bracelet"].includes(m.embeds?.[0]?.title));
       if (sticky) {
         await fetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages/${sticky.id}`, {
           method: "DELETE",
@@ -1018,13 +1043,13 @@ export default {
         body: JSON.stringify(STICKY_PROC_EMBED)
       });
     }
-    const STICKY_SUBVENTION_EMBED = { embeds: [{ title: "💸 Règles subvention", color: 0xc9a84c, description: "Pour faire une demande de subvention, utilisez la commande `/subvention` dans ce salon.\n\n**Règles actuelles :**\n• La subvention est fixée à **10 000 $ par voiture** pour le moment.\n• Il est interdit de faire des **performances** avec cette subvention.\n• Il est interdit d'acheter une **nouvelle voiture** avec cette subvention.", footer: { text: "SASP • Subvention" } }] };
+    const STICKY_SUBVENTION_EMBED = { embeds: [{ title: "ðŸ’¸ RÃ¨gles subvention", color: 0xc9a84c, description: "Pour faire une demande de subvention, utilisez la commande `/subvention` dans ce salon.\n\n**RÃ¨gles actuelles :**\nâ€¢ La subvention est fixÃ©e Ã  **10 000 $ par voiture** pour le moment.\nâ€¢ Il est interdit de faire des **performances** avec cette subvention.\nâ€¢ Il est interdit d'acheter une **nouvelle voiture** avec cette subvention.", footer: { text: "SASP â€¢ Subvention" } }] };
     async function refreshSubventionSticky() {
       const msgsRes = await fetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages?limit=20`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
       const msgs = await msgsRes.json();
-      const sticky = Array.isArray(msgs) && msgs.find(m => m.embeds?.[0]?.title === "💸 Règles subvention");
+      const sticky = Array.isArray(msgs) && msgs.find(m => m.embeds?.[0]?.title === "ðŸ’¸ RÃ¨gles subvention");
       if (sticky) {
         await fetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages/${sticky.id}`, {
           method: "DELETE",
@@ -1057,7 +1082,7 @@ export default {
         const res = await fetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ name: "plainte", description: "Déposer une plainte officielle SASP" })
+          body: JSON.stringify({ name: "plainte", description: "DÃ©poser une plainte officielle SASP" })
         });
         const data = await res.json();
         return json({ ok: res.ok, data });
@@ -1074,7 +1099,7 @@ export default {
         const res = await fetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ name: "bracelet", description: "Créer un bracelet électronique sans proc" })
+          body: JSON.stringify({ name: "bracelet", description: "CrÃ©er un bracelet Ã©lectronique sans proc" })
         });
         const data = await res.json();
         return json({ ok: res.ok, data });
@@ -1090,7 +1115,7 @@ export default {
         const res = await fetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ name: "subvention", description: "Déposer une demande de subvention agent" })
+          body: JSON.stringify({ name: "subvention", description: "DÃ©poser une demande de subvention agent" })
         });
         const data = await res.json();
         return json({ ok: res.ok, data });
@@ -1106,7 +1131,7 @@ export default {
         const res = await fetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ name: "proc", description: "Créer une demande procureur SASP" })
+          body: JSON.stringify({ name: "proc", description: "CrÃ©er une demande procureur SASP" })
         });
         const data = await res.json();
         return json({ ok: res.ok, data });
@@ -1132,7 +1157,7 @@ export default {
       // Slash command /subvention
       if (interaction.type === 2 && interaction.data.name === "subvention") {
         if (interaction.channel_id !== SUBVENTION_CHANNEL) {
-          return json({ type: 4, data: { content: `❌ Utilise cette commande dans <#${SUBVENTION_CHANNEL}>.`, flags: 64 } });
+          return json({ type: 4, data: { content: `âŒ Utilise cette commande dans <#${SUBVENTION_CHANNEL}>.`, flags: 64 } });
         }
         return json({
           type: 9,
@@ -1140,7 +1165,7 @@ export default {
             custom_id: "subvention_modal",
             title: "Demande de subvention",
             components: [
-              { type: 1, components: [{ type: 4, custom_id: "sub_raison", label: "Raison de la subvention", style: 2, required: true, placeholder: "Expliquez la raison de la demande…", min_length: 5, max_length: 1000 }] },
+              { type: 1, components: [{ type: 4, custom_id: "sub_raison", label: "Raison de la subvention", style: 2, required: true, placeholder: "Expliquez la raison de la demandeâ€¦", min_length: 5, max_length: 1000 }] },
               { type: 1, components: [{ type: 4, custom_id: "sub_somme", label: "Somme", style: 1, required: true, placeholder: "Ex : 25 000 $", min_length: 1, max_length: 30 }] }
             ]
           }
@@ -1155,7 +1180,7 @@ export default {
         const userId = interaction.member?.user?.id || interaction.user?.id;
         const identity = await getAgentIdentityForInteraction(env, interaction);
         const agentName = `${identity.prenom || ""} ${identity.nom || ""}`.trim() || `<@${userId}>`;
-        const matricule = identity.matricule || "—";
+        const matricule = identity.matricule || "â€”";
         const sourceLabel = identity.source === "fiche" ? "fiche intranet" : "pseudo Discord";
         const now = new Date();
         const res = await fetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages`, {
@@ -1164,27 +1189,27 @@ export default {
           body: JSON.stringify({
             content: "<@&1500975725153620033>",
             embeds: [{
-              title: "💸 Demande de subvention",
+              title: "ðŸ’¸ Demande de subvention",
               color: 0xc9a84c,
               fields: [
-                { name: "👤 Agent", value: agentName, inline: true },
-                { name: "🆔 Matricule", value: matricule, inline: true },
-                { name: "💰 Somme", value: somme, inline: true },
-                { name: "📋 Raison", value: raison.slice(0, 1024), inline: false },
-                { name: "📨 Demandé par", value: `<@${userId}>`, inline: true },
-                { name: "🔎 Source identité", value: sourceLabel, inline: true }
+                { name: "ðŸ‘¤ Agent", value: agentName, inline: true },
+                { name: "ðŸ†” Matricule", value: matricule, inline: true },
+                { name: "ðŸ’° Somme", value: somme, inline: true },
+                { name: "ðŸ“‹ Raison", value: raison.slice(0, 1024), inline: false },
+                { name: "ðŸ“¨ DemandÃ© par", value: `<@${userId}>`, inline: true },
+                { name: "ðŸ”Ž Source identitÃ©", value: sourceLabel, inline: true }
               ],
-              footer: { text: "SASP • Subvention" },
+              footer: { text: "SASP â€¢ Subvention" },
               timestamp: now.toISOString()
             }]
           })
         });
         if (!res.ok) {
           const err = await res.text();
-          return json({ type: 4, data: { content: `❌ Erreur création subvention (${res.status}): ${err}`, flags: 64 } });
+          return json({ type: 4, data: { content: `âŒ Erreur crÃ©ation subvention (${res.status}): ${err}`, flags: 64 } });
         }
         try { await refreshSubventionSticky(); } catch {}
-        return json({ type: 4, data: { content: `✅ Demande de subvention envoyée pour **${agentName}**.`, flags: 64 } });
+        return json({ type: 4, data: { content: `âœ… Demande de subvention envoyÃ©e pour **${agentName}**.`, flags: 64 } });
       }
 
       // Slash command /proc
@@ -1195,10 +1220,10 @@ export default {
             custom_id: "proc_modal",
             title: "Demande Procureur",
             components: [
-              { type: 1, components: [{ type: 4, custom_id: "suspect", label: "Nom Prénom du suspect", style: 1, required: true, placeholder: "Ex : John Smith", min_length: 2, max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "tel_suspect", label: "Numéro de téléphone du suspect", style: 1, required: true, placeholder: "Ex : 555-0123", max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "suspect", label: "Nom PrÃ©nom du suspect", style: 1, required: true, placeholder: "Ex : John Smith", min_length: 2, max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "tel_suspect", label: "NumÃ©ro de tÃ©lÃ©phone du suspect", style: 1, required: true, placeholder: "Ex : 555-0123", max_length: 30 }] },
               { type: 1, components: [{ type: 4, custom_id: "chefs_accusation", label: "Chef(s) d'accusation", style: 2, required: true, min_length: 2, max_length: 1000 }] },
-              { type: 1, components: [{ type: 4, custom_id: "avocat", label: "Avocat + Téléphone (si représenté)", style: 1, required: false, placeholder: "Ex : Me. Dupont — 555-0123", max_length: 150 }] },
+              { type: 1, components: [{ type: 4, custom_id: "avocat", label: "Avocat + TÃ©lÃ©phone (si reprÃ©sentÃ©)", style: 1, required: false, placeholder: "Ex : Me. Dupont â€” 555-0123", max_length: 150 }] },
               { type: 1, components: [{ type: 4, custom_id: "heure_faits", label: "Heure des faits (HH:MM)", style: 1, required: true, placeholder: "Ex : 17:30", max_length: 10 }] }
             ]
           }
@@ -1226,12 +1251,12 @@ export default {
         } catch {}
 
         const fields = [
-          { name: "🧑 Suspect", value: suspect, inline: false },
-          { name: "📞 Téléphone suspect", value: telSuspect, inline: false },
-          { name: "📋 Chef(s) d'accusation", value: chefsAccusation, inline: false },
-          { name: "👮 Agent en charge", value: agentDisplay, inline: false }
+          { name: "ðŸ§‘ Suspect", value: suspect, inline: false },
+          { name: "ðŸ“ž TÃ©lÃ©phone suspect", value: telSuspect, inline: false },
+          { name: "ðŸ“‹ Chef(s) d'accusation", value: chefsAccusation, inline: false },
+          { name: "ðŸ‘® Agent en charge", value: agentDisplay, inline: false }
         ];
-        if (avocat) fields.push({ name: "⚖️ Avocat + Téléphone", value: avocat, inline: false });
+        if (avocat) fields.push({ name: "âš–ï¸ Avocat + TÃ©lÃ©phone", value: avocat, inline: false });
 
         const forumRes = await fetch(`${DISCORD_API}/channels/1521565049729187961/threads`, {
           method: "POST",
@@ -1241,22 +1266,22 @@ export default {
             message: {
               content: "<@&1512410095173238814>",
               embeds: [{
-                title: "⚖️ Demande Procureur",
+                title: "âš–ï¸ Demande Procureur",
                 color: 0x2c3e50,
                 fields,
-                footer: { text: `SASP · Déposée par ${agentDisplay}` },
+                footer: { text: `SASP Â· DÃ©posÃ©e par ${agentDisplay}` },
                 timestamp: now.toISOString()
               }],
               components: [
-                { type: 1, components: [{ type: 2, style: 1, label: "🔗 Bracelet Électronique", custom_id: "proc_bracelet" }] },
+                { type: 1, components: [{ type: 2, style: 1, label: "ðŸ”— Bracelet Ã‰lectronique", custom_id: "proc_bracelet" }] },
                 { type: 1, components: [
-                  { type: 2, style: 3, label: "✅ Affaire clôturée",   custom_id: "proc_tag|AFFAIRE CLOTURER" },
-                  { type: 2, style: 4, label: "🚫 Dossier incomplet",  custom_id: "proc_tag|DOSSIER INCOMPLET" },
-                  { type: 2, style: 2, label: "🔄 Affaire en cours",   custom_id: "proc_tag|AFFAIRE EN COUR" }
+                  { type: 2, style: 3, label: "âœ… Affaire clÃ´turÃ©e",   custom_id: "proc_tag|AFFAIRE CLOTURER" },
+                  { type: 2, style: 4, label: "ðŸš« Dossier incomplet",  custom_id: "proc_tag|DOSSIER INCOMPLET" },
+                  { type: 2, style: 2, label: "ðŸ”„ Affaire en cours",   custom_id: "proc_tag|AFFAIRE EN COUR" }
                 ]},
                 { type: 1, components: [
-                  { type: 2, style: 2, label: "⚖️ Attente jugement",   custom_id: "proc_tag|ATTENTE DE JUGEMENT" },
-                  { type: 2, style: 2, label: "⏳ Attente procureur",  custom_id: "proc_tag|ATTENTE PROCUREUR" }
+                  { type: 2, style: 2, label: "âš–ï¸ Attente jugement",   custom_id: "proc_tag|ATTENTE DE JUGEMENT" },
+                  { type: 2, style: 2, label: "â³ Attente procureur",  custom_id: "proc_tag|ATTENTE PROCUREUR" }
                 ]}
               ]
             }
@@ -1265,27 +1290,27 @@ export default {
 
         if (!forumRes.ok) {
           const err = await forumRes.text();
-          return json({ type: 4, data: { content: `❌ Erreur création forum (${forumRes.status}): ${err}`, flags: 64 } });
+          return json({ type: 4, data: { content: `âŒ Erreur crÃ©ation forum (${forumRes.status}): ${err}`, flags: 64 } });
         }
         await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ embeds: [{ title: "⚖️ Nouvelle demande procureur", color: 0x2c3e50, fields: [
-            { name: "🧑 Suspect", value: suspect, inline: true },
-            { name: "📞 Téléphone", value: telSuspect, inline: true },
-            { name: "📋 Chef(s) d'accusation", value: chefsAccusation, inline: false },
-            { name: "👮 Agent en charge", value: agentDisplay, inline: true },
-            { name: "🕐 Heure des faits", value: heureFaits, inline: true },
-            ...(avocat ? [{ name: "⚖️ Avocat + Tél", value: avocat, inline: false }] : [])
-          ], footer: { text: "SASP · Proc" }, timestamp: now.toISOString() }] })
+          body: JSON.stringify({ embeds: [{ title: "âš–ï¸ Nouvelle demande procureur", color: 0x2c3e50, fields: [
+            { name: "ðŸ§‘ Suspect", value: suspect, inline: true },
+            { name: "ðŸ“ž TÃ©lÃ©phone", value: telSuspect, inline: true },
+            { name: "ðŸ“‹ Chef(s) d'accusation", value: chefsAccusation, inline: false },
+            { name: "ðŸ‘® Agent en charge", value: agentDisplay, inline: true },
+            { name: "ðŸ• Heure des faits", value: heureFaits, inline: true },
+            ...(avocat ? [{ name: "âš–ï¸ Avocat + TÃ©l", value: avocat, inline: false }] : [])
+          ], footer: { text: "SASP Â· Proc" }, timestamp: now.toISOString() }] })
         });
-        return json({ type: 4, data: { content: `✅ Demande procureur créée pour **${suspect}**.`, flags: 64 } });
+        return json({ type: 4, data: { content: `âœ… Demande procureur crÃ©Ã©e pour **${suspect}**.`, flags: 64 } });
       }
 
       // Slash command /bracelet standalone
       if (interaction.type === 2 && interaction.data.name === "bracelet") {
         if (interaction.channel_id !== BRACELET_COMMAND_CHANNEL) {
-          return json({ type: 4, data: { content: `❌ Utilise cette commande dans <#${BRACELET_COMMAND_CHANNEL}>.`, flags: 64 } });
+          return json({ type: 4, data: { content: `âŒ Utilise cette commande dans <#${BRACELET_COMMAND_CHANNEL}>.`, flags: 64 } });
         }
         const now = new Date();
         const dateDefault = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -1293,12 +1318,12 @@ export default {
           type: 9,
           data: {
             custom_id: "bracelet_standalone_modal",
-            title: "Bracelet Électronique",
+            title: "Bracelet Ã‰lectronique",
             components: [
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_suspect", label: "Nom Prénom du suspect", style: 1, required: true, placeholder: "Ex : Morrison James", max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "Posé le", style: 1, required: true, value: dateDefault, max_length: 30 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "Numéro de téléphone", style: 1, required: true, placeholder: "Ex : 555-0198", max_length: 30 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, required: true, placeholder: "Infractions retenues…", max_length: 500 }] }
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_suspect", label: "Nom PrÃ©nom du suspect", style: 1, required: true, placeholder: "Ex : Morrison James", max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "PosÃ© le", style: 1, required: true, value: dateDefault, max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "NumÃ©ro de tÃ©lÃ©phone", style: 1, required: true, placeholder: "Ex : 555-0198", max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, required: true, placeholder: "Infractions retenuesâ€¦", max_length: 500 }] }
             ]
           }
         });
@@ -1319,7 +1344,7 @@ export default {
           if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
         } catch {}
 
-        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nPosé le : ${date}\nNuméro de téléphone : ${tel}\nRaison : ${raison}\nPosé par : ${agentDisplay}\n\nPensez à bien noter quand les individus viennent pointer\n\nℹ️ Les bracelets peuvent être activés pour voir la position une fois toutes les 24h via un message "BIP" sur le téléphone de l'individu.`;
+        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nPosÃ© le : ${date}\nNumÃ©ro de tÃ©lÃ©phone : ${tel}\nRaison : ${raison}\nPosÃ© par : ${agentDisplay}\n\nPensez Ã  bien noter quand les individus viennent pointer\n\nâ„¹ï¸ Les bracelets peuvent Ãªtre activÃ©s pour voir la position une fois toutes les 24h via un message "BIP" sur le tÃ©lÃ©phone de l'individu.`;
 
         const forumRes = await fetch(`${DISCORD_API}/channels/${BRACELET_FORUM_CHANNEL}/threads`, {
           method: "POST",
@@ -1329,7 +1354,7 @@ export default {
             message: {
               content,
               components: [
-                { type: 1, components: [{ type: 2, style: 3, label: "📍 Pointage", custom_id: "bracelet_pointage" }] }
+                { type: 1, components: [{ type: 2, style: 3, label: "ðŸ“ Pointage", custom_id: "bracelet_pointage" }] }
               ]
             }
           })
@@ -1337,11 +1362,11 @@ export default {
 
         if (!forumRes.ok) {
           const err = await forumRes.text();
-          return json({ type: 4, data: { content: `❌ Erreur création bracelet (${forumRes.status}): ${err}`, flags: 64 } });
+          return json({ type: 4, data: { content: `âŒ Erreur crÃ©ation bracelet (${forumRes.status}): ${err}`, flags: 64 } });
         }
         const braceletData = await forumRes.json();
         const braceletThreadId = braceletData.id;
-        return json({ type: 4, data: { content: `✅ Bracelet électronique créé pour **${suspect}** : <#${braceletThreadId}>`, flags: 64 } });
+        return json({ type: 4, data: { content: `âœ… Bracelet Ã©lectronique crÃ©Ã© pour **${suspect}** : <#${braceletThreadId}>`, flags: 64 } });
       }
 
       // Bouton bracelet depuis un post proc
@@ -1349,7 +1374,7 @@ export default {
         const embed = interaction.message?.embeds?.[0] || {};
         const getField = (kw) => (embed.fields || []).find(f => f.name.includes(kw))?.value || "";
         const suspectName = getField("Suspect");
-        const telSuspect  = getField("Téléphone");
+        const telSuspect  = getField("TÃ©lÃ©phone");
         const chefs       = getField("accusation");
         const now = new Date();
         const dateDefault = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -1357,11 +1382,11 @@ export default {
           type: 9,
           data: {
             custom_id: "bracelet_modal",
-            title: "Bracelet Électronique",
+            title: "Bracelet Ã‰lectronique",
             components: [
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_suspect", label: "Nom Prénom du suspect", style: 1, required: true, value: suspectName, max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "Posé le", style: 1, required: true, value: dateDefault, max_length: 30 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "Numéro de téléphone", style: 1, required: true, value: telSuspect, max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_suspect", label: "Nom PrÃ©nom du suspect", style: 1, required: true, value: suspectName, max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "PosÃ© le", style: 1, required: true, value: dateDefault, max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "NumÃ©ro de tÃ©lÃ©phone", style: 1, required: true, value: telSuspect, max_length: 30 }] },
               { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, required: true, value: chefs, max_length: 500 }] }
             ]
           }
@@ -1384,7 +1409,7 @@ export default {
         } catch {}
 
         const procThreadId = interaction.channel_id;
-        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nDossier proc lié : <#${procThreadId}>\n\nPosé le : ${date}\nNuméro de téléphone : ${tel}\nRaison : ${raison}\nPosé par : ${agentDisplay}\n\nPensez à bien noter quand les individus viennent pointer\n\nℹ️ Les bracelets peuvent être activés pour voir la position une fois toutes les 24h via un message "BIP" sur le téléphone de l'individu.`;
+        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nDossier proc liÃ© : <#${procThreadId}>\n\nPosÃ© le : ${date}\nNumÃ©ro de tÃ©lÃ©phone : ${tel}\nRaison : ${raison}\nPosÃ© par : ${agentDisplay}\n\nPensez Ã  bien noter quand les individus viennent pointer\n\nâ„¹ï¸ Les bracelets peuvent Ãªtre activÃ©s pour voir la position une fois toutes les 24h via un message "BIP" sur le tÃ©lÃ©phone de l'individu.`;
 
         const forumRes = await fetch(`${DISCORD_API}/channels/${BRACELET_FORUM_CHANNEL}/threads`, {
           method: "POST",
@@ -1394,7 +1419,7 @@ export default {
             message: {
               content,
               components: [
-                { type: 1, components: [{ type: 2, style: 3, label: "📍 Pointage", custom_id: "bracelet_pointage" }] }
+                { type: 1, components: [{ type: 2, style: 3, label: "ðŸ“ Pointage", custom_id: "bracelet_pointage" }] }
               ]
             }
           })
@@ -1402,7 +1427,7 @@ export default {
 
         if (!forumRes.ok) {
           const err = await forumRes.text();
-          return json({ type: 4, data: { content: `❌ Erreur création bracelet (${forumRes.status}): ${err}`, flags: 64 } });
+          return json({ type: 4, data: { content: `âŒ Erreur crÃ©ation bracelet (${forumRes.status}): ${err}`, flags: 64 } });
         }
         const braceletData = await forumRes.json();
         const braceletThreadId = braceletData.id;
@@ -1410,20 +1435,20 @@ export default {
         await fetch(`${DISCORD_API}/channels/${procThreadId}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ content: `🔗 Bracelet créé : <#${braceletThreadId}>` })
+          body: JSON.stringify({ content: `ðŸ”— Bracelet crÃ©Ã© : <#${braceletThreadId}>` })
         });
         await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ embeds: [{ title: "🔗 Bracelet électronique posé", color: 0xe67e22, fields: [
-            { name: "🧑 Suspect", value: suspect, inline: true },
-            { name: "📞 Téléphone", value: tel, inline: true },
-            { name: "📋 Chef(s) d'inculpation", value: raison, inline: false },
-            { name: "📅 Posé le", value: date, inline: true },
-            { name: "👮 Posé par", value: agentDisplay, inline: true }
-          ], footer: { text: "SASP · Bracelet" }, timestamp: new Date().toISOString() }] })
+          body: JSON.stringify({ embeds: [{ title: "ðŸ”— Bracelet Ã©lectronique posÃ©", color: 0xe67e22, fields: [
+            { name: "ðŸ§‘ Suspect", value: suspect, inline: true },
+            { name: "ðŸ“ž TÃ©lÃ©phone", value: tel, inline: true },
+            { name: "ðŸ“‹ Chef(s) d'inculpation", value: raison, inline: false },
+            { name: "ðŸ“… PosÃ© le", value: date, inline: true },
+            { name: "ðŸ‘® PosÃ© par", value: agentDisplay, inline: true }
+          ], footer: { text: "SASP Â· Bracelet" }, timestamp: new Date().toISOString() }] })
         });
-        return json({ type: 4, data: { content: `✅ Bracelet électronique créé pour **${suspect}**.`, flags: 64 } });
+        return json({ type: 4, data: { content: `âœ… Bracelet Ã©lectronique crÃ©Ã© pour **${suspect}**.`, flags: 64 } });
       }
 
       // Boutons tags proc/bracelet
@@ -1431,7 +1456,7 @@ export default {
         const TAG_ALLOWED_ROLES = ["1512410095173238814", "1500975725153620033", "1504452141518032956"];
         const memberRoles = interaction.member?.roles || [];
         if (!TAG_ALLOWED_ROLES.some(r => memberRoles.includes(r))) {
-          return json({ type: 4, data: { content: "❌ Tu n'as pas la permission de modifier le statut de ce dossier.", flags: 64 } });
+          return json({ type: 4, data: { content: "âŒ Tu n'as pas la permission de modifier le statut de ce dossier.", flags: 64 } });
         }
 
         const tagName = interaction.data.custom_id.split("|")[1];
@@ -1443,11 +1468,11 @@ export default {
         } catch {}
 
         const tagMessages = {
-          'AFFAIRE CLOTURER':    '🔒 **Affaire clôturée.**',
-          'DOSSIER INCOMPLET':   '⚠️ **Dossier incomplet** — des informations sont manquantes.',
-          'AFFAIRE EN COUR':     '🔄 **Affaire en cours** de traitement.',
-          'ATTENTE DE JUGEMENT': '⚖️ **En attente de jugement.**',
-          'ATTENTE PROCUREUR':   '⏳ **En attente du procureur.**'
+          'AFFAIRE CLOTURER':    'ðŸ”’ **Affaire clÃ´turÃ©e.**',
+          'DOSSIER INCOMPLET':   'âš ï¸ **Dossier incomplet** â€” des informations sont manquantes.',
+          'AFFAIRE EN COUR':     'ðŸ”„ **Affaire en cours** de traitement.',
+          'ATTENTE DE JUGEMENT': 'âš–ï¸ **En attente de jugement.**',
+          'ATTENTE PROCUREUR':   'â³ **En attente du procureur.**'
         };
         const msg = tagMessages[tagName] || `**${tagName}**`;
         const now = new Date();
@@ -1468,44 +1493,44 @@ export default {
           await fetch(`${DISCORD_API}/channels/${threadId}/messages`, {
             method: "POST",
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ content: `${msg} — par ${agentDisplay}` })
+            body: JSON.stringify({ content: `${msg} â€” par ${agentDisplay}` })
           });
         };
 
         // Applique sur le thread actuel
         await applyTagAndMessage(interaction.channel_id);
 
-        // Si on est dans un thread proc, cherche le bracelet lié et propage
+        // Si on est dans un thread proc, cherche le bracelet liÃ© et propage
         try {
           const msgsRes = await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages?limit=50`, {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
           });
           const msgs = await msgsRes.json();
-          const braceletLinkMsg = Array.isArray(msgs) && msgs.find(m => m.content && m.content.includes("🔗 Bracelet créé : <#"));
+          const braceletLinkMsg = Array.isArray(msgs) && msgs.find(m => m.content && m.content.includes("ðŸ”— Bracelet crÃ©Ã© : <#"));
           if (braceletLinkMsg) {
             const match = braceletLinkMsg.content.match(/<#(\d+)>/);
             if (match) {
               const braceletThreadId = match[1];
               await applyTagAndMessage(braceletThreadId);
 
-              // Si affaire clôturée : ping l'agent qui a posé le bracelet pour lui dire de l'enlever
+              // Si affaire clÃ´turÃ©e : ping l'agent qui a posÃ© le bracelet pour lui dire de l'enlever
               if (tagName === "AFFAIRE CLOTURER") {
                 try {
                   const braceletMsgsRes = await fetch(`${DISCORD_API}/channels/${braceletThreadId}/messages?limit=10`, {
                     headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
                   });
                   const braceletMsgs = await braceletMsgsRes.json();
-                  // Premier message du thread = le message du bot avec "Posé par : Prénom Nom (matricule)"
+                  // Premier message du thread = le message du bot avec "PosÃ© par : PrÃ©nom Nom (matricule)"
                   const firstMsg = Array.isArray(braceletMsgs) && braceletMsgs[braceletMsgs.length - 1];
                   if (firstMsg && firstMsg.content) {
-                    const poseMatch = firstMsg.content.match(/Posé par : .+?\((\d+)\)/);
+                    const poseMatch = firstMsg.content.match(/PosÃ© par : .+?\((\d+)\)/);
                     if (poseMatch) {
                       const agent = await getAgentByMatricule(env, poseMatch[1]);
                       const ping = agent && agent.discord_id ? `<@${agent.discord_id}>` : `Matricule ${poseMatch[1]}`;
                       await fetch(`${DISCORD_API}/channels/${braceletThreadId}/messages`, {
                         method: "POST",
                         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-                        body: JSON.stringify({ content: `${ping} — L'affaire est clôturée, pense à **enlever le bracelet électronique**.` })
+                        body: JSON.stringify({ content: `${ping} â€” L'affaire est clÃ´turÃ©e, pense Ã  **enlever le bracelet Ã©lectronique**.` })
                       });
                     }
                   }
@@ -1529,12 +1554,12 @@ export default {
         await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ embeds: [{ title: "🏷️ Statut mis à jour", color: 0x9b59b6, fields: [
-            { name: "📌 Statut", value: tagName, inline: true },
-            { name: "👮 Par", value: agentDisplay, inline: true }
-          ], footer: { text: "SASP · Proc/Bracelet" }, timestamp: now.toISOString() }] })
+          body: JSON.stringify({ embeds: [{ title: "ðŸ·ï¸ Statut mis Ã  jour", color: 0x9b59b6, fields: [
+            { name: "ðŸ“Œ Statut", value: tagName, inline: true },
+            { name: "ðŸ‘® Par", value: agentDisplay, inline: true }
+          ], footer: { text: "SASP Â· Proc/Bracelet" }, timestamp: now.toISOString() }] })
         });
-        return json({ type: 4, data: { content: `✅ Statut mis à jour : **${tagName}**`, flags: 64 } });
+        return json({ type: 4, data: { content: `âœ… Statut mis Ã  jour : **${tagName}**`, flags: 64 } });
       }
 
       // Bouton pointage bracelet
@@ -1552,18 +1577,18 @@ export default {
         await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ content: `✅ Pointage enregistré le ${dateStr} à ${heureStr} — par ${agentDisplay}` })
+          body: JSON.stringify({ content: `âœ… Pointage enregistrÃ© le ${dateStr} Ã  ${heureStr} â€” par ${agentDisplay}` })
         });
         await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ embeds: [{ title: "📍 Pointage bracelet enregistré", color: 0x2ecc71, fields: [
-            { name: "🧑 Suspect", value: threadName, inline: true },
-            { name: "🕐 Heure", value: `${dateStr} à ${heureStr}`, inline: true },
-            { name: "👮 Enregistré par", value: agentDisplay, inline: false }
-          ], footer: { text: "SASP · Bracelet" }, timestamp: now.toISOString() }] })
+          body: JSON.stringify({ embeds: [{ title: "ðŸ“ Pointage bracelet enregistrÃ©", color: 0x2ecc71, fields: [
+            { name: "ðŸ§‘ Suspect", value: threadName, inline: true },
+            { name: "ðŸ• Heure", value: `${dateStr} Ã  ${heureStr}`, inline: true },
+            { name: "ðŸ‘® EnregistrÃ© par", value: agentDisplay, inline: false }
+          ], footer: { text: "SASP Â· Bracelet" }, timestamp: now.toISOString() }] })
         });
-        return json({ type: 4, data: { content: "✅ Pointage enregistré.", flags: 64 } });
+        return json({ type: 4, data: { content: "âœ… Pointage enregistrÃ©.", flags: 64 } });
       }
 
       // Slash command /plainte
@@ -1572,13 +1597,13 @@ export default {
           type: 9,
           data: {
             custom_id: "plainte_modal",
-            title: "Dépôt de plainte",
+            title: "DÃ©pÃ´t de plainte",
             components: [
-              { type: 1, components: [{ type: 4, custom_id: "plaignant", label: "Plaignant — Nom Prénom", style: 1, required: true, placeholder: "Ex : James Morrison", min_length: 2, max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "misen_cause", label: "Mis en cause (Nom Prénom ou entreprise)", style: 1, required: true, placeholder: "Ex : John Smith", min_length: 2, max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "tel_misen_cause", label: "Tél. mis en cause (facultatif)", style: 1, required: false, placeholder: "Ex : +1 555 123 4567", max_length: 30 }] },
-              { type: 1, components: [{ type: 4, custom_id: "motif", label: "Motif de la plainte", style: 1, required: true, placeholder: "Ex : Vol à main armée", min_length: 2, max_length: 200 }] },
-              { type: 1, components: [{ type: 4, custom_id: "resume", label: "Résumé des faits", style: 2, required: true, placeholder: "Décrivez les faits...", min_length: 10, max_length: 2000 }] }
+              { type: 1, components: [{ type: 4, custom_id: "plaignant", label: "Plaignant â€” Nom PrÃ©nom", style: 1, required: true, placeholder: "Ex : James Morrison", min_length: 2, max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "misen_cause", label: "Mis en cause (Nom PrÃ©nom ou entreprise)", style: 1, required: true, placeholder: "Ex : John Smith", min_length: 2, max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "tel_misen_cause", label: "TÃ©l. mis en cause (facultatif)", style: 1, required: false, placeholder: "Ex : +1 555 123 4567", max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "motif", label: "Motif de la plainte", style: 1, required: true, placeholder: "Ex : Vol Ã  main armÃ©e", min_length: 2, max_length: 200 }] },
+              { type: 1, components: [{ type: 4, custom_id: "resume", label: "RÃ©sumÃ© des faits", style: 2, required: true, placeholder: "DÃ©crivez les faits...", min_length: 10, max_length: 2000 }] }
             ]
           }
         });
@@ -1610,14 +1635,14 @@ export default {
 
         const misenCauseVal = misenCause;
         const fields = [
-          { name: "📅 Date & Heure",      value: `${dateStr} à ${heureStr}`, inline: true },
-          { name: "👮 Agent en charge",   value: agentDisplay, inline: true },
-          { name: "🙋 Plaignant",         value: plaignant, inline: false },
-          { name: "🎯 Mis en cause",      value: misenCauseVal, inline: false },
-          { name: "📞 Téléphone",          value: telMisenCause || "—", inline: true },
-          { name: "📋 Motif",             value: motif, inline: false },
-          { name: "📝 Résumé des faits",  value: resume.slice(0, 1024), inline: false },
-          { name: "⚖️ Note",              value: "La Cour est respectueusement saisie de ce dossier et invitée à statuer sur les suites judiciaires à y apporter. Le SASP demeure à disposition pour toute information complémentaire jugée nécessaire à l'instruction de cette affaire.", inline: false }
+          { name: "ðŸ“… Date & Heure",      value: `${dateStr} Ã  ${heureStr}`, inline: true },
+          { name: "ðŸ‘® Agent en charge",   value: agentDisplay, inline: true },
+          { name: "ðŸ™‹ Plaignant",         value: plaignant, inline: false },
+          { name: "ðŸŽ¯ Mis en cause",      value: misenCauseVal, inline: false },
+          { name: "ðŸ“ž TÃ©lÃ©phone",          value: telMisenCause || "â€”", inline: true },
+          { name: "ðŸ“‹ Motif",             value: motif, inline: false },
+          { name: "ðŸ“ RÃ©sumÃ© des faits",  value: resume.slice(0, 1024), inline: false },
+          { name: "âš–ï¸ Note",              value: "La Cour est respectueusement saisie de ce dossier et invitÃ©e Ã  statuer sur les suites judiciaires Ã  y apporter. Le SASP demeure Ã  disposition pour toute information complÃ©mentaire jugÃ©e nÃ©cessaire Ã  l'instruction de cette affaire.", inline: false }
         ];
 
         const postRes = await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
@@ -1625,13 +1650,13 @@ export default {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             content: "<@&1512185605805703187>",
-            embeds: [{ title: `📋 Plainte #${plainteId} — SASP`, color: 0xc0392b, fields, footer: { text: "SASP • Service des plaintes" }, timestamp: now.toISOString() }],
-            components: [{ type: 1, components: [{ type: 2, style: 2, label: "✏️ Modifier", custom_id: `edit_plainte|${userId}` }] }]
+            embeds: [{ title: `ðŸ“‹ Plainte #${plainteId} â€” SASP`, color: 0xc0392b, fields, footer: { text: "SASP â€¢ Service des plaintes" }, timestamp: now.toISOString() }],
+            components: [{ type: 1, components: [{ type: 2, style: 2, label: "âœï¸ Modifier", custom_id: `edit_plainte|${userId}` }] }]
           })
         });
         if (!postRes.ok) {
           const err = await postRes.text();
-          return json({ type: 4, data: { content: `❌ Erreur Discord (${postRes.status}): ${err}`, flags: 64 } });
+          return json({ type: 4, data: { content: `âŒ Erreur Discord (${postRes.status}): ${err}`, flags: 64 } });
         }
 
         // Supprime l'ancien sticky puis le renvoie
@@ -1640,7 +1665,7 @@ export default {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
           });
           const msgs = await msgsRes.json();
-          const sticky = Array.isArray(msgs) && msgs.find(m => m.embeds?.[0]?.title === "📋 Déposer une plainte");
+          const sticky = Array.isArray(msgs) && msgs.find(m => m.embeds?.[0]?.title === "ðŸ“‹ DÃ©poser une plainte");
           if (sticky) {
             await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages/${sticky.id}`, {
               method: "DELETE",
@@ -1654,7 +1679,7 @@ export default {
           });
         } catch {}
 
-        return json({ type: 4, data: { content: "✅ Plainte enregistrée !\n\nMaintenant, faites un **copier-coller** du message de la plainte et envoyez-le ici : https://discord.com/channels/1512185605805703179/1517219854724235477", flags: 64 } });
+        return json({ type: 4, data: { content: "âœ… Plainte enregistrÃ©e !\n\nMaintenant, faites un **copier-coller** du message de la plainte et envoyez-le ici : https://discord.com/channels/1512185605805703179/1517219854724235477", flags: 64 } });
       }
 
       // Modal submit plainte (modification)
@@ -1670,27 +1695,27 @@ export default {
         const motif          = getValue("motif");
         const resume         = getValue("resume");
 
-        // Récupère dossier # et agent en charge depuis l'embed original
+        // RÃ©cupÃ¨re dossier # et agent en charge depuis l'embed original
         const origRes = await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
         });
         const origMsg = await origRes.json();
         const origEmbed = origMsg.embeds?.[0] || {};
-        const origTitle = origEmbed.title || `📋 Plainte — SASP`;
+        const origTitle = origEmbed.title || `ðŸ“‹ Plainte â€” SASP`;
         const origGetField = (kw) => (origEmbed.fields || []).find(f => f.name.includes(kw))?.value || "";
         const agentStr = origGetField("Agent");
         const dateStr  = origGetField("Date");
 
         const misenCauseVal = misenCause;
         const newFields = [
-          { name: "📅 Date & Heure",      value: dateStr, inline: true },
-          { name: "👮 Agent en charge",   value: agentStr, inline: true },
-          { name: "🙋 Plaignant",         value: plaignant, inline: false },
-          { name: "🎯 Mis en cause",      value: misenCauseVal, inline: false },
-          { name: "📞 Téléphone",          value: telMisenCause || "—", inline: true },
-          { name: "📋 Motif",             value: motif, inline: false },
-          { name: "📝 Résumé des faits",  value: resume.slice(0, 1024), inline: false },
-          { name: "⚖️ Note",              value: "La Cour est respectueusement saisie de ce dossier et invitée à statuer sur les suites judiciaires à y apporter. Le SASP demeure à disposition pour toute information complémentaire jugée nécessaire à l'instruction de cette affaire.", inline: false }
+          { name: "ðŸ“… Date & Heure",      value: dateStr, inline: true },
+          { name: "ðŸ‘® Agent en charge",   value: agentStr, inline: true },
+          { name: "ðŸ™‹ Plaignant",         value: plaignant, inline: false },
+          { name: "ðŸŽ¯ Mis en cause",      value: misenCauseVal, inline: false },
+          { name: "ðŸ“ž TÃ©lÃ©phone",          value: telMisenCause || "â€”", inline: true },
+          { name: "ðŸ“‹ Motif",             value: motif, inline: false },
+          { name: "ðŸ“ RÃ©sumÃ© des faits",  value: resume.slice(0, 1024), inline: false },
+          { name: "âš–ï¸ Note",              value: "La Cour est respectueusement saisie de ce dossier et invitÃ©e Ã  statuer sur les suites judiciaires Ã  y apporter. Le SASP demeure Ã  disposition pour toute information complÃ©mentaire jugÃ©e nÃ©cessaire Ã  l'instruction de cette affaire.", inline: false }
         ];
 
         await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
@@ -1698,11 +1723,11 @@ export default {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             content: "<@&1512185605805703187>",
-            embeds: [{ title: origTitle, color: 0xe67e22, fields: newFields, footer: { text: "SASP • Service des plaintes (modifiée)" }, timestamp: new Date().toISOString() }],
-            components: [{ type: 1, components: [{ type: 2, style: 2, label: "✏️ Modifier", custom_id: `edit_plainte|${creatorId}` }] }]
+            embeds: [{ title: origTitle, color: 0xe67e22, fields: newFields, footer: { text: "SASP â€¢ Service des plaintes (modifiÃ©e)" }, timestamp: new Date().toISOString() }],
+            components: [{ type: 1, components: [{ type: 2, style: 2, label: "âœï¸ Modifier", custom_id: `edit_plainte|${creatorId}` }] }]
           })
         });
-        return json({ type: 4, data: { content: "✅ Plainte modifiée.", flags: 64 } });
+        return json({ type: 4, data: { content: "âœ… Plainte modifiÃ©e.", flags: 64 } });
       }
 
       // Composant (bouton ou select)
@@ -1711,19 +1736,19 @@ export default {
         const discordUserId = interaction.member?.user?.id || interaction.user?.id;
         const member = interaction.member;
 
-        // ── Bouton modifier plainte ──
+        // â”€â”€ Bouton modifier plainte â”€â”€
         if (customId.startsWith("edit_plainte|")) {
           const creatorId = customId.split("|")[1];
           const clickerId = interaction.member?.user?.id || interaction.user?.id;
           const isAdmin = ADMIN_ROLE_IDS.some(r => (interaction.member?.roles || []).includes(r));
           if (clickerId !== creatorId && !isAdmin) {
-            return json({ type: 4, data: { content: "❌ Seul le créateur de la plainte ou un admin peut la modifier.", flags: 64 } });
+            return json({ type: 4, data: { content: "âŒ Seul le crÃ©ateur de la plainte ou un admin peut la modifier.", flags: 64 } });
           }
           const embed = interaction.message.embeds?.[0] || {};
           const getField = (kw) => (embed.fields || []).find(f => f.name.includes(kw))?.value || "";
           const misenVal = getField("Mis en cause");
-          const telRaw   = getField("Téléphone");
-          const telVal   = telRaw === "—" ? "" : telRaw;
+          const telRaw   = getField("TÃ©lÃ©phone");
+          const telVal   = telRaw === "â€”" ? "" : telRaw;
           const channelId = interaction.channel_id;
           const messageId = interaction.message.id;
           return json({
@@ -1732,20 +1757,20 @@ export default {
               custom_id: `edit_plainte_modal|${channelId}|${messageId}|${creatorId}`,
               title: "Modifier la plainte",
               components: [
-                { type: 1, components: [{ type: 4, custom_id: "plaignant", label: "Plaignant — Nom Prénom", style: 1, required: true, value: getField("Plaignant"), min_length: 2, max_length: 80 }] },
+                { type: 1, components: [{ type: 4, custom_id: "plaignant", label: "Plaignant â€” Nom PrÃ©nom", style: 1, required: true, value: getField("Plaignant"), min_length: 2, max_length: 80 }] },
                 { type: 1, components: [{ type: 4, custom_id: "misen_cause", label: "Mis en cause", style: 1, required: true, value: misenVal, min_length: 2, max_length: 80 }] },
-                { type: 1, components: [{ type: 4, custom_id: "tel_misen_cause", label: "Tél. mis en cause (facultatif)", style: 1, required: false, value: telVal, max_length: 30 }] },
+                { type: 1, components: [{ type: 4, custom_id: "tel_misen_cause", label: "TÃ©l. mis en cause (facultatif)", style: 1, required: false, value: telVal, max_length: 30 }] },
                 { type: 1, components: [{ type: 4, custom_id: "motif", label: "Motif de la plainte", style: 1, required: true, value: getField("Motif"), min_length: 2, max_length: 200 }] },
-                { type: 1, components: [{ type: 4, custom_id: "resume", label: "Résumé des faits", style: 2, required: true, value: getField("Résumé"), min_length: 10, max_length: 2000 }] }
+                { type: 1, components: [{ type: 4, custom_id: "resume", label: "RÃ©sumÃ© des faits", style: 2, required: true, value: getField("RÃ©sumÃ©"), min_length: 10, max_length: 2000 }] }
               ]
             }
           });
         }
 
-        // ── Select menu : retirer un agent ──
+        // â”€â”€ Select menu : retirer un agent â”€â”€
         if (customId.startsWith("remove_agent|")) {
           if (!hasStaffRole(member)) {
-            return json({ type: 4, data: { content: "❌ Permissions insuffisantes.", flags: 64 } });
+            return json({ type: 4, data: { content: "âŒ Permissions insuffisantes.", flags: 64 } });
           }
           const parts = customId.split("|");
           const channelId = parts[1];
@@ -1760,13 +1785,13 @@ export default {
           const allActive = await getAllActivePointages(env);
           await editMessage(env, channelId, messageId, buildPointeuseMessage(allActive));
 
-          return json({ type: 7, data: { content: "✅ Agent retiré du service.", components: [], flags: 64 } });
+          return json({ type: 7, data: { content: "âœ… Agent retirÃ© du service.", components: [], flags: 64 } });
         }
 
-        // ── Bouton admin : afficher le select ──
+        // â”€â”€ Bouton admin : afficher le select â”€â”€
         if (customId === "admin_remove") {
           if (!hasStaffRole(member)) {
-            return json({ type: 4, data: { content: "❌ Tu n'as pas les permissions pour cette action.", flags: 64 } });
+            return json({ type: 4, data: { content: "âŒ Tu n'as pas les permissions pour cette action.", flags: 64 } });
           }
           const active = await getAllActivePointages(env);
           if (!active.length) {
@@ -1775,7 +1800,7 @@ export default {
           const options = active.map(p => {
             const a = p.agents || {};
             return {
-              label: `${(a.prenom + " " + a.nom).trim()} (${a.matricule || "—"})`,
+              label: `${(a.prenom + " " + a.nom).trim()} (${a.matricule || "â€”"})`,
               value: p.agent_id
             };
           });
@@ -1785,7 +1810,7 @@ export default {
             type: 4,
             data: {
               flags: 64,
-              content: "Sélectionne l'agent à retirer du service :",
+              content: "SÃ©lectionne l'agent Ã  retirer du service :",
               components: [{
                 type: 1,
                 components: [{
@@ -1799,32 +1824,32 @@ export default {
           });
         }
 
-        // ── Prise / fin de service ──
+        // â”€â”€ Prise / fin de service â”€â”€
         if (customId !== "prise_service" && customId !== "fin_service") {
-          return json({ type: 4, data: { content: "❌ Action inconnue.", flags: 64 } });
+          return json({ type: 4, data: { content: "âŒ Action inconnue.", flags: 64 } });
         }
 
         let agent;
         try {
           agent = await getAgentByDiscordId(env, discordUserId);
         } catch (e) {
-          return json({ type: 4, data: { content: `❌ Erreur : ${e.message}`, flags: 64 } });
+          return json({ type: 4, data: { content: `âŒ Erreur : ${e.message}`, flags: 64 } });
         }
 
         if (!agent) {
-          return json({ type: 4, data: { content: "❌ Ton Discord ID n'est lié à aucun agent. Configure-le dans ton profil sur l'intranet.", flags: 64 } });
+          return json({ type: 4, data: { content: "âŒ Ton Discord ID n'est liÃ© Ã  aucun agent. Configure-le dans ton profil sur l'intranet.", flags: 64 } });
         }
 
         if (customId === "prise_service") {
           const existing = await getActivePointage(env, agent.id);
           if (existing) {
-            return json({ type: 4, data: { content: `⚠️ Tu es déjà en service, ${agent.prenom} !`, flags: 64 } });
+            return json({ type: 4, data: { content: `âš ï¸ Tu es dÃ©jÃ  en service, ${agent.prenom} !`, flags: 64 } });
           }
           await sb(env, "POST", "/pointages", { agent_id: agent.id, clock_in: new Date().toISOString() });
         } else {
           const active = await getActivePointage(env, agent.id);
           if (!active) {
-            return json({ type: 4, data: { content: `⚠️ Tu n'es pas en service, ${agent.prenom} !`, flags: 64 } });
+            return json({ type: 4, data: { content: `âš ï¸ Tu n'es pas en service, ${agent.prenom} !`, flags: 64 } });
           }
           await sb(env, "PATCH", `/pointages?id=eq.${active.id}`, { clock_out: new Date().toISOString() });
         }
@@ -1833,10 +1858,10 @@ export default {
         return json({ type: 7, data: buildPointeuseMessage(allActive) });
       }
 
-      return json({ type: 4, data: { content: "Type d'interaction non supporté.", flags: 64 } });
+      return json({ type: 4, data: { content: "Type d'interaction non supportÃ©.", flags: 64 } });
     }
 
-    // ── Forcer fin de service pour un agent précis ─────────────────
+    // â”€â”€ Forcer fin de service pour un agent prÃ©cis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (url.pathname === "/clockout-agent" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
@@ -1848,7 +1873,7 @@ export default {
       return json({ ok: true });
     }
 
-    // ── Reset manuel tous les agents (admin) ───────────────────────
+    // â”€â”€ Reset manuel tous les agents (admin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (url.pathname === "/clockout-all" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
@@ -1859,7 +1884,7 @@ export default {
     return json({ error: "Not found" }, 404);
   },
 
-  // ── Cron ──────────────────────────────────────────────────────────
+  // â”€â”€ Cron â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async scheduled(event, env, ctx) {
     if (event.cron === '0 18 * * SUN') {
       ctx.waitUntil(autoClockoutAll(env));
