@@ -141,6 +141,33 @@ function isPublicServiceEnterprise(enterprise) {
   return PUBLIC_SERVICE_ENTERPRISES.includes(enterprise);
 }
 
+function enterpriseRoleSpecs(enterprise) {
+  if (enterprise === "SASP-SUD" || enterprise === "SASP-NORD") {
+    return [
+      { label: "Commandant", legacy: [`Patron ${enterprise}`, `Commandant ${enterprise}`], access: "manage", announcement: "write" },
+      { label: "Capitaine", legacy: [`Co Patron ${enterprise}`, `Capitaine ${enterprise}`], access: "base", announcement: "write" }
+    ];
+  }
+  if (enterprise === "D.O.J") {
+    return [
+      { label: "Juge", legacy: [`Patron ${enterprise}`, `Juge ${enterprise}`], access: "manage", announcement: "write" },
+      { label: "Procureur", legacy: [`Co Patron ${enterprise}`, `Procureur ${enterprise}`], access: "base", announcement: "write" },
+      { label: "Avocat", legacy: [`Employ\u00e9 ${enterprise}`, `Avocat ${enterprise}`], access: "base", announcement: "write" }
+    ];
+  }
+  if (enterprise === "Gouvernement") {
+    return [
+      { label: "Gouverneur", legacy: [`Patron ${enterprise}`, `Gouverneur ${enterprise}`], access: "manage", announcement: "write" },
+      { label: "Vice Gouverneur", legacy: [`Co Patron ${enterprise}`, `Vice Gouverneur ${enterprise}`], access: "base", announcement: "write" }
+    ];
+  }
+  return [
+    { label: "Patron", legacy: [`Patron ${enterprise}`], access: "manage", announcement: "write" },
+    { label: "Co Patron", legacy: [`Co Patron ${enterprise}`], access: "base", announcement: "write" },
+    { label: "Employ\u00e9", legacy: [`Employ\u00e9 ${enterprise}`], access: "base", announcement: "read" }
+  ];
+}
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -222,9 +249,15 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     if (channel.parent_id) channelByParentNameType.set(`${channel.parent_id}:${channel.name}:${channel.type}`, channel);
   }
 
-  const findOrCreateRole = async (legacyName, displayName, color) => {
+  const findOrCreateRole = async (legacyNames, displayName, color) => {
+    const names = Array.isArray(legacyNames) ? legacyNames : [legacyNames];
     if (roleByName.has(displayName)) return { item: roleByName.get(displayName), created: false, renamed: false };
-    const existingName = [...roleByName.keys()].find(name => name === legacyName || name.endsWith(` ${legacyName}`) || name.endsWith(`\u30fb${legacyName}`) || name.endsWith(`ãƒ»${legacyName}`));
+    const existingName = [...roleByName.keys()].find(name => names.some(legacyName =>
+      name === legacyName ||
+      name.endsWith(` ${legacyName}`) ||
+      name.endsWith(`\u30fb${legacyName}`) ||
+      name.endsWith(`ãƒ»${legacyName}`)
+    ));
     if (existingName) {
       const existing = roleByName.get(existingName);
       const item = await discordRequest(env, "PATCH", `/guilds/${guildId}/roles/${existing.id}`, {
@@ -245,6 +278,21 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     }, "Setup entreprises - role");
     roleByName.set(displayName, item);
     return { item, created: true, renamed: false };
+  };
+
+  const deleteRoleByLegacy = async (legacyNames) => {
+    const names = Array.isArray(legacyNames) ? legacyNames : [legacyNames];
+    const existingName = [...roleByName.keys()].find(name => names.some(legacyName =>
+      name === legacyName ||
+      name.endsWith(` ${legacyName}`) ||
+      name.endsWith(`\u30fb${legacyName}`) ||
+      name.endsWith(`ãƒ»${legacyName}`)
+    ));
+    if (!existingName) return false;
+    const existing = roleByName.get(existingName);
+    await discordRequest(env, "DELETE", `/guilds/${guildId}/roles/${existing.id}`, null, "Cleanup role entreprise inutile");
+    roleByName.delete(existingName);
+    return true;
   };
 
   const findOrCreateCategory = async (legacyName, displayName, overwrites) => {
@@ -304,6 +352,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
 
   let createdRoles = 0;
   let renamedRoles = 0;
+  let deletedRoles = 0;
   let createdCategories = 0;
   let renamedCategories = 0;
   let createdChannels = 0;
@@ -315,34 +364,44 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     const i = start + localIndex;
     const enterprise = ENTERPRISES[i];
     const color = ENTERPRISE_COLORS[i % ENTERPRISE_COLORS.length];
-    const patronBase = `Patron ${enterprise}`;
-    const coPatronBase = `Co Patron ${enterprise}`;
-    const employeBase = `Employ\u00e9 ${enterprise}`;
-    const patron = await findOrCreateRole(patronBase, enterpriseRoleName(patronBase, i), color);
-    const coPatron = await findOrCreateRole(coPatronBase, enterpriseRoleName(coPatronBase, i), color);
-    const employe = await findOrCreateRole(employeBase, enterpriseRoleName(employeBase, i), color);
-    createdRoles += [patron, coPatron, employe].filter(x => x.created).length;
-    renamedRoles += [patron, coPatron, employe].filter(x => x.renamed).length;
+    const roleSpecs = enterpriseRoleSpecs(enterprise);
+    const roleEntries = [];
+    for (const spec of roleSpecs) {
+      const baseName = `${spec.label} ${enterprise}`;
+      const result = await findOrCreateRole(spec.legacy, enterpriseRoleName(baseName, i), color);
+      roleEntries.push({ ...spec, ...result });
+    }
+    createdRoles += roleEntries.filter(x => x.created).length;
+    renamedRoles += roleEntries.filter(x => x.renamed).length;
+    if (enterprise === "SASP-SUD" || enterprise === "SASP-NORD" || enterprise === "Gouvernement") {
+      if (await deleteRoleByLegacy([`Employ\u00e9 ${enterprise}`])) deletedRoles++;
+    }
 
     const categoryOverwrites = [
       { id: guildId, type: 0, deny: VIEW.toString() },
       { id: adminRoleId, type: 0, allow: ADMIN.toString() },
-      { id: patron.item.id, type: 0, allow: PATRON.toString() },
-      { id: coPatron.item.id, type: 0, allow: BASE.toString() },
-      { id: employe.item.id, type: 0, allow: BASE.toString() }
+      ...roleEntries.map(entry => ({
+        id: entry.item.id,
+        type: 0,
+        allow: (entry.access === "manage" ? PATRON : BASE).toString()
+      }))
     ];
     const displayCategoryName = enterpriseCategoryName(enterprise, i);
     const category = await findOrCreateCategory(enterprise, displayCategoryName, categoryOverwrites);
     if (category.created) createdCategories++;
     if (category.renamed) renamedCategories++;
 
-    const patronOnly = [{ id: employe.item.id, type: 0, deny: VIEW.toString() }];
+    const employeeEntries = roleEntries.filter(entry => entry.announcement === "read");
+    const patronOnly = employeeEntries.map(entry => ({ id: entry.item.id, type: 0, deny: VIEW.toString() }));
     const citizenReadOnly = [{ id: citizenRole.id, type: 0, allow: (VIEW | READ_HISTORY).toString(), deny: SEND.toString() }];
     const announceOverwrites = [
       { id: citizenRole.id, type: 0, allow: (VIEW | READ_HISTORY).toString(), deny: SEND.toString() },
-      { id: patron.item.id, type: 0, allow: BASE.toString() },
-      { id: coPatron.item.id, type: 0, allow: BASE.toString() },
-      { id: employe.item.id, type: 0, allow: (VIEW | READ_HISTORY).toString(), deny: SEND.toString() }
+      ...roleEntries.map(entry => ({
+        id: entry.item.id,
+        type: 0,
+        allow: (entry.announcement === "write" ? BASE : (VIEW | READ_HISTORY)).toString(),
+        ...(entry.announcement === "write" ? {} : { deny: SEND.toString() })
+      }))
     ];
     const desiredChannels = isPublicServiceEnterprise(enterprise)
       ? [
@@ -380,6 +439,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     processed_enterprises: selectedEnterprises.length,
     created_roles: createdRoles,
     renamed_roles: renamedRoles,
+    deleted_roles: deletedRoles,
     created_categories: createdCategories,
     renamed_categories: renamedCategories,
     created_channels: createdChannels,
