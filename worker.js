@@ -641,6 +641,7 @@ export default {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
+            content: "<@&1500975725153620033>",
             embeds: [{
               title: "💸 Demande de subvention",
               color: 0xc9a84c,
@@ -649,6 +650,7 @@ export default {
                 { name: "🆔 Matricule", value: matricule, inline: true },
                 { name: "💰 Somme", value: somme, inline: true },
                 { name: "📋 Raison", value: raison.slice(0, 1024), inline: false },
+                { name: "ℹ️ Règles actuelles", value: "La subvention est fixée à **10 000 $ par voiture** pour le moment.\nIl est interdit de faire des **performances** et d'acheter une **nouvelle voiture** avec cette subvention.", inline: false },
                 { name: "📨 Demandé par", value: `<@${userId}>`, inline: true },
                 { name: "🔎 Source identité", value: sourceLabel, inline: true }
               ],
