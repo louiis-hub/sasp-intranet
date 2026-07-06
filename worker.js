@@ -110,10 +110,10 @@ const ENTERPRISE_EMOJIS = [
 ];
 
 function enterpriseCategoryName(enterprise, index) {
-  return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]}ãƒ»${enterprise}`;
+  return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]}\u30fb${enterprise}`;
 }
 function enterpriseRoleName(baseName, index) {
-  return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]}ãƒ»${baseName}`;
+  return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]}\u30fb${baseName}`;
 }
 const ENTERPRISE_GENERAL_CATEGORY = "\ud83c\udf10\u30fbG\u00e9n\u00e9ral";
 const ENTERPRISE_GENERAL_CHANNELS = ["arriver", "depart", "demande-de-role", "discussion", "ticket"];
@@ -132,6 +132,7 @@ function isEnterpriseCategoryName(name) {
   return ENTERPRISES.some(enterprise =>
     name === enterprise ||
     name.endsWith(` ${enterprise}`) ||
+    name.endsWith(`\u30fb${enterprise}`) ||
     name.endsWith(`ãƒ»${enterprise}`)
   );
 }
@@ -223,7 +224,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
 
   const findOrCreateRole = async (legacyName, displayName, color) => {
     if (roleByName.has(displayName)) return { item: roleByName.get(displayName), created: false, renamed: false };
-    const existingName = [...roleByName.keys()].find(name => name === legacyName || name.endsWith(` ${legacyName}`) || name.endsWith(`ãƒ»${legacyName}`));
+    const existingName = [...roleByName.keys()].find(name => name === legacyName || name.endsWith(` ${legacyName}`) || name.endsWith(`\u30fb${legacyName}`) || name.endsWith(`ãƒ»${legacyName}`));
     if (existingName) {
       const existing = roleByName.get(existingName);
       const item = await discordRequest(env, "PATCH", `/guilds/${guildId}/roles/${existing.id}`, {
@@ -248,7 +249,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
 
   const findOrCreateCategory = async (legacyName, displayName, overwrites) => {
     if (categoryByName.has(displayName)) return { item: categoryByName.get(displayName), created: false, renamed: false };
-    const existingName = [...categoryByName.keys()].find(name => name === legacyName || name.endsWith(` ${legacyName}`) || name.endsWith(`ãƒ»${legacyName}`));
+    const existingName = [...categoryByName.keys()].find(name => name === legacyName || name.endsWith(` ${legacyName}`) || name.endsWith(`\u30fb${legacyName}`) || name.endsWith(`ãƒ»${legacyName}`));
     if (existingName) {
       const existing = categoryByName.get(existingName);
       const item = await discordRequest(env, "PATCH", `/channels/${existing.id}`, {
@@ -505,6 +506,7 @@ async function setupPublicServiceCategories(env, guildId = ENTERPRISE_GUILD_ID) 
     category: categories.find(channel =>
       channel.name === enterprise ||
       channel.name.endsWith(` ${enterprise}`) ||
+      channel.name.endsWith(`\u30fb${enterprise}`) ||
       channel.name.endsWith(`Ã£Æ’Â»${enterprise}`) ||
       channel.name.endsWith(`ÃƒÂ£Ã†â€™Ã‚Â»${enterprise}`)
     )
