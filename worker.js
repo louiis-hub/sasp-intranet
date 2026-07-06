@@ -773,7 +773,8 @@ export default {
           if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
         } catch {}
 
-        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nPosé le : ${date}\nNuméro de téléphone : ${tel}\nRaison : ${raison}\nPosé par : ${agentDisplay}\n\nPensez à bien noter quand les individus viennent pointer\n\nℹ️ Les bracelets peuvent être activés pour voir la position une fois toutes les 24h via un message "BIP" sur le téléphone de l'individu.`;
+        const procThreadId = interaction.channel_id;
+        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nDossier proc lié : <#${procThreadId}>\n\nPosé le : ${date}\nNuméro de téléphone : ${tel}\nRaison : ${raison}\nPosé par : ${agentDisplay}\n\nPensez à bien noter quand les individus viennent pointer\n\nℹ️ Les bracelets peuvent être activés pour voir la position une fois toutes les 24h via un message "BIP" sur le téléphone de l'individu.`;
 
         const forumRes = await fetch(`${DISCORD_API}/channels/${BRACELET_FORUM_CHANNEL}/threads`, {
           method: "POST",
@@ -795,7 +796,6 @@ export default {
         }
         const braceletData = await forumRes.json();
         const braceletThreadId = braceletData.id;
-        const procThreadId = interaction.channel_id;
         // Poster le lien du bracelet dans le thread proc pour relier les deux
         await fetch(`${DISCORD_API}/channels/${procThreadId}/messages`, {
           method: "POST",
