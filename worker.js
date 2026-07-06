@@ -112,6 +112,9 @@ const ENTERPRISE_EMOJIS = [
 function enterpriseCategoryName(enterprise, index) {
   return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]}・${enterprise}`;
 }
+function enterpriseRoleName(baseName, index) {
+  return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]}・${baseName}`;
+}
 const ENTERPRISE_GENERAL_CATEGORY = "\ud83c\udf10\u30fbG\u00e9n\u00e9ral";
 const ENTERPRISE_GENERAL_CHANNELS = ["arriver", "depart", "demande-de-role", "discussion", "ticket"];
 const ENTERPRISE_CITIZEN_ROLE = "Citoyen";
@@ -195,16 +198,29 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     if (channel.parent_id) channelByParentNameType.set(`${channel.parent_id}:${channel.name}:${channel.type}`, channel);
   }
 
-  const findOrCreateRole = async (name, color) => {
-    if (roleByName.has(name)) return { item: roleByName.get(name), created: false };
+  const findOrCreateRole = async (legacyName, displayName, color) => {
+    if (roleByName.has(displayName)) return { item: roleByName.get(displayName), created: false, renamed: false };
+    const existingName = [...roleByName.keys()].find(name => name === legacyName || name.endsWith(` ${legacyName}`) || name.endsWith(`・${legacyName}`));
+    if (existingName) {
+      const existing = roleByName.get(existingName);
+      const item = await discordRequest(env, "PATCH", `/guilds/${guildId}/roles/${existing.id}`, {
+        name: displayName,
+        color,
+        hoist: false,
+        mentionable: true
+      }, "Setup entreprises - emoji role");
+      roleByName.delete(existingName);
+      roleByName.set(displayName, item);
+      return { item, created: false, renamed: true };
+    }
     const item = await discordRequest(env, "POST", `/guilds/${guildId}/roles`, {
-      name,
+      name: displayName,
       color,
       hoist: false,
       mentionable: true
     }, "Setup entreprises - role");
-    roleByName.set(name, item);
-    return { item, created: true };
+    roleByName.set(displayName, item);
+    return { item, created: true, renamed: false };
   };
 
   const findOrCreateCategory = async (legacyName, displayName, overwrites) => {
@@ -243,6 +259,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
   };
 
   let createdRoles = 0;
+  let renamedRoles = 0;
   let createdCategories = 0;
   let renamedCategories = 0;
   let createdChannels = 0;
@@ -253,10 +270,14 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     const i = start + localIndex;
     const enterprise = ENTERPRISES[i];
     const color = ENTERPRISE_COLORS[i % ENTERPRISE_COLORS.length];
-    const patron = await findOrCreateRole(`Patron ${enterprise}`, color);
-    const coPatron = await findOrCreateRole(`Co Patron ${enterprise}`, color);
-    const employe = await findOrCreateRole(`Employ\u00e9 ${enterprise}`, color);
+    const patronBase = `Patron ${enterprise}`;
+    const coPatronBase = `Co Patron ${enterprise}`;
+    const employeBase = `Employ\u00e9 ${enterprise}`;
+    const patron = await findOrCreateRole(patronBase, enterpriseRoleName(patronBase, i), color);
+    const coPatron = await findOrCreateRole(coPatronBase, enterpriseRoleName(coPatronBase, i), color);
+    const employe = await findOrCreateRole(employeBase, enterpriseRoleName(employeBase, i), color);
     createdRoles += [patron, coPatron, employe].filter(x => x.created).length;
+    renamedRoles += [patron, coPatron, employe].filter(x => x.renamed).length;
 
     const categoryOverwrites = [
       { id: guildId, type: 0, deny: VIEW.toString() },
@@ -293,6 +314,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     total_enterprises: ENTERPRISES.length,
     processed_enterprises: selectedEnterprises.length,
     created_roles: createdRoles,
+    renamed_roles: renamedRoles,
     created_categories: createdCategories,
     renamed_categories: renamedCategories,
     created_channels: createdChannels,
