@@ -152,7 +152,7 @@ async function discordRequest(env, method, path, body, reason) {
   return data;
 }
 
-async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminRoleId = ENTERPRISE_ADMIN_ROLE_ID) {
+async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminRoleId = ENTERPRISE_ADMIN_ROLE_ID, start = 0, limit = ENTERPRISES.length) {
   const VIEW = 1024n;
   const MANAGE_CHANNELS = 16n;
   const MANAGE_ROLES = 268435456n;
@@ -213,7 +213,9 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
   let createdChannels = 0;
   const details = [];
 
-  for (let i = 0; i < ENTERPRISES.length; i++) {
+  const selectedEnterprises = ENTERPRISES.slice(start, start + limit);
+  for (let localIndex = 0; localIndex < selectedEnterprises.length; localIndex++) {
+    const i = start + localIndex;
     const enterprise = ENTERPRISES[i];
     const color = ENTERPRISE_COLORS[i % ENTERPRISE_COLORS.length];
     const patron = await findOrCreateRole(`Patron ${enterprise}`, color);
@@ -250,7 +252,10 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     ok: true,
     guild_id: guildId,
     admin_role_id: adminRoleId,
-    enterprises: ENTERPRISES.length,
+    start,
+    limit,
+    total_enterprises: ENTERPRISES.length,
+    processed_enterprises: selectedEnterprises.length,
     created_roles: createdRoles,
     created_categories: createdCategories,
     created_channels: createdChannels,
@@ -470,7 +475,9 @@ export default {
       try {
         const guildId = url.searchParams.get("guild") || ENTERPRISE_GUILD_ID;
         const adminRoleId = url.searchParams.get("admin_role") || ENTERPRISE_ADMIN_ROLE_ID;
-        const result = await setupEnterpriseDiscord(env, guildId, adminRoleId);
+        const start = Math.max(0, parseInt(url.searchParams.get("start") || "0", 10) || 0);
+        const limit = Math.max(1, Math.min(5, parseInt(url.searchParams.get("limit") || "3", 10) || 3));
+        const result = await setupEnterpriseDiscord(env, guildId, adminRoleId, start, limit);
         return json(result);
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
