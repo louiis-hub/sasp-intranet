@@ -110,7 +110,7 @@ const ENTERPRISE_EMOJIS = [
 ];
 
 function enterpriseCategoryName(enterprise, index) {
-  return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]} ${enterprise}`;
+  return `${ENTERPRISE_EMOJIS[index % ENTERPRISE_EMOJIS.length]}・${enterprise}`;
 }
 
 function json(data, status = 200) {
@@ -198,13 +198,14 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
 
   const findOrCreateCategory = async (legacyName, displayName, overwrites) => {
     if (categoryByName.has(displayName)) return { item: categoryByName.get(displayName), created: false, renamed: false };
-    if (categoryByName.has(legacyName)) {
-      const existing = categoryByName.get(legacyName);
+    const existingName = [...categoryByName.keys()].find(name => name === legacyName || name.endsWith(` ${legacyName}`));
+    if (existingName) {
+      const existing = categoryByName.get(existingName);
       const item = await discordRequest(env, "PATCH", `/channels/${existing.id}`, {
         name: displayName,
         permission_overwrites: overwrites
       }, "Setup entreprises - emoji categorie");
-      categoryByName.delete(legacyName);
+      categoryByName.delete(existingName);
       categoryByName.set(displayName, item);
       return { item, created: false, renamed: true };
     }
@@ -260,6 +261,10 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
 
     const patronOnly = [{ id: employe.item.id, type: 0, deny: VIEW.toString() }];
     const desiredChannels = [
+      { name: "arriver", type: 0, overwrites: [] },
+      { name: "depart", type: 0, overwrites: [] },
+      { name: "demande-de-role", type: 0, overwrites: [] },
+      { name: "discussion", type: 0, overwrites: [] },
       { name: "discussion-patron", type: 0, overwrites: patronOnly },
       { name: "liaison-staff", type: 0, overwrites: patronOnly },
       { name: "discussion-employe", type: 0, overwrites: [] },
