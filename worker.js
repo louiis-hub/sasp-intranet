@@ -197,6 +197,16 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
   const roles = await discordRequest(env, "GET", `/guilds/${guildId}/roles`, null, "Setup entreprises");
   const channels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, "Setup entreprises");
   const roleByName = new Map(roles.map(r => [r.name, r]));
+  let citizenRole = roleByName.get(ENTERPRISE_CITIZEN_ROLE);
+  if (!citizenRole) {
+    citizenRole = await discordRequest(env, "POST", `/guilds/${guildId}/roles`, {
+      name: ENTERPRISE_CITIZEN_ROLE,
+      color: 0x95a5a6,
+      hoist: false,
+      mentionable: true
+    }, "Setup role citoyen entreprises");
+    roleByName.set(ENTERPRISE_CITIZEN_ROLE, citizenRole);
+  }
   const categoryByName = new Map();
   const channelByParentNameType = new Map();
   for (const channel of channels) {
@@ -253,7 +263,14 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
 
   const findOrCreateChannel = async (parentId, name, type, overwrites) => {
     const key = `${parentId}:${name}:${type}`;
-    if (channelByParentNameType.has(key)) return { item: channelByParentNameType.get(key), created: false };
+    if (channelByParentNameType.has(key)) {
+      const existing = channelByParentNameType.get(key);
+      const item = await discordRequest(env, "PATCH", `/channels/${existing.id}`, {
+        permission_overwrites: overwrites
+      }, "Setup entreprises - permissions salon");
+      channelByParentNameType.set(key, item);
+      return { item, created: false };
+    }
     const item = await discordRequest(env, "POST", `/guilds/${guildId}/channels`, {
       name,
       type,
@@ -298,9 +315,14 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     if (category.renamed) renamedCategories++;
 
     const patronOnly = [{ id: employe.item.id, type: 0, deny: VIEW.toString() }];
+    const citizenReadOnly = [{ id: citizenRole.id, type: 0, allow: (VIEW | READ_HISTORY).toString(), deny: SEND.toString() }];
     const desiredChannels = isPublicServiceEnterprise(enterprise)
-      ? PUBLIC_SERVICE_CHANNELS.map(name => ({ name, type: 0, overwrites: [] }))
+      ? [
+          { name: "annonce", type: 0, overwrites: citizenReadOnly },
+          { name: "discussion", type: 0, overwrites: [] }
+        ]
       : [
+          { name: "annonce", type: 0, overwrites: citizenReadOnly },
           { name: "discussion-patron", type: 0, overwrites: patronOnly },
           { name: "liaison-staff", type: 0, overwrites: patronOnly },
           { name: "discussion-employe", type: 0, overwrites: [] },
