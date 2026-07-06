@@ -481,6 +481,7 @@ export default {
     const STICKY_PROC_CHANNEL = "1521575058500489478";
     const BRACELET_COMMAND_CHANNEL = "1521575058500489478";
     const BRACELET_FORUM_CHANNEL = "1518656285074128926";
+    const SUBVENTION_CHANNEL = "1523726862075953353";
     const STICKY_PROC_EMBED = { embeds: [{ title: "⚖️ Demande de procureur", color: 0x2c3e50, description: "Utilisez la commande `/proc` pour commencer la procédure de demande de procureur.\n\nRemplissez le formulaire et validez — le dossier sera automatiquement créé dans <#1521565049729187961>.", footer: { text: "SASP • Service judiciaire" } }] };
     if (url.pathname === "/admin/send-sticky-proc" && request.method === "GET") {
       const res = await fetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages`, {
@@ -526,6 +527,22 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/install-subvention-command" && request.method === "GET") {
+      try {
+        const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const res = await fetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "subvention", description: "Déposer une demande de subvention agent" })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, data });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/install-proc-command" && request.method === "GET") {
       try {
         const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
@@ -556,6 +573,68 @@ export default {
 
       // Ping
       if (interaction.type === 1) return json({ type: 1 });
+
+      // Slash command /subvention
+      if (interaction.type === 2 && interaction.data.name === "subvention") {
+        if (interaction.channel_id !== SUBVENTION_CHANNEL) {
+          return json({ type: 4, data: { content: `❌ Utilise cette commande dans <#${SUBVENTION_CHANNEL}>.`, flags: 64 } });
+        }
+        return json({
+          type: 9,
+          data: {
+            custom_id: "subvention_modal",
+            title: "Demande de subvention",
+            components: [
+              { type: 1, components: [{ type: 4, custom_id: "sub_nom", label: "Nom", style: 1, required: true, placeholder: "Ex : Morrison", min_length: 2, max_length: 50 }] },
+              { type: 1, components: [{ type: 4, custom_id: "sub_prenom", label: "Prénom", style: 1, required: true, placeholder: "Ex : James", min_length: 2, max_length: 50 }] },
+              { type: 1, components: [{ type: 4, custom_id: "sub_matricule", label: "Matricule", style: 1, required: true, placeholder: "Ex : 123", min_length: 1, max_length: 20 }] },
+              { type: 1, components: [{ type: 4, custom_id: "sub_raison", label: "Raison de la subvention", style: 2, required: true, placeholder: "Expliquez la raison de la demande…", min_length: 5, max_length: 1000 }] },
+              { type: 1, components: [{ type: 4, custom_id: "sub_somme", label: "Somme", style: 1, required: true, placeholder: "Ex : 25 000 $", min_length: 1, max_length: 30 }] }
+            ]
+          }
+        });
+      }
+
+      // Modal submit /subvention
+      if (interaction.type === 5 && interaction.data.custom_id === "subvention_modal") {
+        const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
+        const nom       = getValue("sub_nom");
+        const prenom    = getValue("sub_prenom");
+        const matricule = getValue("sub_matricule");
+        const raison    = getValue("sub_raison");
+        const somme     = getValue("sub_somme");
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        let agentDisplay = `<@${userId}>`;
+        try {
+          const agent = await getAgentByDiscordId(env, userId);
+          if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
+        } catch {}
+        const now = new Date();
+        const res = await fetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            embeds: [{
+              title: "💸 Demande de subvention",
+              color: 0xc9a84c,
+              fields: [
+                { name: "👤 Agent", value: `${prenom} ${nom}`, inline: true },
+                { name: "🆔 Matricule", value: matricule, inline: true },
+                { name: "💰 Somme", value: somme, inline: true },
+                { name: "📋 Raison", value: raison.slice(0, 1024), inline: false },
+                { name: "📨 Demandé par", value: agentDisplay, inline: false }
+              ],
+              footer: { text: "SASP • Subvention" },
+              timestamp: now.toISOString()
+            }]
+          })
+        });
+        if (!res.ok) {
+          const err = await res.text();
+          return json({ type: 4, data: { content: `❌ Erreur création subvention (${res.status}): ${err}`, flags: 64 } });
+        }
+        return json({ type: 4, data: { content: `✅ Demande de subvention envoyée pour **${prenom} ${nom}**.`, flags: 64 } });
+      }
 
       // Slash command /proc
       if (interaction.type === 2 && interaction.data.name === "proc") {
