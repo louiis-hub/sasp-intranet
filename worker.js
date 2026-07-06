@@ -261,24 +261,37 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     return { item, created: true, renamed: false };
   };
 
-  const findOrCreateChannel = async (parentId, name, type, overwrites) => {
-    const key = `${parentId}:${name}:${type}`;
-    if (channelByParentNameType.has(key)) {
-      const existing = channelByParentNameType.get(key);
+  const findOrCreateChannel = async (parentId, legacyNames, displayName, type, overwrites) => {
+    const names = Array.isArray(legacyNames) ? legacyNames : [legacyNames];
+    const displayKey = `${parentId}:${displayName}:${type}`;
+    if (channelByParentNameType.has(displayKey)) {
+      const existing = channelByParentNameType.get(displayKey);
       const item = await discordRequest(env, "PATCH", `/channels/${existing.id}`, {
         permission_overwrites: overwrites
       }, "Setup entreprises - permissions salon");
-      channelByParentNameType.set(key, item);
-      return { item, created: false };
+      channelByParentNameType.set(displayKey, item);
+      return { item, created: false, renamed: false };
+    }
+    const legacyName = names.find(name => channelByParentNameType.has(`${parentId}:${name}:${type}`));
+    if (legacyName) {
+      const legacyKey = `${parentId}:${legacyName}:${type}`;
+      const existing = channelByParentNameType.get(legacyKey);
+      const item = await discordRequest(env, "PATCH", `/channels/${existing.id}`, {
+        name: displayName,
+        permission_overwrites: overwrites
+      }, "Setup entreprises - emoji salon");
+      channelByParentNameType.delete(legacyKey);
+      channelByParentNameType.set(displayKey, item);
+      return { item, created: false, renamed: true };
     }
     const item = await discordRequest(env, "POST", `/guilds/${guildId}/channels`, {
-      name,
+      name: displayName,
       type,
       parent_id: parentId,
       permission_overwrites: overwrites
     }, "Setup entreprises - salon");
-    channelByParentNameType.set(key, item);
-    return { item, created: true };
+    channelByParentNameType.set(displayKey, item);
+    return { item, created: true, renamed: false };
   };
 
   let createdRoles = 0;
@@ -286,6 +299,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
   let createdCategories = 0;
   let renamedCategories = 0;
   let createdChannels = 0;
+  let renamedChannels = 0;
   const details = [];
 
   const selectedEnterprises = ENTERPRISES.slice(start, start + limit);
@@ -318,20 +332,27 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     const citizenReadOnly = [{ id: citizenRole.id, type: 0, allow: (VIEW | READ_HISTORY).toString(), deny: SEND.toString() }];
     const desiredChannels = isPublicServiceEnterprise(enterprise)
       ? [
-          { name: "annonce", type: 0, overwrites: citizenReadOnly },
-          { name: "discussion", type: 0, overwrites: [] }
+          { legacy: ["annonce"], name: "\ud83d\udce2annonce", type: 0, overwrites: citizenReadOnly },
+          { legacy: ["discussion"], name: "\ud83d\udde8\ufe0fdiscussion", type: 0, overwrites: [] }
         ]
       : [
-          { name: "annonce", type: 0, overwrites: citizenReadOnly },
-          { name: "discussion-patron", type: 0, overwrites: patronOnly },
-          { name: "liaison-staff", type: 0, overwrites: patronOnly },
-          { name: "discussion-employe", type: 0, overwrites: [] },
-          { name: "documents", type: 15, overwrites: [] }
+          { legacy: ["annonce"], name: "\ud83d\udce2annonce", type: 0, overwrites: citizenReadOnly },
+          { legacy: ["discussion-patron", "discussions-patron"], name: "\ud83d\udde8\ufe0fdiscussions-patron", type: 0, overwrites: patronOnly },
+          { legacy: ["discussion-employe"], name: "\ud83d\udde8\ufe0fdiscussion-employe", type: 0, overwrites: [] },
+          { legacy: ["liaison-staff", "liaisson-staff"], name: "\ud83d\udd1eliaison-staff", type: 0, overwrites: patronOnly },
+          { legacy: ["documents", "document"], name: "\ud83d\uddc3\ufe0fdocument", type: 15, overwrites: [] }
         ];
+    const orderedChannels = [];
     for (const channel of desiredChannels) {
-      const made = await findOrCreateChannel(category.item.id, channel.name, channel.type, channel.overwrites);
+      const made = await findOrCreateChannel(category.item.id, channel.legacy, channel.name, channel.type, channel.overwrites);
       if (made.created) createdChannels++;
+      if (made.renamed) renamedChannels++;
+      orderedChannels.push(made.item);
     }
+    await discordRequest(env, "PATCH", `/guilds/${guildId}/channels`, orderedChannels.map((channel, index) => ({
+      id: channel.id,
+      position: index
+    })), "Reorder salons entreprises");
     details.push({ enterprise, category_id: category.item.id });
   }
 
@@ -348,6 +369,7 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     created_categories: createdCategories,
     renamed_categories: renamedCategories,
     created_channels: createdChannels,
+    renamed_channels: renamedChannels,
     details
   };
 }
@@ -460,25 +482,42 @@ async function setupPublicServiceCategories(env, guildId = ENTERPRISE_GUILD_ID) 
   let deletedChannels = 0;
   let createdChannels = 0;
   for (const target of targets) {
+    const desired = [
+      { legacy: ["annonce"], name: "\ud83d\udce2annonce" },
+      { legacy: ["discussion"], name: "\ud83d\udde8\ufe0fdiscussion" }
+    ];
+    const wantedNames = desired.flatMap(channel => [channel.name, ...channel.legacy]);
     const children = channels.filter(channel => channel.parent_id === target.category.id);
     for (const channel of children) {
-      if (PUBLIC_SERVICE_CHANNELS.includes(channel.name) && channel.type === 0) continue;
+      if (wantedNames.includes(channel.name) && channel.type === 0) continue;
       await discordRequest(env, "DELETE", `/channels/${channel.id}`, null, "Cleanup categorie publique");
       deletedChannels++;
     }
 
     const refreshed = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, "Setup salons categories publiques");
-    for (const name of PUBLIC_SERVICE_CHANNELS) {
-      const exists = refreshed.some(channel => channel.parent_id === target.category.id && channel.name === name && channel.type === 0);
-      if (exists) continue;
-      await discordRequest(env, "POST", `/guilds/${guildId}/channels`, {
-        name,
-        type: 0,
-        parent_id: target.category.id,
-        permission_overwrites: []
-      }, "Setup salons categories publiques");
-      createdChannels++;
+    const ordered = [];
+    for (const wanted of desired) {
+      let existing = refreshed.find(channel => channel.parent_id === target.category.id && channel.name === wanted.name && channel.type === 0);
+      if (!existing) {
+        existing = refreshed.find(channel => channel.parent_id === target.category.id && wanted.legacy.includes(channel.name) && channel.type === 0);
+      }
+      if (existing) {
+        existing = await discordRequest(env, "PATCH", `/channels/${existing.id}`, { name: wanted.name }, "Setup salons categories publiques");
+      } else {
+        existing = await discordRequest(env, "POST", `/guilds/${guildId}/channels`, {
+          name: wanted.name,
+          type: 0,
+          parent_id: target.category.id,
+          permission_overwrites: []
+        }, "Setup salons categories publiques");
+        createdChannels++;
+      }
+      ordered.push(existing);
     }
+    await discordRequest(env, "PATCH", `/guilds/${guildId}/channels`, ordered.map((channel, index) => ({
+      id: channel.id,
+      position: index
+    })), "Reorder salons categories publiques");
   }
 
   await discordRequest(env, "PATCH", `/guilds/${guildId}/channels`, targets.map((target, index) => ({
