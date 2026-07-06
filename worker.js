@@ -2,6 +2,60 @@
 const DISCORD_API = "https://discord.com/api/v10";
 const SUPABASE_URL = "https://ufxhxptzcnvelnbprwng.supabase.co";
 
+const MOJIBAKE_REPLACEMENTS = [
+  ["Ã©", "\u00e9"], ["Ã¨", "\u00e8"], ["Ãª", "\u00ea"], ["Ã«", "\u00eb"],
+  ["Ã ", "\u00e0"], ["Ã¢", "\u00e2"], ["Ã¤", "\u00e4"], ["Ã§", "\u00e7"],
+  ["Ã®", "\u00ee"], ["Ã¯", "\u00ef"], ["Ã´", "\u00f4"], ["Ã¶", "\u00f6"],
+  ["Ã¹", "\u00f9"], ["Ã»", "\u00fb"], ["Ã¼", "\u00fc"], ["Ã‰", "\u00c9"],
+  ["Ã€", "\u00c0"], ["Ã‡", "\u00c7"], ["Â·", "\u00b7"], ["Â°", "\u00b0"],
+  ["Â«", "\u00ab"], ["Â»", "\u00bb"], ["Â", ""],
+  ["â€”", "\u2014"], ["â€“", "\u2013"], ["â€¢", "\u2022"], ["â€¦", "\u2026"],
+  ["â€˜", "\u2018"], ["â€™", "\u2019"], ["â€œ", "\u201c"], ["â€", "\u201d"],
+  ["âŒ", "\u274c"], ["âœ…", "\u2705"], ["âœï¸", "\u270f\ufe0f"],
+  ["âš–ï¸", "\u2696\ufe0f"], ["âš ï¸", "\u26a0\ufe0f"], ["â³", "\u23f3"],
+  ["â±ï¸", "\u23f1\ufe0f"], ["â„¹ï¸", "\u2139\ufe0f"],
+  ["ðŸš”", "\ud83d\ude94"], ["ðŸŸ¢", "\ud83d\udfe2"], ["ðŸ”´", "\ud83d\udd34"],
+  ["ðŸ›‘", "\ud83d\uded1"], ["ðŸ•—", "\ud83d\udd57"], ["ðŸ“‹", "\ud83d\udccb"],
+  ["ðŸ’¸", "\ud83d\udcb8"], ["ðŸ‘¤", "\ud83d\udc64"], ["ðŸ†”", "\ud83c\udd94"],
+  ["ðŸ’°", "\ud83d\udcb0"], ["ðŸ“¨", "\ud83d\udce8"], ["ðŸ”Ž", "\ud83d\udd0e"],
+  ["ðŸ§‘", "\ud83e\uddd1"], ["ðŸ“ž", "\ud83d\udcde"], ["ðŸ‘®", "\ud83d\udc6e"],
+  ["ðŸ•", "\ud83d\udd50"], ["ðŸ”—", "\ud83d\udd17"], ["ðŸ“", "\ud83d\udccd"],
+  ["ðŸ“Œ", "\ud83d\udccc"], ["ðŸ·ï¸", "\ud83c\udff7\ufe0f"],
+  ["ðŸ”’", "\ud83d\udd12"], ["ðŸ”„", "\ud83d\udd04"], ["ðŸš«", "\ud83d\udeab"],
+  ["ðŸ“…", "\ud83d\udcc5"], ["ðŸ™‹", "\ud83d\ude4b"], ["ðŸŽ¯", "\ud83c\udfaf"],
+  ["ðŸ“", "\ud83d\udcdd"]
+];
+
+function repairMojibakeString(value) {
+  if (typeof value !== "string" || !/[ÃÂâð]/.test(value)) return value;
+  let fixed = value;
+  for (const [bad, good] of MOJIBAKE_REPLACEMENTS) fixed = fixed.split(bad).join(good);
+  return fixed;
+}
+
+function repairDiscordTextDeep(value) {
+  if (typeof value === "string") return repairMojibakeString(value);
+  if (Array.isArray(value)) return value.map(repairDiscordTextDeep);
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [key, item] of Object.entries(value)) out[key] = repairDiscordTextDeep(item);
+    return out;
+  }
+  return value;
+}
+
+async function discordFetch(url, init = {}) {
+  const next = { ...init };
+  if (typeof next.body === "string" && /[ÃÂâð]/.test(next.body)) {
+    try {
+      next.body = JSON.stringify(repairDiscordTextDeep(JSON.parse(next.body)));
+    } catch {
+      next.body = repairMojibakeString(next.body);
+    }
+  }
+  return fetch(url, next);
+}
+
 const DIVISION_ROLES = {
   'CID':  '1518631634524569641',
   'SWAT': '1504454935645786222',
@@ -169,7 +223,7 @@ function enterpriseRoleSpecs(enterprise) {
 }
 
 function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
+  return new Response(JSON.stringify(repairDiscordTextDeep(data)), {
     status,
     headers: { "content-type": "application/json", "access-control-allow-origin": "*" }
   });
@@ -201,7 +255,7 @@ function hasStaffRole(member) {
 }
 
 async function discordRequest(env, method, path, body, reason) {
-  const res = await fetch(`${DISCORD_API}${path}`, {
+  const res = await discordFetch(`${DISCORD_API}${path}`, {
     method,
     headers: {
       "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
@@ -787,7 +841,7 @@ function buildPointeuseMessage(active) {
 
 // â”€â”€ Discord message edit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function editMessage(env, channelId, messageId, payload) {
-  await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
+  await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
     method: "PATCH",
     headers: {
       "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
@@ -811,7 +865,7 @@ async function autoClockout6h(env) {
     const a = p.agents || {};
     return `\u2022 **${(a.prenom + ' ' + a.nom).trim()}** (${a.matricule || '\u2014'}) a oubli\u00e9 de terminer son service et a bien \u00e9t\u00e9 d\u00e9connect\u00e9 automatiquement.`;
   }).join('\n');
-  await fetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
+  await discordFetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
     method: 'POST',
     headers: { 'Authorization': `Bot ${env.DISCORD_BOT_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -846,7 +900,7 @@ async function autoClockoutAll(env) {
     const a = p.agents || {};
     return `\u2022 ${(a.prenom + ' ' + a.nom).trim()} (${a.matricule || '\u2014'})`;
   }).join('\n');
-  await fetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
+  await discordFetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
     method: 'POST',
     headers: { 'Authorization': `Bot ${env.DISCORD_BOT_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -948,14 +1002,14 @@ export default {
       const results = [];
       for (const code of (add_codes || [])) {
         const roleId = ALL_SYNCABLE_ROLES[code]; if (!roleId) continue;
-        const r = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
+        const r = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
           method: "PUT", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet â€” sync" }
         });
         results.push({ code, action: "add", status: r.status });
       }
       for (const code of (remove_codes || [])) {
         const roleId = ALL_SYNCABLE_ROLES[code]; if (!roleId) continue;
-        const r = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
+        const r = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
           method: "DELETE", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet â€” sync" }
         });
         results.push({ code, action: "remove", status: r.status });
@@ -967,7 +1021,7 @@ export default {
     if (url.pathname === "/grade-role-counts" && request.method === "GET") {
       const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
       try {
-        const res = await fetch(`${DISCORD_API}/guilds/${guildId}/roles/member-counts`, {
+        const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/roles/member-counts`, {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
         });
         if (!res.ok) throw new Error(`Discord role counts failed: ${res.status}`);
@@ -982,7 +1036,7 @@ export default {
       const discordId = url.searchParams.get("discord_id");
       if (!discordId) return json({ error: "Missing discord_id" }, 400);
       const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
-      const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
+      const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
       if (!res.ok) return json({ ok: false, error: "Membre non trouvÃ©" }, 404);
@@ -1008,7 +1062,7 @@ export default {
         const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
         const map = {};
         for (const discordId of (discord_ids || [])) {
-          const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
+          const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
           });
           if (!res.ok) continue;
@@ -1042,7 +1096,7 @@ export default {
         for (const code of allCodes) {
           const roleId = DIVISION_ROLES[code];
           const method = hasDivisions.includes(code) ? "PUT" : "DELETE";
-          const r = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${ag.discord_id}/roles/${roleId}`, {
+          const r = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${ag.discord_id}/roles/${roleId}`, {
             method, headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet â€” sync global" }
           });
           if (r.ok || r.status === 204) ok++; else errors++;
@@ -1070,19 +1124,19 @@ export default {
         footer: { text: `SASP Intranet â€¢ ${lines.length} agent(s) rÃ©pertoriÃ©(s)` },
         timestamp: new Date().toISOString()
       };
-      const msgsRes = await fetch(`${DISCORD_API}/channels/${channelId}/messages?limit=50`, {
+      const msgsRes = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages?limit=50`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
       const msgs = await msgsRes.json();
       const existing = Array.isArray(msgs) && msgs.find(m => m.author?.bot && m.embeds?.[0]?.title?.includes('TÃ©lÃ©phones'));
       if (existing) {
-        await fetch(`${DISCORD_API}/channels/${channelId}/messages/${existing.id}`, {
+        await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${existing.id}`, {
           method: "PATCH",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ embeds: [embed] })
         });
       } else {
-        await fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+        await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ embeds: [embed] })
@@ -1099,7 +1153,7 @@ export default {
       }
       try {
         const { embed } = await request.json();
-        await fetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
+        await discordFetch(`${DISCORD_API}/channels/1519525957390827711/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ embeds: [{ ...embed, footer: { text: "SASP Intranet" }, timestamp: new Date().toISOString() }] })
@@ -1118,7 +1172,7 @@ export default {
       if (!userId) return json({ error: "Missing user_id" }, 400);
       const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
       try {
-        const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${userId}`, {
+        const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${userId}`, {
           headers: { authorization: `Bot ${env.DISCORD_BOT_TOKEN}` }
         });
         if (!res.ok) return json({ roles: [] });
@@ -1135,7 +1189,7 @@ export default {
       if (!channelId) return json({ error: "Missing channel_id" }, 400);
       const active = await getAllActivePointages(env);
       const payload = buildPointeuseMessage(active);
-      const res = await fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+      const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
         method: "POST",
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -1148,7 +1202,7 @@ export default {
     const STICKY_PLAINTE_CHANNEL = "1519510826233364500";
     const STICKY_PLAINTE_EMBED = { embeds: [{ title: "ðŸ“‹ DÃ©poser une plainte", color: 0x3498db, description: "Utilisez la commande `/plainte` pour dÃ©poser une plainte officielle.\n\nUne fois le formulaire validÃ©, **copiez-collez** le message gÃ©nÃ©rÃ© et envoyez-le ici :\nhttps://discord.com/channels/1512185605805703179/1517219854724235477", footer: { text: "SASP â€¢ Service des plaintes" } }] };
     if (url.pathname === "/admin/send-sticky-plainte" && request.method === "GET") {
-      const res = await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages`, {
+      const res = await discordFetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages`, {
         method: "POST",
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
         body: JSON.stringify(STICKY_PLAINTE_EMBED)
@@ -1163,18 +1217,18 @@ export default {
     const SUBVENTION_CHANNEL = "1523726862075953353";
     const STICKY_PROC_EMBED = { embeds: [{ title: "âš–ï¸ Procureur & bracelet", color: 0x2c3e50, description: "**Commandes disponibles dans ce salon :**\n\nâ€¢ `/proc` â€” crÃ©er une demande procureur complÃ¨te. Le dossier sera automatiquement crÃ©Ã© dans <#1521565049729187961>.\n\nâ€¢ `/bracelet` â€” crÃ©er uniquement un bracelet Ã©lectronique, sans ouvrir de dossier procureur.\n\nPour un dossier procureur dÃ©jÃ  ouvert, utilisez le bouton **Bracelet Ã‰lectronique** dans le thread du `/proc` afin de garder la liaison entre les deux dossiers.", footer: { text: "SASP â€¢ Service judiciaire" } }] };
     async function refreshProcSticky() {
-      const msgsRes = await fetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages?limit=20`, {
+      const msgsRes = await discordFetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages?limit=20`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
       const msgs = await msgsRes.json();
       const sticky = Array.isArray(msgs) && msgs.find(m => ["âš–ï¸ Demande de procureur", "âš–ï¸ Procureur & bracelet"].includes(m.embeds?.[0]?.title));
       if (sticky) {
-        await fetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages/${sticky.id}`, {
+        await discordFetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages/${sticky.id}`, {
           method: "DELETE",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
         });
       }
-      return fetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages`, {
+      return discordFetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages`, {
         method: "POST",
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
         body: JSON.stringify(STICKY_PROC_EMBED)
@@ -1182,18 +1236,18 @@ export default {
     }
     const STICKY_SUBVENTION_EMBED = { embeds: [{ title: "ðŸ’¸ RÃ¨gles subvention", color: 0xc9a84c, description: "Pour faire une demande de subvention, utilisez la commande `/subvention` dans ce salon.\n\n**RÃ¨gles actuelles :**\nâ€¢ La subvention est fixÃ©e Ã  **10 000 $ par voiture** pour le moment.\nâ€¢ Il est interdit de faire des **performances** avec cette subvention.\nâ€¢ Il est interdit d'acheter une **nouvelle voiture** avec cette subvention.", footer: { text: "SASP â€¢ Subvention" } }] };
     async function refreshSubventionSticky() {
-      const msgsRes = await fetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages?limit=20`, {
+      const msgsRes = await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages?limit=20`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
       const msgs = await msgsRes.json();
       const sticky = Array.isArray(msgs) && msgs.find(m => m.embeds?.[0]?.title === "ðŸ’¸ RÃ¨gles subvention");
       if (sticky) {
-        await fetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages/${sticky.id}`, {
+        await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages/${sticky.id}`, {
           method: "DELETE",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
         });
       }
-      return fetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages`, {
+      return discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages`, {
         method: "POST",
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
         body: JSON.stringify(STICKY_SUBVENTION_EMBED)
@@ -1216,7 +1270,7 @@ export default {
         const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
-        const res = await fetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ name: "plainte", description: "DÃ©poser une plainte officielle SASP" })
@@ -1233,7 +1287,7 @@ export default {
         const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
-        const res = await fetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ name: "bracelet", description: "CrÃ©er un bracelet Ã©lectronique sans proc" })
@@ -1249,7 +1303,7 @@ export default {
         const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
-        const res = await fetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ name: "subvention", description: "DÃ©poser une demande de subvention agent" })
@@ -1265,7 +1319,7 @@ export default {
         const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
-        const res = await fetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ name: "proc", description: "CrÃ©er une demande procureur SASP" })
@@ -1320,7 +1374,7 @@ export default {
         const matricule = identity.matricule || "â€”";
         const sourceLabel = identity.source === "fiche" ? "fiche intranet" : "pseudo Discord";
         const now = new Date();
-        const res = await fetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages`, {
+        const res = await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1395,7 +1449,7 @@ export default {
         ];
         if (avocat) fields.push({ name: "âš–ï¸ Avocat + TÃ©lÃ©phone", value: avocat, inline: false });
 
-        const forumRes = await fetch(`${DISCORD_API}/channels/1521565049729187961/threads`, {
+        const forumRes = await discordFetch(`${DISCORD_API}/channels/1521565049729187961/threads`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1429,7 +1483,7 @@ export default {
           const err = await forumRes.text();
           return json({ type: 4, data: { content: `âŒ Erreur crÃ©ation forum (${forumRes.status}): ${err}`, flags: 64 } });
         }
-        await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
+        await discordFetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ embeds: [{ title: "âš–ï¸ Nouvelle demande procureur", color: 0x2c3e50, fields: [
@@ -1483,7 +1537,7 @@ export default {
 
         const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nPosÃ© le : ${date}\nNumÃ©ro de tÃ©lÃ©phone : ${tel}\nRaison : ${raison}\nPosÃ© par : ${agentDisplay}\n\nPensez Ã  bien noter quand les individus viennent pointer\n\nâ„¹ï¸ Les bracelets peuvent Ãªtre activÃ©s pour voir la position une fois toutes les 24h via un message "BIP" sur le tÃ©lÃ©phone de l'individu.`;
 
-        const forumRes = await fetch(`${DISCORD_API}/channels/${BRACELET_FORUM_CHANNEL}/threads`, {
+        const forumRes = await discordFetch(`${DISCORD_API}/channels/${BRACELET_FORUM_CHANNEL}/threads`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1548,7 +1602,7 @@ export default {
         const procThreadId = interaction.channel_id;
         const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nDossier proc liÃ© : <#${procThreadId}>\n\nPosÃ© le : ${date}\nNumÃ©ro de tÃ©lÃ©phone : ${tel}\nRaison : ${raison}\nPosÃ© par : ${agentDisplay}\n\nPensez Ã  bien noter quand les individus viennent pointer\n\nâ„¹ï¸ Les bracelets peuvent Ãªtre activÃ©s pour voir la position une fois toutes les 24h via un message "BIP" sur le tÃ©lÃ©phone de l'individu.`;
 
-        const forumRes = await fetch(`${DISCORD_API}/channels/${BRACELET_FORUM_CHANNEL}/threads`, {
+        const forumRes = await discordFetch(`${DISCORD_API}/channels/${BRACELET_FORUM_CHANNEL}/threads`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1569,12 +1623,12 @@ export default {
         const braceletData = await forumRes.json();
         const braceletThreadId = braceletData.id;
         // Poster le lien du bracelet dans le thread proc pour relier les deux
-        await fetch(`${DISCORD_API}/channels/${procThreadId}/messages`, {
+        await discordFetch(`${DISCORD_API}/channels/${procThreadId}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ content: `ðŸ”— Bracelet crÃ©Ã© : <#${braceletThreadId}>` })
         });
-        await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
+        await discordFetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ embeds: [{ title: "ðŸ”— Bracelet Ã©lectronique posÃ©", color: 0xe67e22, fields: [
@@ -1616,18 +1670,18 @@ export default {
 
         const applyTagAndMessage = async (threadId) => {
           try {
-            const threadInfo = await (await fetch(`${DISCORD_API}/channels/${threadId}`, { headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` } })).json();
-            const forumInfo  = await (await fetch(`${DISCORD_API}/channels/${threadInfo.parent_id}`, { headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` } })).json();
+            const threadInfo = await (await discordFetch(`${DISCORD_API}/channels/${threadId}`, { headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` } })).json();
+            const forumInfo  = await (await discordFetch(`${DISCORD_API}/channels/${threadInfo.parent_id}`, { headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` } })).json();
             const tag = (forumInfo.available_tags || []).find(t => t.name.toUpperCase() === tagName.toUpperCase());
             if (tag) {
-              await fetch(`${DISCORD_API}/channels/${threadId}`, {
+              await discordFetch(`${DISCORD_API}/channels/${threadId}`, {
                 method: "PATCH",
                 headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
                 body: JSON.stringify({ applied_tags: [tag.id] })
               });
             }
           } catch {}
-          await fetch(`${DISCORD_API}/channels/${threadId}/messages`, {
+          await discordFetch(`${DISCORD_API}/channels/${threadId}/messages`, {
             method: "POST",
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
             body: JSON.stringify({ content: `${msg} â€” par ${agentDisplay}` })
@@ -1639,7 +1693,7 @@ export default {
 
         // Si on est dans un thread proc, cherche le bracelet liÃ© et propage
         try {
-          const msgsRes = await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages?limit=50`, {
+          const msgsRes = await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages?limit=50`, {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
           });
           const msgs = await msgsRes.json();
@@ -1653,7 +1707,7 @@ export default {
               // Si affaire clÃ´turÃ©e : ping l'agent qui a posÃ© le bracelet pour lui dire de l'enlever
               if (tagName === "AFFAIRE CLOTURER") {
                 try {
-                  const braceletMsgsRes = await fetch(`${DISCORD_API}/channels/${braceletThreadId}/messages?limit=10`, {
+                  const braceletMsgsRes = await discordFetch(`${DISCORD_API}/channels/${braceletThreadId}/messages?limit=10`, {
                     headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
                   });
                   const braceletMsgs = await braceletMsgsRes.json();
@@ -1664,7 +1718,7 @@ export default {
                     if (poseMatch) {
                       const agent = await getAgentByMatricule(env, poseMatch[1]);
                       const ping = agent && agent.discord_id ? `<@${agent.discord_id}>` : `Matricule ${poseMatch[1]}`;
-                      await fetch(`${DISCORD_API}/channels/${braceletThreadId}/messages`, {
+                      await discordFetch(`${DISCORD_API}/channels/${braceletThreadId}/messages`, {
                         method: "POST",
                         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
                         body: JSON.stringify({ content: `${ping} â€” L'affaire est clÃ´turÃ©e, pense Ã  **enlever le bracelet Ã©lectronique**.` })
@@ -1675,7 +1729,7 @@ export default {
 
                 // Fermer (archiver + verrouiller) les deux posts
                 const closeThread = async (tid) => {
-                  await fetch(`${DISCORD_API}/channels/${tid}`, {
+                  await discordFetch(`${DISCORD_API}/channels/${tid}`, {
                     method: "PATCH",
                     headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
                     body: JSON.stringify({ archived: true, locked: true })
@@ -1688,7 +1742,7 @@ export default {
           }
         } catch {}
 
-        await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
+        await discordFetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ embeds: [{ title: "ðŸ·ï¸ Statut mis Ã  jour", color: 0x9b59b6, fields: [
@@ -1711,12 +1765,12 @@ export default {
         const heureStr = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
         const dateStr  = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
         const threadName = interaction.message?.thread?.name || interaction.channel?.name || "Inconnu";
-        await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
+        await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ content: `âœ… Pointage enregistrÃ© le ${dateStr} Ã  ${heureStr} â€” par ${agentDisplay}` })
         });
-        await fetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
+        await discordFetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ embeds: [{ title: "ðŸ“ Pointage bracelet enregistrÃ©", color: 0x2ecc71, fields: [
@@ -1782,7 +1836,7 @@ export default {
           { name: "âš–ï¸ Note",              value: "La Cour est respectueusement saisie de ce dossier et invitÃ©e Ã  statuer sur les suites judiciaires Ã  y apporter. Le SASP demeure Ã  disposition pour toute information complÃ©mentaire jugÃ©e nÃ©cessaire Ã  l'instruction de cette affaire.", inline: false }
         ];
 
-        const postRes = await fetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
+        const postRes = await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1798,18 +1852,18 @@ export default {
 
         // Supprime l'ancien sticky puis le renvoie
         try {
-          const msgsRes = await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages?limit=20`, {
+          const msgsRes = await discordFetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages?limit=20`, {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
           });
           const msgs = await msgsRes.json();
           const sticky = Array.isArray(msgs) && msgs.find(m => m.embeds?.[0]?.title === "ðŸ“‹ DÃ©poser une plainte");
           if (sticky) {
-            await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages/${sticky.id}`, {
+            await discordFetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages/${sticky.id}`, {
               method: "DELETE",
               headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
             });
           }
-          await fetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages`, {
+          await discordFetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages`, {
             method: "POST",
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
             body: JSON.stringify(STICKY_PLAINTE_EMBED)
@@ -1833,7 +1887,7 @@ export default {
         const resume         = getValue("resume");
 
         // RÃ©cupÃ¨re dossier # et agent en charge depuis l'embed original
-        const origRes = await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
+        const origRes = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
         });
         const origMsg = await origRes.json();
@@ -1855,7 +1909,7 @@ export default {
           { name: "âš–ï¸ Note",              value: "La Cour est respectueusement saisie de ce dossier et invitÃ©e Ã  statuer sur les suites judiciaires Ã  y apporter. Le SASP demeure Ã  disposition pour toute information complÃ©mentaire jugÃ©e nÃ©cessaire Ã  l'instruction de cette affaire.", inline: false }
         ];
 
-        await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
+        await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
           method: "PATCH",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
