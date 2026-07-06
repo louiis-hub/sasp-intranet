@@ -118,6 +118,8 @@ function enterpriseRoleName(baseName, index) {
 const ENTERPRISE_GENERAL_CATEGORY = "\ud83c\udf10\u30fbG\u00e9n\u00e9ral";
 const ENTERPRISE_GENERAL_CHANNELS = ["arriver", "depart", "demande-de-role", "discussion", "ticket"];
 const ENTERPRISE_CITIZEN_ROLE = "Citoyen";
+const PUBLIC_SERVICE_ENTERPRISES = ["SASP-SUD", "SASP-NORD", "Gouvernement", "D.O.J", "SAMS"];
+const PUBLIC_SERVICE_CHANNELS = ["annonce", "discussion"];
 
 function isEnterpriseCategoryName(name) {
   return ENTERPRISES.some(enterprise =>
@@ -125,6 +127,10 @@ function isEnterpriseCategoryName(name) {
     name.endsWith(` ${enterprise}`) ||
     name.endsWith(`・${enterprise}`)
   );
+}
+
+function isPublicServiceEnterprise(enterprise) {
+  return PUBLIC_SERVICE_ENTERPRISES.includes(enterprise);
 }
 
 function json(data, status = 200) {
@@ -292,12 +298,14 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
     if (category.renamed) renamedCategories++;
 
     const patronOnly = [{ id: employe.item.id, type: 0, deny: VIEW.toString() }];
-    const desiredChannels = [
-      { name: "discussion-patron", type: 0, overwrites: patronOnly },
-      { name: "liaison-staff", type: 0, overwrites: patronOnly },
-      { name: "discussion-employe", type: 0, overwrites: [] },
-      { name: "documents", type: 15, overwrites: [] }
-    ];
+    const desiredChannels = isPublicServiceEnterprise(enterprise)
+      ? PUBLIC_SERVICE_CHANNELS.map(name => ({ name, type: 0, overwrites: [] }))
+      : [
+          { name: "discussion-patron", type: 0, overwrites: patronOnly },
+          { name: "liaison-staff", type: 0, overwrites: patronOnly },
+          { name: "discussion-employe", type: 0, overwrites: [] },
+          { name: "documents", type: 15, overwrites: [] }
+        ];
     for (const channel of desiredChannels) {
       const made = await findOrCreateChannel(category.item.id, channel.name, channel.type, channel.overwrites);
       if (made.created) createdChannels++;
@@ -411,6 +419,58 @@ async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminR
     created_citizen_role: createdCitizenRole,
     citizen_role_id: citizenRole.id,
     general_category_id: generalCategory.id
+  };
+}
+
+async function setupPublicServiceCategories(env, guildId = ENTERPRISE_GUILD_ID) {
+  const channels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, "Setup categories publiques");
+  const categories = channels.filter(channel => channel.type === 4);
+  const targets = PUBLIC_SERVICE_ENTERPRISES.map(enterprise => ({
+    enterprise,
+    category: categories.find(channel =>
+      channel.name === enterprise ||
+      channel.name.endsWith(` ${enterprise}`) ||
+      channel.name.endsWith(`・${enterprise}`) ||
+      channel.name.endsWith(`ãƒ»${enterprise}`)
+    )
+  })).filter(item => item.category);
+
+  let deletedChannels = 0;
+  let createdChannels = 0;
+  for (const target of targets) {
+    const children = channels.filter(channel => channel.parent_id === target.category.id);
+    for (const channel of children) {
+      if (PUBLIC_SERVICE_CHANNELS.includes(channel.name) && channel.type === 0) continue;
+      await discordRequest(env, "DELETE", `/channels/${channel.id}`, null, "Cleanup categorie publique");
+      deletedChannels++;
+    }
+
+    const refreshed = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, "Setup salons categories publiques");
+    for (const name of PUBLIC_SERVICE_CHANNELS) {
+      const exists = refreshed.some(channel => channel.parent_id === target.category.id && channel.name === name && channel.type === 0);
+      if (exists) continue;
+      await discordRequest(env, "POST", `/guilds/${guildId}/channels`, {
+        name,
+        type: 0,
+        parent_id: target.category.id,
+        permission_overwrites: []
+      }, "Setup salons categories publiques");
+      createdChannels++;
+    }
+  }
+
+  await discordRequest(env, "PATCH", `/guilds/${guildId}/channels`, targets.map((target, index) => ({
+    id: target.category.id,
+    position: index
+  })), "Reorder categories publiques");
+
+  return {
+    ok: true,
+    guild_id: guildId,
+    processed_categories: targets.length,
+    deleted_channels: deletedChannels,
+    created_channels: createdChannels,
+    category_ids: targets.map(target => target.category.id)
   };
 }
 
@@ -641,6 +701,16 @@ export default {
         const start = Math.max(0, parseInt(url.searchParams.get("start") || "0", 10) || 0);
         const limit = Math.max(1, Math.min(5, parseInt(url.searchParams.get("limit") || "3", 10) || 3));
         const result = await setupEnterpriseGeneral(env, guildId, adminRoleId, start, limit);
+        return json(result);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/setup-public-services" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild") || ENTERPRISE_GUILD_ID;
+        const result = await setupPublicServiceCategories(env, guildId);
         return json(result);
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
