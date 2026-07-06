@@ -117,6 +117,40 @@ async function getAgentByDiscordId(env, discordId) {
   return data && data.length > 0 ? data[0] : null;
 }
 
+function parseAgentIdentityFromDiscordName(name) {
+  const clean = String(name || "")
+    .replace(/\[[^\]]+\]|\([^)]*\)/g, " ")
+    .replace(/[|•·_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const matriculeMatch = clean.match(/(?:^|\s)(?:#|mle\.?|mat\.?|matricule)?\s*(\d{1,5})(?=\s|$)/i);
+  const matricule = matriculeMatch ? matriculeMatch[1] : "";
+  const withoutMatricule = matriculeMatch
+    ? (clean.slice(0, matriculeMatch.index) + " " + clean.slice(matriculeMatch.index + matriculeMatch[0].length)).replace(/\s+/g, " ").trim()
+    : clean;
+  const parts = withoutMatricule.split(/\s+/).filter(Boolean);
+  if (!parts.length) return null;
+  return {
+    prenom: parts[0] || "",
+    nom: parts.slice(1).join(" ") || "",
+    matricule
+  };
+}
+
+async function getAgentIdentityForInteraction(env, interaction) {
+  const userId = interaction.member?.user?.id || interaction.user?.id;
+  try {
+    const agent = await getAgentByDiscordId(env, userId);
+    if (agent) return { nom: agent.nom || "", prenom: agent.prenom || "", matricule: agent.matricule || "", source: "fiche" };
+  } catch {}
+  const member = interaction.member || {};
+  const user = member.user || interaction.user || {};
+  const displayName = member.nick || user.global_name || user.username || "";
+  const parsed = parseAgentIdentityFromDiscordName(displayName);
+  if (parsed) return { ...parsed, source: "discord" };
+  return { nom: "", prenom: displayName || `<@${userId}>`, matricule: "", source: "discord" };
+}
+
 async function getAgentByMatricule(env, matricule) {
   const data = await sb(env, "GET", `/agents?matricule=eq.${matricule}&select=id,nom,prenom,matricule,discord_id&limit=1`);
   return data && data.length > 0 ? data[0] : null;
@@ -585,9 +619,6 @@ export default {
             custom_id: "subvention_modal",
             title: "Demande de subvention",
             components: [
-              { type: 1, components: [{ type: 4, custom_id: "sub_nom", label: "Nom", style: 1, required: true, placeholder: "Ex : Morrison", min_length: 2, max_length: 50 }] },
-              { type: 1, components: [{ type: 4, custom_id: "sub_prenom", label: "Prénom", style: 1, required: true, placeholder: "Ex : James", min_length: 2, max_length: 50 }] },
-              { type: 1, components: [{ type: 4, custom_id: "sub_matricule", label: "Matricule", style: 1, required: true, placeholder: "Ex : 123", min_length: 1, max_length: 20 }] },
               { type: 1, components: [{ type: 4, custom_id: "sub_raison", label: "Raison de la subvention", style: 2, required: true, placeholder: "Expliquez la raison de la demande…", min_length: 5, max_length: 1000 }] },
               { type: 1, components: [{ type: 4, custom_id: "sub_somme", label: "Somme", style: 1, required: true, placeholder: "Ex : 25 000 $", min_length: 1, max_length: 30 }] }
             ]
@@ -598,17 +629,13 @@ export default {
       // Modal submit /subvention
       if (interaction.type === 5 && interaction.data.custom_id === "subvention_modal") {
         const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
-        const nom       = getValue("sub_nom");
-        const prenom    = getValue("sub_prenom");
-        const matricule = getValue("sub_matricule");
         const raison    = getValue("sub_raison");
         const somme     = getValue("sub_somme");
         const userId = interaction.member?.user?.id || interaction.user?.id;
-        let agentDisplay = `<@${userId}>`;
-        try {
-          const agent = await getAgentByDiscordId(env, userId);
-          if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
-        } catch {}
+        const identity = await getAgentIdentityForInteraction(env, interaction);
+        const agentName = `${identity.prenom || ""} ${identity.nom || ""}`.trim() || `<@${userId}>`;
+        const matricule = identity.matricule || "—";
+        const sourceLabel = identity.source === "fiche" ? "fiche intranet" : "pseudo Discord";
         const now = new Date();
         const res = await fetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages`, {
           method: "POST",
@@ -618,11 +645,12 @@ export default {
               title: "💸 Demande de subvention",
               color: 0xc9a84c,
               fields: [
-                { name: "👤 Agent", value: `${prenom} ${nom}`, inline: true },
+                { name: "👤 Agent", value: agentName, inline: true },
                 { name: "🆔 Matricule", value: matricule, inline: true },
                 { name: "💰 Somme", value: somme, inline: true },
                 { name: "📋 Raison", value: raison.slice(0, 1024), inline: false },
-                { name: "📨 Demandé par", value: agentDisplay, inline: false }
+                { name: "📨 Demandé par", value: `<@${userId}>`, inline: true },
+                { name: "🔎 Source identité", value: sourceLabel, inline: true }
               ],
               footer: { text: "SASP • Subvention" },
               timestamp: now.toISOString()
@@ -633,7 +661,7 @@ export default {
           const err = await res.text();
           return json({ type: 4, data: { content: `❌ Erreur création subvention (${res.status}): ${err}`, flags: 64 } });
         }
-        return json({ type: 4, data: { content: `✅ Demande de subvention envoyée pour **${prenom} ${nom}**.`, flags: 64 } });
+        return json({ type: 4, data: { content: `✅ Demande de subvention envoyée pour **${agentName}**.`, flags: 64 } });
       }
 
       // Slash command /proc
