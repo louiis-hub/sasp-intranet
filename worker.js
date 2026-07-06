@@ -1515,7 +1515,7 @@ export default {
               { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "PosÃ© le", style: 1, required: true, value: dateDefault, max_length: 30 }] },
               { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "NumÃ©ro de tÃ©lÃ©phone", style: 1, required: true, placeholder: "Ex : 555-0198", max_length: 30 }] },
               { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, required: true, placeholder: "Infractions retenuesâ€¦", max_length: 500 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_accord_proc", label: "Accord du procureur", style: 1, required: true, placeholder: "Oui ou Non", max_length: 3 }] }
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_accord_proc", label: "Demande procureur", style: 1, required: true, placeholder: "Oui ou Non", max_length: 3 }] }
             ]
           }
         });
@@ -1537,7 +1537,7 @@ export default {
           if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
         } catch {}
 
-        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nPos\u00e9 le : ${date}\nNum\u00e9ro de t\u00e9l\u00e9phone : ${tel}\nRaison : ${raison}\nAccord du procureur : ${accordProc}\nPos\u00e9 par : ${agentDisplay}\n\nPensez \u00e0 bien noter quand les individus viennent pointer\n\n\u2139\ufe0f Les bracelets peuvent \u00eatre activ\u00e9s pour voir la position une fois toutes les 24h via un message "BIP" sur le t\u00e9l\u00e9phone de l'individu.`;
+        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nPos\u00e9 le : ${date}\nNum\u00e9ro de t\u00e9l\u00e9phone : ${tel}\nRaison : ${raison}\nDemande procureur : ${accordProc}\nPos\u00e9 par : ${agentDisplay}\n\nPensez \u00e0 bien noter quand les individus viennent pointer\n\n\u2139\ufe0f Les bracelets peuvent \u00eatre activ\u00e9s pour voir la position une fois toutes les 24h via un message "BIP" sur le t\u00e9l\u00e9phone de l'individu.`;
 
         const forumRes = await discordFetch(`${DISCORD_API}/channels/${BRACELET_FORUM_CHANNEL}/threads`, {
           method: "POST",
@@ -1581,7 +1581,7 @@ export default {
               { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "PosÃ© le", style: 1, required: true, value: dateDefault, max_length: 30 }] },
               { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "NumÃ©ro de tÃ©lÃ©phone", style: 1, required: true, value: telSuspect, max_length: 30 }] },
               { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, required: true, value: chefs, max_length: 500 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_accord_proc", label: "Accord du procureur", style: 1, required: true, placeholder: "Oui ou Non", max_length: 3 }] }
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_accord_proc", label: "Demande procureur", style: 1, required: true, placeholder: "Oui ou Non", max_length: 3 }] }
             ]
           }
         });
@@ -1604,7 +1604,7 @@ export default {
         } catch {}
 
         const procThreadId = interaction.channel_id;
-        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nDossier proc li\u00e9 : <#${procThreadId}>\n\nPos\u00e9 le : ${date}\nNum\u00e9ro de t\u00e9l\u00e9phone : ${tel}\nRaison : ${raison}\nAccord du procureur : ${accordProc}\nPos\u00e9 par : ${agentDisplay}\n\nPensez \u00e0 bien noter quand les individus viennent pointer\n\n\u2139\ufe0f Les bracelets peuvent \u00eatre activ\u00e9s pour voir la position une fois toutes les 24h via un message "BIP" sur le t\u00e9l\u00e9phone de l'individu.`;
+        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nDossier proc li\u00e9 : <#${procThreadId}>\n\nPos\u00e9 le : ${date}\nNum\u00e9ro de t\u00e9l\u00e9phone : ${tel}\nRaison : ${raison}\nDemande procureur : ${accordProc}\nPos\u00e9 par : ${agentDisplay}\n\nPensez \u00e0 bien noter quand les individus viennent pointer\n\n\u2139\ufe0f Les bracelets peuvent \u00eatre activ\u00e9s pour voir la position une fois toutes les 24h via un message "BIP" sur le t\u00e9l\u00e9phone de l'individu.`;
 
         const forumRes = await discordFetch(`${DISCORD_API}/channels/${BRACELET_FORUM_CHANNEL}/threads`, {
           method: "POST",
@@ -1639,7 +1639,7 @@ export default {
             { name: "ðŸ§‘ Suspect", value: suspect, inline: true },
             { name: "ðŸ“ž TÃ©lÃ©phone", value: tel, inline: true },
             { name: "ðŸ“‹ Chef(s) d'inculpation", value: raison, inline: false },
-            { name: "Accord procureur", value: accordProc, inline: true },
+            { name: "Demande procureur", value: accordProc, inline: true },
             { name: "ðŸ“… PosÃ© le", value: date, inline: true },
             { name: "ðŸ‘® PosÃ© par", value: agentDisplay, inline: true }
           ], footer: { text: "SASP Â· Bracelet" }, timestamp: new Date().toISOString() }] })
