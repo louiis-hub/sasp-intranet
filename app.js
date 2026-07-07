@@ -198,7 +198,7 @@ var _wikiSections = [];
 
 var NAV = [
   { id: 'dashboard', icon: '🏛️', label: 'Tableau de bord' },
-  { id: 'ftf',      icon: 'FTF', label: 'FTF', ftfOnly: true },
+  { id: 'ftf',      icon: '⚖️', label: 'Brigade FTF', ftfOnly: true },
   { divider: true },
   { group: 'RESSOURCES HUMAINES' },
   { id: 'recap',    icon: '📋', label: 'Récap agents', staffOnly: true },
@@ -710,7 +710,7 @@ function ftfStatusBadge(statut) {
   return '<span class="badge ' + cls + '">' + esc(statut || 'Attente paiement') + '</span>';
 }
 function ftfTabButton(id, label, icon) {
-  return '<button class="ftf-tab' + (_ftfTab === id ? ' active' : '') + '" onclick="ftfSetTab(\'' + id + '\')"><span>' + icon + '</span>' + esc(label) + '</button>';
+  return '<button class="ftf-tab' + (_ftfTab === id ? ' active' : '') + '" onclick="ftfSetTab(\'' + id + '\')"><span class="ftf-tab-icon">' + icon + '</span><span>' + esc(label) + '</span></button>';
 }
 function ftfSetTab(tab) { _ftfTab = tab; renderFTF(); }
 function ftfSetSearch(v) { _ftfSearch = v || ''; renderFTF(); }
@@ -736,13 +736,13 @@ async function renderFTF() {
   setContent(
     '<div class="ftf-page">' +
       '<div class="ftf-hero">' +
-        '<div><div class="ftf-kicker">SASP SPECIAL UNIT</div><h1>FTF</h1><p>Suivi des amendes transferees, convocations et presentations tribunal.</p></div>' +
+        '<div><div class="ftf-kicker">SASP · BRIGADE FTF</div><h1>Financial Task Force</h1><p>Suivi des amendes impayees, convocations et transmissions tribunal.</p></div>' +
         '<div class="ftf-seal">FTF</div>' +
       '</div>' +
       '<div class="ftf-tabs">' +
-        ftfTabButton('dashboard', 'Tableau de bord', '*') +
-        ftfTabButton('procedure', 'Procedure FTF', '§') +
-        ftfTabButton('dossiers', 'Dossiers FTF', '#') +
+        ftfTabButton('dashboard', 'Tableau de bord', '01') +
+        ftfTabButton('procedure', 'Procedure', '02') +
+        ftfTabButton('dossiers', 'Dossiers', '03') +
       '</div>' +
       body +
     '</div>'
