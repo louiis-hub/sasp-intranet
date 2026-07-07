@@ -149,7 +149,7 @@ textarea.form-control{resize:vertical;min-height:80px}
 .ftf-step-index{width:32px;height:32px;border-radius:50%;border:1px solid var(--goldBorderHover);background:var(--goldGlow);color:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:800;flex-shrink:0}
 .ftf-step h3{font-size:1rem;margin-bottom:6px}
 .ftf-step p{font-size:.84rem;color:var(--t2);line-height:1.5}
-.ftf-toolbar{display:grid;grid-template-columns:1fr 220px;gap:12px;margin-bottom:16px}
+.ftf-toolbar{display:grid;grid-template-columns:1fr 220px 190px;gap:12px;margin-bottom:16px}
 .ftf-dossiers-card tbody tr{cursor:pointer}
 
 @media (max-width:720px){

@@ -647,6 +647,7 @@ var FTF_STATUSES = ['Attente paiement', '1ère convocation', '2ème convocation'
 var _ftfTab = 'dashboard';
 var _ftfSearch = '';
 var _ftfStatus = '';
+var _ftfArchiveView = 'active';
 var _ftfNotifyRunning = false;
 
 function ftfLoadDossiers() {
@@ -710,7 +711,8 @@ function ftfFilteredDossiers() {
   var q = (_ftfSearch || '').toLowerCase().trim();
   return ftfLoadDossiers().filter(function(d) {
     var name = ((d.nom || '') + ' ' + (d.prenom || '')).toLowerCase();
-    return (!q || name.indexOf(q) !== -1) && (!_ftfStatus || d.statut === _ftfStatus);
+    var archiveOk = _ftfArchiveView === 'all' || (_ftfArchiveView === 'archived' ? !!d.archived : !d.archived);
+    return archiveOk && (!q || name.indexOf(q) !== -1) && (!_ftfStatus || d.statut === _ftfStatus);
   });
 }
 function ftfStatusBadge(statut) {
@@ -730,6 +732,7 @@ function ftfTabButton(id, label, icon) {
 function ftfSetTab(tab) { _ftfTab = tab; renderFTF(); }
 function ftfSetSearch(v) { _ftfSearch = v || ''; renderFTF(); }
 function ftfSetStatus(v) { _ftfStatus = v || ''; renderFTF(); }
+function ftfSetArchiveView(v) { _ftfArchiveView = v || 'active'; renderFTF(); }
 function renderFTFStat(icon, label, value, sub) {
   return '<div class="ftf-stat"><div class="ftf-stat-top"><span>' + icon + '</span><strong>' + value + '</strong></div><div>' + esc(label) + '</div>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div>';
 }
@@ -739,13 +742,14 @@ async function renderFTF() {
     return;
   }
   var dossiers = ftfLoadDossiers();
+  var visibleDossiers = dossiers.filter(function(d){ return !d.archived; });
   var counts = {
-    active: dossiers.filter(function(d){ return d.statut !== 'Clôturé'; }).length,
-    c1: dossiers.filter(function(d){ return d.statut === '1ère convocation'; }).length,
-    c2: dossiers.filter(function(d){ return d.statut === '2ème convocation'; }).length,
-    c3: dossiers.filter(function(d){ return d.statut === '3ème convocation'; }).length,
-    tribunal: dossiers.filter(function(d){ return d.statut === 'Tribunal'; }).length,
-    closed: dossiers.filter(function(d){ return d.statut === 'Clôturé'; }).length
+    active: visibleDossiers.filter(function(d){ return d.statut !== 'Clôturé'; }).length,
+    c1: visibleDossiers.filter(function(d){ return d.statut === '1ère convocation'; }).length,
+    c2: visibleDossiers.filter(function(d){ return d.statut === '2ème convocation'; }).length,
+    c3: visibleDossiers.filter(function(d){ return d.statut === '3ème convocation'; }).length,
+    tribunal: visibleDossiers.filter(function(d){ return d.statut === 'Tribunal'; }).length,
+    closed: visibleDossiers.filter(function(d){ return d.statut === 'Clôturé'; }).length
   };
   var body = _ftfTab === 'procedure' ? renderFTFProcedure() : (_ftfTab === 'dossiers' ? renderFTFDossiers() : renderFTFDashboard(counts));
   setContent(
@@ -791,7 +795,7 @@ function renderFTFProcedure() {
   }).join('') + '</div>';
 }
 function ftfIsNotificationDue(d) {
-  if (!d || d.convocation_validee) return false;
+  if (!d || d.archived || d.convocation_validee) return false;
   var next = ftfNextStep(d.statut);
   if (!next) return false;
   var start = ftfDeadlineStart(d);
@@ -842,10 +846,14 @@ function renderFTFDossiers() {
   var pendingAlerts = ftfLoadDossiers().filter(function(d){ return ftfIsNotificationDue(d); }).length;
   var list = ftfFilteredDossiers();
   var statusOptions = '<option value="">Tous les statuts</option>' + FTF_STATUSES.map(function(s){ return '<option value="' + esc(s) + '"' + (_ftfStatus === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('');
+  var archiveOptions =
+    '<option value="active"' + (_ftfArchiveView === 'active' ? ' selected' : '') + '>Dossiers actifs</option>' +
+    '<option value="archived"' + (_ftfArchiveView === 'archived' ? ' selected' : '') + '>Archives</option>' +
+    '<option value="all"' + (_ftfArchiveView === 'all' ? ' selected' : '') + '>Tous les dossiers</option>';
   var rows = list.length ? list.map(function(d) {
     var nextInfo = ftfNextStepInfo(d);
     return '<tr onclick="openFtfDossierModal(\'' + esc(d.id) + '\')">' +
-      '<td><strong>' + esc((d.prenom || '') + ' ' + (d.nom || '')) + '</strong><div class="text-muted" style="font-size:.72rem">' + esc(d.date_notification || '') + '</div></td>' +
+      '<td><strong>' + esc((d.prenom || '') + ' ' + (d.nom || '')) + '</strong>' + (d.archived ? ' <span class="badge badge-gray">Archive</span>' : '') + '<div class="text-muted" style="font-size:.72rem">' + esc(d.date_notification || '') + '</div></td>' +
       '<td>' + fmtMoney(Number(d.montant_initial || 0)) + '</td>' +
       '<td>' + ftfStatusBadge(d.statut) + (nextInfo ? '<div class="text-muted" style="font-size:.72rem;margin-top:4px">' + esc(nextInfo) + '</div>' : '') + '</td>' +
       '<td><strong class="text-gold">' + fmtMoney(ftfAmount(d)) + '</strong></td>' +
@@ -857,6 +865,7 @@ function renderFTFDossiers() {
     '<div class="ftf-toolbar">' +
       '<input class="form-control" value="' + esc(_ftfSearch) + '" oninput="ftfSetSearch(this.value)" placeholder="Rechercher par nom ou prenom">' +
       '<select class="form-control" onchange="ftfSetStatus(this.value)">' + statusOptions + '</select>' +
+      '<select class="form-control" onchange="ftfSetArchiveView(this.value)">' + archiveOptions + '</select>' +
     '</div>' +
     '<div class="table-wrap"><table><thead><tr><th>PERSONNE</th><th>MONTANT INITIAL</th><th>STATUT</th><th>MONTANT ACTUEL</th><th>RAISON / NOTES</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
   '</div>';
@@ -902,6 +911,7 @@ function openFtfDossierModal(id) {
       '<div class="form-group"><label class="form-label">Notes FTF</label><textarea class="form-control" id="ftfNotes" placeholder="Notes internes FTF">' + esc(d.notes || '') + '</textarea></div>',
     footer:
       (isEdit && ftfPreviousStep(d.statut) ? '<button class="btn btn-outline" onclick="rollbackFtfDossier(\'' + esc(d.id) + '\')">← Étape précédente</button>' : '') +
+      (isEdit ? '<button class="btn btn-outline" onclick="toggleFtfArchive(\'' + esc(d.id) + '\')">' + (d.archived ? 'Restaurer' : 'Archiver') + '</button>' : '') +
       (isEdit ? '<button class="btn btn-danger" onclick="deleteFtfDossier(\'' + esc(d.id) + '\')">Supprimer</button>' : '') +
       '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
       '<button class="btn btn-primary" onclick="saveFtfDossier(' + (isEdit ? '\'' + esc(d.id) + '\'' : 'null') + ')">Sauvegarder</button>'
@@ -929,6 +939,8 @@ function saveFtfDossier(id) {
     date_statut: dateStatut,
     statut: newStatus,
     convocation_validee: false,
+    archived: previous ? !!previous.archived : false,
+    archived_at: previous ? (previous.archived_at || '') : '',
     created_by_discord_id: (previous && previous.created_by_discord_id) || S.discordUserId || '',
     notif_sent: (statusChanged || advanceStep) ? {} : ((previous && previous.notif_sent) || {}),
     raison_amende: document.getElementById('ftfRaisonAmende').value || '',
@@ -947,6 +959,26 @@ function deleteFtfDossier(id) {
   ftfSaveDossiers(ftfLoadDossiers().filter(function(d){ return d.id !== id; }));
   closeModal();
   toast('Dossier FTF supprime.', 'info');
+  renderFTF();
+}
+function toggleFtfArchive(id) {
+  var dossiers = ftfLoadDossiers();
+  var archived = false;
+  var found = false;
+  dossiers = dossiers.map(function(d) {
+    if (d.id !== id) return d;
+    found = true;
+    archived = !d.archived;
+    return Object.assign({}, d, {
+      archived: archived,
+      archived_at: archived ? new Date().toISOString() : '',
+      updated_at: new Date().toISOString()
+    });
+  });
+  if (!found) { toast('Dossier introuvable.', 'error'); return; }
+  ftfSaveDossiers(dossiers);
+  closeModal();
+  toast(archived ? 'Dossier archive.' : 'Dossier restaure.', archived ? 'info' : 'success');
   renderFTF();
 }
 function rollbackFtfDossier(id) {
