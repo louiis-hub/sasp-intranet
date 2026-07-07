@@ -770,7 +770,7 @@ function renderFTFDashboard(counts) {
     renderFTFStat('C1', 'Convocation 1', counts.c1, '+25 pourcent') +
     renderFTFStat('C2', 'Convocation 2', counts.c2, '+75 pourcent') +
     renderFTFStat('C3', 'Convocation 3', counts.c3, '+125 pourcent') +
-    renderFTFStat('TRB', 'A presenter au tribunal', counts.tribunal, 'phase judiciaire') +
+    renderFTFStat('TRIBUNAL', 'A presenter au tribunal', counts.tribunal, 'phase judiciaire') +
     renderFTFStat('OK', 'Dossiers clotures', counts.closed, 'procedure terminee') +
   '</div>';
 }
