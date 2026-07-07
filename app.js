@@ -569,6 +569,10 @@ function fmtShort(dateStr) {
   var d = new Date(dateStr);
   return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'short' });
 }
+function fmtClock(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+}
 function statusBadge(s) {
   var map = { 'En service':'badge-green','En congé':'badge-blue','Suspendu':'badge-orange','Licencié':'badge-red','Retraité':'badge-gray','Démission':'badge-gray','Archivé':'badge-red' };
   return '<span class="badge ' + (map[s]||'badge-gray') + '">' + esc(s) + '</span>';
@@ -3128,15 +3132,29 @@ async function renderPointeuse() {
   var [agents, pointages, rapport] = await Promise.all([
     DB.getAgents(),
     DB.getActivePointages(),
-    canWrite() ? DB.getPointageReport(_monday.toISOString()) : Promise.resolve([])
+    DB.getPointageReport(_monday.toISOString())
   ]);
   _pointageActifs = {};
   pointages.forEach(function(p) { _pointageActifs[p.agent_id] = p; });
   var enService = pointages.length;
+  var lastByAgent = {};
+  var lastClosedByAgent = {};
+  rapport.forEach(function(p) {
+    if (!lastByAgent[p.agent_id]) lastByAgent[p.agent_id] = p;
+    if (p.clock_out && !lastClosedByAgent[p.agent_id]) lastClosedByAgent[p.agent_id] = p;
+  });
 
   var rows = agents.map(function(a) {
     var actif = _pointageActifs[a.id];
+    var last = lastByAgent[a.id];
+    var lastClosed = lastClosedByAgent[a.id];
     var since = actif ? fmtDuration(actif.clock_in) : '';
+    var priseHtml = actif
+      ? '<strong class="text-gold">' + fmtClock(actif.clock_in) + '</strong><br><small style="color:var(--t3)">' + fmt(actif.clock_in) + '</small>'
+      : (last ? '<span>' + fmtClock(last.clock_in) + '</span><br><small style="color:var(--t3)">' + fmt(last.clock_in) + '</small>' : '<span style="color:var(--t3)">—</span>');
+    var finHtml = actif
+      ? '<span class="badge badge-green">En cours</span>'
+      : (lastClosed ? '<span>' + fmtClock(lastClosed.clock_out) + '</span><br><small style="color:var(--t3)">' + fmt(lastClosed.clock_out) + '</small>' : '<span style="color:var(--t3)">—</span>');
     var statusHtml = actif
       ? '<span class="badge badge-green">En service · ' + since + '</span>'
       : '<span class="badge badge-gray">Hors service</span>';
@@ -3150,6 +3168,8 @@ async function renderPointeuse() {
       '<td>' + gradeBadge(a.grade) + '</td>' +
       '<td><strong>' + esc(a.prenom + ' ' + a.nom) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule) + '</small></td>' +
       '<td>' + statusHtml + '</td>' +
+      '<td>' + priseHtml + '</td>' +
+      '<td>' + finHtml + '</td>' +
       '<td>' + btnHtml + '</td>' +
     '</tr>';
   }).join('');
@@ -3233,8 +3253,8 @@ async function renderPointeuse() {
     '</div>' +
     '<div class="card">' +
       '<div class="table-wrap"><table>' +
-        '<thead><tr><th>GRADE</th><th>AGENT</th><th>STATUT</th><th>ACTION</th></tr></thead>' +
-        '<tbody>' + (rows || '<tr><td colspan="4" style="text-align:center;color:var(--t3)">Aucun agent</td></tr>') + '</tbody>' +
+        '<thead><tr><th>GRADE</th><th>AGENT</th><th>STATUT</th><th>PRISE SERVICE</th><th>FIN SERVICE</th><th>ACTION</th></tr></thead>' +
+        '<tbody>' + (rows || '<tr><td colspan="6" style="text-align:center;color:var(--t3)">Aucun agent</td></tr>') + '</tbody>' +
       '</table></div>' +
     '</div>' +
     rapportHtml
@@ -3592,7 +3612,8 @@ async function renderPointeuseHistorique() {
     week.entries.forEach(function(p) {
       var a = p.agents || {};
       var agId = a.id || (a.prenom + '_' + a.nom);
-      if (!byAgent[agId]) byAgent[agId] = { agent: a, sec: 0, ongoing: false };
+      if (!byAgent[agId]) byAgent[agId] = { agent: a, sec: 0, ongoing: false, sessions: [] };
+      byAgent[agId].sessions.push(p);
       if (p.clock_out) {
         byAgent[agId].sec += Math.floor((new Date(p.clock_out) - new Date(p.clock_in)) / 1000);
       } else {
@@ -3628,9 +3649,15 @@ async function renderPointeuseHistorique() {
       var isPaid = localStorage.getItem(paidKey) === '1';
       var enService = a.id && activeAgentIds.has(a.id);
       var dot = '<span title="' + (enService ? 'En service' : 'Hors service') + '" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + (enService ? '#2ecc71' : '#e74c3c') + ';box-shadow:0 0 ' + (enService ? '6px #2ecc71' : '0px') + '"></span>';
+      var sessionsHtml = (entry.sessions || []).slice(0, 4).map(function(p) {
+        return '<div style="white-space:nowrap;font-family:monospace;font-size:.75rem;color:var(--t2)">' +
+          fmtClock(p.clock_in) + ' → ' + (p.clock_out ? fmtClock(p.clock_out) : '<span style="color:var(--gold)">en cours</span>') +
+        '</div>';
+      }).join('');
       return '<tr style="' + (isPaid ? 'opacity:.5' : '') + '">' +
         '<td style="white-space:nowrap">' + dot + ' <strong>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule || '') + '</small></td>' +
         '<td style="font-family:monospace;font-size:.8rem;color:var(--t2)">' + esc(a.iban || '—') + '</td>' +
+        '<td>' + (sessionsHtml || '<span style="color:var(--t3)">—</span>') + '</td>' +
         '<td style="text-align:center"><strong>' + fmtSec(sec) + '</strong>' + (entry.ongoing ? ' <span style="color:var(--gold);font-size:.75rem">+en cours</span>' : '') + '</td>' +
         '<td style="text-align:center;color:var(--gold);font-weight:700">' + fmtMoney(sal) + '</td>' +
         '<td style="text-align:center"><input type="number" min="0" step="1" value="' + prime + '" onchange="setPrimeHisto(\'' + primeKey + '\',this.value)" style="width:92px;background:var(--bg2);color:var(--t0);border:1px solid var(--border0);border-radius:6px;padding:5px 7px;text-align:right"></td>' +
@@ -3653,7 +3680,7 @@ async function renderPointeuseHistorique() {
       '</div>' +
       '<div id="' + panelId + '" style="display:' + (panelOpen ? 'block' : 'none') + '">' +
         '<div class="table-wrap"><table>' +
-          '<thead><tr><th>AGENT</th><th>IBAN</th><th style="text-align:center">DURÉE</th><th style="text-align:center">SALAIRE</th><th style="text-align:center">PRIME</th><th style="text-align:center">TOTAL</th><th style="text-align:center">PAYÉ</th></tr></thead>' +
+          '<thead><tr><th>AGENT</th><th>IBAN</th><th>PRISE - FIN</th><th style="text-align:center">DUREE</th><th style="text-align:center">SALAIRE</th><th style="text-align:center">PRIME</th><th style="text-align:center">TOTAL</th><th style="text-align:center">PAYE</th></tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table></div>' +
       '</div>' +

@@ -195,7 +195,6 @@ var DB = {
   async getAllPointages() {
     var { data } = await getDb().from('pointages')
       .select('*, agents(id, nom, prenom, matricule, grade, iban)')
-      .not('clock_out', 'is', null)
       .order('clock_in', { ascending: false });
     return data || [];
   },
@@ -218,7 +217,6 @@ var DB = {
   async getPointageReport(since) {
     var { data } = await getDb().from('pointages')
       .select('*, agents(nom, prenom, matricule, grade)')
-      .not('clock_out', 'is', null)
       .gte('clock_in', since)
       .order('clock_in', { ascending: false });
     return data || [];
