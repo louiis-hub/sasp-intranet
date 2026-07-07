@@ -14,7 +14,7 @@
 })();
 
 // ── State ──────────────────────────────────────────────────────────
-var S = { user: null, appUser: null, role: 'agent', page: 'dashboard', pd: {}, discordRoles: [] };
+var S = { user: null, appUser: null, role: 'agent', page: 'dashboard', pd: {}, discordRoles: [], discordUserId: null };
 
 // ── Salaires par grade ($/h) ─────────────────────────────────────────
 var GRADE_SALAIRE = {
@@ -287,6 +287,7 @@ async function afterLogin(user, session) {
   S.user = user;
   var discordIdentity = user.identities && user.identities.find(function(i){ return i.provider === 'discord'; });
   var discordUserId = (discordIdentity && (discordIdentity.id || (discordIdentity.identity_data && discordIdentity.identity_data.sub))) || (user.user_metadata && user.user_metadata.provider_id);
+  S.discordUserId = discordUserId;
   console.log('[auth] identities:', user.identities, 'discordUserId:', discordUserId);
   var appUser = await DB.getAppUser(user.id);
   var result = await getDiscordRole(discordUserId);
@@ -335,7 +336,7 @@ async function loadWikiSections() {
 
 async function doLogout() {
   await DB.logout();
-  S.user = null; S.appUser = null; S.role = 'agent'; S.discordRoles = [];
+  S.user = null; S.appUser = null; S.role = 'agent'; S.discordRoles = []; S.discordUserId = null;
   showLogin();
 }
 
@@ -642,6 +643,7 @@ var FTF_STATUSES = ['Attente paiement', '1ère convocation', '2ème convocation'
 var _ftfTab = 'dashboard';
 var _ftfSearch = '';
 var _ftfStatus = '';
+var _ftfNotifyRunning = false;
 
 function ftfLoadDossiers() {
   try {
@@ -651,6 +653,22 @@ function ftfLoadDossiers() {
 }
 function ftfSaveDossiers(list) {
   localStorage.setItem(FTF_STORAGE_KEY, JSON.stringify(list || []));
+}
+function ftfTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+function ftfAddDays(dateStr, days) {
+  var d = new Date((dateStr || ftfTodayKey()) + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+function ftfNextStep(statut) {
+  return {
+    'Attente paiement': '1ère convocation',
+    '1ère convocation': '2ème convocation',
+    '2ème convocation': '3ème convocation',
+    '3ème convocation': 'présentation tribunal'
+  }[statut] || '';
 }
 function ftfAmount(d) {
   var base = Number(d.montant_initial || 0);
@@ -720,6 +738,7 @@ async function renderFTF() {
       body +
     '</div>'
   );
+  ftfCheckConvocationNotifications();
 }
 function renderFTFDashboard(counts) {
   return '<div class="ftf-grid">' +
@@ -747,7 +766,56 @@ function renderFTFProcedure() {
     return '<div class="ftf-step"><div class="ftf-step-index">' + (i + 1) + '</div><div><h3>' + esc(s[0]) + '</h3><p>' + esc(s[1]) + '</p></div></div>';
   }).join('') + '</div>';
 }
+function ftfIsNotificationDue(d) {
+  if (!d || d.convocation_validee) return false;
+  var next = ftfNextStep(d.statut);
+  if (!next) return false;
+  var start = d.date_statut || d.date_notification;
+  if (!start) return false;
+  var today = ftfTodayKey();
+  var due = ftfAddDays(start, 6);
+  var sentKey = d.statut + '|' + today;
+  return today >= due && (!d.notif_sent || d.notif_sent[sentKey] !== true);
+}
+async function ftfCheckConvocationNotifications() {
+  if (_ftfNotifyRunning || !canAccessFTF()) return;
+  _ftfNotifyRunning = true;
+  try {
+    var dossiers = ftfLoadDossiers();
+    var changed = false;
+    for (var i = 0; i < dossiers.length; i++) {
+      var d = dossiers[i];
+      if (!ftfIsNotificationDue(d)) continue;
+      var today = ftfTodayKey();
+      var sentKey = d.statut + '|' + today;
+      var res = await fetch(WORKER_BASE + '/ftf/convocation-notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+        body: JSON.stringify({
+          dossier_id: d.id,
+          creator_id: d.created_by_discord_id || S.discordUserId || '',
+          suspect: ((d.prenom || '') + ' ' + (d.nom || '')).trim(),
+          current_status: d.statut,
+          next_step: ftfNextStep(d.statut),
+          date_statut: d.date_statut || d.date_notification,
+          due_date: ftfAddDays(d.date_statut || d.date_notification, 7)
+        })
+      });
+      if (res.ok) {
+        d.notif_sent = d.notif_sent || {};
+        d.notif_sent[sentKey] = true;
+        changed = true;
+      }
+    }
+    if (changed) ftfSaveDossiers(dossiers);
+  } catch(e) {
+    console.warn('FTF notifications:', e);
+  } finally {
+    _ftfNotifyRunning = false;
+  }
+}
 function renderFTFDossiers() {
+  var pendingAlerts = ftfLoadDossiers().filter(function(d){ return ftfIsNotificationDue(d); }).length;
   var list = ftfFilteredDossiers();
   var statusOptions = '<option value="">Tous les statuts</option>' + FTF_STATUSES.map(function(s){ return '<option value="' + esc(s) + '"' + (_ftfStatus === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('');
   var rows = list.length ? list.map(function(d) {
@@ -760,7 +828,7 @@ function renderFTFDossiers() {
     '</tr>';
   }).join('') : '<tr><td colspan="5"><div class="empty-state" style="padding:28px"><div class="empty-icon">FTF</div><div class="empty-title">Aucun dossier FTF</div></div></td></tr>';
   return '<div class="card ftf-dossiers-card">' +
-    '<div class="flex-between mb-20"><div><h2 style="font-size:1.2rem">Dossiers FTF</h2><p class="text-muted" style="font-size:.82rem">Recherche, statuts et montant actuel calcule automatiquement.</p></div><button class="btn btn-primary btn-sm" onclick="openFtfDossierModal()">Creer un dossier</button></div>' +
+    '<div class="flex-between mb-20"><div><h2 style="font-size:1.2rem">Dossiers FTF</h2><p class="text-muted" style="font-size:.82rem">Date de notification = date de l amende initiale. Date du statut = depart du delai actuel.</p>' + (pendingAlerts ? '<p class="text-gold" style="font-size:.82rem;margin-top:4px">' + pendingAlerts + ' rappel(s) convocation en attente.</p>' : '') + '</div><button class="btn btn-primary btn-sm" onclick="openFtfDossierModal()">Creer un dossier</button></div>' +
     '<div class="ftf-toolbar">' +
       '<input class="form-control" value="' + esc(_ftfSearch) + '" oninput="ftfSetSearch(this.value)" placeholder="Rechercher par nom ou prenom">' +
       '<select class="form-control" onchange="ftfSetStatus(this.value)">' + statusOptions + '</select>' +
@@ -772,9 +840,14 @@ function openFtfDossierModal(id) {
   var dossiers = ftfLoadDossiers();
   var d = id ? dossiers.find(function(x){ return x.id === id; }) : null;
   var isEdit = !!d;
-  d = d || { nom:'', prenom:'', montant_initial:'', date_notification:new Date().toISOString().slice(0,10), statut:'Attente paiement', notes:'' };
+  d = d || { nom:'', prenom:'', montant_initial:'', date_notification:ftfTodayKey(), date_statut:ftfTodayKey(), statut:'Attente paiement', convocation_validee:false, notes:'' };
+  if (!d.date_statut) d.date_statut = d.date_notification || ftfTodayKey();
   var statusSelect = '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="ftfStatut">' +
     FTF_STATUSES.map(function(s){ return '<option value="' + esc(s) + '"' + (d.statut === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') +
+    '</select></div>';
+  var validatedSelect = '<div class="form-group"><label class="form-label">Convocation validée ?</label><select class="form-control" id="ftfConvocationValidee">' +
+    '<option value="false"' + (!d.convocation_validee ? ' selected' : '') + '>Non - continuer les rappels</option>' +
+    '<option value="true"' + (d.convocation_validee ? ' selected' : '') + '>Oui - arrêter les rappels</option>' +
     '</select></div>';
   openModal({
     eyebrow: 'DOSSIER FTF',
@@ -787,7 +860,11 @@ function openFtfDossierModal(id) {
       '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
         fld('Montant initial *','number','ftfMontant',d.montant_initial,'15000') +
-        fld('Date de notification','date','ftfDate',d.date_notification,'') +
+        fld('Date notification amende','date','ftfDate',d.date_notification,'') +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+        fld('Date du statut actuel','date','ftfDateStatut',d.date_statut,'') +
+        validatedSelect +
       '</div>' +
       statusSelect +
       '<div class="form-group"><label class="form-label">Notes FTF</label><textarea class="form-control" id="ftfNotes" placeholder="Notes internes FTF">' + esc(d.notes || '') + '</textarea></div>',
@@ -803,13 +880,22 @@ function saveFtfDossier(id) {
   var montant = parseMoneyInput(document.getElementById('ftfMontant').value);
   if (!nom || !prenom || !montant) { toast('Nom, prenom et montant requis.', 'error'); return; }
   var dossiers = ftfLoadDossiers();
+  var previous = id ? dossiers.find(function(d){ return d.id === id; }) : null;
+  var newStatus = document.getElementById('ftfStatut').value || 'Attente paiement';
+  var statusChanged = previous && previous.statut !== newStatus;
+  var dateStatut = document.getElementById('ftfDateStatut').value || ftfTodayKey();
+  if (statusChanged && (!document.getElementById('ftfDateStatut').value || dateStatut === previous.date_statut)) dateStatut = ftfTodayKey();
   var data = {
     id: id || ('ftf_' + Date.now()),
     nom: nom,
     prenom: prenom,
     montant_initial: montant,
     date_notification: document.getElementById('ftfDate').value || new Date().toISOString().slice(0,10),
-    statut: document.getElementById('ftfStatut').value || 'Attente paiement',
+    date_statut: dateStatut,
+    statut: newStatus,
+    convocation_validee: document.getElementById('ftfConvocationValidee').value === 'true',
+    created_by_discord_id: (previous && previous.created_by_discord_id) || S.discordUserId || '',
+    notif_sent: statusChanged ? {} : ((previous && previous.notif_sent) || {}),
     notes: document.getElementById('ftfNotes').value || '',
     updated_at: new Date().toISOString()
   };

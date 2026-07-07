@@ -114,6 +114,7 @@ const ADMIN_ROLE_IDS = [
   '1504451288065118248', // Ã‰tat Major
   '1504452141518032956'  // Supervisor Team
 ];
+const FTF_NOTIFICATION_CHANNEL_ID = "1524118534077153330";
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ENTERPRISE_GUILD_ID = "1523759012623941746";
@@ -1027,6 +1028,42 @@ export default {
         if (!res.ok) throw new Error(`Discord role counts failed: ${res.status}`);
         const roleCounts = await res.json();
         return json({ ok: true, counts: countGradesFromRoleCounts(roleCounts), role_counts: roleCounts });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/ftf/convocation-notify" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const data = await request.json();
+        const creatorId = String(data.creator_id || "").replace(/\D/g, "");
+        const suspect = String(data.suspect || "personne inconnue").trim();
+        const nextStep = String(data.next_step || "convocation").trim();
+        const currentStatus = String(data.current_status || "").trim();
+        const dueDate = String(data.due_date || "").trim();
+        const ping = creatorId ? `<@${creatorId}>` : "@agent FTF";
+        const res = await discordFetch(`${DISCORD_API}/channels/${FTF_NOTIFICATION_CHANNEL_ID}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: `${ping}`,
+            embeds: [{
+              title: "Rappel FTF - convocation demain",
+              color: 0xc9a84c,
+              description: `Convocation demain pour **${suspect}** : **${nextStep}**.`,
+              fields: [
+                { name: "Statut actuel", value: currentStatus || "Non precise", inline: true },
+                { name: "Date limite", value: dueDate || "Demain", inline: true }
+              ],
+              footer: { text: "SASP - FTF" },
+              timestamp: new Date().toISOString()
+            }]
+          })
+        });
+        if (!res.ok) return json({ ok: false, error: await res.text() }, res.status);
+        return json({ ok: true });
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
