@@ -688,6 +688,12 @@ function ftfDeadlineStart(d) {
   if (d.statut === 'Attente paiement') return d.date_notification || d.date_statut || '';
   return d.date_statut || d.date_notification || '';
 }
+function ftfNextStepInfo(d) {
+  var next = ftfNextStep(d && d.statut);
+  var start = ftfDeadlineStart(d);
+  if (!next || !start) return '';
+  return 'Etape suivante le ' + fmt(ftfAddDays(start, 7)) + ' : ' + next;
+}
 function ftfAmount(d) {
   var base = Number(d.montant_initial || 0);
   var mult = {
@@ -837,10 +843,11 @@ function renderFTFDossiers() {
   var list = ftfFilteredDossiers();
   var statusOptions = '<option value="">Tous les statuts</option>' + FTF_STATUSES.map(function(s){ return '<option value="' + esc(s) + '"' + (_ftfStatus === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('');
   var rows = list.length ? list.map(function(d) {
+    var nextInfo = ftfNextStepInfo(d);
     return '<tr onclick="openFtfDossierModal(\'' + esc(d.id) + '\')">' +
       '<td><strong>' + esc((d.prenom || '') + ' ' + (d.nom || '')) + '</strong><div class="text-muted" style="font-size:.72rem">' + esc(d.date_notification || '') + '</div></td>' +
       '<td>' + fmtMoney(Number(d.montant_initial || 0)) + '</td>' +
-      '<td>' + ftfStatusBadge(d.statut) + '</td>' +
+      '<td>' + ftfStatusBadge(d.statut) + (nextInfo ? '<div class="text-muted" style="font-size:.72rem;margin-top:4px">' + esc(nextInfo) + '</div>' : '') + '</td>' +
       '<td><strong class="text-gold">' + fmtMoney(ftfAmount(d)) + '</strong></td>' +
       '<td class="text-muted">' + esc((d.notes || '').slice(0, 80)) + '</td>' +
     '</tr>';
@@ -860,6 +867,7 @@ function openFtfDossierModal(id) {
   var isEdit = !!d;
   d = d || { nom:'', prenom:'', montant_initial:'', date_notification:ftfTodayKey(), date_statut:ftfTodayKey(), statut:'Attente paiement', convocation_validee:false, notes:'' };
   if (!d.date_statut) d.date_statut = d.date_notification || ftfTodayKey();
+  var nextInfo = ftfNextStepInfo(d);
   var statusSelect = '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="ftfStatut">' +
     FTF_STATUSES.map(function(s){ return '<option value="' + esc(s) + '"' + (d.statut === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') +
     '</select></div>';
@@ -888,6 +896,7 @@ function openFtfDossierModal(id) {
         '<input type="hidden" id="ftfDateStatut" value="' + esc(d.date_statut || '') + '">' +
         validatedSelect +
       '</div>' +
+      (nextInfo ? '<div class="badge badge-gold" style="margin-bottom:14px">' + esc(nextInfo) + '</div>' : '') +
       statusSelect +
       '<div class="form-group"><label class="form-label">Notes FTF</label><textarea class="form-control" id="ftfNotes" placeholder="Notes internes FTF">' + esc(d.notes || '') + '</textarea></div>',
     footer:
