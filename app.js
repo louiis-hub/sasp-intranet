@@ -546,6 +546,7 @@ function toastLoading(msg) {
 function isAdmin() { return S.role === 'admin'; }
 function canWrite() { return S.role === 'admin' || S.role === 'academy' || S.role === 'rh'; }
 function canAccessFTF() {
+  if (S.role === 'admin') return true;
   return typeof FTF_ROLE_ID !== 'undefined' &&
     FTF_ROLE_ID &&
     FTF_ROLE_ID !== 'ID_DU_ROLE_ICI' &&
