@@ -207,8 +207,8 @@ var NAV = [
   { id: 'units',     icon: '🚔', label: 'Divisions' },
   { id: 'pointeuse', icon: '⏱️', label: 'Pointeuse' },
   { id: 'cartes',   icon: '🗺️', label: 'Cartes' },
-  { id: 'ftf',      icon: '🎯', label: 'Fugitive Task Force', ftfOnly: true },
   { divider: true },
+  { id: 'ftf',      icon: '🎯', label: 'Fugitive Task Force', ftfOnly: true },
   // wiki sections injected dynamically by loadWikiSections()
   { divider: true, staffOnly: true, _wikiEnd: true },
   { group: 'ADMINISTRATION', staffOnly: true },
