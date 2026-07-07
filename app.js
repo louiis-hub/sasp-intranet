@@ -1,8 +1,8 @@
-// ══════════════════════════════════════════════════════════════════
-//  CENTRALE PA — app.js
-// ══════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  CENTRALE PA â€” app.js
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-// ── Config locale (overrides depuis localStorage) ───────────────────
+// â”€â”€ Config locale (overrides depuis localStorage) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 (function() {
   try {
     var cfg = JSON.parse(localStorage.getItem('sasp_permissions') || '{}');
@@ -13,10 +13,10 @@
   } catch(e) {}
 })();
 
-// ── State ──────────────────────────────────────────────────────────
+// â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 var S = { user: null, appUser: null, role: 'agent', page: 'dashboard', pd: {}, discordRoles: [], discordUserId: null };
 
-// ── Salaires par grade ($/h) ─────────────────────────────────────────
+// â”€â”€ Salaires par grade ($/h) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 var GRADE_SALAIRE = {
   'Commandant':          700,
   'Capitaine':           600,
@@ -41,7 +41,7 @@ function parseMoneyInput(v) {
   return Math.max(0, n);
 }
 
-// ── Discord logs ────────────────────────────────────────────────────
+// â”€â”€ Discord logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 var WORKER_BASE = 'https://sasp-intranet-bot.louisleurin.workers.dev';
 var LOG_WORKER  = WORKER_BASE + '/log';
 var LOG_TOKEN   = 'SASPlogs2026!';
@@ -97,19 +97,19 @@ async function getDiscordGradeCounts() {
 }
 
 async function syncAllAgentsToDiscord() {
-  if (!confirm('Synchroniser les rôles Discord vers les fiches SASP ?\n\nLes grades, divisions CID/SWAT/PA/CNU/TU/SYND et PPA seront mis à jour pour chaque agent qui a un Discord ID.')) return;
-  var loader = toastLoading('Synchronisation en cours…');
+  if (!confirm('Synchroniser les rÃ´les Discord vers les fiches SASP ?\n\nLes grades, divisions CID/SWAT/PA/CNU/TU/SYND et PPA seront mis Ã  jour pour chaque agent qui a un Discord ID.')) return;
+  var loader = toastLoading('Synchronisation en coursâ€¦');
   try {
     var agents = await DB.getAgents({});
     var withId = agents.filter(function(a) { return a.discord_id; });
     if (!withId.length) { loader.done('Aucun agent avec un Discord ID.', 'error'); return; }
-    loader.update('Synchronisation en cours…');
+    loader.update('Synchronisation en coursâ€¦');
     var roleMap = await getDiscordRosterMap(withId);
     var updated = 0;
     var changeLines = [];
     for (var i = 0; i < withId.length; i++) {
       var a = withId[i];
-      if (!roleMap[a.discord_id]) continue; // pas trouvé sur Discord → on ne touche pas la fiche
+      if (!roleMap[a.discord_id]) continue; // pas trouvÃ© sur Discord â†’ on ne touche pas la fiche
       var entry = roleMap[a.discord_id];
       var nonTracked = (a.unites || []).filter(function(u) { return !TRACKED_DIVISIONS.includes(u); });
       var newUnites = nonTracked.concat(entry.divisions || []);
@@ -125,21 +125,21 @@ async function syncAllAgentsToDiscord() {
       if (!!entry.ppa1 !== !!a.ppa1) { patch.ppa1 = entry.ppa1; diff.push((entry.ppa1?'+':'-') + 'PPA1'); }
       if (!!entry.ppa2 !== !!a.ppa2) { patch.ppa2 = entry.ppa2; diff.push((entry.ppa2?'+':'-') + 'PPA2'); }
       if (!!entry.ppa3 !== !!a.ppa3) { patch.ppa3 = entry.ppa3; diff.push((entry.ppa3?'+':'-') + 'PPA3'); }
-      if (entry.grade && entry.grade !== a.grade) { patch.grade = entry.grade; diff.push('Grade: ' + (a.grade||'—') + ' → ' + entry.grade); }
+      if (entry.grade && entry.grade !== a.grade) { patch.grade = entry.grade; diff.push('Grade: ' + (a.grade||'â€”') + ' â†’ ' + entry.grade); }
       if (Object.keys(patch).length) {
         await DB.updateAgent(a.id, patch);
         updated++;
-        changeLines.push('**' + esc(a.prenom) + ' ' + esc(a.nom) + '** (' + esc(a.matricule) + ') — ' + diff.join(', '));
+        changeLines.push('**' + esc(a.prenom) + ' ' + esc(a.nom) + '** (' + esc(a.matricule) + ') â€” ' + diff.join(', '));
       }
     }
-    loader.done(updated + ' fiche(s) mise(s) à jour depuis Discord.');
+    loader.done(updated + ' fiche(s) mise(s) Ã  jour depuis Discord.');
     refreshAgentList();
-    var desc = changeLines.length ? changeLines.join('\n') : 'Aucun changement détecté.';
-    sendLog('🔄 Sync Discord → SASP', 0x3498db, [
+    var desc = changeLines.length ? changeLines.join('\n') : 'Aucun changement dÃ©tectÃ©.';
+    sendLog('ðŸ”„ Sync Discord â†’ SASP', 0x3498db, [
       { name: 'Par', value: _whoAmI(), inline: true },
-      { name: 'Agents vérifiés', value: String(withId.length), inline: true },
-      { name: 'Fiches mises à jour', value: String(updated), inline: true },
-      { name: 'Détail', value: desc.slice(0, 1024), inline: false }
+      { name: 'Agents vÃ©rifiÃ©s', value: String(withId.length), inline: true },
+      { name: 'Fiches mises Ã  jour', value: String(updated), inline: true },
+      { name: 'DÃ©tail', value: desc.slice(0, 1024), inline: false }
     ]);
     if (S.page === 'agents') await renderAgents();
     else if (S.page === 'dashboard') await renderDashboard();
@@ -162,14 +162,14 @@ async function syncDiscordToAgent(agentId) {
     if (typeof data.ppa2 === 'boolean') patch.ppa2 = data.ppa2;
     if (typeof data.ppa3 === 'boolean') patch.ppa3 = data.ppa3;
     await DB.updateAgent(agentId, patch);
-    toast('Fiche synchronisée depuis Discord ✓', 'success');
+    toast('Fiche synchronisÃ©e depuis Discord âœ“', 'success');
     await renderAgentProfile();
   } catch(e) { toast('Erreur : ' + e.message, 'error'); }
 }
 function _whoAmI() {
-  if (!S.user) return '—';
+  if (!S.user) return 'â€”';
   var m = S.user.user_metadata || {};
-  return m.full_name || m.name || m.user_name || S.user.email || '—';
+  return m.full_name || m.name || m.user_name || S.user.email || 'â€”';
 }
 function sendLog(title, color, fields) {
   try {
@@ -197,37 +197,37 @@ var _wikiSlug     = null;
 var _wikiSections = [];
 
 var NAV = [
-  { id: 'dashboard', icon: '🏛️', label: 'Tableau de bord' },
+  { id: 'dashboard', icon: 'ðŸ›ï¸', label: 'Tableau de bord' },
   { id: 'ftf',      icon: 'FTF', label: 'FTF', ftfOnly: true },
   { divider: true },
   { group: 'RESSOURCES HUMAINES' },
-  { id: 'recap',    icon: '📋', label: 'Récap agents', staffOnly: true },
-  { id: 'completude', icon: '🗂️', label: 'Complétude fiches', staffOnly: true },
-  { id: 'agents',   icon: '👮', label: 'Agents' },
-  { id: 'grades',   icon: '🎖️', label: 'Grades' },
-  { id: 'units',     icon: '🚔', label: 'Divisions' },
-  { id: 'pointeuse', icon: '⏱️', label: 'Pointeuse' },
-  { id: 'cartes',   icon: '🗺️', label: 'Cartes' },
+  { id: 'recap',    icon: 'ðŸ“‹', label: 'RÃ©cap agents', staffOnly: true },
+  { id: 'completude', icon: 'ðŸ—‚ï¸', label: 'ComplÃ©tude fiches', staffOnly: true },
+  { id: 'agents',   icon: 'ðŸ‘®', label: 'Agents' },
+  { id: 'grades',   icon: 'ðŸŽ–ï¸', label: 'Grades' },
+  { id: 'units',     icon: 'ðŸš”', label: 'Divisions' },
+  { id: 'pointeuse', icon: 'â±ï¸', label: 'Pointeuse' },
+  { id: 'cartes',   icon: 'ðŸ—ºï¸', label: 'Cartes' },
   { divider: true },
   // wiki sections injected dynamically by loadWikiSections()
   { divider: true, staffOnly: true, _wikiEnd: true },
   { group: 'ADMINISTRATION', staffOnly: true },
-  { id: 'archives',        icon: '🗃️', label: 'Archives',          staffOnly: true },
-  { id: 'stats',           icon: '📈', label: 'Statistiques',       staffOnly: true },
-  { id: 'settings',        icon: '⚙️', label: 'Mon compte',         staffOnly: true },
-  { id: 'ceremonie',       icon: '🎖️', label: 'Prépa Cérémonie',    ceremonyOnly: true },
+  { id: 'archives',        icon: 'ðŸ—ƒï¸', label: 'Archives',          staffOnly: true },
+  { id: 'stats',           icon: 'ðŸ“ˆ', label: 'Statistiques',       staffOnly: true },
+  { id: 'settings',        icon: 'âš™ï¸', label: 'Mon compte',         staffOnly: true },
+  { id: 'ceremonie',       icon: 'ðŸŽ–ï¸', label: 'PrÃ©pa CÃ©rÃ©monie',    ceremonyOnly: true },
 ];
 
 var PAGE_TITLES = {
   dashboard:'Tableau de bord', agents:'Agents', 'agent-profile':'Fiche agent',
-  grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', 'pointeuse-historique':'Historique pointages', mdt:'Guide MDT', vehicles:'Véhicules', cartes:'Cartes',
+  grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', 'pointeuse-historique':'Historique pointages', mdt:'Guide MDT', vehicles:'VÃ©hicules', cartes:'Cartes',
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
-  archives:'Archives', ceremonie:'Prépa Cérémonie', completude:'Complétude fiches',
-  'global-settings':'Réglages globaux',
+  archives:'Archives', ceremonie:'PrÃ©pa CÃ©rÃ©monie', completude:'ComplÃ©tude fiches',
+  'global-settings':'RÃ©glages globaux',
   ftf:'FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
 };
 
-// ── Boot ───────────────────────────────────────────────────────────
+// â”€â”€ Boot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 (async function boot() {
   try {
     var { data: { session } } = await DB.getSession();
@@ -240,19 +240,19 @@ var PAGE_TITLES = {
   });
 })();
 
-// ── Auth ───────────────────────────────────────────────────────────
+// â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function doDiscordLogin() {
   var btn = document.getElementById('loginBtn');
   var txt = document.getElementById('loginBtnTxt');
   var errEl = document.getElementById('loginErr');
   errEl.classList.remove('show');
   btn.disabled = true;
-  txt.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span> Redirection…';
+  txt.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span> Redirectionâ€¦';
   try {
     var { error } = await DB.loginWithDiscord();
     if (error) throw error;
   } catch(err) {
-    errEl.textContent = '⚠ ' + (err.message || 'Erreur de connexion Discord.');
+    errEl.textContent = 'âš  ' + (err.message || 'Erreur de connexion Discord.');
     errEl.classList.add('show');
     btn.disabled = false;
     txt.textContent = 'Se connecter avec Discord';
@@ -306,7 +306,7 @@ async function afterLogin(user, session) {
     await DB.logout();
     showLogin();
     var errEl = document.getElementById('loginErr');
-    if (errEl) { errEl.textContent = '⚠ Accès refusé — vous n\'avez pas les rôles requis sur le serveur Discord.'; errEl.classList.add('show'); }
+    if (errEl) { errEl.textContent = 'âš  AccÃ¨s refusÃ© â€” vous n\'avez pas les rÃ´les requis sur le serveur Discord.'; errEl.classList.add('show'); }
     return;
   }
   _grades = await DB.getGrades();
@@ -317,10 +317,10 @@ async function afterLogin(user, session) {
 }
 
 var _WIKI_DEFAULTS = [
-  { slug:'info',     titre:'Informations', sous_titre:'Informations générales de la SASP',            icon:'ℹ️',  ordre:0 },
-  { slug:'manuel',   titre:'Manuel',       sous_titre:'Procédures et protocoles opérationnels',     icon:'📋', ordre:1 },
-  { slug:'tenue',    titre:'Tenues',       sous_titre:'Uniformes et équipements règlementaires',    icon:'👔', ordre:2 },
-  { slug:'document', titre:'Documents',    sous_titre:'Documents et formulaires officiels',          icon:'📄', ordre:3 }
+  { slug:'info',     titre:'Informations', sous_titre:'Informations gÃ©nÃ©rales de la SASP',            icon:'â„¹ï¸',  ordre:0 },
+  { slug:'manuel',   titre:'Manuel',       sous_titre:'ProcÃ©dures et protocoles opÃ©rationnels',     icon:'ðŸ“‹', ordre:1 },
+  { slug:'tenue',    titre:'Tenues',       sous_titre:'Uniformes et Ã©quipements rÃ¨glementaires',    icon:'ðŸ‘”', ordre:2 },
+  { slug:'document', titre:'Documents',    sous_titre:'Documents et formulaires officiels',          icon:'ðŸ“„', ordre:3 }
 ];
 
 async function loadWikiSections() {
@@ -356,7 +356,7 @@ function showApp() {
   updateUserUI();
 }
 
-// ── Navigation ─────────────────────────────────────────────────────
+// â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function buildNav() {
   var isStaff = S.role === 'admin' || S.role === 'academy' || S.role === 'rh';
   var isCeremony = S.role === 'admin' || S.role === 'rh';
@@ -387,7 +387,7 @@ function buildNav() {
     '<div class="sidebar-user">' +
       '<div class="sidebar-avatar">' + initials + '</div>' +
       '<div><div class="sidebar-uname">' + esc(n) + '</div><div class="sidebar-urole">' + roleLabel + '</div></div>' +
-      '<button class="sidebar-logout" onclick="doLogout()" title="Déconnexion">⏻</button>' +
+      '<button class="sidebar-logout" onclick="doLogout()" title="DÃ©connexion">â»</button>' +
     '</div>';
 
   var chipName = S.serverNick || n;
@@ -411,7 +411,7 @@ function toggleSidebar() {
   document.getElementById('sidebarOverlay').classList.toggle('open');
 }
 
-// ── Router ─────────────────────────────────────────────────────────
+// â”€â”€ Router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function navigate(page, pd) {
   S.page = page;
   S.pd = pd || {};
@@ -419,12 +419,12 @@ async function navigate(page, pd) {
   Object.values(_charts).forEach(function(c){ try{c.destroy();}catch(e){} });
   _charts = {};
   _quill = null;
-  setContent('<div class="loader-block"><div class="spinner"></div><p>Chargement…</p></div>');
+  setContent('<div class="loader-block"><div class="spinner"></div><p>Chargementâ€¦</p></div>');
   var _permCfg = {}; try { _permCfg = JSON.parse(localStorage.getItem('sasp_permissions') || '{}'); } catch(e) {}
   var AGENT_ALLOWED   = _permCfg.agentPages   || ['dashboard','agents','agent-profile','grades','units','pointeuse','mdt','vehicles','cartes','info','manuel','tenue','document'];
   var ACADEMY_ALLOWED = _permCfg.academyPages  || null;
   if (page === 'ftf' && !canAccessFTF()) {
-    setContent('<div class="empty-state"><div class="empty-icon">FTF</div><div class="empty-title">AccÃ¨s FTF restreint</div><div class="empty-sub">Cette page est rÃ©servÃ©e aux utilisateurs avec le rÃ´le Discord FTF.</div></div>');
+    setContent('<div class="empty-state"><div class="empty-icon">FTF</div><div class="empty-title">AccÃƒÂ¨s FTF restreint</div><div class="empty-sub">Cette page est rÃƒÂ©servÃƒÂ©e aux utilisateurs avec le rÃƒÂ´le Discord FTF.</div></div>');
     return;
   }
   if (S.role === 'ftf' && page !== 'ftf') {
@@ -432,25 +432,25 @@ async function navigate(page, pd) {
     return;
   }
   if ((S.role === 'agent' || S.role === 'academy' || S.role === 'visiteur') && page === 'ceremonie') {
-    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au Command Staff et aux Superviseurs.</div></div>');
+    setContent('<div class="empty-state"><div class="empty-icon">ðŸ”’</div><div class="empty-title">AccÃ¨s restreint</div><div class="empty-sub">Cette section est rÃ©servÃ©e au Command Staff et aux Superviseurs.</div></div>');
     return;
   }
   var RH_ALLOWED = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'cartes', 'stats', 'archives', 'recap', 'ceremonie'];
   if (S.role === 'rh' && page !== 'ftf' && RH_ALLOWED.indexOf(page) === -1) {
-    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée aux administrateurs.</div></div>');
+    setContent('<div class="empty-state"><div class="empty-icon">ðŸ”’</div><div class="empty-title">AccÃ¨s restreint</div><div class="empty-sub">Cette section est rÃ©servÃ©e aux administrateurs.</div></div>');
     return;
   }
   var VISITEUR_ALLOWED = ['dashboard', 'pointeuse', 'cartes'];
   if (S.role === 'visiteur' && page !== 'ftf' && VISITEUR_ALLOWED.indexOf(page) === -1) {
-    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Votre rôle ne permet pas d\'accéder à cette section.</div></div>');
+    setContent('<div class="empty-state"><div class="empty-icon">ðŸ”’</div><div class="empty-title">AccÃ¨s restreint</div><div class="empty-sub">Votre rÃ´le ne permet pas d\'accÃ©der Ã  cette section.</div></div>');
     return;
   }
   if (S.role === 'agent' && page !== 'ftf' && AGENT_ALLOWED.indexOf(page) === -1) {
-    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au personnel d\'encadrement.</div></div>');
+    setContent('<div class="empty-state"><div class="empty-icon">ðŸ”’</div><div class="empty-title">AccÃ¨s restreint</div><div class="empty-sub">Cette section est rÃ©servÃ©e au personnel d\'encadrement.</div></div>');
     return;
   }
   if (S.role === 'academy' && page !== 'ftf' && ACADEMY_ALLOWED && ACADEMY_ALLOWED.indexOf(page) === -1) {
-    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée aux administrateurs.</div></div>');
+    setContent('<div class="empty-state"><div class="empty-icon">ðŸ”’</div><div class="empty-title">AccÃ¨s restreint</div><div class="empty-sub">Cette section est rÃ©servÃ©e aux administrateurs.</div></div>');
     return;
   }
   try {
@@ -481,15 +481,15 @@ async function navigate(page, pd) {
       for (var _wi = 0; _wi < _wikiSections.length; _wi++) {
         if (_wikiSections[_wi].slug === page) {
           var _ws = _wikiSections[_wi];
-          fn = (function(s){ return function(){ return renderWikiSection(s.slug, {title:s.titre, sub:s.sous_titre||'', icon:s.icon||'📄'}); }; })(_ws);
+          fn = (function(s){ return function(){ return renderWikiSection(s.slug, {title:s.titre, sub:s.sous_titre||'', icon:s.icon||'ðŸ“„'}); }; })(_ws);
           break;
         }
       }
     }
     if (fn) await fn();
-    else setContent('<div class="empty-state"><div class="empty-icon">🚧</div><div class="empty-title">Page en construction</div></div>');
+    else setContent('<div class="empty-state"><div class="empty-icon">ðŸš§</div><div class="empty-title">Page en construction</div></div>');
   } catch(err) {
-    setContent('<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Erreur : ' + esc(err.message) + '</div></div>');
+    setContent('<div class="empty-state"><div class="empty-icon">âš ï¸</div><div class="empty-title">Erreur : ' + esc(err.message) + '</div></div>');
   }
   var sb = document.getElementById('sidebar');
   if (sb && sb.classList.contains('open')) toggleSidebar();
@@ -503,12 +503,12 @@ function setContent(html) {
   el.classList.add('page-in');
 }
 
-// ── Modal ──────────────────────────────────────────────────────────
+// â”€â”€ Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function openModal(opts) {
   document.getElementById('modalBox').className = 'modal-box' + (opts.size ? ' modal-' + opts.size : '');
   document.getElementById('modalHd').innerHTML =
     '<div><div class="modal-eye">' + esc(opts.eyebrow || '') + '</div><h2>' + (opts.title || '') + '</h2></div>' +
-    '<button class="btn-close-m" onclick="closeModal()">✕</button>';
+    '<button class="btn-close-m" onclick="closeModal()">âœ•</button>';
   document.getElementById('modalBody').innerHTML = opts.body || '';
   document.getElementById('modalFt').innerHTML = opts.footer || '';
   document.getElementById('modalOverlay').classList.add('open');
@@ -516,10 +516,10 @@ function openModal(opts) {
 function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
 function onModalOverlayClick(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
 
-// ── Toast ──────────────────────────────────────────────────────────
+// â”€â”€ Toast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function toast(msg, type) {
   type = type || 'info';
-  var icons = { success:'✓', error:'✕', info:'⭐' };
+  var icons = { success:'âœ“', error:'âœ•', info:'â­' };
   var el = document.createElement('div');
   el.className = 'toast toast-' + type;
   el.innerHTML = '<span>' + icons[type] + '</span><span>' + esc(msg) + '</span>';
@@ -531,19 +531,19 @@ function toastLoading(msg) {
   var el = document.createElement('div');
   el.className = 'toast toast-info';
   el.style.cssText = 'opacity:1;pointer-events:none';
-  el.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite">⟳</span><span id="toastLoadingMsg">' + esc(msg) + '</span>';
+  el.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite">âŸ³</span><span id="toastLoadingMsg">' + esc(msg) + '</span>';
   document.getElementById('toastContainer').appendChild(el);
   return {
     update: function(m) { var s = el.querySelector('#toastLoadingMsg'); if (s) s.textContent = m; },
     done: function(m, type) {
       el.className = 'toast toast-' + (type || 'success');
-      el.innerHTML = '<span>' + (type === 'error' ? '✕' : '✓') + '</span><span>' + esc(m) + '</span>';
+      el.innerHTML = '<span>' + (type === 'error' ? 'âœ•' : 'âœ“') + '</span><span>' + esc(m) + '</span>';
       setTimeout(function(){ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(function(){el.remove();}, 300); }, 3200);
     }
   };
 }
 
-// ── Permissions ────────────────────────────────────────────────────
+// â”€â”€ Permissions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function isAdmin() { return S.role === 'admin'; }
 function canWrite() { return S.role === 'admin' || S.role === 'academy' || S.role === 'rh'; }
 function canAccessFTF() {
@@ -554,27 +554,27 @@ function canAccessFTF() {
     (S.discordRoles || []).indexOf(FTF_ROLE_ID) !== -1;
 }
 
-// ── Utils ──────────────────────────────────────────────────────────
+// â”€â”€ Utils â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function esc(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function fmt(dateStr) {
-  if (!dateStr) return '—';
+  if (!dateStr) return 'â€”';
   var d = new Date(dateStr);
   return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
 }
 function fmtShort(dateStr) {
-  if (!dateStr) return '—';
+  if (!dateStr) return 'â€”';
   var d = new Date(dateStr);
   return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'short' });
 }
 function fmtClock(dateStr) {
-  if (!dateStr) return '—';
+  if (!dateStr) return 'â€”';
   return new Date(dateStr).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
 }
 function statusBadge(s) {
-  var map = { 'En service':'badge-green','En congé':'badge-blue','Suspendu':'badge-orange','Licencié':'badge-red','Retraité':'badge-gray','Démission':'badge-gray','Archivé':'badge-red' };
+  var map = { 'En service':'badge-green','En congÃ©':'badge-blue','Suspendu':'badge-orange','LicenciÃ©':'badge-red','RetraitÃ©':'badge-gray','DÃ©mission':'badge-gray','ArchivÃ©':'badge-red' };
   return '<span class="badge ' + (map[s]||'badge-gray') + '">' + esc(s) + '</span>';
 }
 function isReferent(grade) {
@@ -585,17 +585,17 @@ function isReferent(grade) {
   return g ? (g.ordre||0) >= (offII.ordre||0) : false;
 }
 function gradeBadge(g) {
-  var pastille = (g === 'Rookie' || g === 'Trooper I') ? ' <span title="En formation" style="font-size:1.4em;vertical-align:middle">🎓</span>' : '';
+  var pastille = (g === 'Rookie' || g === 'Trooper I') ? ' <span title="En formation" style="font-size:1.4em;vertical-align:middle">ðŸŽ“</span>' : '';
   return '<span class="badge badge-gold">' + esc(g) + pastille + '</span>';
 }
 function referentBadge() {
-  return '<span class="badge" style="background:rgba(46,204,113,.14);color:#2ecc71;border:1px solid rgba(46,204,113,.3);font-size:.68rem">📌 Référent</span>';
+  return '<span class="badge" style="background:rgba(46,204,113,.14);color:#2ecc71;border:1px solid rgba(46,204,113,.3);font-size:.68rem">ðŸ“Œ RÃ©fÃ©rent</span>';
 }
 function unitBadge(u) {
   return '<span class="badge badge-blue">' + esc(u) + '</span>';
 }
 function typeIcon(t) {
-  return { promotion:'🎖️', sanction:'⚠️', recompense:'🏅', note:'📋' }[t] || '📝';
+  return { promotion:'ðŸŽ–ï¸', sanction:'âš ï¸', recompense:'ðŸ…', note:'ðŸ“‹' }[t] || 'ðŸ“';
 }
 function typeDotClass(t) {
   return 'tl-dot-' + (t || 'note');
@@ -641,9 +641,9 @@ async function getDashboardGradeCounts(grades, agents, logLabel) {
   return countAgentsByGrade(agents);
 }
 
-// ══ DASHBOARD ══════════════════════════════════════════════════════
+// â•â• DASHBOARD â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 var FTF_STORAGE_KEY = 'sasp_ftf_dossiers_v1';
-var FTF_STATUSES = ['Attente paiement', '1ère convocation', '2ème convocation', '3ème convocation', 'Tribunal', 'Clôturé'];
+var FTF_STATUSES = ['Attente paiement', '1Ã¨re convocation', '2Ã¨me convocation', '3Ã¨me convocation', 'Tribunal', 'ClÃ´turÃ©'];
 var _ftfTab = 'dashboard';
 var _ftfSearch = '';
 var _ftfStatus = '';
@@ -668,10 +668,10 @@ function ftfAddDays(dateStr, days) {
 }
 function ftfNextStep(statut) {
   return {
-    'Attente paiement': '1ère convocation',
-    '1ère convocation': '2ème convocation',
-    '2ème convocation': '3ème convocation',
-    '3ème convocation': 'présentation tribunal'
+    'Attente paiement': '1Ã¨re convocation',
+    '1Ã¨re convocation': '2Ã¨me convocation',
+    '2Ã¨me convocation': '3Ã¨me convocation',
+    '3Ã¨me convocation': 'Tribunal'
   }[statut] || '';
 }
 function ftfDeadlineStart(d) {
@@ -683,11 +683,11 @@ function ftfAmount(d) {
   var base = Number(d.montant_initial || 0);
   var mult = {
     'Attente paiement': 1,
-    '1ère convocation': 1.25,
-    '2ème convocation': 1.75,
-    '3ème convocation': 2.25,
+    '1Ã¨re convocation': 1.25,
+    '2Ã¨me convocation': 1.75,
+    '3Ã¨me convocation': 2.25,
     'Tribunal': 2.25,
-    'Clôturé': 2.25
+    'ClÃ´turÃ©': 2.25
   }[d.statut] || 1;
   return Math.round(base * mult);
 }
@@ -701,11 +701,11 @@ function ftfFilteredDossiers() {
 function ftfStatusBadge(statut) {
   var cls = {
     'Attente paiement': 'badge-blue',
-    '1ère convocation': 'badge-gold',
-    '2ème convocation': 'badge-orange',
-    '3ème convocation': 'badge-red',
+    '1Ã¨re convocation': 'badge-gold',
+    '2Ã¨me convocation': 'badge-orange',
+    '3Ã¨me convocation': 'badge-red',
     'Tribunal': 'badge-red',
-    'Clôturé': 'badge-green'
+    'ClÃ´turÃ©': 'badge-green'
   }[statut] || 'badge-gray';
   return '<span class="badge ' + cls + '">' + esc(statut || 'Attente paiement') + '</span>';
 }
@@ -725,12 +725,12 @@ async function renderFTF() {
   }
   var dossiers = ftfLoadDossiers();
   var counts = {
-    active: dossiers.filter(function(d){ return d.statut !== 'Clôturé'; }).length,
-    c1: dossiers.filter(function(d){ return d.statut === '1ère convocation'; }).length,
-    c2: dossiers.filter(function(d){ return d.statut === '2ème convocation'; }).length,
-    c3: dossiers.filter(function(d){ return d.statut === '3ème convocation'; }).length,
+    active: dossiers.filter(function(d){ return d.statut !== 'ClÃ´turÃ©'; }).length,
+    c1: dossiers.filter(function(d){ return d.statut === '1Ã¨re convocation'; }).length,
+    c2: dossiers.filter(function(d){ return d.statut === '2Ã¨me convocation'; }).length,
+    c3: dossiers.filter(function(d){ return d.statut === '3Ã¨me convocation'; }).length,
     tribunal: dossiers.filter(function(d){ return d.statut === 'Tribunal'; }).length,
-    closed: dossiers.filter(function(d){ return d.statut === 'Clôturé'; }).length
+    closed: dossiers.filter(function(d){ return d.statut === 'ClÃ´turÃ©'; }).length
   };
   var body = _ftfTab === 'procedure' ? renderFTFProcedure() : (_ftfTab === 'dossiers' ? renderFTFDossiers() : renderFTFDashboard(counts));
   setContent(
@@ -741,7 +741,7 @@ async function renderFTF() {
       '</div>' +
       '<div class="ftf-tabs">' +
         ftfTabButton('dashboard', 'Tableau de bord', '*') +
-        ftfTabButton('procedure', 'Procedure FTF', '§') +
+        ftfTabButton('procedure', 'Procedure FTF', 'Â§') +
         ftfTabButton('dossiers', 'Dossiers FTF', '#') +
       '</div>' +
       body +
@@ -751,12 +751,12 @@ async function renderFTF() {
 }
 function renderFTFDashboard(counts) {
   return '<div class="ftf-grid">' +
-    renderFTFStat('□', 'Dossiers actifs', counts.active, 'hors dossiers clotures') +
+    renderFTFStat('â–¡', 'Dossiers actifs', counts.active, 'hors dossiers clotures') +
     renderFTFStat('1', 'Convocation 1', counts.c1, '+25 pourcent') +
     renderFTFStat('2', 'Convocation 2', counts.c2, '+75 pourcent') +
     renderFTFStat('3', 'Convocation 3', counts.c3, '+125 pourcent') +
-    renderFTFStat('⚖', 'A presenter au tribunal', counts.tribunal, 'phase judiciaire') +
-    renderFTFStat('✓', 'Dossiers clotures', counts.closed, 'procedure terminee') +
+    renderFTFStat('âš–', 'A presenter au tribunal', counts.tribunal, 'phase judiciaire') +
+    renderFTFStat('âœ“', 'Dossiers clotures', counts.closed, 'procedure terminee') +
   '</div>';
 }
 function renderFTFProcedure() {
@@ -765,9 +765,9 @@ function renderFTFProcedure() {
     ['7 jours pour payer', 'Le delai de paiement initial est fixe a 7 jours.'],
     ['Paiement effectue', 'Si le paiement est fait, la procedure est terminee.'],
     ['Non-paiement', 'Si le paiement n est pas fait, le dossier est transfere a la FTF.'],
-    ['1ère convocation', 'Majoration de 25 pourcent, nouveau delai de 7 jours, non-presentation = 5 000 $.'],
-    ['2ème convocation', 'Majoration de 75 pourcent, nouveau delai de 7 jours, non-presentation = 5 000 $.'],
-    ['3ème convocation', 'Majoration de 125 pourcent, nouveau delai de 7 jours, non-presentation = 5 000 $.'],
+    ['1Ã¨re convocation', 'Majoration de 25 pourcent, nouveau delai de 7 jours, non-presentation = 5 000 $.'],
+    ['2Ã¨me convocation', 'Majoration de 75 pourcent, nouveau delai de 7 jours, non-presentation = 5 000 $.'],
+    ['3Ã¨me convocation', 'Majoration de 125 pourcent, nouveau delai de 7 jours, non-presentation = 5 000 $.'],
     ['Apres 3 convocations', 'Localisation, interpellation, presentation au tribunal et saisie des biens.'],
     ['Insolvabilite', 'Echeancier, TIG SASP/SAMC, pointage quotidien ou prison selon la decision.']
   ];
@@ -837,7 +837,7 @@ function renderFTFDossiers() {
     '</tr>';
   }).join('') : '<tr><td colspan="5"><div class="empty-state" style="padding:28px"><div class="empty-icon">FTF</div><div class="empty-title">Aucun dossier FTF</div></div></td></tr>';
   return '<div class="card ftf-dossiers-card">' +
-    '<div class="flex-between mb-20"><div><h2 style="font-size:1.2rem">Dossiers FTF</h2><p class="text-muted" style="font-size:.82rem">Date 1ere amende / delit = depart du premier delai. Apres chaque convocation, la date du statut relance le delai suivant.</p>' + (pendingAlerts ? '<p class="text-gold" style="font-size:.82rem;margin-top:4px">' + pendingAlerts + ' rappel(s) convocation en attente.</p>' : '') + '</div><button class="btn btn-primary btn-sm" onclick="openFtfDossierModal()">Creer un dossier</button></div>' +
+    '<div class="flex-between mb-20"><div><h2 style="font-size:1.2rem">Dossiers FTF</h2><p class="text-muted" style="font-size:.82rem">Date 1ere amende / delit = depart du premier delai. Quand une convocation est traitee, le statut passe automatiquement a l etape suivante.</p>' + (pendingAlerts ? '<p class="text-gold" style="font-size:.82rem;margin-top:4px">' + pendingAlerts + ' rappel(s) convocation en attente.</p>' : '') + '</div><button class="btn btn-primary btn-sm" onclick="openFtfDossierModal()">Creer un dossier</button></div>' +
     '<div class="ftf-toolbar">' +
       '<input class="form-control" value="' + esc(_ftfSearch) + '" oninput="ftfSetSearch(this.value)" placeholder="Rechercher par nom ou prenom">' +
       '<select class="form-control" onchange="ftfSetStatus(this.value)">' + statusOptions + '</select>' +
@@ -854,9 +854,9 @@ function openFtfDossierModal(id) {
   var statusSelect = '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="ftfStatut">' +
     FTF_STATUSES.map(function(s){ return '<option value="' + esc(s) + '"' + (d.statut === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') +
     '</select></div>';
-  var validatedSelect = '<div class="form-group"><label class="form-label">Convocation validée ?</label><select class="form-control" id="ftfConvocationValidee">' +
-    '<option value="false"' + (!d.convocation_validee ? ' selected' : '') + '>Non - continuer les rappels</option>' +
-    '<option value="true"' + (d.convocation_validee ? ' selected' : '') + '>Oui - arrêter les rappels</option>' +
+  var validatedSelect = '<div class="form-group"><label class="form-label">Convocation traitee ?</label><select class="form-control" id="ftfConvocationValidee">' +
+    '<option value="false" selected>Non</option>' +
+    '<option value="true">Oui - passer a l etape suivante</option>' +
     '</select></div>';
   openModal({
     eyebrow: 'DOSSIER FTF',
@@ -872,7 +872,7 @@ function openFtfDossierModal(id) {
         fld('Date 1ere amende / delit','date','ftfDate',d.date_notification,'') +
       '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-        fld('Date depart delai actuel','date','ftfDateStatut',d.date_statut,'') +
+        '<input type="hidden" id="ftfDateStatut" value="' + esc(d.date_statut || '') + '">' +
         validatedSelect +
       '</div>' +
       statusSelect +
@@ -891,10 +891,11 @@ function saveFtfDossier(id) {
   var dossiers = ftfLoadDossiers();
   var previous = id ? dossiers.find(function(d){ return d.id === id; }) : null;
   var newStatus = document.getElementById('ftfStatut').value || 'Attente paiement';
+  var advanceStep = document.getElementById('ftfConvocationValidee').value === 'true';
+  if (advanceStep) newStatus = ftfNextStep(newStatus) || newStatus;
   var statusChanged = previous && previous.statut !== newStatus;
   var dateAmende = document.getElementById('ftfDate').value || ftfTodayKey();
-  var dateStatut = document.getElementById('ftfDateStatut').value || (id ? ftfTodayKey() : dateAmende);
-  if (statusChanged && (!document.getElementById('ftfDateStatut').value || dateStatut === previous.date_statut)) dateStatut = ftfTodayKey();
+  var dateStatut = id ? ((statusChanged || advanceStep) ? ftfTodayKey() : ((previous && previous.date_statut) || dateAmende)) : dateAmende;
   var data = {
     id: id || ('ftf_' + Date.now()),
     nom: nom,
@@ -903,9 +904,9 @@ function saveFtfDossier(id) {
     date_notification: dateAmende,
     date_statut: dateStatut,
     statut: newStatus,
-    convocation_validee: document.getElementById('ftfConvocationValidee').value === 'true',
+    convocation_validee: false,
     created_by_discord_id: (previous && previous.created_by_discord_id) || S.discordUserId || '',
-    notif_sent: statusChanged ? {} : ((previous && previous.notif_sent) || {}),
+    notif_sent: (statusChanged || advanceStep) ? {} : ((previous && previous.notif_sent) || {}),
     notes: document.getElementById('ftfNotes').value || '',
     updated_at: new Date().toISOString()
   };
@@ -940,21 +941,21 @@ async function renderDashboard() {
   var susp    = agents.filter(function(a){ return a.statut === 'Suspendu'; }).length;
   var recentR = agents.slice().sort(function(a,b){ return new Date(b.date_recrutement)-new Date(a.date_recrutement); }).slice(0,5);
 
-  // Grade counts — tous les grades dans l'ordre hiérarchique
+  // Grade counts â€” tous les grades dans l'ordre hiÃ©rarchique
   var gradesSorted = _grades.slice().sort(function(a,b){ return (b.ordre||0)-(a.ordre||0); });
   var gradeCounts = await getDashboardGradeCounts(gradesSorted, agents, 'dashboard');
   var topGrades = gradesSorted.map(function(g){ return [g.nom, gradeCounts[gradeKey(g.nom)]||0]; });
 
   var activityHtml = hist.length ? hist.map(function(h) {
     var dot = typeDotClass(h.type);
-    var name = h.agent ? (h.agent.prenom + ' ' + h.agent.nom) : '—';
+    var name = h.agent ? (h.agent.prenom + ' ' + h.agent.nom) : 'â€”';
     return '<div class="activity-item">' +
       '<div class="activity-icon tl-dot ' + dot + '">' + typeIcon(h.type) + '</div>' +
       '<div class="activity-text"><div class="activity-title">' + esc(h.titre) + '</div>' +
-      '<div class="activity-sub">' + esc(name) + ' · ' + esc(h.agent && h.agent.grade || '') + '</div></div>' +
+      '<div class="activity-sub">' + esc(name) + ' Â· ' + esc(h.agent && h.agent.grade || '') + '</div></div>' +
       '<div class="activity-date">' + fmtShort(h.date) + '</div>' +
     '</div>';
-  }).join('') : '<div class="empty-state" style="padding:30px"><div class="empty-icon">📋</div><div class="empty-title">Aucune activité récente</div></div>';
+  }).join('') : '<div class="empty-state" style="padding:30px"><div class="empty-icon">ðŸ“‹</div><div class="empty-title">Aucune activitÃ© rÃ©cente</div></div>';
 
   var gradeListHtml = topGrades.map(function(g) {
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border0)">' +
@@ -965,28 +966,28 @@ async function renderDashboard() {
   setContent(
     '<div class="welcome-bar">' +
       '<div><h1 style="font-size:1.5rem">Tableau de bord</h1>' +
-      '<p class="text-muted" style="margin-top:3px;font-size:.84rem">SASP ·' + new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) + '</p></div>' +
-      (canWrite() ? '<button class="btn btn-primary btn-sm" onclick="navigate(\'agents\')" style="gap:6px">👮 Ajouter un agent</button>' : '') +
+      '<p class="text-muted" style="margin-top:3px;font-size:.84rem">SASP Â·' + new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) + '</p></div>' +
+      (canWrite() ? '<button class="btn btn-primary btn-sm" onclick="navigate(\'agents\')" style="gap:6px">ðŸ‘® Ajouter un agent</button>' : '') +
     '</div>' +
 
     '<div class="stats-grid">' +
-      statCard('👮', 'Agents total', total) +
-      statCard('✅', 'En service', actifs, 'badge-green') +
-      statCard('⚠️', 'Suspendus', susp, 'badge-orange') +
-      statCard('📋', 'Recrutements ce mois', recentR.length) +
+      statCard('ðŸ‘®', 'Agents total', total) +
+      statCard('âœ…', 'En service', actifs, 'badge-green') +
+      statCard('âš ï¸', 'Suspendus', susp, 'badge-orange') +
+      statCard('ðŸ“‹', 'Recrutements ce mois', recentR.length) +
     '</div>' +
 
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">' +
       '<div class="card">' +
-        '<div class="card-head"><div class="card-icon">🎖️</div><div><div class="card-title">Grades</div><div class="card-sub">EFFECTIFS</div></div></div>' +
+        '<div class="card-head"><div class="card-icon">ðŸŽ–ï¸</div><div><div class="card-title">Grades</div><div class="card-sub">EFFECTIFS</div></div></div>' +
         (gradeListHtml || '<div class="empty-state" style="padding:20px"><div class="empty-title">Aucun agent</div></div>') +
       '</div>' +
       '<div class="card">' +
-        '<div class="card-head"><div class="card-icon">⚡</div><div><div class="card-title">Accès rapide</div></div></div>' +
+        '<div class="card-head"><div class="card-icon">âš¡</div><div><div class="card-title">AccÃ¨s rapide</div></div></div>' +
         '<div style="display:flex;flex-direction:column;gap:8px">' +
-          quickLink('👮', 'Agents', 'agents') +
-          quickLink('📈', 'Statistiques', 'stats') +
-          quickLink('🗺️', 'Cartes', 'cartes') +
+          quickLink('ðŸ‘®', 'Agents', 'agents') +
+          quickLink('ðŸ“ˆ', 'Statistiques', 'stats') +
+          quickLink('ðŸ—ºï¸', 'Cartes', 'cartes') +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -1023,7 +1024,7 @@ function renderOrgChart(agents) {
       cards = '<div style="display:flex;flex-wrap:wrap;gap:7px;padding-left:13px">' +
         members.map(function(a) {
           var initials = ((a.prenom||'')[0]||'').toUpperCase() + ((a.nom||'')[0]||'').toUpperCase();
-          var statusDot = { 'En service':'#2ecc71','En congé':'#3498db','Suspendu':'#e67e22' }[a.statut] || '#7f8c8d';
+          var statusDot = { 'En service':'#2ecc71','En congÃ©':'#3498db','Suspendu':'#e67e22' }[a.statut] || '#7f8c8d';
           var divBadges = (a.unites||[]).slice(0,3).map(function(u) {
             return '<span style="font-size:.57rem;padding:1px 5px;border-radius:3px;background:rgba(74,144,196,.18);color:#7ab8d8;font-weight:700;letter-spacing:.3px">' + esc(u) + '</span>';
           }).join('');
@@ -1044,14 +1045,14 @@ function renderOrgChart(agents) {
         }).join('') +
       '</div>';
     } else {
-      cards = '<div style="padding-left:13px;font-size:.72rem;color:var(--t3);font-style:italic;opacity:.45;padding-bottom:2px">— Vacant —</div>';
+      cards = '<div style="padding-left:13px;font-size:.72rem;color:var(--t3);font-style:italic;opacity:.45;padding-bottom:2px">â€” Vacant â€”</div>';
     }
     return header + cards;
   }).join('');
 
   if (!sections) return '';
   return '<div class="card" style="margin-top:18px">' +
-    '<div class="card-head"><div class="card-icon">🏛️</div><div><div class="card-title">Organigramme</div><div class="card-sub">HIÉRARCHIE SASP</div></div></div>' +
+    '<div class="card-head"><div class="card-icon">ðŸ›ï¸</div><div><div class="card-title">Organigramme</div><div class="card-sub">HIÃ‰RARCHIE SASP</div></div></div>' +
     sections +
   '</div>';
 }
@@ -1063,7 +1064,7 @@ function quickLink(icon, label, page) {
   return '<button class="btn btn-ghost btn-sm" style="justify-content:flex-start;gap:10px" onclick="navigate(\'' + page + '\')">' + icon + ' ' + label + '</button>';
 }
 
-// ══ AGENTS ════════════════════════════════════════════════════════
+// â•â• AGENTS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function renderAgents() {
   if (!_grades.length) _grades = await DB.getGrades();
   var agents = await DB.getAgents(_agentFilters);
@@ -1072,7 +1073,7 @@ async function renderAgents() {
     _grades.map(function(g){ return '<option value="' + esc(g.nom) + '"' + (_agentFilters.grade===g.nom?' selected':'') + '>' + esc(g.nom) + '</option>'; }).join('');
   var uniteOpts = '<option value="">Toutes les divisions</option>' +
     _units.map(function(u){
-      return '<option value="' + esc(u.code) + '"' + (_agentFilters.unite===u.code?' selected':'') + '>' + esc(u.code) + ' — ' + esc(u.nom) + '</option>';
+      return '<option value="' + esc(u.code) + '"' + (_agentFilters.unite===u.code?' selected':'') + '>' + esc(u.code) + ' â€” ' + esc(u.nom) + '</option>';
     }).join('');
 
   var rows = agents.length ? agents.map(function(a) {
@@ -1082,44 +1083,44 @@ async function renderAgents() {
       '<td class="mono text-gold">' + esc(a.matricule) + '</td>' +
       '<td style="font-weight:600;color:var(--t0)">' + esc(a.prenom) + ' ' + esc(a.nom) + '</td>' +
       '<td>' + gradeBadge(a.grade) + (isReferent(a.grade) ? referentBadge() : '') + '</td>' +
-      '<td>' + (unites||'<span class="text-muted">—</span>') + '</td>' +
+      '<td>' + (unites||'<span class="text-muted">â€”</span>') + '</td>' +
       '<td><span class="badge badge-gold" style="font-size:.65rem">PPA ' + ppas + '/3</span></td>' +
       '<td>' + statusBadge(a.statut) + '</td>' +
       '<td onclick="event.stopPropagation()" style="white-space:nowrap">' +
         '<button class="btn btn-ghost btn-sm" onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})">Fiche</button>' +
-        (canWrite() ? ' <button class="btn btn-outline btn-sm" onclick="openAgentModal(\'' + a.id + '\')">Éditer</button>' : '') +
+        (canWrite() ? ' <button class="btn btn-outline btn-sm" onclick="openAgentModal(\'' + a.id + '\')">Ã‰diter</button>' : '') +
       '</td>' +
     '</tr>';
-  }).join('') : '<tr><td colspan="7"><div class="empty-state" style="padding:40px"><div class="empty-icon">👮</div><div class="empty-title">Aucun agent trouvé</div></div></td></tr>';
+  }).join('') : '<tr><td colspan="7"><div class="empty-state" style="padding:40px"><div class="empty-icon">ðŸ‘®</div><div class="empty-title">Aucun agent trouvÃ©</div></div></td></tr>';
 
   setContent(
     '<div class="flex-between mb-20 flex-wrap gap-8">' +
-      '<div><h1 style="font-size:1.4rem">Agents</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">' + agents.length + ' agent(s) trouvé(s)</p></div>' +
+      '<div><h1 style="font-size:1.4rem">Agents</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">' + agents.length + ' agent(s) trouvÃ©(s)</p></div>' +
       '<div class="flex gap-8">' +
         (canWrite() ? '<button class="btn btn-primary btn-sm" onclick="openAgentModal(null)">+ Ajouter un agent</button>' : '') +
-        '<button class="btn btn-ghost btn-sm" onclick="showMatriculesDispos()">🔢 Matricules dispo</button>' +
-        (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="syncAllAgentsToDiscord()">🔄 Sync Discord</button>' : '') +
-        (canWrite() ? '<button class="btn btn-ghost btn-sm" onclick="navigate(\'completude\')">🗂️ Complétude</button>' : '') +
+        '<button class="btn btn-ghost btn-sm" onclick="showMatriculesDispos()">ðŸ”¢ Matricules dispo</button>' +
+        (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="syncAllAgentsToDiscord()">ðŸ”„ Sync Discord</button>' : '') +
+        (canWrite() ? '<button class="btn btn-ghost btn-sm" onclick="navigate(\'completude\')">ðŸ—‚ï¸ ComplÃ©tude</button>' : '') +
       '</div>' +
     '</div>' +
     '<div class="filter-bar">' +
-      '<div class="search-wrap" style="max-width:280px"><span class="search-icon">🔍</span>' +
-        '<input class="form-control search-input" placeholder="Nom, prénom, matricule…" value="' + esc(_agentFilters.search) + '" oninput="agentSearch(this.value)"></div>' +
+      '<div class="search-wrap" style="max-width:280px"><span class="search-icon">ðŸ”</span>' +
+        '<input class="form-control search-input" placeholder="Nom, prÃ©nom, matriculeâ€¦" value="' + esc(_agentFilters.search) + '" oninput="agentSearch(this.value)"></div>' +
       '<select class="form-control" style="width:auto" onchange="agentFilter(\'grade\',this.value)">' + gradeOpts + '</select>' +
       '<select class="form-control" style="width:auto" onchange="agentFilter(\'unite\',this.value)">' + uniteOpts + '</select>' +
       '<div class="filter-tabs">' +
         ftab('', 'Tous', _agentFilters.statut === '') +
         ftab('En service', 'En service', _agentFilters.statut === 'En service') +
-        ftab('En congé', 'En congé', _agentFilters.statut === 'En congé') +
+        ftab('En congÃ©', 'En congÃ©', _agentFilters.statut === 'En congÃ©') +
         ftab('Suspendu', 'Suspendus', _agentFilters.statut === 'Suspendu') +
-        ftab('Licencié', 'Licenciés', _agentFilters.statut === 'Licencié') +
-        ftab('Retraité', 'Retraités', _agentFilters.statut === 'Retraité') +
-        ftab('Démission', 'Démission', _agentFilters.statut === 'Démission') +
+        ftab('LicenciÃ©', 'LicenciÃ©s', _agentFilters.statut === 'LicenciÃ©') +
+        ftab('RetraitÃ©', 'RetraitÃ©s', _agentFilters.statut === 'RetraitÃ©') +
+        ftab('DÃ©mission', 'DÃ©mission', _agentFilters.statut === 'DÃ©mission') +
       '</div>' +
     '</div>' +
     '<div class="card" style="padding:0;overflow:hidden">' +
       '<div class="table-wrap"><table>' +
-        '<thead><tr><th>MATRICULE</th><th>NOM</th><th>GRADE</th><th>UNITÉS</th><th>PPA</th><th>STATUT</th><th>ACTIONS</th></tr></thead>' +
+        '<thead><tr><th>MATRICULE</th><th>NOM</th><th>GRADE</th><th>UNITÃ‰S</th><th>PPA</th><th>STATUT</th><th>ACTIONS</th></tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
       '</table></div>' +
     '</div>'
@@ -1137,7 +1138,7 @@ function agentSearch(v) {
 }
 function agentFilter(key, val) { _agentFilters[key] = val; renderAgents(); }
 
-// ── Agent modal (add / edit) ──────────────────────────────────────
+// â”€â”€ Agent modal (add / edit) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function openAgentModal(id) {
   if (!canWrite()) return;
   _grades = await DB.getGrades();
@@ -1154,13 +1155,13 @@ async function openAgentModal(id) {
 
   var uniteChecks = _units.filter(function(u){ return u.code !== 'LP'; }).map(function(u){
     var chk = (v.unites||[]).includes(u.code) ? ' checked' : '';
-    return '<label class="form-check"><input type="checkbox" name="unite" value="' + esc(u.code) + '"' + chk + '><span class="form-check-lbl">' + esc(u.code) + ' — ' + esc(u.nom) + '</span></label>';
+    return '<label class="form-check"><input type="checkbox" name="unite" value="' + esc(u.code) + '"' + chk + '><span class="form-check-lbl">' + esc(u.code) + ' â€” ' + esc(u.nom) + '</span></label>';
   }).join('');
 
-  var formateurOpts = '<option value="">— Aucun formateur assigné —</option>' +
+  var formateurOpts = '<option value="">â€” Aucun formateur assignÃ© â€”</option>' +
     formateurs.filter(function(f){ return f.id !== id; }).map(function(f){
       return '<option value="' + f.id + '"' + (v.formateur_id === f.id ? ' selected' : '') + '>' +
-        esc(f.matricule + ' — ' + f.prenom + ' ' + f.nom) + '</option>';
+        esc(f.matricule + ' â€” ' + f.prenom + ' ' + f.nom) + '</option>';
     }).join('');
 
   openModal({
@@ -1169,35 +1170,35 @@ async function openAgentModal(id) {
     size: 'lg',
     body:
       '<div class="form-grid2">' +
-        fld('Prénom *', 'text', 'agPrenom', v.prenom) +
+        fld('PrÃ©nom *', 'text', 'agPrenom', v.prenom) +
         fld('Nom *', 'text', 'agNom', v.nom) +
       '</div>' +
       '<div class="form-grid2">' +
         fld('Matricule *', 'text', 'agMatricule', v.matricule, 'Ex: SASP-001') +
         fld('Date de naissance', 'date', 'agDob', v.date_naissance) +
       '</div>' +
-      '<div class="form-group"><label class="form-label">Téléphone</label><input class="form-control" type="text" id="agTel" value="' + esc(fmtTel(v.telephone)||'') + '" placeholder="(555) 0000" oninput="formatTel(this)" maxlength="11"></div>' +
+      '<div class="form-group"><label class="form-label">TÃ©lÃ©phone</label><input class="form-control" type="text" id="agTel" value="' + esc(fmtTel(v.telephone)||'') + '" placeholder="(555) 0000" oninput="formatTel(this)" maxlength="11"></div>' +
       fld('IBAN', 'text', 'agIban', v.iban||'', 'Ex : 524156435465413') +
       '<div class="form-grid2">' +
         '<div class="form-group"><label class="form-label">Grade *</label><select class="form-control" id="agGrade">' + gradeOpts + '</select></div>' +
         '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="agStatut">' +
-          ['En service','En congé','Suspendu','Licencié','Retraité','Démission','Archivé'].map(function(s){ return '<option' + (v.statut===s?' selected':'') + '>' + s + '</option>'; }).join('') +
+          ['En service','En congÃ©','Suspendu','LicenciÃ©','RetraitÃ©','DÃ©mission','ArchivÃ©'].map(function(s){ return '<option' + (v.statut===s?' selected':'') + '>' + s + '</option>'; }).join('') +
         '</select></div>' +
       '</div>' +
       '<div class="form-grid2">' +
         fld('Date de recrutement', 'date', 'agRecruit', v.date_recrutement) +
-        fld('Date de dernière promotion', 'date', 'agPromo', v.date_promotion) +
+        fld('Date de derniÃ¨re promotion', 'date', 'agPromo', v.date_promotion) +
       '</div>' +
-      '<div class="form-group"><label class="form-label">Unités</label>' +
+      '<div class="form-group"><label class="form-label">UnitÃ©s</label>' +
         '<div class="flex flex-wrap gap-12">' + uniteChecks + '</div>' +
       '</div>' +
-      '<div class="form-group"><label class="form-label">Formateur assigné</label>' +
+      '<div class="form-group"><label class="form-label">Formateur assignÃ©</label>' +
         '<select class="form-control" id="agFormateur">' + formateurOpts + '</select>' +
       '</div>' +
       '<div class="form-group">' +
         '<label class="form-check" style="align-items:flex-start">' +
           '<input type="checkbox" id="agIsFormateur"' + (v.is_formateur ? ' checked' : '') + ' style="margin-top:3px">' +
-          '<span class="form-check-lbl">🎓 Agent formateur — apparaît dans la liste des formateurs assignables</span>' +
+          '<span class="form-check-lbl">ðŸŽ“ Agent formateur â€” apparaÃ®t dans la liste des formateurs assignables</span>' +
         '</label>' +
       '</div>' +
       fld('Discord ID', 'text', 'agDiscordId', v.discord_id||'', 'Ex: 123456789012345678') +
@@ -1229,11 +1230,11 @@ async function saveAgent(id) {
   var prenom = document.getElementById('agPrenom').value.trim();
   var nom    = document.getElementById('agNom').value.trim();
   var mat    = document.getElementById('agMatricule').value.trim();
-  if (!prenom || !nom || !mat) { toast('Prénom, nom et matricule sont requis.','error'); return; }
+  if (!prenom || !nom || !mat) { toast('PrÃ©nom, nom et matricule sont requis.','error'); return; }
   var discordIdVal = document.getElementById('agDiscordId').value.trim();
-  if (!id && !discordIdVal) { toast('Le Discord ID est requis pour créer une fiche.','error'); return; }
+  if (!id && !discordIdVal) { toast('Le Discord ID est requis pour crÃ©er une fiche.','error'); return; }
   var matTaken = await DB.checkMatricule(mat, id || null);
-  if (matTaken) { toast('Ce matricule est déjà utilisé par un autre agent.','error'); return; }
+  if (matTaken) { toast('Ce matricule est dÃ©jÃ  utilisÃ© par un autre agent.','error'); return; }
 
   var oldUnites = []; var oldDiscordId = null; var oldGrade = null;
   if (id) {
@@ -1264,42 +1265,42 @@ async function saveAgent(id) {
     else    { res = await DB.createAgent(data); }
     if (res.error) throw res.error;
     closeModal();
-    toast(id ? 'Agent modifié.' : 'Agent créé.', 'success');
+    toast(id ? 'Agent modifiÃ©.' : 'Agent crÃ©Ã©.', 'success');
     if (id) {
       var diffLines = [];
       var old = oldAg || {};
-      if ((old.prenom||'') !== data.prenom || (old.nom||'') !== data.nom) diffLines.push('Nom : ' + (old.prenom+' '+old.nom).trim() + ' → ' + data.prenom + ' ' + data.nom);
-      if ((old.matricule||'') !== data.matricule) diffLines.push('Matricule : ' + (old.matricule||'—') + ' → ' + data.matricule);
-      if ((old.grade||'') !== (data.grade||'')) diffLines.push('Grade : ' + (old.grade||'—') + ' → ' + (data.grade||'—'));
-      if ((old.statut||'') !== (data.statut||'')) diffLines.push('Statut : ' + (old.statut||'—') + ' → ' + (data.statut||'—'));
-      if ((old.telephone||'') !== (data.telephone||'')) diffLines.push('Téléphone : ' + (old.telephone||'—') + ' → ' + (data.telephone||'—'));
+      if ((old.prenom||'') !== data.prenom || (old.nom||'') !== data.nom) diffLines.push('Nom : ' + (old.prenom+' '+old.nom).trim() + ' â†’ ' + data.prenom + ' ' + data.nom);
+      if ((old.matricule||'') !== data.matricule) diffLines.push('Matricule : ' + (old.matricule||'â€”') + ' â†’ ' + data.matricule);
+      if ((old.grade||'') !== (data.grade||'')) diffLines.push('Grade : ' + (old.grade||'â€”') + ' â†’ ' + (data.grade||'â€”'));
+      if ((old.statut||'') !== (data.statut||'')) diffLines.push('Statut : ' + (old.statut||'â€”') + ' â†’ ' + (data.statut||'â€”'));
+      if ((old.telephone||'') !== (data.telephone||'')) diffLines.push('TÃ©lÃ©phone : ' + (old.telephone||'â€”') + ' â†’ ' + (data.telephone||'â€”'));
       if (JSON.stringify((old.unites||[]).slice().sort()) !== JSON.stringify((data.unites||[]).slice().sort())) {
         var added   = (data.unites||[]).filter(function(u){ return !(old.unites||[]).includes(u); });
         var removed = (old.unites||[]).filter(function(u){ return !(data.unites||[]).includes(u); });
         if (added.length)   diffLines.push('+Division : ' + added.join(', '));
-        if (removed.length) diffLines.push('−Division : ' + removed.join(', '));
+        if (removed.length) diffLines.push('âˆ’Division : ' + removed.join(', '));
       }
-      if (!!old.is_formateur !== !!data.is_formateur) diffLines.push('Formateur : ' + (old.is_formateur?'Oui':'Non') + ' → ' + (data.is_formateur?'Oui':'Non'));
-      if ((old.iban||'') !== (data.iban||'')) diffLines.push('IBAN : ' + (old.iban||'—') + ' → ' + (data.iban||'—'));
-      if ((old.notes||'').trim() !== (data.notes||'').trim()) diffLines.push('Notes : modifiées');
-      if ((old.date_recrutement||'') !== (data.date_recrutement||'')) diffLines.push('Date recrutement : ' + (old.date_recrutement||'—') + ' → ' + (data.date_recrutement||'—'));
+      if (!!old.is_formateur !== !!data.is_formateur) diffLines.push('Formateur : ' + (old.is_formateur?'Oui':'Non') + ' â†’ ' + (data.is_formateur?'Oui':'Non'));
+      if ((old.iban||'') !== (data.iban||'')) diffLines.push('IBAN : ' + (old.iban||'â€”') + ' â†’ ' + (data.iban||'â€”'));
+      if ((old.notes||'').trim() !== (data.notes||'').trim()) diffLines.push('Notes : modifiÃ©es');
+      if ((old.date_recrutement||'') !== (data.date_recrutement||'')) diffLines.push('Date recrutement : ' + (old.date_recrutement||'â€”') + ' â†’ ' + (data.date_recrutement||'â€”'));
       ['blame1','blame2','blame3'].forEach(function(k,i){
-        if (!!old[k] !== !!data[k]) diffLines.push('Blâme ' + (i+1) + ' : ' + (old[k]?'✅':'❌') + ' → ' + (data[k]?'✅':'❌'));
+        if (!!old[k] !== !!data[k]) diffLines.push('BlÃ¢me ' + (i+1) + ' : ' + (old[k]?'âœ…':'âŒ') + ' â†’ ' + (data[k]?'âœ…':'âŒ'));
       });
       ['ppa1','ppa2','ppa3'].forEach(function(k,i){
-        if (!!old[k] !== !!data[k]) diffLines.push('PPA ' + (i+1) + ' : ' + (old[k]?'✅':'❌') + ' → ' + (data[k]?'✅':'❌'));
+        if (!!old[k] !== !!data[k]) diffLines.push('PPA ' + (i+1) + ' : ' + (old[k]?'âœ…':'âŒ') + ' â†’ ' + (data[k]?'âœ…':'âŒ'));
       });
       var logFields = [
-        { name: 'Agent', value: data.prenom + ' ' + data.nom + ' · ' + data.matricule, inline: true },
+        { name: 'Agent', value: data.prenom + ' ' + data.nom + ' Â· ' + data.matricule, inline: true },
         { name: 'Par', value: _whoAmI(), inline: true }
       ];
       if (diffLines.length) logFields.push({ name: 'Modifications', value: diffLines.join('\n').slice(0,1024), inline: false });
-      sendLog('✏️ Agent modifié', 0x3498db, logFields);
+      sendLog('âœï¸ Agent modifiÃ©', 0x3498db, logFields);
     } else {
-      sendLog('✅ Agent créé', 0x27ae60, [
-        { name: 'Agent', value: data.prenom + ' ' + data.nom + ' · ' + data.matricule, inline: true },
-        { name: 'Grade', value: data.grade || '—', inline: true },
-        { name: 'Divisions', value: (data.unites||[]).join(', ')||'—', inline: true },
+      sendLog('âœ… Agent crÃ©Ã©', 0x27ae60, [
+        { name: 'Agent', value: data.prenom + ' ' + data.nom + ' Â· ' + data.matricule, inline: true },
+        { name: 'Grade', value: data.grade || 'â€”', inline: true },
+        { name: 'Divisions', value: (data.unites||[]).join(', ')||'â€”', inline: true },
         { name: 'Par', value: _whoAmI(), inline: false }
       ]);
     }
@@ -1321,7 +1322,7 @@ async function saveAgent(id) {
   }
 }
 
-// ══ AGENT PROFILE ══════════════════════════════════════════════════
+// â•â• AGENT PROFILE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function renderAgentProfile() {
   var id = S.pd.id;
   if (!id) { navigate('agents'); return; }
@@ -1342,7 +1343,7 @@ async function renderAgentProfile() {
 
   var ppaHtml = ppas.map(function(p){
       return '<div class="ppa-item' + (p.val?' checked':'') + '">' +
-        '<div class="ppa-check">' + (p.val ? '✅' : '⬜') + '</div>' +
+        '<div class="ppa-check">' + (p.val ? 'âœ…' : 'â¬œ') + '</div>' +
         '<div>' +
           '<div class="ppa-label">' + p.label + '</div>' +
           (p.val && p.date ? '<div style="font-size:.7rem;color:var(--t3);font-family:\'Share Tech Mono\',monospace">Obtenu le ' + fmt(p.date) + '</div>' : '') +
@@ -1356,22 +1357,22 @@ async function renderAgentProfile() {
   }).join('');
 
   setContent(
-    '<button class="btn btn-ghost btn-sm mb-14" onclick="navigate(\'agents\')">← Retour</button>' +
+    '<button class="btn btn-ghost btn-sm mb-14" onclick="navigate(\'agents\')">â† Retour</button>' +
 
     '<div class="profile-hd">' +
-      '<div class="profile-av">👤</div>' +
+      '<div class="profile-av">ðŸ‘¤</div>' +
       '<div style="flex:1">' +
         '<h1 class="profile-name">' + esc(ag.prenom) + ' ' + esc(ag.nom) + '</h1>' +
         '<div class="profile-mat">' + esc(ag.matricule) + '</div>' +
         '<div class="profile-meta">' + gradeBadge(ag.grade) + (isReferent(ag.grade) ? referentBadge() : '') + statusBadge(ag.statut) + unites + '</div>' +
       '</div>' +
-      (ag.statut === 'Archivé' ?
-        '<div class="profile-actions"><span class="badge badge-red" style="font-size:.8rem;padding:6px 14px">🗃️ Archivé — lecture seule</span></div>' :
+      (ag.statut === 'ArchivÃ©' ?
+        '<div class="profile-actions"><span class="badge badge-red" style="font-size:.8rem;padding:6px 14px">ðŸ—ƒï¸ ArchivÃ© â€” lecture seule</span></div>' :
         canWrite() ?
           '<div class="profile-actions">' +
-            '<button class="btn btn-outline btn-sm" onclick="openAgentModal(\'' + id + '\')">✏️ Modifier</button>' +
-            '<button class="btn btn-ghost btn-sm" onclick="syncDiscordToAgent(\'' + id + '\')" title="Sync divisions depuis Discord">🔄 Sync Discord</button>' +
-            (isAdmin() ? '<button class="btn btn-ghost btn-sm" style="color:var(--t3)" onclick="archiveAgent(\'' + id + '\')">🗃️ Archiver</button>' : '') +
+            '<button class="btn btn-outline btn-sm" onclick="openAgentModal(\'' + id + '\')">âœï¸ Modifier</button>' +
+            '<button class="btn btn-ghost btn-sm" onclick="syncDiscordToAgent(\'' + id + '\')" title="Sync divisions depuis Discord">ðŸ”„ Sync Discord</button>' +
+            (isAdmin() ? '<button class="btn btn-ghost btn-sm" style="color:var(--t3)" onclick="archiveAgent(\'' + id + '\')">ðŸ—ƒï¸ Archiver</button>' : '') +
           '</div>' : '') +
     '</div>' +
 
@@ -1379,35 +1380,35 @@ async function renderAgentProfile() {
       '<div style="display:contents">' +
 
         '<div class="card">' +
-          '<div class="card-head"><div class="card-icon">👤</div><div><div class="card-title">Informations' + (ag.is_formateur ? ' <span class="badge badge-blue" style="font-size:.65rem;margin-left:6px">🎓 Formateur</span>' : '') + '</div></div></div>' +
+          '<div class="card-head"><div class="card-icon">ðŸ‘¤</div><div><div class="card-title">Informations' + (ag.is_formateur ? ' <span class="badge badge-blue" style="font-size:.65rem;margin-left:6px">ðŸŽ“ Formateur</span>' : '') + '</div></div></div>' +
           infoRow('Date de naissance', fmt(ag.date_naissance)) +
-          infoRow('Téléphone', fmtTel(ag.telephone)) +
+          infoRow('TÃ©lÃ©phone', fmtTel(ag.telephone)) +
           infoRow('Date de recrutement', fmt(ag.date_recrutement)) +
-          infoRow('Dernière promotion', fmt(ag.date_promotion)) +
+          infoRow('DerniÃ¨re promotion', fmt(ag.date_promotion)) +
           (ag.iban ? infoRow('IBAN', ag.iban) : '') +
-          (formateur ? infoRow('Formateur', '<span onclick="navigate(\'agent-profile\',{id:\'' + formateur.id + '\'})" style="color:var(--blue);cursor:pointer">🎓 ' + esc(formateur.prenom + ' ' + formateur.nom) + ' (' + esc(formateur.matricule) + ')</span>') : '') +
+          (formateur ? infoRow('Formateur', '<span onclick="navigate(\'agent-profile\',{id:\'' + formateur.id + '\'})" style="color:var(--blue);cursor:pointer">ðŸŽ“ ' + esc(formateur.prenom + ' ' + formateur.nom) + ' (' + esc(formateur.matricule) + ')</span>') : '') +
         '</div>' +
 
         '<div class="card">' +
           '<div class="flex-between mb-10">' +
-            '<div class="card-head" style="margin:0"><div class="card-icon">📝</div><div><div class="card-title">Notes internes</div></div></div>' +
-            (canWrite() && ag.statut !== 'Archivé' ? '<button class="btn btn-ghost btn-sm" onclick="openNotesModal(\'' + id + '\')">' + (ag.notes ? '✏️' : '+ Ajouter') + '</button>' : '') +
+            '<div class="card-head" style="margin:0"><div class="card-icon">ðŸ“</div><div><div class="card-title">Notes internes</div></div></div>' +
+            (canWrite() && ag.statut !== 'ArchivÃ©' ? '<button class="btn btn-ghost btn-sm" onclick="openNotesModal(\'' + id + '\')">' + (ag.notes ? 'âœï¸' : '+ Ajouter') + '</button>' : '') +
           '</div>' +
           (ag.notes ? '<div style="font-size:.84rem;color:var(--t1);white-space:pre-wrap;line-height:1.5">' + esc(ag.notes) + '</div>' : '<div style="font-size:.82rem;color:var(--t3)">Aucune note.</div>') +
         '</div>' +
 
         '<div class="card">' +
           '<div class="flex-between mb-10">' +
-            '<div class="card-head" style="margin:0"><div class="card-icon">📚</div><div><div class="card-title">Formations PPA</div></div></div>' +
-            (isAdmin() && ag.statut !== 'Archivé' ? '<button class="btn btn-ghost btn-sm" onclick="openPPAModal(\'' + id + '\')">✏️ PPA</button>' : '') +
+            '<div class="card-head" style="margin:0"><div class="card-icon">ðŸ“š</div><div><div class="card-title">Formations PPA</div></div></div>' +
+            (isAdmin() && ag.statut !== 'ArchivÃ©' ? '<button class="btn btn-ghost btn-sm" onclick="openPPAModal(\'' + id + '\')">âœï¸ PPA</button>' : '') +
           '</div>' +
           '<div class="ppa-grid">' + ppaHtml + '</div>' +
           (function(){
             var b = [ag.blame1,ag.blame2,ag.blame3];
             return '<div style="margin-top:14px;border-top:1px solid var(--border0);padding-top:12px">' +
               '<div class="flex-between" style="margin-bottom:8px">' +
-                '<div style="font-size:.72rem;color:var(--red);font-weight:700;letter-spacing:.8px">⚠️ BLÂMES</div>' +
-                (isAdmin() && ag.statut !== 'Archivé' ? '<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:2px 8px" onclick="openBlameModal(\'' + id + '\')">✏️ Blâmes</button>' : '') +
+                '<div style="font-size:.72rem;color:var(--red);font-weight:700;letter-spacing:.8px">âš ï¸ BLÃ‚MES</div>' +
+                (isAdmin() && ag.statut !== 'ArchivÃ©' ? '<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:2px 8px" onclick="openBlameModal(\'' + id + '\')">âœï¸ BlÃ¢mes</button>' : '') +
               '</div>' +
               '<div style="display:flex;gap:8px">' +
                 [1,2,3].map(function(n){
@@ -1415,7 +1416,7 @@ async function renderAgentProfile() {
                   return '<span style="padding:4px 14px;border-radius:20px;font-size:.78rem;font-weight:600;border:1px solid;' +
                     (active ? 'background:rgba(231,76,60,.18);color:var(--red);border-color:rgba(231,76,60,.5)' :
                               'background:var(--bg2);color:var(--t3);border-color:var(--border0)') +
-                    '">Blâme ' + n + '</span>';
+                    '">BlÃ¢me ' + n + '</span>';
                 }).join('') +
               '</div>' +
             '</div>';
@@ -1423,18 +1424,18 @@ async function renderAgentProfile() {
         '</div>' +
 
         '<div class="card">' +
-          '<div class="card-head"><div class="card-icon">🏅</div><div><div class="card-title">Divisions</div></div></div>' +
+          '<div class="card-head"><div class="card-icon">ðŸ…</div><div><div class="card-title">Divisions</div></div></div>' +
           '<div class="qual-grid">' + qualHtml + '</div>' +
           '<div style="margin-top:14px;border-top:1px solid var(--border0);padding-top:12px">' +
             '<div class="flex-between" style="margin-bottom:8px">' +
-              '<div style="font-size:.72rem;color:var(--blue);font-weight:700;letter-spacing:.8px">📋 FORMATIONS</div>' +
-              (isAdmin() && ag.statut !== 'Archivé' ? '<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:2px 8px" onclick="openFormationsModal(\'' + id + '\')">✏️ Formations</button>' : '') +
+              '<div style="font-size:.72rem;color:var(--blue);font-weight:700;letter-spacing:.8px">ðŸ“‹ FORMATIONS</div>' +
+              (isAdmin() && ag.statut !== 'ArchivÃ©' ? '<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:2px 8px" onclick="openFormationsModal(\'' + id + '\')">âœï¸ Formations</button>' : '') +
             '</div>' +
             '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
               (function(){
                 var fmts = [
                   { key:'formation_lead', label:'Lead Terrain' },
-                  { key:'formation_nego', label:'Négociation' },
+                  { key:'formation_nego', label:'NÃ©gociation' },
                   { key:'lp', label:'Lincoln Patrol' }
                 ];
                 return fmts.map(function(f){
@@ -1451,8 +1452,8 @@ async function renderAgentProfile() {
 
         '<div class="card">' +
           '<div class="flex-between mb-10">' +
-            '<div class="card-head" style="margin:0"><div class="card-icon">🔫</div><div><div class="card-title">Armement</div></div></div>' +
-            (canWrite() && ag.statut !== 'Archivé' ? '<button class="btn btn-outline btn-sm" onclick="openAddArmeModal(\'' + id + '\')">+ Ajouter</button>' : '') +
+            '<div class="card-head" style="margin:0"><div class="card-icon">ðŸ”«</div><div><div class="card-title">Armement</div></div></div>' +
+            (canWrite() && ag.statut !== 'ArchivÃ©' ? '<button class="btn btn-outline btn-sm" onclick="openAddArmeModal(\'' + id + '\')">+ Ajouter</button>' : '') +
           '</div>' +
           (function() {
             var html = '';
@@ -1460,9 +1461,9 @@ async function renderAgentProfile() {
               return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--bg1);border-radius:var(--rSm);margin-bottom:4px">' +
                 '<div>' +
                   '<div style="font-size:.85rem;font-weight:600;color:var(--t0)">' + esc(a.nom) + '</div>' +
-                  '<div style="font-size:.7rem;color:var(--t3);font-family:\'Share Tech Mono\',monospace">' + (a.serie ? 'S/N : ' + esc(a.serie) : 'Pas de numéro de série') + '</div>' +
+                  '<div style="font-size:.7rem;color:var(--t3);font-family:\'Share Tech Mono\',monospace">' + (a.serie ? 'S/N : ' + esc(a.serie) : 'Pas de numÃ©ro de sÃ©rie') + '</div>' +
                 '</div>' +
-                (canWrite() ? '<button class="btn btn-danger btn-sm btn-icon" onclick="delArme(\'' + a.id + '\',\'' + id + '\')">✕</button>' : '') +
+                (canWrite() ? '<button class="btn btn-danger btn-sm btn-icon" onclick="delArme(\'' + a.id + '\',\'' + id + '\')">âœ•</button>' : '') +
               '</div>';
             }
             var lvl0 = armes.filter(function(a){ return a.ppa_niveau === 0 || a.ppa_niveau === null; });
@@ -1478,11 +1479,11 @@ async function renderAgentProfile() {
               if (lvl.length) {
                 html += lvl.map(armeRow).join('');
               } else {
-                html += '<div style="font-size:.8rem;color:var(--t3);padding:4px 0">Aucune arme assignée</div>';
+                html += '<div style="font-size:.8rem;color:var(--t3);padding:4px 0">Aucune arme assignÃ©e</div>';
               }
               html += '</div>';
             });
-            if (!html) html = '<div style="font-size:.82rem;color:var(--t3)">Aucun PPA — aucune arme assignable.</div>';
+            if (!html) html = '<div style="font-size:.82rem;color:var(--t3)">Aucun PPA â€” aucune arme assignable.</div>';
             return html;
           })() +
         '</div>' +
@@ -1495,18 +1496,18 @@ async function renderAgentProfile() {
 function infoRow(label, val) {
   return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border0)">' +
     '<span style="font-size:.78rem;color:var(--t3)">' + esc(label) + '</span>' +
-    '<span style="font-size:.86rem;color:var(--t0)">' + esc(val||'—') + '</span>' +
+    '<span style="font-size:.86rem;color:var(--t0)">' + esc(val||'â€”') + '</span>' +
   '</div>';
 }
 
 async function openHistModal(agentId) {
   openModal({
     eyebrow: 'HISTORIQUE AGENT',
-    title: 'Ajouter un événement',
+    title: 'Ajouter un Ã©vÃ©nement',
     body:
       '<div class="form-group"><label class="form-label">Type</label><select class="form-control" id="histType">' +
         ['promotion','sanction','recompense','note'].map(function(t){
-          return '<option value="' + t + '">' + {promotion:'Promotion',sanction:'Sanction',recompense:'Récompense',note:'Note admin'}[t] + '</option>';
+          return '<option value="' + t + '">' + {promotion:'Promotion',sanction:'Sanction',recompense:'RÃ©compense',note:'Note admin'}[t] + '</option>';
         }).join('') +
       '</select></div>' +
       fld('Titre *', 'text', 'histTitre', '', 'Ex: Promotion Deputy II') +
@@ -1532,15 +1533,15 @@ async function saveHistory(agentId) {
     var r = await DB.addHistory(data);
     if (r.error) throw r.error;
     closeModal();
-    toast('Événement ajouté.','success');
+    toast('Ã‰vÃ©nement ajoutÃ©.','success');
     await renderAgentProfile();
   } catch(e) { toast(e.message,'error'); }
 }
 
 async function delHistory(hId, agentId) {
-  if (!confirm('Supprimer cet événement ?')) return;
+  if (!confirm('Supprimer cet Ã©vÃ©nement ?')) return;
   await DB.deleteHistory(hId);
-  toast('Supprimé.','info');
+  toast('SupprimÃ©.','info');
   await renderAgentProfile();
 }
 
@@ -1606,15 +1607,15 @@ async function savePPAModal(agentId) {
       if (addCodes.length || removeCodes.length) syncDiscordRoles(old.discord_id, addCodes, removeCodes);
     }
     if (old && old.discord_id && (addCodes.length || removeCodes.length)) {
-      var ppaLabels = { ppa1:'PPA 1 (Glock)', ppa2:'PPA 2 (MP5)', ppa3a:'PPA 3 Fusil à pompe', ppa3b:'PPA 3 Fusil carabine' };
+      var ppaLabels = { ppa1:'PPA 1 (Glock)', ppa2:'PPA 2 (MP5)', ppa3a:'PPA 3 Fusil Ã  pompe', ppa3b:'PPA 3 Fusil carabine' };
       var fields = [{ name: 'Agent', value: esc(old.prenom) + ' ' + esc(old.nom) + ' (' + esc(old.matricule) + ')', inline: false }];
-      if (addCodes.length) fields.push({ name: '✅ Ajouté', value: addCodes.map(function(c){ return ppaLabels[c]||c; }).join(', '), inline: true });
-      if (removeCodes.length) fields.push({ name: '❌ Retiré', value: removeCodes.map(function(c){ return ppaLabels[c]||c; }).join(', '), inline: true });
+      if (addCodes.length) fields.push({ name: 'âœ… AjoutÃ©', value: addCodes.map(function(c){ return ppaLabels[c]||c; }).join(', '), inline: true });
+      if (removeCodes.length) fields.push({ name: 'âŒ RetirÃ©', value: removeCodes.map(function(c){ return ppaLabels[c]||c; }).join(', '), inline: true });
       fields.push({ name: 'Par', value: _whoAmI(), inline: true });
-      sendLog('🔫 Mise à jour PPA', 0xe67e22, fields);
+      sendLog('ðŸ”« Mise Ã  jour PPA', 0xe67e22, fields);
     }
     closeModal();
-    toast('Formations mises à jour.','success');
+    toast('Formations mises Ã  jour.','success');
     await renderAgentProfile();
   } catch(e) { toast(e.message,'error'); }
 }
@@ -1623,13 +1624,13 @@ async function openFormationsModal(agentId) {
   var ag = await DB.getAgent(agentId);
   if (!ag) return;
   openModal({
-    eyebrow: 'DIVISIONS — FORMATIONS',
+    eyebrow: 'DIVISIONS â€” FORMATIONS',
     title: ag.prenom + ' ' + ag.nom,
     body:
-      '<div class="form-group"><label class="form-label" style="color:var(--blue)">📋 Formations spécialisées</label>' +
+      '<div class="form-group"><label class="form-label" style="color:var(--blue)">ðŸ“‹ Formations spÃ©cialisÃ©es</label>' +
         '<div style="display:flex;flex-direction:column;gap:10px">' +
           ppaCheck('fmtLead','Lead Terrain',ag.formation_lead) +
-          ppaCheck('fmtNego','Négociation',ag.formation_nego) +
+          ppaCheck('fmtNego','NÃ©gociation',ag.formation_nego) +
           ppaCheck('fmtLP','Lincoln Patrol',(ag.unites||[]).includes('LP')) +
         '</div>' +
       '</div>',
@@ -1656,7 +1657,7 @@ async function saveFormationsModal(agentId) {
       else syncDiscordRoles(ag.discord_id, [], ['LP']);
     }
     closeModal();
-    toast('Formations mises à jour.', 'success');
+    toast('Formations mises Ã  jour.', 'success');
     await renderAgentProfile();
   } catch(e) { toast(e.message, 'error'); }
 }
@@ -1668,11 +1669,11 @@ async function openBlameModal(agentId) {
     eyebrow: 'SANCTIONS',
     title: ag.prenom + ' ' + ag.nom,
     body:
-      '<div class="form-group"><label class="form-label" style="color:var(--red)">⚠️ Blâmes</label>' +
+      '<div class="form-group"><label class="form-label" style="color:var(--red)">âš ï¸ BlÃ¢mes</label>' +
         '<div style="display:flex;flex-direction:column;gap:10px">' +
-          ppaCheck('blameCk1','Blâme 1',ag.blame1) +
-          ppaCheck('blameCk2','Blâme 2',ag.blame2) +
-          ppaCheck('blameCk3','Blâme 3',ag.blame3) +
+          ppaCheck('blameCk1','BlÃ¢me 1',ag.blame1) +
+          ppaCheck('blameCk2','BlÃ¢me 2',ag.blame2) +
+          ppaCheck('blameCk3','BlÃ¢me 3',ag.blame3) +
         '</div>' +
       '</div>',
     footer:
@@ -1690,7 +1691,7 @@ async function saveBlameModal(agentId) {
     var r = await DB.updateAgent(agentId, data);
     if (r.error) throw r.error;
     closeModal();
-    toast('Blâmes mis à jour.', 'success');
+    toast('BlÃ¢mes mis Ã  jour.', 'success');
     await renderAgentProfile();
   } catch(e) { toast(e.message, 'error'); }
 }
@@ -1706,18 +1707,18 @@ async function openAddArmeModal(agentId) {
   var ppaOpts = ppas.map(function(p){ return '<option value="' + p.level + '">' + p.label + '</option>'; }).join('');
   openModal({
     eyebrow: 'ARMEMENT',
-    title: 'Ajouter une arme — ' + esc(ag.prenom) + ' ' + esc(ag.nom),
+    title: 'Ajouter une arme â€” ' + esc(ag.prenom) + ' ' + esc(ag.nom),
     body:
       '<div class="form-group"><label class="form-label">Arme rapide</label>' +
         '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
-          ['Taser','Glock','MP5','Fusil à pompe','Fusil carabine'].map(function(w){
+          ['Taser','Glock','MP5','Fusil Ã  pompe','Fusil carabine'].map(function(w){
             var isTaser = w === 'Taser';
             return '<button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById(\'armeNom\').value=\'' + w + '\';' + (isTaser ? 'document.getElementById(\'armeNiveau\').value=\'0\'' : '') + '">' + w + '</button>';
           }).join('') +
         '</div>' +
       '</div>' +
-      fld("Nom de l'arme *", 'text', 'armeNom', '', 'Ex : Glock 17, AR-15…') +
-      fld('Numéro de série', 'text', 'armeSerie', '', 'Ex : GK-123456') +
+      fld("Nom de l'arme *", 'text', 'armeNom', '', 'Ex : Glock 17, AR-15â€¦') +
+      fld('NumÃ©ro de sÃ©rie', 'text', 'armeSerie', '', 'Ex : GK-123456') +
       '<div class="form-group"><label class="form-label">Niveau PPA requis *</label>' +
         '<select class="form-control" id="armeNiveau">' + ppaOpts + '</select>' +
       '</div>',
@@ -1736,7 +1737,7 @@ async function saveArme(agentId) {
     var r = await DB.addAgentArme({ agent_id: agentId, nom: nom, serie: serie||null, ppa_niveau: niveau });
     if (r.error) throw r.error;
     closeModal();
-    toast('Arme ajoutée.','success');
+    toast('Arme ajoutÃ©e.','success');
     await renderAgentProfile();
   } catch(e) { toast(e.message,'error'); }
 }
@@ -1744,11 +1745,11 @@ async function saveArme(agentId) {
 async function delArme(armeId, agentId) {
   if (!confirm('Retirer cette arme ?')) return;
   await DB.deleteAgentArme(armeId);
-  toast('Arme retirée.','info');
+  toast('Arme retirÃ©e.','info');
   await renderAgentProfile();
 }
 
-// ══ GRADES ═════════════════════════════════════════════════════════
+// â•â• GRADES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function renderGrades() {
   _grades = await DB.getGrades();
   var agents = visibleRosterAgents(await DB.getAgents());
@@ -1759,23 +1760,23 @@ async function renderGrades() {
     return '<tr>' +
       '<td class="mono text-gold" style="width:40px">' + (i+1) + '</td>' +
       '<td style="font-weight:600;color:var(--t0)">' + esc(g.nom) + '</td>' +
-      '<td class="mono">' + esc(g.abrev||'—') + '</td>' +
+      '<td class="mono">' + esc(g.abrev||'â€”') + '</td>' +
       '<td>' + (gradeCounts[gradeKey(g.nom)]||0) + ' agent(s)</td>' +
       (isAdmin() ?
         '<td onclick="event.stopPropagation()" style="white-space:nowrap">' +
-          '<button class="btn btn-ghost btn-sm" onclick="openGradeModal(\'' + g.id + '\')">✏️</button>' +
-          ' <button class="btn btn-danger btn-sm" onclick="deleteGrade(\'' + g.id + '\',\'' + esc(g.nom) + '\')">✕</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="openGradeModal(\'' + g.id + '\')">âœï¸</button>' +
+          ' <button class="btn btn-danger btn-sm" onclick="deleteGrade(\'' + g.id + '\',\'' + esc(g.nom) + '\')">âœ•</button>' +
         '</td>' : '') +
     '</tr>';
-  }).join('') : '<tr><td colspan="5"><div class="empty-state" style="padding:30px"><div class="empty-icon">🎖️</div><div class="empty-title">Aucun grade</div></div></td></tr>';
+  }).join('') : '<tr><td colspan="5"><div class="empty-state" style="padding:30px"><div class="empty-icon">ðŸŽ–ï¸</div><div class="empty-title">Aucun grade</div></div></td></tr>';
 
   setContent(
     '<div class="flex-between mb-20 flex-wrap gap-8">' +
-      '<div><h1 style="font-size:1.4rem">Grades</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">Hiérarchie de la SASP — du plus haut au plus bas</p></div>' +
+      '<div><h1 style="font-size:1.4rem">Grades</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">HiÃ©rarchie de la SASP â€” du plus haut au plus bas</p></div>' +
       (isAdmin() ? '<button class="btn btn-primary btn-sm" onclick="openGradeModal(null)">+ Ajouter un grade</button>' : '') +
     '</div>' +
     '<div class="card" style="padding:0;overflow:hidden"><div class="table-wrap"><table>' +
-      '<thead><tr><th>#</th><th>NOM</th><th>ABRÉVIATION</th><th>EFFECTIF</th>' + (isAdmin() ? '<th>ACTIONS</th>' : '') + '</tr></thead>' +
+      '<thead><tr><th>#</th><th>NOM</th><th>ABRÃ‰VIATION</th><th>EFFECTIF</th>' + (isAdmin() ? '<th>ACTIONS</th>' : '') + '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table></div></div>'
   );
@@ -1791,8 +1792,8 @@ function openGradeModal(id) {
     body:
       fld('Nom du grade *', 'text', 'gNom', v.nom, 'Ex: Deputy I') +
       '<div class="form-grid2">' +
-        fld('Abréviation', 'text', 'gAbrev', v.abrev, 'Ex: DEP I') +
-        fld('Ordre hiérarchique *', 'number', 'gOrdre', v.ordre, '1') +
+        fld('AbrÃ©viation', 'text', 'gAbrev', v.abrev, 'Ex: DEP I') +
+        fld('Ordre hiÃ©rarchique *', 'number', 'gOrdre', v.ordre, '1') +
       '</div>',
     footer:
       '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
@@ -1807,7 +1808,7 @@ async function saveGrade(id) {
   try {
     var r = id ? await DB.updateGrade(id, data) : await DB.createGrade(data);
     if (r.error) throw r.error;
-    closeModal(); toast('Grade enregistré.','success'); _grades = await DB.getGrades(); await renderGrades();
+    closeModal(); toast('Grade enregistrÃ©.','success'); _grades = await DB.getGrades(); await renderGrades();
   } catch(e) { toast(e.message,'error'); }
 }
 
@@ -1815,10 +1816,10 @@ async function deleteGrade(id, nom) {
   if (!confirm('Supprimer le grade "' + nom + '" ?')) return;
   var r = await DB.deleteGrade(id);
   if (r.error) { toast(r.error.message,'error'); return; }
-  toast('Grade supprimé.','info'); _grades = await DB.getGrades(); await renderGrades();
+  toast('Grade supprimÃ©.','info'); _grades = await DB.getGrades(); await renderGrades();
 }
 
-// ══ DIVISIONS ══════════════════════════════════════════════════════
+// â•â• DIVISIONS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function renderUnits() {
   var [units, agents] = await Promise.all([DB.getUnits(), DB.getAgents()]);
 
@@ -1830,19 +1831,19 @@ async function renderUnits() {
       '<div class="card-head">' +
         '<div class="card-icon"><span class="badge ' + cls + '" style="font-size:.9rem;padding:4px 10px">' + esc(u.code) + '</span></div>' +
         '<div style="flex:1"><div class="card-title">' + esc(u.nom) + '</div><div class="card-sub">' + members.length + ' MEMBRE(S)</div></div>' +
-        (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="openUnitModal(\'' + u.id + '\')">✏️</button> <button class="btn btn-danger btn-sm" onclick="deleteUnit(\'' + u.id + '\',\'' + esc(u.nom) + '\')">✕</button>' : '') +
+        (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="openUnitModal(\'' + u.id + '\')">âœï¸</button> <button class="btn btn-danger btn-sm" onclick="deleteUnit(\'' + u.id + '\',\'' + esc(u.nom) + '\')">âœ•</button>' : '') +
       '</div>' +
-      '<p style="font-size:.84rem;color:var(--t2);margin-bottom:14px">' + esc(u.description||'—') + '</p>' +
+      '<p style="font-size:.84rem;color:var(--t2);margin-bottom:14px">' + esc(u.description||'â€”') + '</p>' +
       '<div class="divider"></div>' +
-      '<div style="font-size:.76rem;color:var(--t3);font-family:\'Share Tech Mono\',monospace;margin-bottom:8px">CONDITIONS D\'ACCÈS</div>' +
-      '<p style="font-size:.82rem;color:var(--t2)">' + esc(u.conditions_acces||'—') + '</p>' +
+      '<div style="font-size:.76rem;color:var(--t3);font-family:\'Share Tech Mono\',monospace;margin-bottom:8px">CONDITIONS D\'ACCÃˆS</div>' +
+      '<p style="font-size:.82rem;color:var(--t2)">' + esc(u.conditions_acces||'â€”') + '</p>' +
       (members.length ? '<div class="divider"></div><div style="font-size:.76rem;color:var(--t3);font-family:\'Share Tech Mono\',monospace;margin-bottom:8px">MEMBRES</div><div style="display:flex;flex-wrap:wrap;gap:6px">' +
         members.map(function(a){ return '<span class="badge badge-gray" style="cursor:pointer" onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})">' + esc(a.prenom+' '+a.nom) + '</span>'; }).join('') + '</div>' : '') +
     '</div>';
   }).join('');
 
   setContent(
-    '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Divisions</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">Divisions spécialisées de la SASP</p></div>' +
+    '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Divisions</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">Divisions spÃ©cialisÃ©es de la SASP</p></div>' +
     (isAdmin() ? '<button class="btn btn-primary btn-sm" onclick="openUnitModal(null)">+ Ajouter une division</button>' : '') +
     '</div>' +
     '<div class="page-grid2">' + html + '</div>'
@@ -1858,7 +1859,7 @@ function openUnitModal(id) {
     body:
       (isNew ? '<div class="form-grid2">' + fld('Code *', 'text', 'uCode', '', 'Ex: CID') + fld('Nom *', 'text', 'uNom', '', 'Ex: Criminal Investigation Div.') + '</div>' : '') +
       fld('Description', 'text', 'uDesc', '') +
-      '<div class="form-group"><label class="form-label">Conditions d\'accès</label><textarea class="form-control" id="uCond" rows="3"></textarea></div>',
+      '<div class="form-group"><label class="form-label">Conditions d\'accÃ¨s</label><textarea class="form-control" id="uCond" rows="3"></textarea></div>',
     footer:
       '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
       '<button class="btn btn-primary" onclick="saveUnit(\'' + (id||'') + '\')">Enregistrer</button>'
@@ -1890,7 +1891,7 @@ async function saveUnit(id) {
     var r = isNew ? await DB.createUnit(data) : await DB.updateUnit(id, data);
     if (r.error) throw r.error;
     _units = await DB.getUnits();
-    closeModal(); toast(isNew ? 'Division créée.' : 'Division mise à jour.','success'); await renderUnits();
+    closeModal(); toast(isNew ? 'Division crÃ©Ã©e.' : 'Division mise Ã  jour.','success'); await renderUnits();
   } catch(e) { toast(e.message,'error'); }
 }
 
@@ -1899,10 +1900,10 @@ async function deleteUnit(id, nom) {
   var r = await DB.deleteUnit(id);
   if (r.error) { toast(r.error.message,'error'); return; }
   _units = await DB.getUnits();
-  toast('Division supprimée.','info'); await renderUnits();
+  toast('Division supprimÃ©e.','info'); await renderUnits();
 }
 
-// ══ MDT ════════════════════════════════════════════════════════════
+// â•â• MDT â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 var _mdtPages = [];
 
 async function renderMDT() {
@@ -1917,7 +1918,7 @@ async function renderMDT() {
     '<div class="mdt-layout">' +
       '<aside class="mdt-sidebar"><div id="mdtList"></div></aside>' +
       '<div class="mdt-main" id="mdtMain">' +
-        '<div class="empty-state"><div class="empty-icon">📚</div><div class="empty-title">Sélectionnez une page</div></div>' +
+        '<div class="empty-state"><div class="empty-icon">ðŸ“š</div><div class="empty-title">SÃ©lectionnez une page</div></div>' +
       '</div>' +
     '</div>'
   );
@@ -1927,8 +1928,8 @@ async function renderMDT() {
 function movePageBtns(id, idx, total, ctx) {
   if (!canWrite()) return '';
   return '<div style="display:flex;gap:1px;margin-left:auto;opacity:.5" onclick="event.stopPropagation()">' +
-    (idx > 0 ? '<button class="btn-move" onclick="movePage(\'' + id + '\',\'up\',\'' + ctx + '\')">▲</button>' : '<span style="width:16px"></span>') +
-    (idx < total-1 ? '<button class="btn-move" onclick="movePage(\'' + id + '\',\'down\',\'' + ctx + '\')">▼</button>' : '<span style="width:16px"></span>') +
+    (idx > 0 ? '<button class="btn-move" onclick="movePage(\'' + id + '\',\'up\',\'' + ctx + '\')">â–²</button>' : '<span style="width:16px"></span>') +
+    (idx < total-1 ? '<button class="btn-move" onclick="movePage(\'' + id + '\',\'down\',\'' + ctx + '\')">â–¼</button>' : '<span style="width:16px"></span>') +
   '</div>';
 }
 async function movePage(pageId, dir, ctx) {
@@ -1964,7 +1965,7 @@ function renderMdtList() {
   }
   el.innerHTML = _mdtPages.map(function(p, i) {
     return '<div class="mdt-page-item' + (_mdtSelPage===p.id?' active':'') + '" onclick="openMdtPage(\'' + p.id + '\')" style="justify-content:space-between">' +
-      '<span>📄 ' + esc(p.titre) + '</span>' + movePageBtns(p.id, i, _mdtPages.length, 'mdt') + '</div>';
+      '<span>ðŸ“„ ' + esc(p.titre) + '</span>' + movePageBtns(p.id, i, _mdtPages.length, 'mdt') + '</div>';
   }).join('');
 }
 
@@ -1979,9 +1980,9 @@ async function openMdtPage(pageId) {
     '<div class="card mb-14">' +
       '<div class="flex-between flex-wrap gap-8">' +
         '<div><h2 style="font-size:1.3rem">' + esc(page.titre) + '</h2>' +
-        '<div class="mono" style="font-size:.64rem;color:var(--t3);margin-top:3px">Modifié le ' + fmt(page.updated_at) + '</div></div>' +
+        '<div class="mono" style="font-size:.64rem;color:var(--t3);margin-top:3px">ModifiÃ© le ' + fmt(page.updated_at) + '</div></div>' +
         (canWrite() ? '<div style="display:flex;gap:8px">' +
-          '<button class="btn btn-outline btn-sm" onclick="editMdtPage(\'' + pageId + '\')">✏️ Modifier</button>' +
+          '<button class="btn btn-outline btn-sm" onclick="editMdtPage(\'' + pageId + '\')">âœï¸ Modifier</button>' +
           '<button class="btn btn-danger btn-sm" onclick="delMdtPage(\'' + pageId + '\')">Supprimer</button>' +
         '</div>' : '') +
       '</div>' +
@@ -2001,7 +2002,7 @@ async function editMdtPage(pageId) {
         '<input class="form-control" id="mdtEditTitle" value="' + esc(page.titre) + '" style="font-size:1.1rem;font-weight:700;max-width:400px">' +
         '<div style="display:flex;gap:8px">' +
           '<button class="btn btn-ghost btn-sm" onclick="openMdtPage(\'' + pageId + '\')">Annuler</button>' +
-          '<button class="btn btn-primary btn-sm" onclick="saveMdtPage(\'' + pageId + '\')">💾 Sauvegarder</button>' +
+          '<button class="btn btn-primary btn-sm" onclick="saveMdtPage(\'' + pageId + '\')">ðŸ’¾ Sauvegarder</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -2021,12 +2022,12 @@ async function editMdtPage(pageId) {
         handlers: {
           image: function() {
             openModal({
-              eyebrow: 'INSÉRER UNE IMAGE',
+              eyebrow: 'INSÃ‰RER UNE IMAGE',
               title: 'URL de l\'image',
               size: 'sm',
               body: fld('Lien direct *', 'url', 'imgUrl', '', 'https://i.imgur.com/...'),
               footer: '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
-                '<button class="btn btn-primary" onclick="insertMdtImage()">Insérer</button>'
+                '<button class="btn btn-primary" onclick="insertMdtImage()">InsÃ©rer</button>'
             });
           }
         }
@@ -2044,7 +2045,7 @@ async function saveMdtPage(pageId) {
   try {
     var r = await DB.updateMdtPage(pageId, { titre: titre, contenu: contenu });
     if (r.error) throw r.error;
-    toast('Page sauvegardée.','success');
+    toast('Page sauvegardÃ©e.','success');
     _mdtPages = await DB.getAllMdtPages();
     await openMdtPage(pageId);
   } catch(e) { toast(e.message,'error'); }
@@ -2055,22 +2056,22 @@ async function delMdtPage(pageId) {
   var r = await DB.deleteMdtPage(pageId);
   if (r.error) { toast(r.error.message,'error'); return; }
   _mdtSelPage = null;
-  toast('Page supprimée.','info');
+  toast('Page supprimÃ©e.','info');
   _mdtPages = await DB.getAllMdtPages();
   renderMdtList();
   var main = document.getElementById('mdtMain');
-  if (main) main.innerHTML = '<div class="empty-state"><div class="empty-icon">📚</div><div class="empty-title">Page supprimée</div></div>';
+  if (main) main.innerHTML = '<div class="empty-state"><div class="empty-icon">ðŸ“š</div><div class="empty-title">Page supprimÃ©e</div></div>';
 }
 
 function openMdtNewPage() {
   openModal({
     eyebrow: 'NOUVELLE PAGE MDT',
-    title: 'Créer une page',
+    title: 'CrÃ©er une page',
     size: 'sm',
-    body: fld('Titre *', 'text', 'npTitre', '', 'Ex: Code pénal — Infractions'),
+    body: fld('Titre *', 'text', 'npTitre', '', 'Ex: Code pÃ©nal â€” Infractions'),
     footer:
       '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
-      '<button class="btn btn-primary" onclick="createMdtPage()">Créer</button>'
+      '<button class="btn btn-primary" onclick="createMdtPage()">CrÃ©er</button>'
   });
 }
 
@@ -2091,27 +2092,27 @@ async function createMdtPage() {
   try {
     var r = await DB.createMdtPage({ titre: titre, contenu: '', ordre: _mdtPages.length });
     if (r.error) throw r.error;
-    closeModal(); toast('Page créée.','success');
+    closeModal(); toast('Page crÃ©Ã©e.','success');
     _mdtPages = await DB.getAllMdtPages();
     renderMdtList();
     if (r.data) await openMdtPage(r.data.id);
   } catch(e) { toast(e.message,'error'); }
 }
 
-// ══ VEHICLES ═══════════════════════════════════════════════════════
+// â•â• VEHICLES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function renderVehicles() {
   if (!_vehicleCatId) _vehicleCatId = await DB.getOrCreateVehicleCat();
   _vehiclePages = await DB.getAllVehiclePages(_vehicleCatId);
 
   setContent(
     '<div class="flex-between mb-20 flex-wrap gap-8">' +
-      '<div><h1 style="font-size:1.4rem">Véhicules</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">Parc automobile de la SASP</p></div>' +
+      '<div><h1 style="font-size:1.4rem">VÃ©hicules</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">Parc automobile de la SASP</p></div>' +
       (canWrite() ? '<button class="btn btn-primary btn-sm" onclick="openVehicleNewPage()">+ Nouvelle page</button>' : '') +
     '</div>' +
     '<div class="mdt-layout">' +
       '<aside class="mdt-sidebar"><div id="vehicleList"></div></aside>' +
       '<div class="mdt-main" id="vehicleMain">' +
-        '<div class="empty-state"><div class="empty-icon">🚗</div><div class="empty-title">Sélectionnez une page</div></div>' +
+        '<div class="empty-state"><div class="empty-icon">ðŸš—</div><div class="empty-title">SÃ©lectionnez une page</div></div>' +
       '</div>' +
     '</div>'
   );
@@ -2128,7 +2129,7 @@ function renderVehicleList() {
   }
   el.innerHTML = _vehiclePages.map(function(p, i) {
     return '<div class="mdt-page-item' + (_mdtSelPage===p.id?' active':'') + '" onclick="openVehiclePage(\'' + p.id + '\')" style="justify-content:space-between">' +
-      '<span>🚗 ' + esc(p.titre) + '</span>' + movePageBtns(p.id, i, _vehiclePages.length, 'vehicle') + '</div>';
+      '<span>ðŸš— ' + esc(p.titre) + '</span>' + movePageBtns(p.id, i, _vehiclePages.length, 'vehicle') + '</div>';
   }).join('');
 }
 
@@ -2143,9 +2144,9 @@ async function openVehiclePage(pageId) {
     '<div class="card mb-14">' +
       '<div class="flex-between flex-wrap gap-8">' +
         '<div><h2 style="font-size:1.3rem">' + esc(page.titre) + '</h2>' +
-        '<div class="mono" style="font-size:.64rem;color:var(--t3);margin-top:3px">Modifié le ' + fmt(page.updated_at) + '</div></div>' +
+        '<div class="mono" style="font-size:.64rem;color:var(--t3);margin-top:3px">ModifiÃ© le ' + fmt(page.updated_at) + '</div></div>' +
         (canWrite() ? '<div style="display:flex;gap:8px">' +
-          '<button class="btn btn-outline btn-sm" onclick="editVehiclePage(\'' + pageId + '\')">✏️ Modifier</button>' +
+          '<button class="btn btn-outline btn-sm" onclick="editVehiclePage(\'' + pageId + '\')">âœï¸ Modifier</button>' +
           '<button class="btn btn-danger btn-sm" onclick="delVehiclePage(\'' + pageId + '\')">Supprimer</button>' +
         '</div>' : '') +
       '</div>' +
@@ -2165,7 +2166,7 @@ async function editVehiclePage(pageId) {
         '<input class="form-control" id="vehicleEditTitle" value="' + esc(page.titre) + '" style="font-size:1.1rem;font-weight:700;max-width:400px">' +
         '<div style="display:flex;gap:8px">' +
           '<button class="btn btn-ghost btn-sm" onclick="openVehiclePage(\'' + pageId + '\')">Annuler</button>' +
-          '<button class="btn btn-primary btn-sm" onclick="saveVehiclePage(\'' + pageId + '\')">💾 Sauvegarder</button>' +
+          '<button class="btn btn-primary btn-sm" onclick="saveVehiclePage(\'' + pageId + '\')">ðŸ’¾ Sauvegarder</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -2185,12 +2186,12 @@ async function editVehiclePage(pageId) {
         handlers: {
           image: function() {
             openModal({
-              eyebrow: 'INSÉRER UNE IMAGE',
+              eyebrow: 'INSÃ‰RER UNE IMAGE',
               title: 'URL de l\'image',
               size: 'sm',
               body: fld('Lien direct *', 'url', 'imgUrl', '', 'https://i.imgur.com/...'),
               footer: '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
-                '<button class="btn btn-primary" onclick="insertMdtImage()">Insérer</button>'
+                '<button class="btn btn-primary" onclick="insertMdtImage()">InsÃ©rer</button>'
             });
           }
         }
@@ -2208,7 +2209,7 @@ async function saveVehiclePage(pageId) {
   try {
     var r = await DB.updateMdtPage(pageId, { titre: titre, contenu: contenu });
     if (r.error) throw r.error;
-    toast('Page sauvegardée.','success');
+    toast('Page sauvegardÃ©e.','success');
     _vehiclePages = await DB.getAllVehiclePages(_vehicleCatId);
     await openVehiclePage(pageId);
   } catch(e) { toast(e.message,'error'); }
@@ -2219,22 +2220,22 @@ async function delVehiclePage(pageId) {
   var r = await DB.deleteMdtPage(pageId);
   if (r.error) { toast(r.error.message,'error'); return; }
   _mdtSelPage = null;
-  toast('Page supprimée.','info');
+  toast('Page supprimÃ©e.','info');
   _vehiclePages = await DB.getAllVehiclePages(_vehicleCatId);
   renderVehicleList();
   var main = document.getElementById('vehicleMain');
-  if (main) main.innerHTML = '<div class="empty-state"><div class="empty-icon">🚗</div><div class="empty-title">Page supprimée</div></div>';
+  if (main) main.innerHTML = '<div class="empty-state"><div class="empty-icon">ðŸš—</div><div class="empty-title">Page supprimÃ©e</div></div>';
 }
 
 function openVehicleNewPage() {
   openModal({
-    eyebrow: 'NOUVELLE PAGE VÉHICULE',
-    title: 'Créer une page',
+    eyebrow: 'NOUVELLE PAGE VÃ‰HICULE',
+    title: 'CrÃ©er une page',
     size: 'sm',
     body: fld('Titre *', 'text', 'vpTitre', '', 'Ex: Ford Crown Victoria'),
     footer:
       '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
-      '<button class="btn btn-primary" onclick="createVehiclePage()">Créer</button>'
+      '<button class="btn btn-primary" onclick="createVehiclePage()">CrÃ©er</button>'
   });
 }
 
@@ -2244,25 +2245,25 @@ async function createVehiclePage() {
   try {
     var r = await DB.createVehiclePage(_vehicleCatId, { titre: titre, contenu: '', ordre: _vehiclePages.length });
     if (r.error) throw r.error;
-    closeModal(); toast('Page créée.','success');
+    closeModal(); toast('Page crÃ©Ã©e.','success');
     _vehiclePages = await DB.getAllVehiclePages(_vehicleCatId);
     renderVehicleList();
     if (r.data) await openVehiclePage(r.data.id);
   } catch(e) { toast(e.message,'error'); }
 }
 
-// ══ COMPLÉTUDE FICHES ═══════════════════════════════════════════════
+// â•â• COMPLÃ‰TUDE FICHES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function renderCompletude() {
   var agents = await DB.getAgents({});
   var FIELDS = [
     { key: 'iban',            label: 'IBAN' },
-    { key: 'telephone',       label: 'Téléphone' },
+    { key: 'telephone',       label: 'TÃ©lÃ©phone' },
     { key: 'date_naissance',  label: 'Date naiss.' },
     { key: 'date_recrutement',label: 'Date recrut.' },
     { key: 'discord_id',      label: 'Discord' },
   ];
-  var ok   = '<span style="color:#2ecc71;font-size:1rem">✓</span>';
-  var nok  = '<span style="color:#e74c3c;font-size:1rem;font-weight:700">✗</span>';
+  var ok   = '<span style="color:#2ecc71;font-size:1rem">âœ“</span>';
+  var nok  = '<span style="color:#e74c3c;font-size:1rem;font-weight:700">âœ—</span>';
 
   var rows = agents.map(function(a) {
     var missing = FIELDS.filter(function(f){ return !a[f.key]; }).length;
@@ -2281,12 +2282,12 @@ async function renderCompletude() {
   setContent(
     '<div class="flex-between mb-20 flex-wrap gap-8">' +
       '<div>' +
-        '<h2 style="font-size:1.15rem;font-weight:700;color:var(--t0);margin:0">Complétude des fiches agents</h2>' +
-        '<div style="font-size:.78rem;color:var(--t3);margin-top:3px">' + agents.length + ' agents actifs — ' +
-          '<span style="color:' + (incomplete?'#e74c3c':'#2ecc71') + '">' + incomplete + ' fiche' + (incomplete!==1?'s':'') + ' incomplète' + (incomplete!==1?'s':'') + '</span>' +
+        '<h2 style="font-size:1.15rem;font-weight:700;color:var(--t0);margin:0">ComplÃ©tude des fiches agents</h2>' +
+        '<div style="font-size:.78rem;color:var(--t3);margin-top:3px">' + agents.length + ' agents actifs â€” ' +
+          '<span style="color:' + (incomplete?'#e74c3c':'#2ecc71') + '">' + incomplete + ' fiche' + (incomplete!==1?'s':'') + ' incomplÃ¨te' + (incomplete!==1?'s':'') + '</span>' +
         '</div>' +
       '</div>' +
-      '<button class="btn btn-ghost btn-sm" onclick="navigate(\'agents\')">← Retour agents</button>' +
+      '<button class="btn btn-ghost btn-sm" onclick="navigate(\'agents\')">â† Retour agents</button>' +
     '</div>' +
     '<div class="card" style="padding:0;overflow:hidden">' +
       '<table class="table">' +
@@ -2301,8 +2302,8 @@ async function renderCompletude() {
   );
 }
 
-// ══ DISCIPLINARY ═══════════════════════════════════════════════════
-// ══ ARCHIVES ════════════════════════════════════════════════════════
+// â•â• DISCIPLINARY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â•â• ARCHIVES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 var _archiveSearch = '';
 async function renderArchives() {
   var agents = await DB.getArchivedAgents(_archiveSearch);
@@ -2313,22 +2314,22 @@ async function renderArchives() {
       '<td class="mono text-gold">' + esc(a.matricule) + '</td>' +
       '<td style="font-weight:600;color:var(--t0)">' + esc(a.prenom) + ' ' + esc(a.nom) + '</td>' +
       '<td>' + gradeBadge(a.grade) + '</td>' +
-      '<td>' + (unites||'<span class="text-muted">—</span>') + '</td>' +
+      '<td>' + (unites||'<span class="text-muted">â€”</span>') + '</td>' +
       '<td><span class="badge badge-gold" style="font-size:.65rem">PPA ' + ppas + '/3</span></td>' +
       '<td onclick="event.stopPropagation()" style="white-space:nowrap">' +
         '<button class="btn btn-ghost btn-sm" onclick="openArchivedProfile(\'' + a.id + '\')">Fiche</button>' +
         (isAdmin() ? ' <button class="btn btn-danger btn-sm" onclick="deleteArchivedAgent(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\')">Supprimer</button>' : '') +
       '</td>' +
     '</tr>';
-  }).join('') : '<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">🗃️</div><div class="empty-title">Aucun agent archivé</div></div></td></tr>';
+  }).join('') : '<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">ðŸ—ƒï¸</div><div class="empty-title">Aucun agent archivÃ©</div></div></td></tr>';
 
   setContent(
     '<div class="flex-between mb-20 flex-wrap gap-8">' +
-      '<div><h1 style="font-size:1.4rem">Archives</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">' + agents.length + ' agent(s) archivé(s) — consultation uniquement</p></div>' +
+      '<div><h1 style="font-size:1.4rem">Archives</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">' + agents.length + ' agent(s) archivÃ©(s) â€” consultation uniquement</p></div>' +
     '</div>' +
     '<div class="filter-bar">' +
-      '<div class="search-wrap" style="max-width:320px"><span class="search-icon">🔍</span>' +
-        '<input class="form-control search-input" placeholder="Nom, prénom, matricule…" value="' + esc(_archiveSearch) + '" oninput="archiveSearch(this.value)">' +
+      '<div class="search-wrap" style="max-width:320px"><span class="search-icon">ðŸ”</span>' +
+        '<input class="form-control search-input" placeholder="Nom, prÃ©nom, matriculeâ€¦" value="' + esc(_archiveSearch) + '" oninput="archiveSearch(this.value)">' +
       '</div>' +
     '</div>' +
     '<div class="card" style="padding:0;overflow:hidden">' +
@@ -2348,11 +2349,11 @@ function openArchivedProfile(id) {
   navigate('agent-profile', { id: id });
 }
 async function deleteArchivedAgent(id, name) {
-  if (!confirm('Supprimer définitivement ' + name + ' ?\n\nCette action est irréversible — toutes les données seront perdues.')) return;
+  if (!confirm('Supprimer dÃ©finitivement ' + name + ' ?\n\nCette action est irrÃ©versible â€” toutes les donnÃ©es seront perdues.')) return;
   var r = await DB.deleteAgent(id);
   if (r.error) { toast(r.error.message, 'error'); return; }
-  toast('Dossier supprimé définitivement.', 'info');
-  sendLog('🗑️ Agent supprimé', 0xe74c3c, [
+  toast('Dossier supprimÃ© dÃ©finitivement.', 'info');
+  sendLog('ðŸ—‘ï¸ Agent supprimÃ©', 0xe74c3c, [
     { name: 'Agent', value: name, inline: true },
     { name: 'Par', value: _whoAmI(), inline: true }
   ]);
@@ -2362,7 +2363,7 @@ async function openNotesModal(agentId) {
   var ag = await DB.getAgent(agentId);
   openModal({
     eyebrow: 'NOTES INTERNES',
-    title: 'Notes — visibles staff uniquement',
+    title: 'Notes â€” visibles staff uniquement',
     body: '<div class="form-group"><textarea class="form-control" id="notesText" rows="6" placeholder="Observations, remarques, suivi...">' + esc(ag && ag.notes || '') + '</textarea></div>',
     footer: '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
             '<button class="btn btn-primary" onclick="saveNotes(\'' + agentId + '\')">Enregistrer</button>'
@@ -2373,14 +2374,14 @@ async function saveNotes(agentId) {
   var notes = document.getElementById('notesText').value.trim() || null;
   await DB.updateAgent(agentId, { notes: notes });
   closeModal();
-  toast('Notes enregistrées.', 'success');
+  toast('Notes enregistrÃ©es.', 'success');
   await renderAgentProfile();
 }
 
 async function renderAcademie() {
   var agents = await DB.getAgents({});
   var recrues = agents.filter(function(a) {
-    return (a.grade === 'Rookie' || a.grade === 'Trooper I') && a.statut !== 'Archivé';
+    return (a.grade === 'Rookie' || a.grade === 'Trooper I') && a.statut !== 'ArchivÃ©';
   });
   var formateurMap = {};
   agents.filter(function(a){ return a.is_formateur; }).forEach(function(f){ formateurMap[f.id] = f; });
@@ -2404,12 +2405,12 @@ async function renderAcademie() {
     return '<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border0);cursor:pointer" onclick="navigate(\'agent-profile\',{id:\'' + r.id + '\'})">' +
       '<div style="flex:1">' +
         '<div style="font-size:.9rem;font-weight:600;color:var(--t0)">' + esc(r.prenom + ' ' + r.nom) + ' <span style="font-size:.75rem;color:var(--t3)">(' + esc(r.matricule) + ')</span></div>' +
-        (r.notes ? '<div style="font-size:.72rem;color:var(--t3);margin-top:2px">' + esc(r.notes.slice(0,80)) + (r.notes.length>80?'…':'') + '</div>' : '') +
+        (r.notes ? '<div style="font-size:.72rem;color:var(--t3);margin-top:2px">' + esc(r.notes.slice(0,80)) + (r.notes.length>80?'â€¦':'') + '</div>' : '') +
       '</div>' +
       gradeBadge(r.grade) +
       '<div style="display:flex;gap:4px">' + ppaDots + '</div>' +
-      (blames > 0 ? '<span class="badge badge-red" style="font-size:.7rem">⚠️ ' + blames + '</span>' : '') +
-      '<span style="color:var(--t3);font-size:.8rem">›</span>' +
+      (blames > 0 ? '<span class="badge badge-red" style="font-size:.7rem">âš ï¸ ' + blames + '</span>' : '') +
+      '<span style="color:var(--t3);font-size:.8rem">â€º</span>' +
     '</div>';
   }
 
@@ -2419,8 +2420,8 @@ async function renderAcademie() {
     var f = formateurMap[fId] || agents.find(function(a){ return a.id === fId; });
     var list = groups[fId];
     groupsHtml += '<div class="card" style="margin-bottom:16px">' +
-      '<div class="card-head"><div class="card-icon">🎓</div><div>' +
-        '<div class="card-title">Formateur : ' + esc(f ? f.prenom + ' ' + f.nom : '—') + (f ? ' <span style="color:var(--t3);font-size:.78rem">(' + esc(f.matricule) + ')</span>' : '') + '</div>' +
+      '<div class="card-head"><div class="card-icon">ðŸŽ“</div><div>' +
+        '<div class="card-title">Formateur : ' + esc(f ? f.prenom + ' ' + f.nom : 'â€”') + (f ? ' <span style="color:var(--t3);font-size:.78rem">(' + esc(f.matricule) + ')</span>' : '') + '</div>' +
         '<div class="card-sub">' + list.length + ' recrue(s)</div>' +
       '</div></div>' +
       list.map(recrueRow).join('') +
@@ -2428,21 +2429,21 @@ async function renderAcademie() {
   });
   if (groups['__none__'] && groups['__none__'].length) {
     groupsHtml += '<div class="card" style="margin-bottom:16px">' +
-      '<div class="card-head"><div class="card-icon">❓</div><div><div class="card-title">Sans formateur assigné</div><div class="card-sub">' + groups['__none__'].length + ' recrue(s)</div></div></div>' +
+      '<div class="card-head"><div class="card-icon">â“</div><div><div class="card-title">Sans formateur assignÃ©</div><div class="card-sub">' + groups['__none__'].length + ' recrue(s)</div></div></div>' +
       groups['__none__'].map(recrueRow).join('') +
     '</div>';
   }
   if (!recrues.length) {
-    groupsHtml = '<div class="empty-state"><div class="empty-icon">🎓</div><div class="empty-title">Aucune recrue en formation</div><div class="empty-sub">Les agents de grade Rookie ou Trooper I apparaissent ici.</div></div>';
+    groupsHtml = '<div class="empty-state"><div class="empty-icon">ðŸŽ“</div><div class="empty-title">Aucune recrue en formation</div><div class="empty-sub">Les agents de grade Rookie ou Trooper I apparaissent ici.</div></div>';
   }
 
   setContent(
-    '<div class="welcome-bar"><div><h1 style="font-size:1.5rem">Académie</h1><p class="text-muted" style="margin-top:3px;font-size:.84rem">Suivi des recrues en formation</p></div></div>' +
+    '<div class="welcome-bar"><div><h1 style="font-size:1.5rem">AcadÃ©mie</h1><p class="text-muted" style="margin-top:3px;font-size:.84rem">Suivi des recrues en formation</p></div></div>' +
     '<div class="stats-grid">' +
-      statCard('🎓', 'Recrues totales', recrues.length) +
-      statCard('🟡', 'Rookie', nRookie) +
-      statCard('🔵', 'Trooper I', nOfficer) +
-      statCard('👤', 'Formateurs', Object.keys(formateurMap).length) +
+      statCard('ðŸŽ“', 'Recrues totales', recrues.length) +
+      statCard('ðŸŸ¡', 'Rookie', nRookie) +
+      statCard('ðŸ”µ', 'Trooper I', nOfficer) +
+      statCard('ðŸ‘¤', 'Formateurs', Object.keys(formateurMap).length) +
     '</div>' +
     groupsHtml
   );
@@ -2461,7 +2462,7 @@ async function renderRecap() {
 
   function buildCards() {
     var filtered = agents.filter(function(a){
-      if (a.statut === 'Archivé') return false;
+      if (a.statut === 'ArchivÃ©') return false;
       if (_filterGrade  && a.grade  !== _filterGrade)  return false;
       if (_filterStatut && a.statut !== _filterStatut) return false;
       return true;
@@ -2469,10 +2470,10 @@ async function renderRecap() {
     filtered.sort(function(a,b){
       return parseInt(a.matricule||'99',10) - parseInt(b.matricule||'99',10);
     });
-    if (!filtered.length) return '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Aucun agent</div></div>';
+    if (!filtered.length) return '<div class="empty-state"><div class="empty-icon">ðŸ”</div><div class="empty-title">Aucun agent</div></div>';
     return filtered.map(function(a) {
       var formateur = a.formateur_id ? agentMap[a.formateur_id] : null;
-      var divs = (a.unites||[]).map(unitBadge).join(' ') || '<span style="color:var(--t3);font-size:.75rem">—</span>';
+      var divs = (a.unites||[]).map(unitBadge).join(' ') || '<span style="color:var(--t3);font-size:.75rem">â€”</span>';
       var blameCount = (a.blame1?1:0)+(a.blame2?1:0)+(a.blame3?1:0);
       return '<div class="card" style="cursor:pointer;transition:border-color .15s" onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'\'">' +
         '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">' +
@@ -2487,16 +2488,16 @@ async function renderRecap() {
           '</div>' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:.78rem;border-top:1px solid var(--border0);padding-top:10px">' +
-          recapRow('📞', a.telephone ? fmtTel(a.telephone) : '—') +
-          recapRow('💳', a.iban || '—') +
-          recapRow('🎓', formateur ? formateur.prenom + ' ' + formateur.nom : '—') +
-          recapRow('📅', a.date_recrutement ? fmt(a.date_recrutement) : '—') +
+          recapRow('ðŸ“ž', a.telephone ? fmtTel(a.telephone) : 'â€”') +
+          recapRow('ðŸ’³', a.iban || 'â€”') +
+          recapRow('ðŸŽ“', formateur ? formateur.prenom + ' ' + formateur.nom : 'â€”') +
+          recapRow('ðŸ“…', a.date_recrutement ? fmt(a.date_recrutement) : 'â€”') +
         '</div>' +
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;border-top:1px solid var(--border0);padding-top:10px">' +
           '<div style="display:flex;gap:6px">' + divs + '</div>' +
           '<div style="display:flex;align-items:center;gap:8px">' +
-            (blameCount ? '<span class="badge badge-red" style="font-size:.68rem">⚠️ ' + blameCount + ' blâme' + (blameCount>1?'s':'') + '</span>' : '') +
-            (a.notes ? '<span title="' + esc(a.notes.slice(0,80)) + '" style="font-size:.75rem;color:var(--t3);cursor:help">📝</span>' : '') +
+            (blameCount ? '<span class="badge badge-red" style="font-size:.68rem">âš ï¸ ' + blameCount + ' blÃ¢me' + (blameCount>1?'s':'') + '</span>' : '') +
+            (a.notes ? '<span title="' + esc(a.notes.slice(0,80)) + '" style="font-size:.75rem;color:var(--t3);cursor:help">ðŸ“</span>' : '') +
           '</div>' +
         '</div>' +
       '</div>';
@@ -2514,12 +2515,12 @@ async function renderRecap() {
     _grades.slice().sort(function(a,b){ return (b.ordre||0)-(a.ordre||0); }).map(function(g){
       return '<option value="' + esc(g.nom) + '">' + esc(g.nom) + '</option>';
     }).join('');
-  var statutOpts = ['Tous les statuts','En service','En congé','Suspendu','Licencié','Retraité','Démission'].map(function(s,i){
+  var statutOpts = ['Tous les statuts','En service','En congÃ©','Suspendu','LicenciÃ©','RetraitÃ©','DÃ©mission'].map(function(s,i){
     return '<option value="' + (i===0?'':s) + '">' + s + '</option>';
   }).join('');
 
   setContent(
-    '<div class="welcome-bar"><div><h1 style="font-size:1.5rem">Récap agents</h1><p class="text-muted" style="font-size:.84rem;margin-top:3px">Vue d\'ensemble — toutes les informations</p></div></div>' +
+    '<div class="welcome-bar"><div><h1 style="font-size:1.5rem">RÃ©cap agents</h1><p class="text-muted" style="font-size:.84rem;margin-top:3px">Vue d\'ensemble â€” toutes les informations</p></div></div>' +
     '<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">' +
       '<select class="form-control" style="width:auto" id="recapFilterGrade" onchange="recapFilter()">' + gradeOpts + '</select>' +
       '<select class="form-control" style="width:auto" id="recapFilterStatut" onchange="recapFilter()">' + statutOpts + '</select>' +
@@ -2535,7 +2536,7 @@ async function renderRecap() {
     _filterStatut = document.getElementById('recapFilterStatut').value;
     document.getElementById('recapGrid').innerHTML = buildCards();
     var cnt = window._recapAgents.filter(function(a){
-      if (a.statut==='Archivé') return false;
+      if (a.statut==='ArchivÃ©') return false;
       if (_filterGrade  && a.grade  !== _filterGrade)  return false;
       if (_filterStatut && a.statut !== _filterStatut) return false;
       return true;
@@ -2544,7 +2545,7 @@ async function renderRecap() {
     if (el) el.textContent = cnt + ' agent' + (cnt!==1?'s':'');
   };
   document.getElementById('recapGrid').innerHTML = buildCards();
-  var total = agents.filter(function(a){ return a.statut !== 'Archivé'; }).length;
+  var total = agents.filter(function(a){ return a.statut !== 'ArchivÃ©'; }).length;
   var cnt = document.getElementById('recapCount');
   if (cnt) cnt.textContent = total + ' agent' + (total!==1?'s':'');
 }
@@ -2578,20 +2579,20 @@ async function pickMatricule(mat) {
 }
 
 async function archiveAgent(id) {
-  if (!confirm('Archiver cet agent ? Sa fiche passera en lecture seule et disparaîtra de la liste des agents.')) return;
-  var r = await DB.updateAgent(id, { statut: 'Archivé' });
+  if (!confirm('Archiver cet agent ? Sa fiche passera en lecture seule et disparaÃ®tra de la liste des agents.')) return;
+  var r = await DB.updateAgent(id, { statut: 'ArchivÃ©' });
   if (r.error) { toast(r.error.message, 'error'); return; }
-  toast('Agent archivé.', 'info');
+  toast('Agent archivÃ©.', 'info');
   var agent = await DB.getAgent(id);
-  if (agent) sendLog('📦 Agent archivé', 0xe67e22, [
-    { name: 'Agent', value: agent.prenom + ' ' + agent.nom + ' · ' + agent.matricule, inline: true },
+  if (agent) sendLog('ðŸ“¦ Agent archivÃ©', 0xe67e22, [
+    { name: 'Agent', value: agent.prenom + ' ' + agent.nom + ' Â· ' + agent.matricule, inline: true },
     { name: 'Par', value: _whoAmI(), inline: true }
   ]);
   refreshAgentList();
   navigate('archives');
 }
 
-// ══ WIKI GÉNÉRIQUE ══════════════════════════════════════════════════
+// â•â• WIKI GÃ‰NÃ‰RIQUE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function renderWikiSection(slug, cfg) {
   _wikiSlug = slug;
   if (!_wikiCats[slug]) _wikiCats[slug] = await DB.getOrCreateWikiCat(slug);
@@ -2620,7 +2621,7 @@ function renderWikiList(slug, icon) {
   }
   el.innerHTML = pages.map(function(p, i){
     return '<div class="mdt-page-item' + (_mdtSelPage===p.id?' active':'') + '" onclick="openWikiPage(\'' + p.id + '\')" style="justify-content:space-between">' +
-      '<span>' + (icon||'📄') + ' ' + esc(p.titre) + '</span>' + movePageBtns(p.id, i, pages.length, 'wiki') + '</div>';
+      '<span>' + (icon||'ðŸ“„') + ' ' + esc(p.titre) + '</span>' + movePageBtns(p.id, i, pages.length, 'wiki') + '</div>';
   }).join('');
 }
 async function openWikiPage(pageId) {
@@ -2635,7 +2636,7 @@ async function openWikiPage(pageId) {
       '<div><h2 style="font-size:1.3rem">' + esc(page.titre) + '</h2>' +
       '<div class="mono" style="font-size:.64rem;color:var(--t3);margin-top:3px">Modifi\xE9 le ' + fmt(page.updated_at) + '</div></div>' +
       (canWrite() ? '<div style="display:flex;gap:8px">' +
-        '<button class="btn btn-outline btn-sm" onclick="editWikiPage(\'' + pageId + '\')">✏️ Modifier</button>' +
+        '<button class="btn btn-outline btn-sm" onclick="editWikiPage(\'' + pageId + '\')">âœï¸ Modifier</button>' +
         '<button class="btn btn-danger btn-sm" onclick="delWikiPage(\'' + pageId + '\')">Supprimer</button>' +
       '</div>' : '') +
     '</div></div>' +
@@ -2652,7 +2653,7 @@ async function editWikiPage(pageId) {
       '<input class="form-control" id="wikiEditTitle" value="' + esc(page.titre) + '" style="font-size:1.1rem;font-weight:700;max-width:400px">' +
       '<div style="display:flex;gap:8px">' +
         '<button class="btn btn-ghost btn-sm" onclick="openWikiPage(\'' + pageId + '\')">Annuler</button>' +
-        '<button class="btn btn-primary btn-sm" onclick="saveWikiPage(\'' + pageId + '\')">💾 Sauvegarder</button>' +
+        '<button class="btn btn-primary btn-sm" onclick="saveWikiPage(\'' + pageId + '\')">ðŸ’¾ Sauvegarder</button>' +
       '</div>' +
     '</div></div>' +
     '<div id="wikiEditor"></div>';
@@ -2684,7 +2685,7 @@ async function delWikiPage(pageId) {
   _wikiPages[_wikiSlug] = await DB.getAllVehiclePages(_wikiCats[_wikiSlug]);
   renderWikiList(_wikiSlug);
   var main = document.getElementById('wikiMain');
-  if (main) main.innerHTML = '<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-title">Page supprim\xE9e</div></div>';
+  if (main) main.innerHTML = '<div class="empty-state"><div class="empty-icon">ðŸ“„</div><div class="empty-title">Page supprim\xE9e</div></div>';
 }
 function openWikiNewPage() {
   openModal({
@@ -2709,7 +2710,7 @@ async function createWikiPage() {
   } catch(e) { toast(e.message,'error'); }
 }
 
-// ══ STATS ══════════════════════════════════════════════════════════
+// â•â• STATS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function renderStats() {
   var { agents, recentHist } = await DB.getStats();
 
@@ -2732,20 +2733,20 @@ async function renderStats() {
     '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Statistiques</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">Vue d\'ensemble de la SASP</p></div></div>' +
 
     '<div class="stats-grid mb-20">' +
-      statCard('👮', 'Agents total', total) +
-      statCard('✅', 'Actifs', actifs) +
-      statCard('📚', 'PPA 3 validé', ppa3c) +
-      statCard('⚠️', 'Sanctions (30j)', sanctions) +
-      statCard('🎖️', 'Promotions (30j)', promotions) +
+      statCard('ðŸ‘®', 'Agents total', total) +
+      statCard('âœ…', 'Actifs', actifs) +
+      statCard('ðŸ“š', 'PPA 3 validÃ©', ppa3c) +
+      statCard('âš ï¸', 'Sanctions (30j)', sanctions) +
+      statCard('ðŸŽ–ï¸', 'Promotions (30j)', promotions) +
     '</div>' +
 
     '<div class="page-grid2">' +
-      '<div class="card"><div class="card-head"><div class="card-icon">🎖️</div><div><div class="card-title">Répartition par grade</div></div></div><div class="chart-wrap"><canvas id="chartGrades"></canvas></div></div>' +
-      '<div class="card"><div class="card-head"><div class="card-icon">🚔</div><div><div class="card-title">Effectifs par unité</div></div></div><div class="chart-wrap"><canvas id="chartUnits"></canvas></div></div>' +
+      '<div class="card"><div class="card-head"><div class="card-icon">ðŸŽ–ï¸</div><div><div class="card-title">RÃ©partition par grade</div></div></div><div class="chart-wrap"><canvas id="chartGrades"></canvas></div></div>' +
+      '<div class="card"><div class="card-head"><div class="card-icon">ðŸš”</div><div><div class="card-title">Effectifs par unitÃ©</div></div></div><div class="chart-wrap"><canvas id="chartUnits"></canvas></div></div>' +
     '</div>' +
 
     '<div class="card" style="margin-top:18px">' +
-      '<div class="card-head"><div class="card-icon">📚</div><div><div class="card-title">Formations PPA</div></div></div>' +
+      '<div class="card-head"><div class="card-icon">ðŸ“š</div><div><div class="card-title">Formations PPA</div></div></div>' +
       '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">' +
         ppaStatCard('PPA 1', ppa1c, total) +
         ppaStatCard('PPA 2', ppa2c, total) +
@@ -2789,15 +2790,15 @@ function ppaStatCard(label, count, total) {
   '</div>';
 }
 
-// ══ SEARCH ════════════════════════════════════════════════════════
+// â•â• SEARCH â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function renderSearch() {
   var q = S.pd.q || '';
   setContent(
     '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Recherche globale</h1></div></div>' +
-    '<div class="search-wrap mb-20" style="max-width:600px"><span class="search-icon" style="font-size:1.1rem">🔍</span>' +
-      '<input class="form-control search-input" id="globalSearchInput" placeholder="Rechercher agents, grades, dossiers, MDT…" value="' + esc(q) + '" oninput="globalSearch(this.value)" style="font-size:1rem;padding:13px 13px 13px 38px">' +
+    '<div class="search-wrap mb-20" style="max-width:600px"><span class="search-icon" style="font-size:1.1rem">ðŸ”</span>' +
+      '<input class="form-control search-input" id="globalSearchInput" placeholder="Rechercher agents, grades, dossiers, MDTâ€¦" value="' + esc(q) + '" oninput="globalSearch(this.value)" style="font-size:1rem;padding:13px 13px 13px 38px">' +
     '</div>' +
-    '<div id="searchResults">' + (q ? '' : '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Tapez pour rechercher…</div></div>') + '</div>'
+    '<div id="searchResults">' + (q ? '' : '<div class="empty-state"><div class="empty-icon">ðŸ”</div><div class="empty-title">Tapez pour rechercherâ€¦</div></div>') + '</div>'
   );
   if (q) await doSearch(q);
   var input = document.getElementById('globalSearchInput');
@@ -2814,7 +2815,7 @@ async function doSearch(q) {
   var el = document.getElementById('searchResults');
   if (!el) return;
   if (!q || q.length < 2) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Tapez au moins 2 caractères</div></div>';
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">ðŸ”</div><div class="empty-title">Tapez au moins 2 caractÃ¨res</div></div>';
     return;
   }
   el.innerHTML = '<div class="loader-block" style="padding:30px"><div class="spinner"></div></div>';
@@ -2822,7 +2823,7 @@ async function doSearch(q) {
 
   var html = '';
   if (agents.length) {
-    html += '<div class="card mb-14"><div class="card-head"><div class="card-icon">👮</div><div><div class="card-title">Agents</div><div class="card-sub">' + agents.length + ' RÉSULTAT(S)</div></div></div>' +
+    html += '<div class="card mb-14"><div class="card-head"><div class="card-icon">ðŸ‘®</div><div><div class="card-title">Agents</div><div class="card-sub">' + agents.length + ' RÃ‰SULTAT(S)</div></div></div>' +
       agents.map(function(a){ return '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border0);cursor:pointer" onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})">' +
         '<span class="mono text-gold">' + esc(a.matricule) + '</span>' +
         '<span style="font-weight:600;color:var(--t0);flex:1">' + esc(a.prenom+' '+a.nom) + '</span>' +
@@ -2830,12 +2831,12 @@ async function doSearch(q) {
       '</div>'; }).join('') + '</div>';
   }
   if (mdt.length) {
-    html += '<div class="card mb-14"><div class="card-head"><div class="card-icon">📚</div><div><div class="card-title">Guide MDT</div><div class="card-sub">' + mdt.length + ' PAGE(S)</div></div></div>' +
+    html += '<div class="card mb-14"><div class="card-head"><div class="card-icon">ðŸ“š</div><div><div class="card-title">Guide MDT</div><div class="card-sub">' + mdt.length + ' PAGE(S)</div></div></div>' +
       mdt.map(function(p){ return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border0);cursor:pointer;color:var(--t0)" onclick="openMdtPageFromSearch(\'' + p.categorie_id + '\',\'' + p.id + '\')">' +
-        '<span>📄</span><span style="flex:1">' + esc(p.titre) + '</span><span class="text-muted" style="font-size:.78rem">MDT →</span>' +
+        '<span>ðŸ“„</span><span style="flex:1">' + esc(p.titre) + '</span><span class="text-muted" style="font-size:.78rem">MDT â†’</span>' +
       '</div>'; }).join('') + '</div>';
   }
-  el.innerHTML = html || '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Aucun résultat pour "' + esc(q) + '"</div></div>';
+  el.innerHTML = html || '<div class="empty-state"><div class="empty-icon">ðŸ”</div><div class="empty-title">Aucun rÃ©sultat pour "' + esc(q) + '"</div></div>';
 }
 
 async function openMdtPageFromSearch(catId, pageId) {
@@ -2845,9 +2846,9 @@ async function openMdtPageFromSearch(catId, pageId) {
   await openMdtPage(pageId);
 }
 
-// ══ GLOBAL SETTINGS ═══════════════════════════════════════════════
+// â•â• GLOBAL SETTINGS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function renderGlobalSettings() {
-  if (!isAdmin()) { toast('Accès réservé aux administrateurs.','error'); return; }
+  if (!isAdmin()) { toast('AccÃ¨s rÃ©servÃ© aux administrateurs.','error'); return; }
   var appUsers = await DB.getAppUsers();
   var grades   = await DB.getGrades();
   var units    = await DB.getUnits();
@@ -2861,9 +2862,9 @@ async function renderGlobalSettings() {
       '</div></div>' + body + '</div>';
   }
 
-  // ── Utilisateurs ──
+  // â”€â”€ Utilisateurs â”€â”€
   var usersHtml = '<div class="table-wrap"><table>' +
-    '<thead><tr><th>NOM</th><th>PRÉNOM</th><th>RÔLE</th><th>CHANGER</th></tr></thead><tbody>' +
+    '<thead><tr><th>NOM</th><th>PRÃ‰NOM</th><th>RÃ”LE</th><th>CHANGER</th></tr></thead><tbody>' +
     appUsers.map(function(u) {
       return '<tr><td>' + esc(u.nom) + '</td><td>' + esc(u.prenom) + '</td>' +
         '<td>' + roleBadge(u.app_role) + '</td>' +
@@ -2872,29 +2873,29 @@ async function renderGlobalSettings() {
         '</select></td></tr>';
     }).join('') + '</tbody></table></div>';
 
-  // ── Grades ──
+  // â”€â”€ Grades â”€â”€
   var gradesHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">' +
     grades.map(function(g){
       return '<div style="display:flex;align-items:center;gap:6px;background:var(--bg1);border-radius:var(--rSm);padding:6px 12px">' +
         '<span style="font-size:.83rem;color:var(--t1);font-weight:600">' + esc(g.nom) + '</span>' +
         '<span class="mono" style="font-size:.68rem;color:var(--t3)">' + esc(g.abrev||'') + '</span>' +
-        '<button class="btn btn-danger btn-sm btn-icon" style="padding:2px 6px;font-size:.7rem" onclick="deleteGradeGS(\'' + g.id + '\',\'' + esc(g.nom) + '\')">✕</button>' +
+        '<button class="btn btn-danger btn-sm btn-icon" style="padding:2px 6px;font-size:.7rem" onclick="deleteGradeGS(\'' + g.id + '\',\'' + esc(g.nom) + '\')">âœ•</button>' +
       '</div>';
     }).join('') + '</div>' +
-    '<button class="btn btn-outline btn-sm" onclick="navigate(\'grades\')">✏️ Gérer les grades</button>';
+    '<button class="btn btn-outline btn-sm" onclick="navigate(\'grades\')">âœï¸ GÃ©rer les grades</button>';
 
-  // ── Unités ──
+  // â”€â”€ UnitÃ©s â”€â”€
   var unitsHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">' +
     units.map(function(u){
       return '<div style="display:flex;align-items:center;gap:6px;background:var(--bg1);border-radius:var(--rSm);padding:6px 12px">' +
         '<span class="mono text-gold" style="font-size:.8rem;font-weight:700">' + esc(u.code) + '</span>' +
         '<span style="font-size:.8rem;color:var(--t2)">' + esc(u.nom) + '</span>' +
-        '<button class="btn btn-danger btn-sm btn-icon" style="padding:2px 6px;font-size:.7rem" onclick="deleteUnitGS(\'' + u.id + '\',\'' + esc(u.code) + '\')">✕</button>' +
+        '<button class="btn btn-danger btn-sm btn-icon" style="padding:2px 6px;font-size:.7rem" onclick="deleteUnitGS(\'' + u.id + '\',\'' + esc(u.code) + '\')">âœ•</button>' +
       '</div>';
     }).join('') + '</div>' +
-    '<button class="btn btn-outline btn-sm" onclick="navigate(\'units\')">✏️ Gérer les divisions</button>';
+    '<button class="btn btn-outline btn-sm" onclick="navigate(\'units\')">âœï¸ GÃ©rer les divisions</button>';
 
-  // ── Permissions ──
+  // â”€â”€ Permissions â”€â”€
   var cfg = {};
   try { cfg = JSON.parse(localStorage.getItem('sasp_permissions') || '{}'); } catch(e) {}
 
@@ -2904,7 +2905,7 @@ async function renderGlobalSettings() {
     { id:'grades',        label:'Grades' },
     { id:'units',         label:'Divisions' },
     { id:'mdt',           label:'Guide MDT' },
-    { id:'vehicles',      label:'Véhicules' },
+    { id:'vehicles',      label:'VÃ©hicules' },
     { id:'info',          label:'Informations' },
     { id:'manuel',        label:'Manuel' },
     { id:'tenue',         label:'Tenues' },
@@ -2917,18 +2918,18 @@ async function renderGlobalSettings() {
   var academyPages = cfg.academyPages  || allPages.map(function(p){ return p.id; });
 
   var permHtml =
-    '<div style="font-size:.82rem;margin-bottom:16px;color:var(--t2)">IDs des rôles Discord utilisés pour l\'authentification.</div>' +
+    '<div style="font-size:.82rem;margin-bottom:16px;color:var(--t2)">IDs des rÃ´les Discord utilisÃ©s pour l\'authentification.</div>' +
     '<div style="display:grid;grid-template-columns:1fr 2fr;gap:10px 16px;align-items:center;margin-bottom:20px">' +
-      '<label style="font-size:.82rem;font-weight:600;color:var(--gold)">🔴 Command Staff</label>' +
+      '<label style="font-size:.82rem;font-weight:600;color:var(--gold)">ðŸ”´ Command Staff</label>' +
       '<input class="form-control" id="cfgAdminId" value="' + esc((cfg.roleAdminIds || ROLE_ADMIN_IDS).join(', ')) + '" placeholder="ID1, ID2">' +
-      '<label style="font-size:.82rem;font-weight:600;color:var(--blue)">🔵 SASP Academy</label>' +
+      '<label style="font-size:.82rem;font-weight:600;color:var(--blue)">ðŸ”µ SASP Academy</label>' +
       '<input class="form-control" id="cfgAcademyId" value="' + esc(cfg.roleAcademyId || ROLE_ACADEMY_ID) + '">' +
-      '<label style="font-size:.82rem;font-weight:600;color:var(--t2)">⚪ Agent</label>' +
+      '<label style="font-size:.82rem;font-weight:600;color:var(--t2)">âšª Agent</label>' +
       '<input class="form-control" id="cfgAgentId" value="' + esc(cfg.roleAgentId || ROLE_AGENT_ID) + '">' +
     '</div>' +
-    '<div style="font-size:.82rem;font-weight:600;color:var(--t1);margin-bottom:10px">Accès aux pages par rôle</div>' +
+    '<div style="font-size:.82rem;font-weight:600;color:var(--t1);margin-bottom:10px">AccÃ¨s aux pages par rÃ´le</div>' +
     '<div class="table-wrap"><table>' +
-      '<thead><tr><th>PAGE</th><th style="text-align:center">Agent</th><th style="text-align:center">Académie</th><th style="text-align:center">Admin</th></tr></thead>' +
+      '<thead><tr><th>PAGE</th><th style="text-align:center">Agent</th><th style="text-align:center">AcadÃ©mie</th><th style="text-align:center">Admin</th></tr></thead>' +
       '<tbody>' +
         allPages.map(function(p) {
           var agChk  = agentPages.indexOf(p.id) !== -1;
@@ -2942,56 +2943,56 @@ async function renderGlobalSettings() {
         }).join('') +
       '</tbody>' +
     '</table></div>' +
-    '<div style="margin-top:14px"><button class="btn btn-primary btn-sm" onclick="savePermissions()">💾 Sauvegarder les permissions</button></div>';
+    '<div style="margin-top:14px"><button class="btn btn-primary btn-sm" onclick="savePermissions()">ðŸ’¾ Sauvegarder les permissions</button></div>';
 
-  // ── Sections Documentation ──
+  // â”€â”€ Sections Documentation â”€â”€
   var docsHtml =
     '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">' +
     _wikiSections.map(function(s) {
       return '<div style="display:flex;align-items:center;gap:10px;background:var(--bg1);border-radius:var(--rSm);padding:8px 12px">' +
-        '<span style="font-size:1rem">' + (s.icon||'📄') + '</span>' +
+        '<span style="font-size:1rem">' + (s.icon||'ðŸ“„') + '</span>' +
         '<span style="font-size:.85rem;font-weight:600;color:var(--t1);flex:1">' + esc(s.titre) + '</span>' +
         '<span style="font-size:.75rem;color:var(--t3)">' + esc(s.sous_titre||'') + '</span>' +
         (s._default ? '' :
-          '<button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)" onclick="deleteDocSection(\'' + s.id + '\',\'' + esc(s.titre) + '\')">✕</button>') +
+          '<button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)" onclick="deleteDocSection(\'' + s.id + '\',\'' + esc(s.titre) + '\')">âœ•</button>') +
       '</div>';
     }).join('') +
     '</div>' +
     '<button class="btn btn-outline btn-sm" onclick="openDocSectionModal()">+ Nouvelle section</button>';
 
-  // ── Zone de danger ──
+  // â”€â”€ Zone de danger â”€â”€
   var dangerHtml = '<p style="font-size:.83rem;color:var(--t2);margin-bottom:14px">' + archived.length + ' agent(s) dans les archives.</p>' +
     '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
-      '<button class="btn btn-outline btn-sm" onclick="navigate(\'archives\')">🗃️ Voir les archives</button>' +
-      (archived.length ? '<button class="btn btn-danger btn-sm" onclick="purgeAllArchives()">💀 Purger toutes les archives</button>' : '') +
+      '<button class="btn btn-outline btn-sm" onclick="navigate(\'archives\')">ðŸ—ƒï¸ Voir les archives</button>' +
+      (archived.length ? '<button class="btn btn-danger btn-sm" onclick="purgeAllArchives()">ðŸ’€ Purger toutes les archives</button>' : '') +
     '</div>';
 
   setContent(
-    '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Réglages globaux</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">Configuration générale du site — accès admin uniquement</p></div></div>' +
-    section('👥', 'Gestion des accès', 'RÔLES DES UTILISATEURS', usersHtml) +
-    section('🎖️', 'Grades', 'HIÉRARCHIE', gradesHtml) +
-    section('🚔', 'Divisions', 'UNITÉS DE LA SASP', unitsHtml) +
-    section('📚', 'Documentation', 'SECTIONS DU MENU', docsHtml) +
-    section('🔐', 'Permissions & Rôles Discord', 'CONTRÔLE D\'ACCÈS', permHtml) +
-    section('⚠️', 'Zone de danger', 'ACTIONS IRRÉVERSIBLES', dangerHtml)
+    '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">RÃ©glages globaux</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">Configuration gÃ©nÃ©rale du site â€” accÃ¨s admin uniquement</p></div></div>' +
+    section('ðŸ‘¥', 'Gestion des accÃ¨s', 'RÃ”LES DES UTILISATEURS', usersHtml) +
+    section('ðŸŽ–ï¸', 'Grades', 'HIÃ‰RARCHIE', gradesHtml) +
+    section('ðŸš”', 'Divisions', 'UNITÃ‰S DE LA SASP', unitsHtml) +
+    section('ðŸ“š', 'Documentation', 'SECTIONS DU MENU', docsHtml) +
+    section('ðŸ”', 'Permissions & RÃ´les Discord', 'CONTRÃ”LE D\'ACCÃˆS', permHtml) +
+    section('âš ï¸', 'Zone de danger', 'ACTIONS IRRÃ‰VERSIBLES', dangerHtml)
   );
 }
 function openDocSectionModal() {
-  var icons = ['📄','📋','📁','📑','📊','🗂️','📰','🔖','📝','⚖️','🛡️','🚨','🏆','🗒️'];
+  var icons = ['ðŸ“„','ðŸ“‹','ðŸ“','ðŸ“‘','ðŸ“Š','ðŸ—‚ï¸','ðŸ“°','ðŸ”–','ðŸ“','âš–ï¸','ðŸ›¡ï¸','ðŸš¨','ðŸ†','ðŸ—’ï¸'];
   openModal({
     eyebrow: 'DOCUMENTATION',
     title: 'Nouvelle section',
     size: 'sm',
     body:
-      fld('Titre *','text','docSecTitre','','Ex : Procédures internes') +
-      fld('Sous-titre','text','docSecSub','','Ex : Règles et protocoles') +
-      '<div class="form-group"><label class="form-label">Icône</label>' +
+      fld('Titre *','text','docSecTitre','','Ex : ProcÃ©dures internes') +
+      fld('Sous-titre','text','docSecSub','','Ex : RÃ¨gles et protocoles') +
+      '<div class="form-group"><label class="form-label">IcÃ´ne</label>' +
         '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
           icons.map(function(ic){ return '<button type="button" onclick="selectDocIcon(\'' + ic + '\')" style="font-size:1.3rem;background:var(--bg1);border:1px solid var(--border0);border-radius:var(--rSm);padding:4px 8px;cursor:pointer" id="dico_' + encodeURIComponent(ic) + '">' + ic + '</button>'; }).join('') +
         '</div>' +
-        '<input type="hidden" id="docSecIcon" value="📄">' +
+        '<input type="hidden" id="docSecIcon" value="ðŸ“„">' +
       '</div>',
-    footer: '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="createDocSection()">Créer</button>'
+    footer: '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="createDocSection()">CrÃ©er</button>'
   });
 }
 function selectDocIcon(ic) {
@@ -3008,13 +3009,13 @@ async function createDocSection() {
     slug: slug,
     titre: titre,
     sous_titre: (document.getElementById('docSecSub').value || '').trim(),
-    icon: document.getElementById('docSecIcon').value || '📄',
+    icon: document.getElementById('docSecIcon').value || 'ðŸ“„',
     ordre: _wikiSections.length
   };
   try {
     var r = await DB.createWikiSection(data);
     if (r.error) throw r.error;
-    closeModal(); toast('Section créée.','success');
+    closeModal(); toast('Section crÃ©Ã©e.','success');
     await loadWikiSections();
     await renderGlobalSettings();
   } catch(e) { toast(e.message,'error'); }
@@ -3024,7 +3025,7 @@ async function deleteDocSection(id, nom) {
   try {
     var r = await DB.deleteWikiSection(id);
     if (r.error) throw r.error;
-    toast('Section supprimée.','info');
+    toast('Section supprimÃ©e.','info');
     await loadWikiSections();
     await renderGlobalSettings();
   } catch(e) { toast(e.message,'error'); }
@@ -3046,49 +3047,49 @@ function savePermissions() {
   ROLE_ADMIN_IDS  = cfg.roleAdminIds;
   ROLE_ACADEMY_ID = cfg.roleAcademyId;
   ROLE_AGENT_ID   = cfg.roleAgentId;
-  toast('Permissions sauvegardées — rechargez pour appliquer les rôles.', 'success');
+  toast('Permissions sauvegardÃ©es â€” rechargez pour appliquer les rÃ´les.', 'success');
 }
 
 async function deleteGradeGS(id, nom) {
-  if (!confirm('Supprimer le grade "' + nom + '" ?\nAttention : les agents ayant ce grade devront être mis à jour manuellement.')) return;
+  if (!confirm('Supprimer le grade "' + nom + '" ?\nAttention : les agents ayant ce grade devront Ãªtre mis Ã  jour manuellement.')) return;
   var r = await DB.deleteGrade(id);
   if (r.error) { toast(r.error.message, 'error'); return; }
-  toast('Grade supprimé.', 'info');
+  toast('Grade supprimÃ©.', 'info');
   renderGlobalSettings();
 }
 async function deleteUnitGS(id, code) {
   if (!confirm('Supprimer la division "' + code + '" ?')) return;
   var r = await DB.deleteUnit(id);
   if (r.error) { toast(r.error.message, 'error'); return; }
-  toast('Division supprimée.', 'info');
+  toast('Division supprimÃ©e.', 'info');
   renderGlobalSettings();
 }
 async function purgeAllArchives() {
   var archived = await DB.getArchivedAgents('');
-  if (!archived.length) { toast('Aucune archive à purger.', 'info'); return; }
-  if (!confirm('Supprimer définitivement les ' + archived.length + ' agent(s) archivé(s) ?\n\nCette action est IRRÉVERSIBLE.')) return;
+  if (!archived.length) { toast('Aucune archive Ã  purger.', 'info'); return; }
+  if (!confirm('Supprimer dÃ©finitivement les ' + archived.length + ' agent(s) archivÃ©(s) ?\n\nCette action est IRRÃ‰VERSIBLE.')) return;
   var errors = [];
   for (var i = 0; i < archived.length; i++) {
     var r = await DB.deleteAgent(archived[i].id);
     if (r.error) errors.push(archived[i].nom);
   }
   if (errors.length) toast('Erreur sur : ' + errors.join(', '), 'error');
-  else toast('Toutes les archives ont été supprimées.', 'success');
+  else toast('Toutes les archives ont Ã©tÃ© supprimÃ©es.', 'success');
   renderGlobalSettings();
 }
 
-// ══ SETTINGS ══════════════════════════════════════════════════════
+// â•â• SETTINGS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function renderSettings() {
   var appUsers = isAdmin() ? await DB.getAppUsers() : [];
   var me = S.appUser;
   var discordName = S.user && S.user.user_metadata && (S.user.user_metadata.full_name || S.user.user_metadata.name || S.user.user_metadata.user_name);
-  var displayName = discordName || (S.user ? S.user.email : '—');
+  var displayName = discordName || (S.user ? S.user.email : 'â€”');
 
   var usersHtml = '';
   if (isAdmin() && appUsers.length) {
     usersHtml = '<div class="card mt-18">' +
-      '<div class="card-head"><div class="card-icon">👥</div><div><div class="card-title">Utilisateurs</div><div class="card-sub">GESTION DES ACCÈS</div></div></div>' +
-      '<div class="table-wrap"><table><thead><tr><th>NOM</th><th>PRÉNOM</th><th>RÔLE</th><th>ACTIONS</th></tr></thead><tbody>' +
+      '<div class="card-head"><div class="card-icon">ðŸ‘¥</div><div><div class="card-title">Utilisateurs</div><div class="card-sub">GESTION DES ACCÃˆS</div></div></div>' +
+      '<div class="table-wrap"><table><thead><tr><th>NOM</th><th>PRÃ‰NOM</th><th>RÃ”LE</th><th>ACTIONS</th></tr></thead><tbody>' +
       appUsers.map(function(u) {
         return '<tr><td>' + esc(u.nom) + '</td><td>' + esc(u.prenom) + '</td>' +
           '<td>' + roleBadge(u.app_role) + '</td>' +
@@ -3104,18 +3105,18 @@ async function renderSettings() {
   setContent(
     '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Mon compte</h1></div></div>' +
     '<div class="card">' +
-      '<div class="card-head"><div class="card-icon">👤</div><div><div class="card-title">Informations</div></div></div>' +
+      '<div class="card-head"><div class="card-icon">ðŸ‘¤</div><div><div class="card-title">Informations</div></div></div>' +
       infoRow('Discord', displayName) +
-      infoRow('Pseudo serveur', S.serverNick || '—') +
-      infoRow('Nom', me ? (me.prenom + ' ' + me.nom).trim() || '—' : '—') +
-      infoRow('Rôle', roleBadge(S.role)) +
+      infoRow('Pseudo serveur', S.serverNick || 'â€”') +
+      infoRow('Nom', me ? (me.prenom + ' ' + me.nom).trim() || 'â€”' : 'â€”') +
+      infoRow('RÃ´le', roleBadge(S.role)) +
     '</div>' +
     '<div class="card" style="margin-top:18px">' +
-      '<div class="card-head"><div class="card-icon">🔒</div><div><div class="card-title">Session</div></div></div>' +
-      '<p class="text-muted" style="font-size:.84rem;margin-bottom:14px">L\'accès est géré via les rôles Discord. Les permissions sont mises à jour automatiquement à chaque connexion.</p>' +
-      '<button class="btn btn-danger btn-sm" onclick="doLogout()">⏻ Se déconnecter</button>' +
+      '<div class="card-head"><div class="card-icon">ðŸ”’</div><div><div class="card-title">Session</div></div></div>' +
+      '<p class="text-muted" style="font-size:.84rem;margin-bottom:14px">L\'accÃ¨s est gÃ©rÃ© via les rÃ´les Discord. Les permissions sont mises Ã  jour automatiquement Ã  chaque connexion.</p>' +
+      '<button class="btn btn-danger btn-sm" onclick="doLogout()">â» Se dÃ©connecter</button>' +
     '</div>' +
-    (isAdmin() ? '<div class="card" style="margin-top:18px"><p class="text-muted" style="font-size:.82rem">👉 Administration complète dans <a onclick="navigate(\'global-settings\')" style="color:var(--blue);cursor:pointer">Réglages globaux</a>.</p></div>' : '')
+    (isAdmin() ? '<div class="card" style="margin-top:18px"><p class="text-muted" style="font-size:.82rem">ðŸ‘‰ Administration complÃ¨te dans <a onclick="navigate(\'global-settings\')" style="color:var(--blue);cursor:pointer">RÃ©glages globaux</a>.</p></div>' : '')
   );
 }
 
@@ -3125,7 +3126,7 @@ function roleBadge(r) {
   return '<span class="badge ' + (map[r]||'badge-gray') + '">' + esc(labels[r]||r) + '</span>';
 }
 
-// ══ POINTEUSE ══════════════════════════════════════════════════════
+// â•â• POINTEUSE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 var _pointageActifs = {};
 
 async function renderPointeuse() {
@@ -3157,19 +3158,19 @@ async function renderPointeuse() {
     var since = actif ? fmtDuration(actif.clock_in) : '';
     var priseHtml = actif
       ? '<strong class="text-gold">' + fmtClock(actif.clock_in) + '</strong><br><small style="color:var(--t3)">' + fmt(actif.clock_in) + '</small>'
-      : (last ? '<span>' + fmtClock(last.clock_in) + '</span><br><small style="color:var(--t3)">' + fmt(last.clock_in) + '</small>' : '<span style="color:var(--t3)">—</span>');
+      : (last ? '<span>' + fmtClock(last.clock_in) + '</span><br><small style="color:var(--t3)">' + fmt(last.clock_in) + '</small>' : '<span style="color:var(--t3)">â€”</span>');
     var finHtml = actif
       ? '<span class="badge badge-green">En cours</span>'
-      : (lastClosed ? '<span>' + fmtClock(lastClosed.clock_out) + '</span><br><small style="color:var(--t3)">' + fmt(lastClosed.clock_out) + '</small>' : '<span style="color:var(--t3)">—</span>');
+      : (lastClosed ? '<span>' + fmtClock(lastClosed.clock_out) + '</span><br><small style="color:var(--t3)">' + fmt(lastClosed.clock_out) + '</small>' : '<span style="color:var(--t3)">â€”</span>');
     var statusHtml = actif
-      ? '<span class="badge badge-green">En service · ' + since + '</span>'
+      ? '<span class="badge badge-green">En service Â· ' + since + '</span>'
       : '<span class="badge badge-gray">Hors service</span>';
     var forceBtn = (actif && canWrite())
-      ? ' <button class="btn btn-ghost btn-sm" style="color:#e74c3c;border-color:rgba(231,76,60,.3)" onclick="forceClockOut(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')" title="Forcer fin de service">🛑</button>'
+      ? ' <button class="btn btn-ghost btn-sm" style="color:#e74c3c;border-color:rgba(231,76,60,.3)" onclick="forceClockOut(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')" title="Forcer fin de service">ðŸ›‘</button>'
       : '';
     var btnHtml = actif
-      ? '<button class="btn btn-danger btn-sm" onclick="doClockOut(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')">⏹ Sortie</button>' + forceBtn
-      : '<button class="btn btn-primary btn-sm" onclick="doClockIn(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')">▶ Entrée</button>';
+      ? '<button class="btn btn-danger btn-sm" onclick="doClockOut(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')">â¹ Sortie</button>' + forceBtn
+      : '<button class="btn btn-primary btn-sm" onclick="doClockIn(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')">â–¶ EntrÃ©e</button>';
     return '<tr>' +
       '<td>' + gradeBadge(a.grade) + '</td>' +
       '<td><strong>' + esc(a.prenom + ' ' + a.nom) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule) + '</small></td>' +
@@ -3180,7 +3181,7 @@ async function renderPointeuse() {
     '</tr>';
   }).join('');
 
-  // ── Rapport staff ──────────────────────────────────────────────
+  // â”€â”€ Rapport staff â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   var rapportHtml = '';
   if (canWrite() && rapport.length) {
     // Grouper par agent + jour
@@ -3193,7 +3194,7 @@ async function renderPointeuse() {
       byAgentDay[key].days[day] = (byAgentDay[key].days[day] || 0) + sec;
     });
 
-    // Lundi → Dimanche de la semaine en cours
+    // Lundi â†’ Dimanche de la semaine en cours
     var days = [];
     for (var i = 0; i < 7; i++) {
       var d = new Date(_monday.getTime() + i * 86400000);
@@ -3210,11 +3211,11 @@ async function renderPointeuse() {
       var cells = days.map(function(day) {
         var sec = entry.days[day] || 0;
         totalSec += sec;
-        return '<td style="text-align:center">' + (sec ? fmtSec(sec) : '<span style="color:var(--t3)">—</span>') + '</td>';
+        return '<td style="text-align:center">' + (sec ? fmtSec(sec) : '<span style="color:var(--t3)">â€”</span>') + '</td>';
       }).join('');
       var salaire = calcSalaire(a.grade, totalSec);
       var delBtn = isAdmin()
-        ? '<td style="text-align:center"><button class="btn btn-ghost btn-sm" style="color:#e74c3c;padding:2px 7px" onclick="deleteAgentRecap(\'' + agentId + '\',\'' + esc((a.prenom||'')+' '+(a.nom||'')) + '\')" title="Supprimer les pointages de cet agent">🗑️</button></td>'
+        ? '<td style="text-align:center"><button class="btn btn-ghost btn-sm" style="color:#e74c3c;padding:2px 7px" onclick="deleteAgentRecap(\'' + agentId + '\',\'' + esc((a.prenom||'')+' '+(a.nom||'')) + '\')" title="Supprimer les pointages de cet agent">ðŸ—‘ï¸</button></td>'
         : '<td></td>';
       return '<tr>' +
         '<td><strong>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule || '') + '</small></td>' +
@@ -3231,11 +3232,11 @@ async function renderPointeuse() {
     }).join('');
 
     var resetBtn = isAdmin()
-      ? '<button class="btn btn-danger btn-sm" onclick="resetPointageRecap()">🗑️ Réinitialiser</button>'
+      ? '<button class="btn btn-danger btn-sm" onclick="resetPointageRecap()">ðŸ—‘ï¸ RÃ©initialiser</button>'
       : '';
     rapportHtml = '<div class="card" style="margin-top:18px">' +
-      '<div class="card-head"><div class="card-icon">📊</div><div>' +
-        '<div class="card-title">Récapitulatif — semaine en cours</div>' +
+      '<div class="card-head"><div class="card-icon">ðŸ“Š</div><div>' +
+        '<div class="card-title">RÃ©capitulatif â€” semaine en cours</div>' +
         '<div class="card-sub">HEURES PAR AGENT ET PAR JOUR</div>' +
       '</div>' + resetBtn + '</div>' +
       '<div class="table-wrap"><table>' +
@@ -3244,11 +3245,11 @@ async function renderPointeuse() {
       '</table></div>' +
     '</div>';
   } else if (canWrite()) {
-    rapportHtml = '<div class="card" style="margin-top:18px"><p class="text-muted" style="padding:12px">Aucun pointage enregistré sur les 7 derniers jours.</p></div>';
+    rapportHtml = '<div class="card" style="margin-top:18px"><p class="text-muted" style="padding:12px">Aucun pointage enregistrÃ© sur les 7 derniers jours.</p></div>';
   }
 
   var histBtn = canWrite()
-    ? '<button class="btn btn-ghost btn-sm" onclick="navigate(\'pointeuse-historique\')">📜 Historique</button>'
+    ? '<button class="btn btn-ghost btn-sm" onclick="navigate(\'pointeuse-historique\')">ðŸ“œ Historique</button>'
     : '';
 
   setContent(
@@ -3269,8 +3270,8 @@ async function renderPointeuse() {
 
 function resetPointageRecap() {
   openModal({
-    eyebrow: 'POINTEUSE', title: 'Réinitialiser le récap ?',
-    body: '<p style="color:var(--t1)">Tous les pointages de la semaine en cours seront supprimés définitivement.</p>',
+    eyebrow: 'POINTEUSE', title: 'RÃ©initialiser le rÃ©cap ?',
+    body: '<p style="color:var(--t1)">Tous les pointages de la semaine en cours seront supprimÃ©s dÃ©finitivement.</p>',
     footer: '<button class="btn btn-ghost btn-sm" onclick="closeModal()">Annuler</button>' +
             '<button class="btn btn-danger btn-sm" onclick="confirmResetRecap()">Supprimer</button>'
   });
@@ -3285,7 +3286,7 @@ async function confirmResetRecap() {
   monday.setHours(0, 0, 0, 0);
   var { error } = await DB.deletePointagesSince(monday.toISOString());
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
-  toast('Récap réinitialisé', 'success');
+  toast('RÃ©cap rÃ©initialisÃ©', 'success');
   await renderPointeuse();
 }
 
@@ -3316,16 +3317,16 @@ async function confirmDeleteAgentRecap(agentId) {
   monday.setHours(0, 0, 0, 0);
   var { error } = await DB.deletePointagesForAgent(agentId, monday.toISOString());
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
-  toast('Pointages supprimés', 'success');
+  toast('Pointages supprimÃ©s', 'success');
   await renderPointeuse();
 }
 
 async function doClockIn(agentId, agentName, matricule) {
   var { error } = await DB.clockIn(agentId);
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
-  toast('Entrée enregistrée', 'success');
-  sendLog('🟢 Prise de service', 0x27ae60, [
-    { name: 'Agent', value: (agentName || '—') + (matricule ? ' · ' + matricule : ''), inline: true },
+  toast('EntrÃ©e enregistrÃ©e', 'success');
+  sendLog('ðŸŸ¢ Prise de service', 0x27ae60, [
+    { name: 'Agent', value: (agentName || 'â€”') + (matricule ? ' Â· ' + matricule : ''), inline: true },
     { name: 'Par', value: _whoAmI(), inline: true }
   ]);
   await renderPointeuse();
@@ -3336,15 +3337,15 @@ async function doClockOut(agentId, agentName, matricule) {
   if (!p) return;
   var { error } = await DB.clockOut(p.id);
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
-  toast('Sortie enregistrée', 'success');
-  sendLog('🔴 Fin de service', 0x7f8c8d, [
-    { name: 'Agent', value: (agentName || '—') + (matricule ? ' · ' + matricule : ''), inline: true },
+  toast('Sortie enregistrÃ©e', 'success');
+  sendLog('ðŸ”´ Fin de service', 0x7f8c8d, [
+    { name: 'Agent', value: (agentName || 'â€”') + (matricule ? ' Â· ' + matricule : ''), inline: true },
     { name: 'Par', value: _whoAmI(), inline: true }
   ]);
   await renderPointeuse();
 }
 
-// ══ CÉRÉMONIE ═════════════════════════════════════════════════════
+// â•â• CÃ‰RÃ‰MONIE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 function _myDiscordId() {
   if (!S.user) return null;
@@ -3369,7 +3370,7 @@ async function renderCeremonie() {
     return ((gb&&gb.ordre)||0) - ((ga&&ga.ordre)||0);
   });
 
-  // Débrief (admin uniquement)
+  // DÃ©brief (admin uniquement)
   var debriefHtml = '';
   if (isCmd) {
     var uPromo = [], uRetro = [], contested = [];
@@ -3390,13 +3391,13 @@ async function renderCeremonie() {
       '</div>';
     };
     debriefHtml = '<div class="card" style="margin-bottom:18px">' +
-      '<div class="card-head"><div class="card-icon">📊</div><div><div class="card-title">Débrief session</div></div>' +
-      (isCmd ? '<button class="btn btn-ghost btn-sm" onclick="resetCeremonieVotes()" style="color:#e74c3c">🗑️ Reset votes</button>' : '') +
+      '<div class="card-head"><div class="card-icon">ðŸ“Š</div><div><div class="card-title">DÃ©brief session</div></div>' +
+      (isCmd ? '<button class="btn btn-ghost btn-sm" onclick="resetCeremonieVotes()" style="color:#e74c3c">ðŸ—‘ï¸ Reset votes</button>' : '') +
       '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">' +
-        stat(uPromo.length, 'rgba(46,204,113,.08)', '📈', 'PROMOTIONS UNANIMES', uPromo) +
-        stat(uRetro.length, 'rgba(231,76,60,.08)',  '📉', 'RÉTROGRADATIONS UNANIMES', uRetro) +
-        stat(contested.length, 'rgba(243,156,18,.08)', '⚠️', 'À DISCUTER', contested) +
+        stat(uPromo.length, 'rgba(46,204,113,.08)', 'ðŸ“ˆ', 'PROMOTIONS UNANIMES', uPromo) +
+        stat(uRetro.length, 'rgba(231,76,60,.08)',  'ðŸ“‰', 'RÃ‰TROGRADATIONS UNANIMES', uRetro) +
+        stat(contested.length, 'rgba(243,156,18,.08)', 'âš ï¸', 'Ã€ DISCUTER', contested) +
       '</div>' +
     '</div>';
   }
@@ -3408,47 +3409,47 @@ async function renderCeremonie() {
 
     var myVoteHtml = myVote
       ? (myVote.decision === 'promotion'
-          ? '<span class="badge" style="background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.3)">📈 Promotion</span>'
+          ? '<span class="badge" style="background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.3)">ðŸ“ˆ Promotion</span>'
           : myVote.decision === 'maintien'
-            ? '<span class="badge badge-gray">➡️ Maintien</span>'
-            : '<span class="badge badge-red">📉 Rétrogradation</span>') +
+            ? '<span class="badge badge-gray">âž¡ï¸ Maintien</span>'
+            : '<span class="badge badge-red">ðŸ“‰ RÃ©trogradation</span>') +
         (myVote.commentaire ? '<div style="font-size:.67rem;color:var(--t3);margin-top:2px">' + esc(myVote.commentaire) + '</div>' : '')
-      : '<span style="color:var(--t3);font-size:.75rem">—</span>';
+      : '<span style="color:var(--t3);font-size:.75rem">â€”</span>';
 
     var allVotesHtml = '';
     var applyHtml = '';
     if (isCmd) {
       if (!av.length) {
-        allVotesHtml = '<span style="color:var(--t3);font-size:.75rem">—</span>';
+        allVotesHtml = '<span style="color:var(--t3);font-size:.75rem">â€”</span>';
       } else {
         var pCount = av.filter(function(v){ return v.decision === 'promotion'; }).length;
         var rCount = av.filter(function(v){ return v.decision === 'retrogradation'; }).length;
         allVotesHtml = av.map(function(v) {
           var dc = { promotion:'#2ecc71', maintien:'var(--t2)', retrogradation:'#e74c3c' };
-          var di = { promotion:'📈', maintien:'➡️', retrogradation:'📉' };
+          var di = { promotion:'ðŸ“ˆ', maintien:'âž¡ï¸', retrogradation:'ðŸ“‰' };
           return '<div style="font-size:.72rem;color:' + (dc[v.decision]||'var(--t2)') + ';line-height:1.5">' +
-            (di[v.decision]||'❓') + ' <strong>' + esc(v.voter_name || '?') + '</strong>' +
-            (v.commentaire ? ' — <span style="color:var(--t3)">' + esc(v.commentaire) + '</span>' : '') +
+            (di[v.decision]||'â“') + ' <strong>' + esc(v.voter_name || '?') + '</strong>' +
+            (v.commentaire ? ' â€” <span style="color:var(--t3)">' + esc(v.commentaire) + '</span>' : '') +
           '</div>';
         }).join('');
         var badge = (pCount === av.length)
-          ? '<span class="badge" style="background:rgba(201,168,76,.15);color:var(--gold);border:1px solid rgba(201,168,76,.3);font-size:.63rem;margin-top:4px;display:inline-block">✅ UNANIMITÉ</span>'
-          : '<span class="badge badge-gray" style="font-size:.63rem;margin-top:4px;display:inline-block">⚠️ PARTAGÉ</span>';
+          ? '<span class="badge" style="background:rgba(201,168,76,.15);color:var(--gold);border:1px solid rgba(201,168,76,.3);font-size:.63rem;margin-top:4px;display:inline-block">âœ… UNANIMITÃ‰</span>'
+          : '<span class="badge badge-gray" style="font-size:.63rem;margin-top:4px;display:inline-block">âš ï¸ PARTAGÃ‰</span>';
         allVotesHtml += '<div>' + badge + '</div>';
 
         var aid = a.id, an = esc(a.prenom+' '+a.nom), ag = esc(a.grade||'');
         if (pCount === av.length) {
-          applyHtml = '<button class="btn btn-primary btn-sm" style="font-size:.72rem;white-space:nowrap" onclick="applyCeremonieDecision(\'' + aid + '\',\'promotion\',\'' + an + '\',\'' + ag + '\')">✅ Appliquer</button>';
+          applyHtml = '<button class="btn btn-primary btn-sm" style="font-size:.72rem;white-space:nowrap" onclick="applyCeremonieDecision(\'' + aid + '\',\'promotion\',\'' + an + '\',\'' + ag + '\')">âœ… Appliquer</button>';
         } else if (rCount === av.length) {
-          applyHtml = '<button class="btn btn-danger btn-sm" style="font-size:.72rem;white-space:nowrap" onclick="applyCeremonieDecision(\'' + aid + '\',\'retrogradation\',\'' + an + '\',\'' + ag + '\')">✅ Appliquer</button>';
+          applyHtml = '<button class="btn btn-danger btn-sm" style="font-size:.72rem;white-space:nowrap" onclick="applyCeremonieDecision(\'' + aid + '\',\'retrogradation\',\'' + an + '\',\'' + ag + '\')">âœ… Appliquer</button>';
         }
       }
     }
 
-    var voteBtn = '<button class="btn btn-ghost btn-sm" onclick="openCeremonieVoteModal(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.grade||'') + '\')">' + (myVote ? '✏️ Modifier' : '🗳️ Voter') + '</button>';
+    var voteBtn = '<button class="btn btn-ghost btn-sm" onclick="openCeremonieVoteModal(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.grade||'') + '\')">' + (myVote ? 'âœï¸ Modifier' : 'ðŸ—³ï¸ Voter') + '</button>';
 
     var row = '<tr>' +
-      '<td><span style="font-family:\'Share Tech Mono\',monospace;color:var(--gold);font-size:.85rem">#' + esc(a.matricule||'—') + '</span></td>' +
+      '<td><span style="font-family:\'Share Tech Mono\',monospace;color:var(--gold);font-size:.85rem">#' + esc(a.matricule||'â€”') + '</span></td>' +
       '<td><strong>' + esc(a.prenom + ' ' + a.nom) + '</strong></td>' +
       '<td>' + gradeBadge(a.grade) + '</td>' +
       '<td>' + myVoteHtml + '</td>';
@@ -3460,8 +3461,8 @@ async function renderCeremonie() {
   var theadExtra = isCmd ? '<th>TOUS LES AVIS</th><th></th>' : '';
   setContent(
     '<div class="flex-between mb-20">' +
-      '<div><h1 style="font-size:1.4rem">🎖️ Préparation Cérémonie</h1>' +
-      '<p class="text-muted">Votes de grade — session en cours</p></div>' +
+      '<div><h1 style="font-size:1.4rem">ðŸŽ–ï¸ PrÃ©paration CÃ©rÃ©monie</h1>' +
+      '<p class="text-muted">Votes de grade â€” session en cours</p></div>' +
     '</div>' +
     debriefHtml +
     '<div class="card">' +
@@ -3477,17 +3478,17 @@ function openCeremonieVoteModal(agentId, agentName, grade) {
   window._cVoteId = agentId;
   window._cDecision = null;
   openModal({
-    eyebrow: 'VOTE · ' + grade,
+    eyebrow: 'VOTE Â· ' + grade,
     title: agentName,
     body: '<div style="display:flex;flex-direction:column;gap:14px">' +
       '<div style="display:flex;gap:8px">' +
-        '<button class="btn btn-primary" style="flex:1" onclick="setCeremonieDecision(\'promotion\')">📈 Promotion</button>' +
-        '<button class="btn btn-ghost"   style="flex:1;border:1px solid var(--border0)" onclick="setCeremonieDecision(\'maintien\')">➡️ Maintien</button>' +
-        '<button class="btn btn-danger"  style="flex:1" onclick="setCeremonieDecision(\'retrogradation\')">📉 Rétrogradation</button>' +
+        '<button class="btn btn-primary" style="flex:1" onclick="setCeremonieDecision(\'promotion\')">ðŸ“ˆ Promotion</button>' +
+        '<button class="btn btn-ghost"   style="flex:1;border:1px solid var(--border0)" onclick="setCeremonieDecision(\'maintien\')">âž¡ï¸ Maintien</button>' +
+        '<button class="btn btn-danger"  style="flex:1" onclick="setCeremonieDecision(\'retrogradation\')">ðŸ“‰ RÃ©trogradation</button>' +
       '</div>' +
-      '<div id="cVoteStatus" style="font-size:.8rem;color:var(--t3);text-align:center">Sélectionne une décision</div>' +
+      '<div id="cVoteStatus" style="font-size:.8rem;color:var(--t3);text-align:center">SÃ©lectionne une dÃ©cision</div>' +
       '<div><label style="font-size:.75rem;color:var(--t3);display:block;margin-bottom:4px">Commentaire <span id="cCommentReq" style="color:#e74c3c"></span></label>' +
-        '<textarea id="cComment" rows="3" placeholder="Facultatif…" style="width:100%;background:var(--bg2);color:var(--t0);border:1px solid var(--border0);border-radius:6px;padding:8px;font-size:.85rem;resize:vertical"></textarea>' +
+        '<textarea id="cComment" rows="3" placeholder="Facultatifâ€¦" style="width:100%;background:var(--bg2);color:var(--t0);border:1px solid var(--border0);border-radius:6px;padding:8px;font-size:.85rem;resize:vertical"></textarea>' +
       '</div>' +
     '</div>',
     footer: '<button class="btn btn-ghost btn-sm" onclick="closeModal()">Annuler</button>' +
@@ -3497,7 +3498,7 @@ function openCeremonieVoteModal(agentId, agentName, grade) {
 
 function setCeremonieDecision(decision) {
   window._cDecision = decision;
-  var labels = { promotion: '📈 Promotion sélectionnée', maintien: '➡️ Maintien sélectionné', retrogradation: '📉 Rétrogradation sélectionnée' };
+  var labels = { promotion: 'ðŸ“ˆ Promotion sÃ©lectionnÃ©e', maintien: 'âž¡ï¸ Maintien sÃ©lectionnÃ©', retrogradation: 'ðŸ“‰ RÃ©trogradation sÃ©lectionnÃ©e' };
   var colors = { promotion: '#2ecc71', maintien: 'var(--t2)', retrogradation: '#e74c3c' };
   document.getElementById('cVoteStatus').textContent = labels[decision] || '';
   document.getElementById('cVoteStatus').style.color = colors[decision] || 'var(--t2)';
@@ -3508,13 +3509,13 @@ function setCeremonieDecision(decision) {
 async function submitCeremonieVote() {
   var decision = window._cDecision;
   var commentaire = (document.getElementById('cComment').value || '').trim();
-  if (!decision) { toast('Sélectionne une décision', 'error'); return; }
-  if (decision === 'retrogradation' && !commentaire) { toast('Commentaire obligatoire pour une rétrogradation', 'error'); return; }
+  if (!decision) { toast('SÃ©lectionne une dÃ©cision', 'error'); return; }
+  if (decision === 'retrogradation' && !commentaire) { toast('Commentaire obligatoire pour une rÃ©trogradation', 'error'); return; }
   var myId = _myDiscordId();
   var myName = _whoAmI();
   var { error } = await DB.upsertCeremonieVote({ agent_id: window._cVoteId, voter_discord_id: myId, voter_name: myName, decision: decision, commentaire: commentaire || null });
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
-  toast('Vote enregistré', 'success');
+  toast('Vote enregistrÃ©', 'success');
   closeModal();
   await renderCeremonie();
 }
@@ -3527,10 +3528,10 @@ function applyCeremonieDecision(agentId, decision, agentName, currentGrade) {
     : (idx > 0 ? sortedG[idx-1].nom : null);
   if (!newGrade) { toast(decision === 'promotion' ? 'Grade maximum atteint' : 'Grade minimum atteint', 'error'); return; }
   openModal({
-    eyebrow: decision === 'promotion' ? 'PROMOTION' : 'RÉTROGRADATION',
+    eyebrow: decision === 'promotion' ? 'PROMOTION' : 'RÃ‰TROGRADATION',
     title: agentName,
     body: '<p style="color:var(--t1);font-size:1rem">' +
-      (decision === 'promotion' ? '📈' : '📉') + ' ' + esc(currentGrade) + ' → <strong>' + esc(newGrade) + '</strong></p>',
+      (decision === 'promotion' ? 'ðŸ“ˆ' : 'ðŸ“‰') + ' ' + esc(currentGrade) + ' â†’ <strong>' + esc(newGrade) + '</strong></p>',
     footer: '<button class="btn btn-ghost btn-sm" onclick="closeModal()">Annuler</button>' +
             '<button class="btn btn-primary btn-sm" onclick="closeModal();confirmCeremonieDecision(\'' + agentId + '\',\'' + newGrade.replace(/'/g,"\\'") + '\',\'' + agentName.replace(/'/g,"\\'") + '\',\'' + decision + '\')">Confirmer</button>'
   });
@@ -3539,19 +3540,19 @@ function applyCeremonieDecision(agentId, decision, agentName, currentGrade) {
 async function confirmCeremonieDecision(agentId, newGrade, agentName, decision) {
   var { error } = await DB.updateAgent(agentId, { grade: newGrade });
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
-  sendLog(decision === 'promotion' ? '📈 Promotion — Cérémonie' : '📉 Rétrogradation — Cérémonie', decision === 'promotion' ? 0x2ecc71 : 0xe74c3c, [
+  sendLog(decision === 'promotion' ? 'ðŸ“ˆ Promotion â€” CÃ©rÃ©monie' : 'ðŸ“‰ RÃ©trogradation â€” CÃ©rÃ©monie', decision === 'promotion' ? 0x2ecc71 : 0xe74c3c, [
     { name: 'Agent', value: agentName, inline: true },
     { name: 'Nouveau grade', value: newGrade, inline: true },
     { name: 'Par', value: _whoAmI(), inline: true }
   ]);
-  toast(decision === 'promotion' ? '🎖️ Promotion appliquée !' : 'Rétrogradation appliquée.', 'success');
+  toast(decision === 'promotion' ? 'ðŸŽ–ï¸ Promotion appliquÃ©e !' : 'RÃ©trogradation appliquÃ©e.', 'success');
   await renderCeremonie();
 }
 
 function resetCeremonieVotes() {
   openModal({
-    eyebrow: 'CÉRÉMONIE', title: 'Réinitialiser les votes ?',
-    body: '<p style="color:var(--t1)">Tous les votes de la session seront supprimés définitivement.</p>',
+    eyebrow: 'CÃ‰RÃ‰MONIE', title: 'RÃ©initialiser les votes ?',
+    body: '<p style="color:var(--t1)">Tous les votes de la session seront supprimÃ©s dÃ©finitivement.</p>',
     footer: '<button class="btn btn-ghost btn-sm" onclick="closeModal()">Annuler</button>' +
             '<button class="btn btn-danger btn-sm" onclick="closeModal();confirmResetCeremonieVotes()">Supprimer</button>'
   });
@@ -3560,11 +3561,11 @@ function resetCeremonieVotes() {
 async function confirmResetCeremonieVotes() {
   var { error } = await DB.deleteCeremonieVotes();
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
-  toast('Votes réinitialisés', 'success');
+  toast('Votes rÃ©initialisÃ©s', 'success');
   await renderCeremonie();
 }
 
-// ══ CARTES ════════════════════════════════════════════════════════
+// â•â• CARTES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function renderCartes() {
   setContent(
     '<div style="display:flex;flex-direction:column;height:calc(100vh - 60px);margin:-24px">' +
@@ -3573,10 +3574,10 @@ function renderCartes() {
   );
 }
 
-// ══ HISTORIQUE POINTAGES ══════════════════════════════════════════
+// â•â• HISTORIQUE POINTAGES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 async function renderPointeuseHistorique() {
   if (!canWrite()) {
-    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div></div>');
+    setContent('<div class="empty-state"><div class="empty-icon">ðŸ”’</div><div class="empty-title">AccÃ¨s restreint</div></div>');
     return;
   }
   var [all, actives] = await Promise.all([DB.getAllPointages(), DB.getActivePointages()]);
@@ -3600,8 +3601,8 @@ async function renderPointeuseHistorique() {
   if (!weekKeys.length) {
     setContent(
       '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Historique pointages</h1></div>' +
-      '<button class="btn btn-ghost btn-sm" onclick="navigate(\'pointeuse\')">← Retour</button></div>' +
-      '<div class="card"><p class="text-muted" style="padding:12px">Aucun pointage enregistré.</p></div>'
+      '<button class="btn btn-ghost btn-sm" onclick="navigate(\'pointeuse\')">â† Retour</button></div>' +
+      '<div class="card"><p class="text-muted" style="padding:12px">Aucun pointage enregistrÃ©.</p></div>'
     );
     return;
   }
@@ -3657,13 +3658,13 @@ async function renderPointeuseHistorique() {
       var dot = '<span title="' + (enService ? 'En service' : 'Hors service') + '" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + (enService ? '#2ecc71' : '#e74c3c') + ';box-shadow:0 0 ' + (enService ? '6px #2ecc71' : '0px') + '"></span>';
       var sessionsHtml = (entry.sessions || []).slice(0, 4).map(function(p) {
         return '<div style="white-space:nowrap;font-family:monospace;font-size:.75rem;color:var(--t2)">' +
-          fmtClock(p.clock_in) + ' → ' + (p.clock_out ? fmtClock(p.clock_out) : '<span style="color:var(--gold)">en cours</span>') +
+          fmtClock(p.clock_in) + ' â†’ ' + (p.clock_out ? fmtClock(p.clock_out) : '<span style="color:var(--gold)">en cours</span>') +
         '</div>';
       }).join('');
       return '<tr style="' + (isPaid ? 'opacity:.5' : '') + '">' +
         '<td style="white-space:nowrap">' + dot + ' <strong>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule || '') + '</small></td>' +
-        '<td style="font-family:monospace;font-size:.8rem;color:var(--t2)">' + esc(a.iban || '—') + '</td>' +
-        '<td>' + (sessionsHtml || '<span style="color:var(--t3)">—</span>') + '</td>' +
+        '<td style="font-family:monospace;font-size:.8rem;color:var(--t2)">' + esc(a.iban || 'â€”') + '</td>' +
+        '<td>' + (sessionsHtml || '<span style="color:var(--t3)">â€”</span>') + '</td>' +
         '<td style="text-align:center"><strong>' + fmtSec(sec) + '</strong>' + (entry.ongoing ? ' <span style="color:var(--gold);font-size:.75rem">+en cours</span>' : '') + '</td>' +
         '<td style="text-align:center;color:var(--gold);font-weight:700">' + fmtMoney(sal) + '</td>' +
         '<td style="text-align:center"><input type="number" min="0" step="1" value="' + prime + '" onchange="setPrimeHisto(\'' + primeKey + '\',this.value)" style="width:92px;background:var(--bg2);color:var(--t0);border:1px solid var(--border0);border-radius:6px;padding:5px 7px;text-align:right"></td>' +
@@ -3678,11 +3679,11 @@ async function renderPointeuseHistorique() {
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;background:var(--bg1)" onclick="toggleWeek(\'' + panelId + '\')">' +
         '<div>' +
           '<span style="font-weight:600;color:var(--t0)">' + label + '</span>' +
-          '<span style="margin-left:12px;font-size:.8rem;color:var(--t3)">' + agentList.length + ' agent' + (agentList.length > 1 ? 's' : '') + ' · ' + fmtSec(totalSec) + ' total</span>' +
+          '<span style="margin-left:12px;font-size:.8rem;color:var(--t3)">' + agentList.length + ' agent' + (agentList.length > 1 ? 's' : '') + ' Â· ' + fmtSec(totalSec) + ' total</span>' +
           (totalPrimes ? '<span style="margin-left:10px;font-size:.8rem;color:var(--blue);font-weight:700">Primes ' + fmtMoney(totalPrimes) + '</span>' : '') +
           '<span style="margin-left:10px;font-size:.8rem;color:var(--gold);font-weight:700">' + fmtMoney(totalSalaire) + '</span>' +
         '</div>' +
-        '<span id="' + panelId + '_ico">' + (panelOpen ? '▲' : '▼') + '</span>' +
+        '<span id="' + panelId + '_ico">' + (panelOpen ? 'â–²' : 'â–¼') + '</span>' +
       '</div>' +
       '<div id="' + panelId + '" style="display:' + (panelOpen ? 'block' : 'none') + '">' +
         '<div class="table-wrap"><table>' +
@@ -3695,8 +3696,8 @@ async function renderPointeuseHistorique() {
 
   setContent(
     '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Historique pointages</h1>' +
-    '<p class="text-muted">' + weekKeys.length + ' semaine' + (weekKeys.length > 1 ? 's' : '') + ' enregistrée' + (weekKeys.length > 1 ? 's' : '') + '</p></div>' +
-    '<button class="btn btn-ghost btn-sm" onclick="navigate(\'pointeuse\')">← Retour</button></div>' +
+    '<p class="text-muted">' + weekKeys.length + ' semaine' + (weekKeys.length > 1 ? 's' : '') + ' enregistrÃ©e' + (weekKeys.length > 1 ? 's' : '') + '</p></div>' +
+    '<button class="btn btn-ghost btn-sm" onclick="navigate(\'pointeuse\')">â† Retour</button></div>' +
     '<div>' + accordionHtml + '</div>'
   );
 }
@@ -3721,7 +3722,7 @@ function toggleWeek(id) {
   if (!el) return;
   var open = el.style.display !== 'none';
   el.style.display = open ? 'none' : 'block';
-  if (ico) ico.textContent = open ? '▼' : '▲';
+  if (ico) ico.textContent = open ? 'â–¼' : 'â–²';
   try { sessionStorage.setItem('histo_open_' + id, open ? '0' : '1'); } catch(e) {}
 }
 
@@ -3741,5 +3742,5 @@ function fmtSec(sec) {
 async function changeRole(userId, role) {
   var r = await DB.updateAppUserRole(userId, role);
   if (r.error) { toast(r.error.message,'error'); return; }
-  toast('Rôle mis à jour.','success');
+  toast('RÃ´le mis Ã  jour.','success');
 }
