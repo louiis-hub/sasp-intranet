@@ -198,7 +198,7 @@ var _wikiSections = [];
 
 var NAV = [
   { id: 'dashboard', icon: '🏛️', label: 'Tableau de bord' },
-  { id: 'ftf',      icon: '⚖️', label: 'Brigade FTF', ftfOnly: true },
+  { id: 'ftf',      icon: '🎯', label: 'Fugitive Task Force', ftfOnly: true },
   { divider: true },
   { group: 'RESSOURCES HUMAINES' },
   { id: 'recap',    icon: '📋', label: 'Récap agents', staffOnly: true },
@@ -736,8 +736,8 @@ async function renderFTF() {
   setContent(
     '<div class="ftf-page">' +
       '<div class="ftf-hero">' +
-        '<div><div class="ftf-kicker">SASP · BRIGADE FTF</div><h1>Financial Task Force</h1><p>Suivi des amendes impayees, convocations et transmissions tribunal.</p></div>' +
-        '<div class="ftf-seal">FTF</div>' +
+        '<div><div class="ftf-kicker">SASP · UNITE SPECIALE</div><h1>Fugitive Task Force</h1><p>Suivi des amendes impayees, convocations, localisations et transmissions tribunal.</p></div>' +
+        '<div class="ftf-seal"><img src="assets/7_Glock_19_28.png" alt="Fugitive Task Force"></div>' +
       '</div>' +
       '<div class="ftf-tabs">' +
         ftfTabButton('dashboard', 'Tableau de bord', '01') +

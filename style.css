@@ -127,7 +127,8 @@ textarea.form-control{resize:vertical;min-height:80px}
 .ftf-kicker{font-family:'Share Tech Mono',monospace;color:var(--gold);font-size:.62rem;letter-spacing:2.5px;margin-bottom:6px}
 .ftf-hero h1{font-size:2.1rem;color:var(--t0);letter-spacing:1px}
 .ftf-hero p{max-width:620px;color:var(--t1);font-size:.88rem;margin-top:5px}
-.ftf-seal{width:72px;height:72px;border-radius:50%;border:1px solid var(--goldBorderHover);display:flex;align-items:center;justify-content:center;color:var(--gold);font-family:'Rajdhani',sans-serif;font-size:1.15rem;font-weight:800;letter-spacing:2px;background:rgba(0,0,0,.28);box-shadow:inset 0 0 22px rgba(201,168,76,.12)}
+.ftf-seal{width:82px;height:82px;border-radius:50%;border:1px solid var(--goldBorderHover);display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.28);box-shadow:inset 0 0 22px rgba(201,168,76,.12),0 0 18px rgba(201,168,76,.12);padding:8px;flex-shrink:0}
+.ftf-seal img{width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 0 8px rgba(201,168,76,.22))}
 .ftf-tabs{display:flex;gap:8px;flex-wrap:wrap;background:rgba(8,16,28,.55);border:1px solid var(--border0);border-radius:var(--rLg);padding:6px}
 .ftf-tab{border:1px solid transparent;background:transparent;color:var(--t2);border-radius:var(--rMd);padding:9px 13px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.4px;display:flex;align-items:center;gap:8px;transition:all var(--dur) var(--ease)}
 .ftf-tab:hover,.ftf-tab.active{border-color:var(--goldBorderHover);color:var(--gold);background:var(--goldGlow)}
