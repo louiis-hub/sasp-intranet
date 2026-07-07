@@ -198,7 +198,6 @@ var _wikiSections = [];
 
 var NAV = [
   { id: 'dashboard', icon: '🏛️', label: 'Tableau de bord' },
-  { id: 'ftf',      icon: '🎯', label: 'Fugitive Task Force', ftfOnly: true },
   { divider: true },
   { group: 'RESSOURCES HUMAINES' },
   { id: 'recap',    icon: '📋', label: 'Récap agents', staffOnly: true },
@@ -208,6 +207,7 @@ var NAV = [
   { id: 'units',     icon: '🚔', label: 'Divisions' },
   { id: 'pointeuse', icon: '⏱️', label: 'Pointeuse' },
   { id: 'cartes',   icon: '🗺️', label: 'Cartes' },
+  { id: 'ftf',      icon: '🎯', label: 'Fugitive Task Force', ftfOnly: true },
   { divider: true },
   // wiki sections injected dynamically by loadWikiSections()
   { divider: true, staffOnly: true, _wikiEnd: true },
