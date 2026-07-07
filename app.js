@@ -674,6 +674,11 @@ function ftfNextStep(statut) {
     '3ème convocation': 'présentation tribunal'
   }[statut] || '';
 }
+function ftfDeadlineStart(d) {
+  if (!d) return '';
+  if (d.statut === 'Attente paiement') return d.date_notification || d.date_statut || '';
+  return d.date_statut || d.date_notification || '';
+}
 function ftfAmount(d) {
   var base = Number(d.montant_initial || 0);
   var mult = {
@@ -774,7 +779,7 @@ function ftfIsNotificationDue(d) {
   if (!d || d.convocation_validee) return false;
   var next = ftfNextStep(d.statut);
   if (!next) return false;
-  var start = d.date_statut || d.date_notification;
+  var start = ftfDeadlineStart(d);
   if (!start) return false;
   var today = ftfTodayKey();
   var due = ftfAddDays(start, 6);
@@ -801,8 +806,8 @@ async function ftfCheckConvocationNotifications() {
           suspect: ((d.prenom || '') + ' ' + (d.nom || '')).trim(),
           current_status: d.statut,
           next_step: ftfNextStep(d.statut),
-          date_statut: d.date_statut || d.date_notification,
-          due_date: ftfAddDays(d.date_statut || d.date_notification, 7)
+          date_statut: ftfDeadlineStart(d),
+          due_date: ftfAddDays(ftfDeadlineStart(d), 7)
         })
       });
       if (res.ok) {
@@ -832,7 +837,7 @@ function renderFTFDossiers() {
     '</tr>';
   }).join('') : '<tr><td colspan="5"><div class="empty-state" style="padding:28px"><div class="empty-icon">FTF</div><div class="empty-title">Aucun dossier FTF</div></div></td></tr>';
   return '<div class="card ftf-dossiers-card">' +
-    '<div class="flex-between mb-20"><div><h2 style="font-size:1.2rem">Dossiers FTF</h2><p class="text-muted" style="font-size:.82rem">Date de notification = date de l amende initiale. Date du statut = depart du delai actuel.</p>' + (pendingAlerts ? '<p class="text-gold" style="font-size:.82rem;margin-top:4px">' + pendingAlerts + ' rappel(s) convocation en attente.</p>' : '') + '</div><button class="btn btn-primary btn-sm" onclick="openFtfDossierModal()">Creer un dossier</button></div>' +
+    '<div class="flex-between mb-20"><div><h2 style="font-size:1.2rem">Dossiers FTF</h2><p class="text-muted" style="font-size:.82rem">Date 1ere amende / delit = depart du premier delai. Apres chaque convocation, la date du statut relance le delai suivant.</p>' + (pendingAlerts ? '<p class="text-gold" style="font-size:.82rem;margin-top:4px">' + pendingAlerts + ' rappel(s) convocation en attente.</p>' : '') + '</div><button class="btn btn-primary btn-sm" onclick="openFtfDossierModal()">Creer un dossier</button></div>' +
     '<div class="ftf-toolbar">' +
       '<input class="form-control" value="' + esc(_ftfSearch) + '" oninput="ftfSetSearch(this.value)" placeholder="Rechercher par nom ou prenom">' +
       '<select class="form-control" onchange="ftfSetStatus(this.value)">' + statusOptions + '</select>' +
@@ -864,10 +869,10 @@ function openFtfDossierModal(id) {
       '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
         fld('Montant initial *','number','ftfMontant',d.montant_initial,'15000') +
-        fld('Date notification amende','date','ftfDate',d.date_notification,'') +
+        fld('Date 1ere amende / delit','date','ftfDate',d.date_notification,'') +
       '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-        fld('Date du statut actuel','date','ftfDateStatut',d.date_statut,'') +
+        fld('Date depart delai actuel','date','ftfDateStatut',d.date_statut,'') +
         validatedSelect +
       '</div>' +
       statusSelect +
@@ -887,14 +892,15 @@ function saveFtfDossier(id) {
   var previous = id ? dossiers.find(function(d){ return d.id === id; }) : null;
   var newStatus = document.getElementById('ftfStatut').value || 'Attente paiement';
   var statusChanged = previous && previous.statut !== newStatus;
-  var dateStatut = document.getElementById('ftfDateStatut').value || ftfTodayKey();
+  var dateAmende = document.getElementById('ftfDate').value || ftfTodayKey();
+  var dateStatut = document.getElementById('ftfDateStatut').value || (id ? ftfTodayKey() : dateAmende);
   if (statusChanged && (!document.getElementById('ftfDateStatut').value || dateStatut === previous.date_statut)) dateStatut = ftfTodayKey();
   var data = {
     id: id || ('ftf_' + Date.now()),
     nom: nom,
     prenom: prenom,
     montant_initial: montant,
-    date_notification: document.getElementById('ftfDate').value || new Date().toISOString().slice(0,10),
+    date_notification: dateAmende,
     date_statut: dateStatut,
     statut: newStatus,
     convocation_validee: document.getElementById('ftfConvocationValidee').value === 'true',
