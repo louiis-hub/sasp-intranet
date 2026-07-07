@@ -674,6 +674,15 @@ function ftfNextStep(statut) {
     '3ème convocation': 'Tribunal'
   }[statut] || '';
 }
+function ftfPreviousStep(statut) {
+  return {
+    '1ère convocation': 'Attente paiement',
+    '2ème convocation': '1ère convocation',
+    '3ème convocation': '2ème convocation',
+    'Tribunal': '3ème convocation',
+    'Clôturé': 'Tribunal'
+  }[statut] || '';
+}
 function ftfDeadlineStart(d) {
   if (!d) return '';
   if (d.statut === 'Attente paiement') return d.date_notification || d.date_statut || '';
@@ -882,6 +891,7 @@ function openFtfDossierModal(id) {
       statusSelect +
       '<div class="form-group"><label class="form-label">Notes FTF</label><textarea class="form-control" id="ftfNotes" placeholder="Notes internes FTF">' + esc(d.notes || '') + '</textarea></div>',
     footer:
+      (isEdit && ftfPreviousStep(d.statut) ? '<button class="btn btn-outline" onclick="rollbackFtfDossier(\'' + esc(d.id) + '\')">← Étape précédente</button>' : '') +
       (isEdit ? '<button class="btn btn-danger" onclick="deleteFtfDossier(\'' + esc(d.id) + '\')">Supprimer</button>' : '') +
       '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
       '<button class="btn btn-primary" onclick="saveFtfDossier(' + (isEdit ? '\'' + esc(d.id) + '\'' : 'null') + ')">Sauvegarder</button>'
@@ -926,6 +936,28 @@ function deleteFtfDossier(id) {
   ftfSaveDossiers(ftfLoadDossiers().filter(function(d){ return d.id !== id; }));
   closeModal();
   toast('Dossier FTF supprime.', 'info');
+  renderFTF();
+}
+function rollbackFtfDossier(id) {
+  var dossiers = ftfLoadDossiers();
+  var changed = false;
+  dossiers = dossiers.map(function(d) {
+    if (d.id !== id) return d;
+    var previous = ftfPreviousStep(d.statut);
+    if (!previous) return d;
+    changed = true;
+    return Object.assign({}, d, {
+      statut: previous,
+      date_statut: previous === 'Attente paiement' ? (d.date_notification || ftfTodayKey()) : ftfTodayKey(),
+      convocation_validee: false,
+      notif_sent: {},
+      updated_at: new Date().toISOString()
+    });
+  });
+  if (!changed) { toast('Aucune etape precedente disponible.', 'info'); return; }
+  ftfSaveDossiers(dossiers);
+  closeModal();
+  toast('Etape precedente restauree.', 'success');
   renderFTF();
 }
 
