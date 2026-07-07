@@ -136,7 +136,7 @@ textarea.form-control{resize:vertical;min-height:80px}
 .ftf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
 .ftf-stat{background:var(--bgCard);border:1px solid var(--border0);border-radius:var(--rLg);padding:18px;min-height:126px}
 .ftf-stat-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
-.ftf-stat-top span{color:var(--gold);font-family:'Share Tech Mono',monospace}
+.ftf-stat-top span{color:var(--gold);font-family:'Share Tech Mono',monospace;font-size:.62rem;letter-spacing:1px;border:1px solid var(--goldBorder);border-radius:999px;padding:2px 6px;background:var(--goldGlow)}
 .ftf-stat-top strong{font-family:'Rajdhani',sans-serif;font-size:2.35rem;line-height:1;color:var(--gold)}
 .ftf-stat div:nth-child(2){font-family:'Share Tech Mono',monospace;font-size:.68rem;letter-spacing:1.4px;text-transform:uppercase;color:var(--t1)}
 .ftf-stat small{display:block;color:var(--t3);font-size:.72rem;margin-top:4px}
