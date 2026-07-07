@@ -849,7 +849,7 @@ function renderFTFDossiers() {
       '<td>' + fmtMoney(Number(d.montant_initial || 0)) + '</td>' +
       '<td>' + ftfStatusBadge(d.statut) + (nextInfo ? '<div class="text-muted" style="font-size:.72rem;margin-top:4px">' + esc(nextInfo) + '</div>' : '') + '</td>' +
       '<td><strong class="text-gold">' + fmtMoney(ftfAmount(d)) + '</strong></td>' +
-      '<td class="text-muted">' + esc((d.notes || '').slice(0, 80)) + '</td>' +
+      '<td>' + esc((d.raison_amende || '—').slice(0, 90)) + (d.notes ? '<div class="text-muted" style="font-size:.72rem;margin-top:3px">' + esc(d.notes.slice(0, 70)) + '</div>' : '') + '</td>' +
     '</tr>';
   }).join('') : '<tr><td colspan="5"><div class="empty-state" style="padding:28px"><div class="empty-icon">FTF</div><div class="empty-title">Aucun dossier FTF</div></div></td></tr>';
   return '<div class="card ftf-dossiers-card">' +
@@ -858,14 +858,14 @@ function renderFTFDossiers() {
       '<input class="form-control" value="' + esc(_ftfSearch) + '" oninput="ftfSetSearch(this.value)" placeholder="Rechercher par nom ou prenom">' +
       '<select class="form-control" onchange="ftfSetStatus(this.value)">' + statusOptions + '</select>' +
     '</div>' +
-    '<div class="table-wrap"><table><thead><tr><th>PERSONNE</th><th>MONTANT INITIAL</th><th>STATUT</th><th>MONTANT ACTUEL</th><th>NOTES FTF</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+    '<div class="table-wrap"><table><thead><tr><th>PERSONNE</th><th>MONTANT INITIAL</th><th>STATUT</th><th>MONTANT ACTUEL</th><th>RAISON / NOTES</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
   '</div>';
 }
 function openFtfDossierModal(id) {
   var dossiers = ftfLoadDossiers();
   var d = id ? dossiers.find(function(x){ return x.id === id; }) : null;
   var isEdit = !!d;
-  d = d || { nom:'', prenom:'', montant_initial:'', date_notification:ftfTodayKey(), date_statut:ftfTodayKey(), statut:'Attente paiement', convocation_validee:false, notes:'' };
+  d = d || { nom:'', prenom:'', montant_initial:'', date_notification:ftfTodayKey(), date_statut:ftfTodayKey(), statut:'Attente paiement', convocation_validee:false, raison_amende:'', notes:'' };
   if (!d.date_statut) d.date_statut = d.date_notification || ftfTodayKey();
   var nextInfo = ftfNextStepInfo(d);
   var statusSelect = '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="ftfStatut">' +
@@ -898,6 +898,7 @@ function openFtfDossierModal(id) {
       '</div>' +
       (nextInfo ? '<div class="badge badge-gold" style="margin-bottom:14px">' + esc(nextInfo) + '</div>' : '') +
       statusSelect +
+      '<div class="form-group"><label class="form-label">Raison de l amende</label><textarea class="form-control" id="ftfRaisonAmende" placeholder="Ex : refus d obtemperer, stationnement abusif, amende impayee...">' + esc(d.raison_amende || '') + '</textarea></div>' +
       '<div class="form-group"><label class="form-label">Notes FTF</label><textarea class="form-control" id="ftfNotes" placeholder="Notes internes FTF">' + esc(d.notes || '') + '</textarea></div>',
     footer:
       (isEdit && ftfPreviousStep(d.statut) ? '<button class="btn btn-outline" onclick="rollbackFtfDossier(\'' + esc(d.id) + '\')">← Étape précédente</button>' : '') +
@@ -930,6 +931,7 @@ function saveFtfDossier(id) {
     convocation_validee: false,
     created_by_discord_id: (previous && previous.created_by_discord_id) || S.discordUserId || '',
     notif_sent: (statusChanged || advanceStep) ? {} : ((previous && previous.notif_sent) || {}),
+    raison_amende: document.getElementById('ftfRaisonAmende').value || '',
     notes: document.getElementById('ftfNotes').value || '',
     updated_at: new Date().toISOString()
   };
