@@ -9,11 +9,12 @@
     if (cfg.roleAdminIds  && cfg.roleAdminIds.length)  ROLE_ADMIN_IDS  = cfg.roleAdminIds;
     if (cfg.roleAcademyId && cfg.roleAcademyId.length) ROLE_ACADEMY_ID = cfg.roleAcademyId;
     if (cfg.roleAgentId   && cfg.roleAgentId.length)   ROLE_AGENT_ID   = cfg.roleAgentId;
+    if (cfg.ftfRoleId     && cfg.ftfRoleId.length)     FTF_ROLE_ID     = cfg.ftfRoleId;
   } catch(e) {}
 })();
 
 // ── State ──────────────────────────────────────────────────────────
-var S = { user: null, appUser: null, role: 'agent', page: 'dashboard', pd: {} };
+var S = { user: null, appUser: null, role: 'agent', page: 'dashboard', pd: {}, discordRoles: [] };
 
 // ── Salaires par grade ($/h) ─────────────────────────────────────────
 var GRADE_SALAIRE = {
@@ -197,6 +198,7 @@ var _wikiSections = [];
 
 var NAV = [
   { id: 'dashboard', icon: '🏛️', label: 'Tableau de bord' },
+  { id: 'ftf',      icon: 'FTF', label: 'FTF', ftfOnly: true },
   { divider: true },
   { group: 'RESSOURCES HUMAINES' },
   { id: 'recap',    icon: '📋', label: 'Récap agents', staffOnly: true },
@@ -222,7 +224,7 @@ var PAGE_TITLES = {
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
   archives:'Archives', ceremonie:'Prépa Cérémonie', completude:'Complétude fiches',
   'global-settings':'Réglages globaux',
-  stats:'Statistiques', search:'Recherche', settings:'Mon compte'
+  ftf:'FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
 };
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -261,23 +263,24 @@ var WORKER_URL = 'https://sasp-intranet-bot.louisleurin.workers.dev';
 
 async function getDiscordRole(discordUserId) {
   console.log('[auth] discordUserId:', discordUserId);
-  if (!discordUserId) return { role: null, apiOk: false };
+  if (!discordUserId) return { role: null, apiOk: false, roles: [] };
   try {
     var res = await fetch(WORKER_URL + '/auth/check-roles?user_id=' + encodeURIComponent(discordUserId));
     console.log('[auth] check-roles status:', res.status);
-    if (!res.ok) return { role: null, apiOk: false };
+    if (!res.ok) return { role: null, apiOk: false, roles: [] };
     var data = await res.json();
     console.log('[auth] roles from worker:', data.roles);
     console.log('[auth] is_owner:', data.is_owner, 'debug:', data.debug);
     var roles = data.roles || [];
-    if (data.is_owner) return { role: 'admin', apiOk: true };
-    if (ROLE_ADMIN_IDS.some(function(r){ return roles.indexOf(r) !== -1; })) return { role: 'admin', apiOk: true };
-    if (roles.indexOf(ROLE_ACADEMY_ID) !== -1) return { role: 'academy', apiOk: true };
-    if ((typeof ROLE_AGENT_IDS !== 'undefined' ? ROLE_AGENT_IDS : [ROLE_AGENT_ID]).some(function(r){ return roles.indexOf(r) !== -1; })) return { role: 'agent', apiOk: true };
-    if (typeof ROLE_RH_ID !== 'undefined' && ROLE_RH_ID && roles.indexOf(ROLE_RH_ID) !== -1) return { role: 'rh', apiOk: true };
-    if (typeof ROLE_VISITEUR_ID !== 'undefined' && ROLE_VISITEUR_ID && roles.indexOf(ROLE_VISITEUR_ID) !== -1) return { role: 'visiteur', apiOk: true };
-    return { role: null, apiOk: true };
-  } catch(e) { console.error('[auth] error:', e); return { role: null, apiOk: false }; }
+    if (data.is_owner) return { role: 'admin', apiOk: true, roles: roles };
+    if (ROLE_ADMIN_IDS.some(function(r){ return roles.indexOf(r) !== -1; })) return { role: 'admin', apiOk: true, roles: roles };
+    if (roles.indexOf(ROLE_ACADEMY_ID) !== -1) return { role: 'academy', apiOk: true, roles: roles };
+    if ((typeof ROLE_AGENT_IDS !== 'undefined' ? ROLE_AGENT_IDS : [ROLE_AGENT_ID]).some(function(r){ return roles.indexOf(r) !== -1; })) return { role: 'agent', apiOk: true, roles: roles };
+    if (typeof ROLE_RH_ID !== 'undefined' && ROLE_RH_ID && roles.indexOf(ROLE_RH_ID) !== -1) return { role: 'rh', apiOk: true, roles: roles };
+    if (typeof ROLE_VISITEUR_ID !== 'undefined' && ROLE_VISITEUR_ID && roles.indexOf(ROLE_VISITEUR_ID) !== -1) return { role: 'visiteur', apiOk: true, roles: roles };
+    if (typeof FTF_ROLE_ID !== 'undefined' && FTF_ROLE_ID && FTF_ROLE_ID !== 'ID_DU_ROLE_ICI' && roles.indexOf(FTF_ROLE_ID) !== -1) return { role: 'ftf', apiOk: true, roles: roles };
+    return { role: null, apiOk: true, roles: roles };
+  } catch(e) { console.error('[auth] error:', e); return { role: null, apiOk: false, roles: [] }; }
 }
 
 async function afterLogin(user, session) {
@@ -287,6 +290,7 @@ async function afterLogin(user, session) {
   console.log('[auth] identities:', user.identities, 'discordUserId:', discordUserId);
   var appUser = await DB.getAppUser(user.id);
   var result = await getDiscordRole(discordUserId);
+  S.discordRoles = result.roles || [];
   if (result.role) {
     S.role = result.role;
     await DB.upsertAppUser({
@@ -331,7 +335,7 @@ async function loadWikiSections() {
 
 async function doLogout() {
   await DB.logout();
-  S.user = null; S.appUser = null; S.role = 'agent';
+  S.user = null; S.appUser = null; S.role = 'agent'; S.discordRoles = [];
   showLogin();
 }
 
@@ -356,14 +360,17 @@ function buildNav() {
   var isStaff = S.role === 'admin' || S.role === 'academy' || S.role === 'rh';
   var isCeremony = S.role === 'admin' || S.role === 'rh';
   var isVisiteur = S.role === 'visiteur';
+  var isFtfOnly = S.role === 'ftf';
   var VISITEUR_NAV = ['dashboard', 'pointeuse', 'cartes'];
   var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'cartes', 'stats', 'archives', 'recap', 'ceremonie', 'completude'];
   var html = '';
   NAV.forEach(function(item) {
+    if (item.ftfOnly && !canAccessFTF()) return;
+    if (isFtfOnly && item.id && item.id !== 'ftf') return;
     if (item.staffOnly && !isStaff) return;
     if (item.ceremonyOnly && !isCeremony) return;
-    if (isVisiteur && item.id && VISITEUR_NAV.indexOf(item.id) === -1) return;
-    if (S.role === 'rh' && item.id && RH_NAV.indexOf(item.id) === -1) return;
+    if (isVisiteur && item.id && !item.ftfOnly && VISITEUR_NAV.indexOf(item.id) === -1) return;
+    if (S.role === 'rh' && item.id && !item.ftfOnly && RH_NAV.indexOf(item.id) === -1) return;
     if (item.divider) { html += '<div class="nav-divider"></div>'; return; }
     if (item.group)   { html += '<div class="nav-group">' + item.group + '</div>'; return; }
     html += '<div class="nav-item" data-page="' + item.id + '" onclick="navigate(\'' + item.id + '\')">' +
@@ -374,7 +381,7 @@ function buildNav() {
   var discordName = S.user && S.user.user_metadata && (S.user.user_metadata.full_name || S.user.user_metadata.name || S.user.user_metadata.user_name);
   var n = discordName || (S.appUser ? (S.appUser.prenom + ' ' + S.appUser.nom).trim() : S.user.email);
   var initials = n.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
-  var roleLabel = { admin:'ADMIN', academy:'SCA', agent:'AGENT', rh:'RH', visiteur:'VISITEUR' }[S.role] || S.role.toUpperCase();
+  var roleLabel = { admin:'ADMIN', academy:'SCA', agent:'AGENT', rh:'RH', visiteur:'VISITEUR', ftf:'FTF' }[S.role] || S.role.toUpperCase();
   document.getElementById('sidebarFooter').innerHTML =
     '<div class="sidebar-user">' +
       '<div class="sidebar-avatar">' + initials + '</div>' +
@@ -415,25 +422,33 @@ async function navigate(page, pd) {
   var _permCfg = {}; try { _permCfg = JSON.parse(localStorage.getItem('sasp_permissions') || '{}'); } catch(e) {}
   var AGENT_ALLOWED   = _permCfg.agentPages   || ['dashboard','agents','agent-profile','grades','units','pointeuse','mdt','vehicles','cartes','info','manuel','tenue','document'];
   var ACADEMY_ALLOWED = _permCfg.academyPages  || null;
+  if (page === 'ftf' && !canAccessFTF()) {
+    setContent('<div class="empty-state"><div class="empty-icon">FTF</div><div class="empty-title">AccÃ¨s FTF restreint</div><div class="empty-sub">Cette page est rÃ©servÃ©e aux utilisateurs avec le rÃ´le Discord FTF.</div></div>');
+    return;
+  }
+  if (S.role === 'ftf' && page !== 'ftf') {
+    await navigate('ftf');
+    return;
+  }
   if ((S.role === 'agent' || S.role === 'academy' || S.role === 'visiteur') && page === 'ceremonie') {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au Command Staff et aux Superviseurs.</div></div>');
     return;
   }
   var RH_ALLOWED = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'cartes', 'stats', 'archives', 'recap', 'ceremonie'];
-  if (S.role === 'rh' && RH_ALLOWED.indexOf(page) === -1) {
+  if (S.role === 'rh' && page !== 'ftf' && RH_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée aux administrateurs.</div></div>');
     return;
   }
   var VISITEUR_ALLOWED = ['dashboard', 'pointeuse', 'cartes'];
-  if (S.role === 'visiteur' && VISITEUR_ALLOWED.indexOf(page) === -1) {
+  if (S.role === 'visiteur' && page !== 'ftf' && VISITEUR_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Votre rôle ne permet pas d\'accéder à cette section.</div></div>');
     return;
   }
-  if (S.role === 'agent' && AGENT_ALLOWED.indexOf(page) === -1) {
+  if (S.role === 'agent' && page !== 'ftf' && AGENT_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au personnel d\'encadrement.</div></div>');
     return;
   }
-  if (S.role === 'academy' && ACADEMY_ALLOWED && ACADEMY_ALLOWED.indexOf(page) === -1) {
+  if (S.role === 'academy' && page !== 'ftf' && ACADEMY_ALLOWED && ACADEMY_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée aux administrateurs.</div></div>');
     return;
   }
@@ -455,6 +470,7 @@ async function navigate(page, pd) {
       archives:       renderArchives,
       completude:     renderCompletude,
       'global-settings': renderGlobalSettings,
+      ftf:            renderFTF,
       stats:          renderStats,
       search:         renderSearch,
       settings:       renderSettings
@@ -529,6 +545,12 @@ function toastLoading(msg) {
 // ── Permissions ────────────────────────────────────────────────────
 function isAdmin() { return S.role === 'admin'; }
 function canWrite() { return S.role === 'admin' || S.role === 'academy' || S.role === 'rh'; }
+function canAccessFTF() {
+  return typeof FTF_ROLE_ID !== 'undefined' &&
+    FTF_ROLE_ID &&
+    FTF_ROLE_ID !== 'ID_DU_ROLE_ICI' &&
+    (S.discordRoles || []).indexOf(FTF_ROLE_ID) !== -1;
+}
 
 // ── Utils ──────────────────────────────────────────────────────────
 function esc(s) {
@@ -614,6 +636,197 @@ async function getDashboardGradeCounts(grades, agents, logLabel) {
 }
 
 // ══ DASHBOARD ══════════════════════════════════════════════════════
+var FTF_STORAGE_KEY = 'sasp_ftf_dossiers_v1';
+var FTF_STATUSES = ['Attente paiement', '1ère convocation', '2ème convocation', '3ème convocation', 'Tribunal', 'Clôturé'];
+var _ftfTab = 'dashboard';
+var _ftfSearch = '';
+var _ftfStatus = '';
+
+function ftfLoadDossiers() {
+  try {
+    var data = JSON.parse(localStorage.getItem(FTF_STORAGE_KEY) || '[]');
+    return Array.isArray(data) ? data : [];
+  } catch(e) { return []; }
+}
+function ftfSaveDossiers(list) {
+  localStorage.setItem(FTF_STORAGE_KEY, JSON.stringify(list || []));
+}
+function ftfAmount(d) {
+  var base = Number(d.montant_initial || 0);
+  var mult = {
+    'Attente paiement': 1,
+    '1ère convocation': 1.25,
+    '2ème convocation': 1.75,
+    '3ème convocation': 2.25,
+    'Tribunal': 2.25,
+    'Clôturé': 2.25
+  }[d.statut] || 1;
+  return Math.round(base * mult);
+}
+function ftfFilteredDossiers() {
+  var q = (_ftfSearch || '').toLowerCase().trim();
+  return ftfLoadDossiers().filter(function(d) {
+    var name = ((d.nom || '') + ' ' + (d.prenom || '')).toLowerCase();
+    return (!q || name.indexOf(q) !== -1) && (!_ftfStatus || d.statut === _ftfStatus);
+  });
+}
+function ftfStatusBadge(statut) {
+  var cls = {
+    'Attente paiement': 'badge-blue',
+    '1ère convocation': 'badge-gold',
+    '2ème convocation': 'badge-orange',
+    '3ème convocation': 'badge-red',
+    'Tribunal': 'badge-red',
+    'Clôturé': 'badge-green'
+  }[statut] || 'badge-gray';
+  return '<span class="badge ' + cls + '">' + esc(statut || 'Attente paiement') + '</span>';
+}
+function ftfTabButton(id, label, icon) {
+  return '<button class="ftf-tab' + (_ftfTab === id ? ' active' : '') + '" onclick="ftfSetTab(\'' + id + '\')"><span>' + icon + '</span>' + esc(label) + '</button>';
+}
+function ftfSetTab(tab) { _ftfTab = tab; renderFTF(); }
+function ftfSetSearch(v) { _ftfSearch = v || ''; renderFTF(); }
+function ftfSetStatus(v) { _ftfStatus = v || ''; renderFTF(); }
+function renderFTFStat(icon, label, value, sub) {
+  return '<div class="ftf-stat"><div class="ftf-stat-top"><span>' + icon + '</span><strong>' + value + '</strong></div><div>' + esc(label) + '</div>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div>';
+}
+async function renderFTF() {
+  if (!canAccessFTF()) {
+    setContent('<div class="empty-state"><div class="empty-icon">FTF</div><div class="empty-title">Acces FTF restreint</div><div class="empty-sub">Ajoutez l ID du role Discord FTF dans FTF_ROLE_ID pour autoriser cette page.</div></div>');
+    return;
+  }
+  var dossiers = ftfLoadDossiers();
+  var counts = {
+    active: dossiers.filter(function(d){ return d.statut !== 'Clôturé'; }).length,
+    c1: dossiers.filter(function(d){ return d.statut === '1ère convocation'; }).length,
+    c2: dossiers.filter(function(d){ return d.statut === '2ème convocation'; }).length,
+    c3: dossiers.filter(function(d){ return d.statut === '3ème convocation'; }).length,
+    tribunal: dossiers.filter(function(d){ return d.statut === 'Tribunal'; }).length,
+    closed: dossiers.filter(function(d){ return d.statut === 'Clôturé'; }).length
+  };
+  var body = _ftfTab === 'procedure' ? renderFTFProcedure() : (_ftfTab === 'dossiers' ? renderFTFDossiers() : renderFTFDashboard(counts));
+  setContent(
+    '<div class="ftf-page">' +
+      '<div class="ftf-hero">' +
+        '<div><div class="ftf-kicker">SASP SPECIAL UNIT</div><h1>FTF</h1><p>Suivi des amendes transferees, convocations et presentations tribunal.</p></div>' +
+        '<div class="ftf-seal">FTF</div>' +
+      '</div>' +
+      '<div class="ftf-tabs">' +
+        ftfTabButton('dashboard', 'Tableau de bord', '*') +
+        ftfTabButton('procedure', 'Procedure FTF', '§') +
+        ftfTabButton('dossiers', 'Dossiers FTF', '#') +
+      '</div>' +
+      body +
+    '</div>'
+  );
+}
+function renderFTFDashboard(counts) {
+  return '<div class="ftf-grid">' +
+    renderFTFStat('□', 'Dossiers actifs', counts.active, 'hors dossiers clotures') +
+    renderFTFStat('1', 'Convocation 1', counts.c1, '+25 pourcent') +
+    renderFTFStat('2', 'Convocation 2', counts.c2, '+75 pourcent') +
+    renderFTFStat('3', 'Convocation 3', counts.c3, '+125 pourcent') +
+    renderFTFStat('⚖', 'A presenter au tribunal', counts.tribunal, 'phase judiciaire') +
+    renderFTFStat('✓', 'Dossiers clotures', counts.closed, 'procedure terminee') +
+  '</div>';
+}
+function renderFTFProcedure() {
+  var steps = [
+    ['Amende notifiee par le SASP', 'La personne recoit la notification officielle de l amende.'],
+    ['7 jours pour payer', 'Le delai de paiement initial est fixe a 7 jours.'],
+    ['Paiement effectue', 'Si le paiement est fait, la procedure est terminee.'],
+    ['Non-paiement', 'Si le paiement n est pas fait, le dossier est transfere a la FTF.'],
+    ['1ère convocation', 'Majoration de 25 pourcent, nouveau delai de 7 jours, non-presentation = 5 000 $.'],
+    ['2ème convocation', 'Majoration de 75 pourcent, nouveau delai de 7 jours, non-presentation = 5 000 $.'],
+    ['3ème convocation', 'Majoration de 125 pourcent, nouveau delai de 7 jours, non-presentation = 5 000 $.'],
+    ['Apres 3 convocations', 'Localisation, interpellation, presentation au tribunal et saisie des biens.'],
+    ['Insolvabilite', 'Echeancier, TIG SASP/SAMC, pointage quotidien ou prison selon la decision.']
+  ];
+  return '<div class="ftf-procedure">' + steps.map(function(s, i) {
+    return '<div class="ftf-step"><div class="ftf-step-index">' + (i + 1) + '</div><div><h3>' + esc(s[0]) + '</h3><p>' + esc(s[1]) + '</p></div></div>';
+  }).join('') + '</div>';
+}
+function renderFTFDossiers() {
+  var list = ftfFilteredDossiers();
+  var statusOptions = '<option value="">Tous les statuts</option>' + FTF_STATUSES.map(function(s){ return '<option value="' + esc(s) + '"' + (_ftfStatus === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('');
+  var rows = list.length ? list.map(function(d) {
+    return '<tr onclick="openFtfDossierModal(\'' + esc(d.id) + '\')">' +
+      '<td><strong>' + esc((d.prenom || '') + ' ' + (d.nom || '')) + '</strong><div class="text-muted" style="font-size:.72rem">' + esc(d.date_notification || '') + '</div></td>' +
+      '<td>' + fmtMoney(Number(d.montant_initial || 0)) + '</td>' +
+      '<td>' + ftfStatusBadge(d.statut) + '</td>' +
+      '<td><strong class="text-gold">' + fmtMoney(ftfAmount(d)) + '</strong></td>' +
+      '<td class="text-muted">' + esc((d.notes || '').slice(0, 80)) + '</td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="5"><div class="empty-state" style="padding:28px"><div class="empty-icon">FTF</div><div class="empty-title">Aucun dossier FTF</div></div></td></tr>';
+  return '<div class="card ftf-dossiers-card">' +
+    '<div class="flex-between mb-20"><div><h2 style="font-size:1.2rem">Dossiers FTF</h2><p class="text-muted" style="font-size:.82rem">Recherche, statuts et montant actuel calcule automatiquement.</p></div><button class="btn btn-primary btn-sm" onclick="openFtfDossierModal()">Creer un dossier</button></div>' +
+    '<div class="ftf-toolbar">' +
+      '<input class="form-control" value="' + esc(_ftfSearch) + '" oninput="ftfSetSearch(this.value)" placeholder="Rechercher par nom ou prenom">' +
+      '<select class="form-control" onchange="ftfSetStatus(this.value)">' + statusOptions + '</select>' +
+    '</div>' +
+    '<div class="table-wrap"><table><thead><tr><th>PERSONNE</th><th>MONTANT INITIAL</th><th>STATUT</th><th>MONTANT ACTUEL</th><th>NOTES FTF</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+  '</div>';
+}
+function openFtfDossierModal(id) {
+  var dossiers = ftfLoadDossiers();
+  var d = id ? dossiers.find(function(x){ return x.id === id; }) : null;
+  var isEdit = !!d;
+  d = d || { nom:'', prenom:'', montant_initial:'', date_notification:new Date().toISOString().slice(0,10), statut:'Attente paiement', notes:'' };
+  var statusSelect = '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="ftfStatut">' +
+    FTF_STATUSES.map(function(s){ return '<option value="' + esc(s) + '"' + (d.statut === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') +
+    '</select></div>';
+  openModal({
+    eyebrow: 'DOSSIER FTF',
+    title: isEdit ? 'Modifier le dossier' : 'Creer un dossier',
+    size: 'md',
+    body:
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+        fld('Nom *','text','ftfNom',d.nom,'Nom') +
+        fld('Prenom *','text','ftfPrenom',d.prenom,'Prenom') +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+        fld('Montant initial *','number','ftfMontant',d.montant_initial,'15000') +
+        fld('Date de notification','date','ftfDate',d.date_notification,'') +
+      '</div>' +
+      statusSelect +
+      '<div class="form-group"><label class="form-label">Notes FTF</label><textarea class="form-control" id="ftfNotes" placeholder="Notes internes FTF">' + esc(d.notes || '') + '</textarea></div>',
+    footer:
+      (isEdit ? '<button class="btn btn-danger" onclick="deleteFtfDossier(\'' + esc(d.id) + '\')">Supprimer</button>' : '') +
+      '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
+      '<button class="btn btn-primary" onclick="saveFtfDossier(' + (isEdit ? '\'' + esc(d.id) + '\'' : 'null') + ')">Sauvegarder</button>'
+  });
+}
+function saveFtfDossier(id) {
+  var nom = (document.getElementById('ftfNom').value || '').trim();
+  var prenom = (document.getElementById('ftfPrenom').value || '').trim();
+  var montant = parseMoneyInput(document.getElementById('ftfMontant').value);
+  if (!nom || !prenom || !montant) { toast('Nom, prenom et montant requis.', 'error'); return; }
+  var dossiers = ftfLoadDossiers();
+  var data = {
+    id: id || ('ftf_' + Date.now()),
+    nom: nom,
+    prenom: prenom,
+    montant_initial: montant,
+    date_notification: document.getElementById('ftfDate').value || new Date().toISOString().slice(0,10),
+    statut: document.getElementById('ftfStatut').value || 'Attente paiement',
+    notes: document.getElementById('ftfNotes').value || '',
+    updated_at: new Date().toISOString()
+  };
+  if (id) dossiers = dossiers.map(function(d){ return d.id === id ? Object.assign({}, d, data) : d; });
+  else dossiers.unshift(data);
+  ftfSaveDossiers(dossiers);
+  closeModal();
+  toast('Dossier FTF sauvegarde.', 'success');
+  renderFTF();
+}
+function deleteFtfDossier(id) {
+  if (!confirm('Supprimer ce dossier FTF ?')) return;
+  ftfSaveDossiers(ftfLoadDossiers().filter(function(d){ return d.id !== id; }));
+  closeModal();
+  toast('Dossier FTF supprime.', 'info');
+  renderFTF();
+}
+
 async function renderDashboard() {
   _grades = await DB.getGrades();
   var agents = visibleRosterAgents(await DB.getAgents());
