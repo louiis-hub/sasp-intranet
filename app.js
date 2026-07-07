@@ -795,15 +795,22 @@ function renderFTFProcedure() {
   }).join('') + '</div>';
 }
 function ftfIsNotificationDue(d) {
-  if (!d || d.archived || d.convocation_validee) return false;
+  return !!ftfNotificationToSend(d);
+}
+function ftfNotificationToSend(d) {
+  if (!d || d.archived || d.convocation_validee) return null;
   var next = ftfNextStep(d.statut);
-  if (!next) return false;
+  if (!next) return null;
   var start = ftfDeadlineStart(d);
-  if (!start) return false;
+  if (!start) return null;
   var today = ftfTodayKey();
-  var due = ftfAddDays(start, 6);
-  var sentKey = d.statut + '|' + today;
-  return today >= due && (!d.notif_sent || d.notif_sent[sentKey] !== true);
+  var warningDate = ftfAddDays(start, 6);
+  var dueDate = ftfAddDays(start, 7);
+  var type = today >= dueDate ? 'deadline' : (today >= warningDate ? 'warning' : '');
+  if (!type) return null;
+  var sentKey = d.statut + '|' + type + '|' + dueDate;
+  if (d.notif_sent && d.notif_sent[sentKey] === true) return null;
+  return { type: type, sentKey: sentKey, nextStep: next, dueDate: dueDate, warningDate: warningDate };
 }
 async function ftfCheckConvocationNotifications() {
   if (_ftfNotifyRunning || !canAccessFTF()) return;
@@ -813,9 +820,8 @@ async function ftfCheckConvocationNotifications() {
     var changed = false;
     for (var i = 0; i < dossiers.length; i++) {
       var d = dossiers[i];
-      if (!ftfIsNotificationDue(d)) continue;
-      var today = ftfTodayKey();
-      var sentKey = d.statut + '|' + today;
+      var notif = ftfNotificationToSend(d);
+      if (!notif) continue;
       var res = await fetch(WORKER_BASE + '/ftf/convocation-notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
@@ -824,14 +830,17 @@ async function ftfCheckConvocationNotifications() {
           creator_id: d.created_by_discord_id || S.discordUserId || '',
           suspect: ((d.prenom || '') + ' ' + (d.nom || '')).trim(),
           current_status: d.statut,
-          next_step: ftfNextStep(d.statut),
+          next_step: notif.nextStep,
+          notification_type: notif.type,
           date_statut: ftfDeadlineStart(d),
-          due_date: ftfAddDays(ftfDeadlineStart(d), 7)
+          due_date: notif.dueDate,
+          amount: ftfAmount(d),
+          reason: d.raison_amende || ''
         })
       });
       if (res.ok) {
         d.notif_sent = d.notif_sent || {};
-        d.notif_sent[sentKey] = true;
+        d.notif_sent[notif.sentKey] = true;
         changed = true;
       }
     }

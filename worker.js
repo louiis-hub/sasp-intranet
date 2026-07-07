@@ -114,6 +114,7 @@ const ADMIN_ROLE_IDS = [
   '1504451288065118248', // Ã‰tat Major
   '1504452141518032956'  // Supervisor Team
 ];
+const FTF_ROLE_ID = "1524117754725007422";
 const FTF_NOTIFICATION_CHANNEL_ID = "1524118534077153330";
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1042,21 +1043,34 @@ export default {
         const suspect = String(data.suspect || "personne inconnue").trim();
         const nextStep = String(data.next_step || "convocation").trim();
         const currentStatus = String(data.current_status || "").trim();
+        const notificationType = String(data.notification_type || "warning").trim();
         const dueDate = String(data.due_date || "").trim();
-        const ping = creatorId ? `<@${creatorId}>` : "@agent FTF";
+        const amount = Number(data.amount || 0);
+        const reason = String(data.reason || "").trim();
+        const ping = creatorId ? `<@${creatorId}>` : `<@&${FTF_ROLE_ID}>`;
+        const isDeadline = notificationType === "deadline";
+        const title = isDeadline ? "Alerte FTF - delai expire" : "Rappel FTF - convocation demain";
+        const description = isDeadline
+          ? `Le delai est arrive a expiration pour **${suspect}**. Procedure attendue : **${nextStep}**.`
+          : `Convocation demain pour **${suspect}** : **${nextStep}**.`;
+        const fields = [
+          { name: "Statut actuel", value: currentStatus || "Non precise", inline: true },
+          { name: "Date limite", value: dueDate || (isDeadline ? "Aujourd'hui" : "Demain"), inline: true },
+          { name: "Action attendue", value: nextStep || "A traiter", inline: true }
+        ];
+        if (amount > 0) fields.push({ name: "Montant actuel", value: `${amount.toLocaleString("fr-FR")} $`, inline: true });
+        if (reason) fields.push({ name: "Raison de l'amende", value: reason.slice(0, 1000), inline: false });
         const res = await discordFetch(`${DISCORD_API}/channels/${FTF_NOTIFICATION_CHANNEL_ID}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            content: `${ping}`,
+            content: `${ping} - ${isDeadline ? "delai FTF expire, action requise." : "rappel FTF, convocation demain."}`,
+            allowed_mentions: creatorId ? { users: [creatorId] } : { roles: [FTF_ROLE_ID] },
             embeds: [{
-              title: "Rappel FTF - convocation demain",
-              color: 0xc9a84c,
-              description: `Convocation demain pour **${suspect}** : **${nextStep}**.`,
-              fields: [
-                { name: "Statut actuel", value: currentStatus || "Non precise", inline: true },
-                { name: "Date limite", value: dueDate || "Demain", inline: true }
-              ],
+              title,
+              color: isDeadline ? 0xe74c3c : 0xc9a84c,
+              description,
+              fields,
               footer: { text: "SASP - FTF" },
               timestamp: new Date().toISOString()
             }]
