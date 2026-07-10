@@ -1702,6 +1702,7 @@ export default {
         const now = new Date();
         const dateStr = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
         const threadTitle = `${suspect} - ${dateStr} - ${heureFaits}`;
+        const origin = getSaspOrigin(interaction);
 
         const userId = interaction.member?.user?.id || interaction.user?.id;
         let agentDisplay = `<@${userId}>`;
@@ -1711,6 +1712,7 @@ export default {
         } catch {}
 
         const fields = [
+          { name: "Origine", value: origin.label, inline: true },
           { name: "ðŸ§‘ Suspect", value: suspect, inline: false },
           { name: "ðŸ“ž TÃ©lÃ©phone suspect", value: telSuspect, inline: false },
           { name: "ðŸ“‹ Chef(s) d'accusation", value: chefsAccusation, inline: false },
@@ -1724,7 +1726,7 @@ export default {
             title: "âš–ï¸ Demande Procureur",
             color: 0x2c3e50,
             fields,
-            footer: { text: `SASP Â· DÃ©posÃ©e par ${agentDisplay}` },
+            footer: { text: `${origin.label} Â· DÃ©posÃ©e par ${agentDisplay}` },
             timestamp: now.toISOString()
           }],
           components: [
@@ -1755,6 +1757,7 @@ export default {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ embeds: [{ title: "âš–ï¸ Nouvelle demande procureur", color: 0x2c3e50, fields: [
+            { name: "Origine", value: origin.label, inline: true },
             { name: "ðŸ§‘ Suspect", value: suspect, inline: true },
             { name: "ðŸ“ž TÃ©lÃ©phone", value: telSuspect, inline: true },
             { name: "ðŸ“‹ Chef(s) d'accusation", value: chefsAccusation, inline: false },
@@ -1807,7 +1810,8 @@ export default {
           if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
         } catch {}
 
-        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nPos\u00e9 le : ${date}\nNum\u00e9ro de t\u00e9l\u00e9phone : ${tel}\nRaison : ${raison}\nDemande procureur : ${accordProc}\nPos\u00e9 par : ${agentDisplay}\n\nPensez \u00e0 bien noter quand les individus viennent pointer\n\n\u2139\ufe0f Les bracelets peuvent \u00eatre activ\u00e9s pour voir la position une fois toutes les 24h via un message "BIP" sur le t\u00e9l\u00e9phone de l'individu.`;
+        const origin = getSaspOrigin(interaction);
+        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nOrigine : ${origin.label}\nPos\u00e9 le : ${date}\nNum\u00e9ro de t\u00e9l\u00e9phone : ${tel}\nRaison : ${raison}\nDemande procureur : ${accordProc}\nPos\u00e9 par : ${agentDisplay}\n\nPensez \u00e0 bien noter quand les individus viennent pointer\n\n\u2139\ufe0f Les bracelets peuvent \u00eatre activ\u00e9s pour voir la position une fois toutes les 24h via un message "BIP" sur le t\u00e9l\u00e9phone de l'individu.`;
 
         const braceletMessage = {
           content,
@@ -1838,12 +1842,14 @@ export default {
         const suspectName = getField("Suspect");
         const telSuspect  = getField("TÃ©lÃ©phone");
         const chefs       = getField("accusation");
+        const originLabel = getField("Origine") || getSaspOrigin(interaction).label;
+        const originToken = encodeURIComponent(originLabel);
         const now = new Date();
         const dateDefault = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
         return json({
           type: 9,
           data: {
-            custom_id: "bracelet_modal",
+            custom_id: `bracelet_modal|${originToken}`,
             title: "Bracelet Ã‰lectronique",
             components: [
               { type: 1, components: [{ type: 4, custom_id: "bracelet_suspect", label: "Nom PrÃ©nom du suspect", style: 1, required: true, value: suspectName, max_length: 80 }] },
@@ -1857,13 +1863,15 @@ export default {
       }
 
       // Modal submit bracelet
-      if (interaction.type === 5 && interaction.data.custom_id === "bracelet_modal") {
+      if (interaction.type === 5 && interaction.data.custom_id.startsWith("bracelet_modal")) {
         const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
         const suspect = getValue("bracelet_suspect");
         const date    = getValue("bracelet_date");
         const tel     = getValue("bracelet_tel");
         const raison  = getValue("bracelet_raison");
         const accordProc = getValue("bracelet_accord_proc") || "Non";
+        const originToken = interaction.data.custom_id.split("|")[1] || "";
+        const originLabel = originToken ? decodeURIComponent(originToken) : getSaspOrigin(interaction).label;
 
         const userId = interaction.member?.user?.id || interaction.user?.id;
         let agentDisplay = `<@${userId}>`;
@@ -1873,7 +1881,7 @@ export default {
         } catch {}
 
         const procThreadId = interaction.channel_id;
-        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nDossier proc li\u00e9 : <#${procThreadId}>\n\nPos\u00e9 le : ${date}\nNum\u00e9ro de t\u00e9l\u00e9phone : ${tel}\nRaison : ${raison}\nDemande procureur : ${accordProc}\nPos\u00e9 par : ${agentDisplay}\n\nPensez \u00e0 bien noter quand les individus viennent pointer\n\n\u2139\ufe0f Les bracelets peuvent \u00eatre activ\u00e9s pour voir la position une fois toutes les 24h via un message "BIP" sur le t\u00e9l\u00e9phone de l'individu.`;
+        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nOrigine : ${originLabel}\nDossier proc li\u00e9 : <#${procThreadId}>\n\nPos\u00e9 le : ${date}\nNum\u00e9ro de t\u00e9l\u00e9phone : ${tel}\nRaison : ${raison}\nDemande procureur : ${accordProc}\nPos\u00e9 par : ${agentDisplay}\n\nPensez \u00e0 bien noter quand les individus viennent pointer\n\n\u2139\ufe0f Les bracelets peuvent \u00eatre activ\u00e9s pour voir la position une fois toutes les 24h via un message "BIP" sur le t\u00e9l\u00e9phone de l'individu.`;
 
         const braceletMessage = {
           content,
@@ -1903,6 +1911,7 @@ export default {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ embeds: [{ title: "ðŸ”— Bracelet Ã©lectronique posÃ©", color: 0xe67e22, fields: [
+            { name: "Origine", value: originLabel, inline: true },
             { name: "ðŸ§‘ Suspect", value: suspect, inline: true },
             { name: "ðŸ“ž TÃ©lÃ©phone", value: tel, inline: true },
             { name: "ðŸ“‹ Chef(s) d'inculpation", value: raison, inline: false },
