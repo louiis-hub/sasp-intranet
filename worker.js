@@ -1747,8 +1747,8 @@ export default {
 
         const now = new Date();
         const dateStr = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
-        const threadTitle = `${suspect} - ${dateStr} - ${heureFaits}`;
         const origin = getSaspOrigin(interaction);
+        const threadTitle = `[${origin.label}] ${suspect} - ${dateStr} - ${heureFaits}`;
 
         const userId = interaction.member?.user?.id || interaction.user?.id;
         let agentDisplay = `<@${userId}>`;
@@ -1871,7 +1871,7 @@ export default {
         for (const dest of getBraceletDestinations()) {
           try {
             const originTagIds = await ensureForumTags(dest.braceletForum, [origin.label]);
-            const data = await createForumThread(dest.braceletForum, suspect, braceletMessage, originTagIds);
+            const data = await createForumThread(dest.braceletForum, `[${origin.label}] Bracelet - ${suspect}`, braceletMessage, originTagIds);
             braceletResults.push({ label: dest.label, id: data.id });
           } catch (e) {
             braceletErrors.push(`${dest.label}: ${e.message}`);
@@ -1942,7 +1942,7 @@ export default {
         for (const dest of getBraceletDestinations()) {
           try {
             const originTagIds = await ensureForumTags(dest.braceletForum, [originLabel]);
-            const data = await createForumThread(dest.braceletForum, suspect, braceletMessage, originTagIds);
+            const data = await createForumThread(dest.braceletForum, `[${originLabel}] Bracelet - ${suspect}`, braceletMessage, originTagIds);
             braceletResults.push({ label: dest.label, id: data.id });
           } catch (e) {
             braceletErrors.push(`${dest.label}: ${e.message}`);
