@@ -1302,6 +1302,86 @@ export default {
         body: JSON.stringify(STICKY_PROC_EMBED)
       });
     }
+
+    function extractLineValue(content, labelPattern) {
+      const match = content.match(new RegExp(labelPattern + "\\s*:\\s*([^\\n]+)", "i"));
+      return match ? match[1].trim() : "";
+    }
+
+    function parseBraceletMessage(content, thread) {
+      const text = String(content || "");
+      const suspectMatch = text.match(/BRACELET ELECTRONIQUE DE\s+([^\n]+)/i);
+      return {
+        suspect: suspectMatch ? suspectMatch[1].trim() : (thread.name || "Inconnu"),
+        date: extractLineValue(text, "Pos(?:e|é) le") || "Non precisee",
+        tel: extractLineValue(text, "Num(?:e|é)ro de t(?:e|é)l(?:e|é)phone") || "Non precise",
+        raison: extractLineValue(text, "Raison") || "Non precisee",
+        thread_id: thread.id
+      };
+    }
+
+    async function getActiveBracelets(env) {
+      const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+      const activeRes = await discordFetch(`${DISCORD_API}/guilds/${guildId}/threads/active`, {
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+      });
+      if (!activeRes.ok) throw new Error(`threads active failed: ${activeRes.status} ${await activeRes.text()}`);
+      const activeData = await activeRes.json();
+      const braceletThreads = (activeData.threads || []).filter(t => t.parent_id === BRACELET_FORUM_CHANNEL && !t.archived);
+      const bracelets = [];
+      for (const thread of braceletThreads) {
+        const messagesRes = await discordFetch(`${DISCORD_API}/channels/${thread.id}/messages?limit=50`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        if (!messagesRes.ok) continue;
+        const messages = await messagesRes.json();
+        const source = Array.isArray(messages)
+          ? messages.find(m => String(m.content || "").toUpperCase().includes("BRACELET ELECTRONIQUE DE"))
+          : null;
+        bracelets.push(parseBraceletMessage(source ? source.content : "", thread));
+      }
+      return bracelets.sort((a, b) => a.suspect.localeCompare(b.suspect, "fr"));
+    }
+
+    async function sendBraceletRecap(env) {
+      const bracelets = await getActiveBracelets(env);
+      const lines = bracelets.length
+        ? bracelets.map((b, i) =>
+            `**${i + 1}. ${b.suspect}**\n` +
+            `Date de mise : ${b.date}\n` +
+            `Telephone : \`${b.tel}\`\n` +
+            `Raison : ${b.raison}\n` +
+            `Dossier : <#${b.thread_id}>`
+          )
+        : ["Aucun bracelet actif trouve."];
+      const description = lines.join("\n\n").slice(0, 4000);
+      const oldRes = await discordFetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages?limit=20`, {
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+      });
+      const oldMsgs = await oldRes.json();
+      const oldRecap = Array.isArray(oldMsgs) && oldMsgs.find(m => m.author?.bot && m.embeds?.[0]?.title === "Bracelets actifs");
+      if (oldRecap) {
+        await discordFetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages/${oldRecap.id}`, {
+          method: "DELETE",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+      }
+      const res = await discordFetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages`, {
+        method: "POST",
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          embeds: [{
+            title: "Bracelets actifs",
+            color: 0xc9a84c,
+            description,
+            footer: { text: `SASP - ${bracelets.length} bracelet(s) actif(s)` },
+            timestamp: new Date().toISOString()
+          }]
+        })
+      });
+      if (!res.ok) throw new Error(`send recap failed: ${res.status} ${await res.text()}`);
+      return { ok: true, count: bracelets.length };
+    }
     const STICKY_SUBVENTION_EMBED = { embeds: [{ title: "ðŸ’¸ RÃ¨gles subvention", color: 0xc9a84c, description: "Pour faire une demande de subvention, utilisez la commande `/subvention` dans ce salon.\n\n**RÃ¨gles actuelles :**\nâ€¢ La subvention est fixÃ©e Ã  **10 000 $ par voiture** pour le moment.\nâ€¢ Il est interdit de faire des **performances** avec cette subvention.\nâ€¢ Il est interdit d'acheter une **nouvelle voiture** avec cette subvention.", footer: { text: "SASP â€¢ Subvention" } }] };
     async function refreshSubventionSticky() {
       const msgsRes = await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages?limit=20`, {
@@ -1325,6 +1405,13 @@ export default {
       const res = await refreshProcSticky();
       const data = await res.json();
       return json({ ok: res.ok, data });
+    }
+    if (url.pathname === "/admin/send-bracelet-recap" && request.method === "GET") {
+      try {
+        return json(await sendBraceletRecap(env));
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
     }
     if (url.pathname === "/admin/send-sticky-subvention" && request.method === "GET") {
       const res = await refreshSubventionSticky();
