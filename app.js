@@ -3747,6 +3747,16 @@ async function renderPointeuseHistorique() {
       totalPrimes += prime;
       totalSalaire += calcSalaire(a.grade, e.sec) + prime;
     });
+    var topAgents = agentList.filter(function(e){ return e.sec > 0; }).slice().sort(function(a, b){ return b.sec - a.sec; }).slice(0, 3);
+    var topHtml = topAgents.length
+      ? topAgents.map(function(e, i) {
+          var a = e.agent || {};
+          return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;border:1px solid var(--border0);border-radius:var(--rSm);background:rgba(12,20,34,.62)">' +
+            '<span><strong class="text-gold">#' + (i + 1) + '</strong> ' + esc((a.prenom || '') + ' ' + (a.nom || '')) + ' <span class="text-muted">(' + esc(a.matricule || '--') + ')</span></span>' +
+            '<strong>' + fmtSec(e.sec) + '</strong>' +
+          '</div>';
+        }).join('')
+      : '<span class="badge badge-gray" style="font-size:.68rem">Aucun service termine</span>';
 
     var rows = agentList.map(function(entry) {
       var a = entry.agent;
@@ -3794,6 +3804,10 @@ async function renderPointeuseHistorique() {
         '<span id="' + panelId + '_ico">' + (panelOpen ? '▲' : '▼') + '</span>' +
       '</div>' +
       '<div id="' + panelId + '" style="display:' + (panelOpen ? 'block' : 'none') + '">' +
+        '<div style="padding:12px 16px;border-bottom:1px solid var(--border0);background:rgba(8,16,28,.58)">' +
+          '<div style="font-family:Share Tech Mono,monospace;font-size:.62rem;letter-spacing:1px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Top 3 agents les plus en service</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px">' + topHtml + '</div>' +
+        '</div>' +
         '<div style="padding:12px 16px;border-bottom:1px solid var(--border0);background:rgba(8,16,28,.45)">' +
           '<div style="font-family:Share Tech Mono,monospace;font-size:.62rem;letter-spacing:1px;color:var(--t3);text-transform:uppercase;margin-bottom:6px">Agents sans service cette semaine · ' + missingAgents.length + '</div>' +
           '<div>' + missingHtml + '</div>' +
