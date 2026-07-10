@@ -1336,11 +1336,15 @@ export default {
       ];
     }
 
-    async function createForumThread(channelId, name, message) {
+    const ORIGIN_FORUM_TAGS = ["SASP NORD", "SASP SUD"];
+
+    async function createForumThread(channelId, name, message, appliedTagIds = []) {
+      const payload = { name, message };
+      if (appliedTagIds.length) payload.applied_tags = appliedTagIds;
       const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/threads`, {
         method: "POST",
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ name, message })
+        body: JSON.stringify(payload)
       });
       const text = await res.text();
       let data = null;
@@ -1385,6 +1389,35 @@ export default {
       });
       if (!res.ok) throw new Error(`${targetChannelId} (${res.status}) ${await res.text()}`);
       return { target: targetChannelId, added: additions.length };
+    }
+
+    async function ensureForumTags(channelId, tagNames) {
+      const channel = await getForumChannel(channelId);
+      const availableTags = (channel.available_tags || []).map(normalizeForumTag);
+      const existingByName = new Map(availableTags.map(tag => [String(tag.name || "").toLowerCase(), tag]));
+      const missing = tagNames
+        .filter(name => name && !existingByName.has(String(name).toLowerCase()))
+        .map(name => ({ name, moderated: false, emoji_id: null, emoji_name: null }));
+
+      let nextTags = availableTags;
+      if (missing.length) {
+        if (availableTags.length + missing.length > 20) {
+          throw new Error(`${channelId} ne peut pas recevoir les tags ${missing.map(t => t.name).join(", ")} : limite Discord de 20 tags atteinte`);
+        }
+        nextTags = availableTags.concat(missing);
+        const res = await discordFetch(`${DISCORD_API}/channels/${channelId}`, {
+          method: "PATCH",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ available_tags: nextTags })
+        });
+        if (!res.ok) throw new Error(`${channelId} (${res.status}) ${await res.text()}`);
+      }
+
+      const refreshed = missing.length ? await getForumChannel(channelId) : channel;
+      return (refreshed.available_tags || [])
+        .filter(tag => tagNames.some(name => String(tag.name || "").toLowerCase() === String(name).toLowerCase()))
+        .map(tag => tag.id)
+        .filter(Boolean);
     }
 
     function extractLineValue(content, labelPattern) {
@@ -1522,7 +1555,20 @@ export default {
       ];
       for (const [name, source, target] of jobs) {
         try {
-          results.push({ name, ...(await addMissingForumTags(source, target)) });
+          const copied = await addMissingForumTags(source, target);
+          const originTagIds = await ensureForumTags(target, ORIGIN_FORUM_TAGS);
+          results.push({ name, ...copied, origin_tags: originTagIds.length });
+        } catch (e) {
+          errors.push({ name, error: e.message });
+        }
+      }
+      for (const [name, channelId] of [
+        ["proc-sud", "1521565049729187961"],
+        ["bracelet-sud", BRACELET_FORUM_CHANNEL]
+      ]) {
+        try {
+          const originTagIds = await ensureForumTags(channelId, ORIGIN_FORUM_TAGS);
+          results.push({ name, target: channelId, added: 0, origin_tags: originTagIds.length });
         } catch (e) {
           errors.push({ name, error: e.message });
         }
@@ -1746,7 +1792,8 @@ export default {
         const procErrors = [];
         for (const dest of getProcDestinations(interaction)) {
           try {
-            const data = await createForumThread(dest.procForum, threadTitle, procMessage);
+            const originTagIds = await ensureForumTags(dest.procForum, [origin.label]);
+            const data = await createForumThread(dest.procForum, threadTitle, procMessage, originTagIds);
             procResults.push({ label: dest.label, id: data.id });
           } catch (e) {
             procErrors.push(`${dest.label}: ${e.message}`);
@@ -1823,7 +1870,8 @@ export default {
         const braceletErrors = [];
         for (const dest of getBraceletDestinations()) {
           try {
-            const data = await createForumThread(dest.braceletForum, suspect, braceletMessage);
+            const originTagIds = await ensureForumTags(dest.braceletForum, [origin.label]);
+            const data = await createForumThread(dest.braceletForum, suspect, braceletMessage, originTagIds);
             braceletResults.push({ label: dest.label, id: data.id });
           } catch (e) {
             braceletErrors.push(`${dest.label}: ${e.message}`);
@@ -1893,7 +1941,8 @@ export default {
         const braceletErrors = [];
         for (const dest of getBraceletDestinations()) {
           try {
-            const data = await createForumThread(dest.braceletForum, suspect, braceletMessage);
+            const originTagIds = await ensureForumTags(dest.braceletForum, [originLabel]);
+            const data = await createForumThread(dest.braceletForum, suspect, braceletMessage, originTagIds);
             braceletResults.push({ label: dest.label, id: data.id });
           } catch (e) {
             braceletErrors.push(`${dest.label}: ${e.message}`);
