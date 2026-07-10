@@ -3668,8 +3668,11 @@ async function renderPointeuseHistorique() {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div></div>');
     return;
   }
-  var [all, actives] = await Promise.all([DB.getAllPointages(), DB.getActivePointages()]);
+  var [all, actives, rosterAgents] = await Promise.all([DB.getAllPointages(), DB.getActivePointages(), DB.getAgents({})]);
   var activeAgentIds = new Set(actives.map(function(p){ return p.agent_id; }));
+  rosterAgents = visibleRosterAgents(rosterAgents || []).sort(function(a, b) {
+    return parseInt(a.matricule || 999) - parseInt(b.matricule || 999);
+  });
 
   // Grouper par semaine (lundi de la semaine)
   var byWeek = {};
@@ -3722,6 +3725,19 @@ async function renderPointeuseHistorique() {
     var agentList = Object.values(byAgent).sort(function(x, y) {
       return parseInt(x.agent.matricule || 999) - parseInt(y.agent.matricule || 999);
     });
+    var weekAgentIds = new Set(agentList.map(function(e) {
+      var a = e.agent || {};
+      return a.id || a.matricule || ((a.prenom || '') + '_' + (a.nom || ''));
+    }));
+    var missingAgents = rosterAgents.filter(function(a) {
+      var keyAgent = a.id || a.matricule || ((a.prenom || '') + '_' + (a.nom || ''));
+      return !weekAgentIds.has(keyAgent);
+    });
+    var missingHtml = missingAgents.length
+      ? missingAgents.map(function(a) {
+          return '<span class="badge badge-gray" style="font-size:.68rem;margin:3px 4px 3px 0">' + esc(a.matricule || '--') + ' · ' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</span>';
+        }).join('')
+      : '<span class="badge badge-green" style="font-size:.68rem">Tout le monde a pointe</span>';
     agentList.forEach(function(e) {
       var a = e.agent || {};
       var agentKey = a.id || a.matricule || ((a.prenom || '') + (a.nom || ''));
@@ -3778,6 +3794,10 @@ async function renderPointeuseHistorique() {
         '<span id="' + panelId + '_ico">' + (panelOpen ? '▲' : '▼') + '</span>' +
       '</div>' +
       '<div id="' + panelId + '" style="display:' + (panelOpen ? 'block' : 'none') + '">' +
+        '<div style="padding:12px 16px;border-bottom:1px solid var(--border0);background:rgba(8,16,28,.45)">' +
+          '<div style="font-family:Share Tech Mono,monospace;font-size:.62rem;letter-spacing:1px;color:var(--t3);text-transform:uppercase;margin-bottom:6px">Agents sans service cette semaine · ' + missingAgents.length + '</div>' +
+          '<div>' + missingHtml + '</div>' +
+        '</div>' +
         '<div class="table-wrap"><table>' +
           '<thead><tr><th>AGENT</th><th>IBAN</th><th>PRISE - FIN</th><th style="text-align:center">DUREE</th><th style="text-align:center">SALAIRE</th><th style="text-align:center">PRIME</th><th style="text-align:center">TOTAL</th><th style="text-align:center">PAYE</th></tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
