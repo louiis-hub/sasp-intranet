@@ -1291,20 +1291,20 @@ export default {
     const DOJ_PROC_FORUM_CHANNEL = "1517219788781260921";
     const DOJ_BRACELET_FORUM_CHANNEL = "1525238418097967176";
     const SUBVENTION_CHANNEL = "1523726862075953353";
-    const STICKY_PROC_EMBED = { embeds: [{ title: "âš–ï¸ Procureur & bracelet", color: 0x2c3e50, description: "**Commandes disponibles dans ce salon :**\n\nâ€¢ `/proc` â€” crÃ©er une demande procureur complÃ¨te. Le dossier sera automatiquement crÃ©Ã© dans <#1521565049729187961>.\n\nâ€¢ `/bracelet` â€” crÃ©er uniquement un bracelet Ã©lectronique, sans ouvrir de dossier procureur.\n\nPour un dossier procureur dÃ©jÃ  ouvert, utilisez le bouton **Bracelet Ã‰lectronique** dans le thread du `/proc` afin de garder la liaison entre les deux dossiers.", footer: { text: "SASP â€¢ Service judiciaire" } }] };
-    async function refreshProcSticky() {
-      const msgsRes = await discordFetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages?limit=20`, {
+    const STICKY_PROC_EMBED = { embeds: [{ title: "âš–ï¸ Procureur & bracelet", color: 0x2c3e50, description: "**Commandes disponibles dans ce salon :**\n\nâ€¢ `/proc` â€” crÃ©er une demande procureur. Le bot crÃ©e automatiquement un dossier forum avec l'origine **SASP NORD** ou **SASP SUD**, et une copie est transmise au DOJ.\n\n**Champs demandÃ©s par `/proc` :**\nâ€¢ Nom PrÃ©nom du suspect\nâ€¢ ID du rapport d'arrestation\nâ€¢ Chef(s) d'accusation\nâ€¢ Heure/date de l'interpellation\nâ€¢ TÃ©lÃ©phone du suspect\n\nDans le dossier procureur :\nâ€¢ **Ajouter avocat** â€” ajoute l'avocat et son numÃ©ro dans le message principal, puis synchronise les copies Nord/Sud/DOJ.\nâ€¢ **Bracelet Ã‰lectronique** â€” crÃ©e un dossier bracelet liÃ© au dossier procureur.\nâ€¢ **Affaire clÃ´turÃ©e** â€” ferme le dossier procureur. Si un bracelet est liÃ©, le bot demande confirmation du retrait avant de fermer le dossier bracelet.\n\nâ€¢ `/bracelet` â€” crÃ©er uniquement un bracelet Ã©lectronique, sans ouvrir de dossier procureur.", footer: { text: "SASP â€¢ Service judiciaire" } }] };
+    async function refreshProcSticky(channelId = STICKY_PROC_CHANNEL) {
+      const msgsRes = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages?limit=20`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
       const msgs = await msgsRes.json();
       const sticky = Array.isArray(msgs) && msgs.find(m => ["âš–ï¸ Demande de procureur", "âš–ï¸ Procureur & bracelet"].includes(m.embeds?.[0]?.title));
       if (sticky) {
-        await discordFetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages/${sticky.id}`, {
+        await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${sticky.id}`, {
           method: "DELETE",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
         });
       }
-      return discordFetch(`${DISCORD_API}/channels/${STICKY_PROC_CHANNEL}/messages`, {
+      return discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
         method: "POST",
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
         body: JSON.stringify(STICKY_PROC_EMBED)
@@ -1578,9 +1578,18 @@ export default {
       });
     }
     if (url.pathname === "/admin/send-sticky-proc" && request.method === "GET") {
-      const res = await refreshProcSticky();
-      const data = await res.json();
-      return json({ ok: res.ok, data });
+      const targets = [
+        { name: "SASP SUD", channel_id: STICKY_PROC_CHANNEL },
+        { name: "SASP NORD", channel_id: NORD_COMMAND_CHANNEL }
+      ];
+      const results = [];
+      for (const target of targets) {
+        const res = await refreshProcSticky(target.channel_id);
+        let data = null;
+        try { data = await res.json(); } catch {}
+        results.push({ ...target, ok: res.ok, status: res.status, id: data?.id || null });
+      }
+      return json({ ok: results.every(r => r.ok), results });
     }
     if (url.pathname === "/admin/send-bracelet-recap" && request.method === "GET") {
       try {
