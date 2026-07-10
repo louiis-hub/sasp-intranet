@@ -117,7 +117,10 @@ var DB = {
   },
   async addAgentArme(data) { return getDb().from('agent_armes').insert(data).select().single(); },
   async deleteAgentArme(id) { return getDb().from('agent_armes').delete().eq('id', id); },
-  async deleteAgent(id) { return getDb().from('agents').delete().eq('id', id); },
+  async deleteAgent(id) {
+    await getDb().from('agents').update({ formateur_id: null }).eq('formateur_id', id);
+    return getDb().from('agents').delete().eq('id', id);
+  },
 
   // ── Wiki sections ────────────────────────────────────────────
   async getWikiSections() {
