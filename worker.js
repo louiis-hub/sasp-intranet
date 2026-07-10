@@ -1349,6 +1349,44 @@ export default {
       return data;
     }
 
+    async function getForumChannel(channelId) {
+      const res = await discordFetch(`${DISCORD_API}/channels/${channelId}`, {
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch {}
+      if (!res.ok) throw new Error(`${channelId} (${res.status}) ${text}`);
+      return data;
+    }
+
+    function normalizeForumTag(tag) {
+      return {
+        name: tag.name,
+        moderated: !!tag.moderated,
+        emoji_id: tag.emoji_id || null,
+        emoji_name: tag.emoji_name || null
+      };
+    }
+
+    async function addMissingForumTags(sourceChannelId, targetChannelId) {
+      const source = await getForumChannel(sourceChannelId);
+      const target = await getForumChannel(targetChannelId);
+      const existingNames = new Set((target.available_tags || []).map(t => String(t.name || "").toLowerCase()));
+      const additions = (source.available_tags || [])
+        .filter(t => t.name && !existingNames.has(String(t.name).toLowerCase()))
+        .map(normalizeForumTag);
+      if (!additions.length) return { target: targetChannelId, added: 0 };
+      const merged = (target.available_tags || []).map(normalizeForumTag).concat(additions).slice(0, 20);
+      const res = await discordFetch(`${DISCORD_API}/channels/${targetChannelId}`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ available_tags: merged })
+      });
+      if (!res.ok) throw new Error(`${targetChannelId} (${res.status}) ${await res.text()}`);
+      return { target: targetChannelId, added: additions.length };
+    }
+
     function extractLineValue(content, labelPattern) {
       const match = content.match(new RegExp(labelPattern + "\\s*:\\s*([^\\n]+)", "i"));
       return match ? match[1].trim() : "";
@@ -1472,6 +1510,24 @@ export default {
         ok: true,
         invite_url: `https://discord.com/oauth2/authorize?client_id=${appId}&permissions=${permissions}&integration_type=0&scope=bot+applications.commands`
       });
+    }
+    if (url.pathname === "/admin/sync-judicial-tags" && request.method === "GET") {
+      const results = [];
+      const errors = [];
+      const jobs = [
+        ["proc-nord", "1521565049729187961", NORD_PROC_FORUM_CHANNEL],
+        ["proc-doj", "1521565049729187961", DOJ_PROC_FORUM_CHANNEL],
+        ["bracelet-nord", BRACELET_FORUM_CHANNEL, NORD_BRACELET_FORUM_CHANNEL],
+        ["bracelet-doj", BRACELET_FORUM_CHANNEL, DOJ_BRACELET_FORUM_CHANNEL]
+      ];
+      for (const [name, source, target] of jobs) {
+        try {
+          results.push({ name, ...(await addMissingForumTags(source, target)) });
+        } catch (e) {
+          errors.push({ name, error: e.message });
+        }
+      }
+      return json({ ok: errors.length === 0, results, errors });
     }
 
     // Installer la commande /plainte
