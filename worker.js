@@ -1727,9 +1727,10 @@ export default {
             title: "Demande Procureur",
             components: [
               { type: 1, components: [{ type: 4, custom_id: "suspect", label: "Nom PrÃ©nom du suspect", style: 1, required: true, placeholder: "Ex : John Smith", min_length: 2, max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "chefs_accusation", label: "Chef(s) d'accusation", style: 2, required: true, min_length: 2, max_length: 500 }] },
-              { type: 1, components: [{ type: 4, custom_id: "rapport_arrestation", label: "ID du rapport d'arrestation", style: 1, required: true, placeholder: "Ex : 1234 ou #1234", max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "interpellation_contacts", label: "Interpellation, tÃ©ls et avocat", style: 2, required: true, placeholder: "Heure/date : 10/07/2026 17:30\nTel suspect : 555-0123\nAvocat : Me. Dupont\nTel avocat : 555-0456", max_length: 500 }] }
+              { type: 1, components: [{ type: 4, custom_id: "rapport_chefs", label: "Rapport + chefs d'accusation", style: 2, required: true, placeholder: "Rapport : #1234\nChefs : Outrage, refus d'obtempÃ©rer...", min_length: 2, max_length: 600 }] },
+              { type: 1, components: [{ type: 4, custom_id: "heure_interpellation", label: "Heure/date interpellation", style: 1, required: true, placeholder: "Ex : 10/07/2026 17:30", max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "tel_suspect", label: "TÃ©lÃ©phone du suspect", style: 1, required: true, placeholder: "Ex : 555-0123", max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "avocat_contact", label: "Avocat + numÃ©ro avocat", style: 1, required: false, placeholder: "Ex : Me. Dupont - 555-0456", max_length: 160 }] }
             ]
           }
         });
@@ -1739,22 +1740,21 @@ export default {
       if (interaction.type === 5 && interaction.data.custom_id.startsWith("proc_modal")) {
         const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
         const suspect         = getValue("suspect");
-        const chefsAccusation = getValue("chefs_accusation").slice(0, 500);
-        const rapportArrestation = getValue("rapport_arrestation").replace(/^#/, "");
-        const interpellationContacts = getValue("interpellation_contacts");
-        const extractDetail = (labels, fallback = "Non renseignÃ©") => {
+        const rapportChefs = getValue("rapport_chefs").slice(0, 600);
+        const extractFromBlock = (labels, fallback = "") => {
           const list = Array.isArray(labels) ? labels : [labels];
           for (const label of list) {
             const escaped = String(label).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            const match = interpellationContacts.match(new RegExp(`^\\s*${escaped}\\s*:?\\s*(.+)$`, "im"));
+            const match = rapportChefs.match(new RegExp(`^\\s*${escaped}\\s*:?\\s*(.+)$`, "im"));
             if (match && match[1].trim()) return match[1].trim();
           }
           return fallback;
         };
-        const heureInterpellation = extractDetail(["Heure/date", "Heure et date", "Interpellation"]);
-        const telSuspect = extractDetail(["Tel suspect", "TÃ©l suspect", "Telephone suspect", "TÃ©lÃ©phone suspect", "NumÃ©ro suspect"]);
-        const avocat = extractDetail(["Avocat", "Avocat en charge"], "");
-        const telAvocat = extractDetail(["Tel avocat", "TÃ©l avocat", "Telephone avocat", "TÃ©lÃ©phone avocat", "NumÃ©ro avocat"], "");
+        const rapportArrestation = (extractFromBlock(["Rapport", "ID rapport", "Rapport d'arrestation"]) || "").replace(/^#/, "") || "Non renseignÃ©";
+        const chefsAccusation = (extractFromBlock(["Chefs", "Chef(s) d'accusation", "Accusation"], rapportChefs) || "Non renseignÃ©").slice(0, 500);
+        const heureInterpellation = getValue("heure_interpellation") || "Non renseignÃ©";
+        const telSuspect = getValue("tel_suspect") || "Non renseignÃ©";
+        const avocatContact = getValue("avocat_contact");
 
         const now = new Date();
         const dateStr = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -1768,8 +1768,8 @@ export default {
           if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
         } catch {}
 
-        const avocatBlock = avocat
-          ? `\n**Avocat en charge de l'affaire :** ${avocat}\n\n**Num\u00e9ro de tel. de l'avocat:** ${telAvocat || "Non renseign\u00e9"}\n`
+        const avocatBlock = avocatContact
+          ? `\n**Avocat en charge de l'affaire :** ${avocatContact}\n`
           : "";
         const procContent =
           `<@&1512185605805703188>\n\n` +
@@ -1823,7 +1823,7 @@ export default {
             { name: "ðŸ“‹ Chef(s) d'accusation", value: chefsAccusation, inline: false },
             { name: "ðŸ‘® Agent en charge", value: agentDisplay, inline: true },
             { name: "ðŸ• Interpellation", value: heureInterpellation, inline: true },
-            ...(avocat ? [{ name: "âš–ï¸ Avocat + TÃ©l", value: `${avocat}${telAvocat ? ` - ${telAvocat}` : ""}`, inline: false }] : [])
+            ...(avocatContact ? [{ name: "âš–ï¸ Avocat + TÃ©l", value: avocatContact, inline: false }] : [])
           ], footer: { text: "SASP Â· Proc" }, timestamp: now.toISOString() }] })
         });
         const procLinks = procResults.map(r => `**${r.label}** <#${r.id}>`).join(" | ");
