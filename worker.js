@@ -1475,6 +1475,15 @@ export default {
       return [...threadIds];
     }
 
+    async function closeDiscordThread(threadId) {
+      const res = await discordFetch(`${DISCORD_API}/channels/${threadId}`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ archived: true, locked: true })
+      });
+      if (!res.ok) throw new Error(`${threadId} close (${res.status}) ${await res.text()}`);
+    }
+
     function parseBraceletMessage(content, thread) {
       const text = String(content || "");
       const suspectMatch = text.match(/BRACELET ELECTRONIQUE DE\s+([^\n]+)/i);
@@ -2146,6 +2155,9 @@ export default {
 
         // Applique sur le thread actuel
         await applyTagAndMessage(interaction.channel_id);
+        if (tagName === "AFFAIRE CLOTURER") {
+          try { await closeDiscordThread(interaction.channel_id); } catch {}
+        }
 
         // Si on est dans un thread proc, cherche le bracelet liÃ© et propage
         try {
@@ -2159,8 +2171,9 @@ export default {
             for (const braceletThreadId of braceletThreadIds) {
               await applyTagAndMessage(braceletThreadId);
 
-              // Si affaire clÃ´turÃ©e : ping l'agent qui a posÃ© le bracelet pour lui dire de l'enlever
+              // Si affaire clÃ´turÃ©e : demander confirmation avant de fermer le bracelet
               if (tagName === "AFFAIRE CLOTURER") {
+                let ping = "Agent en charge du bracelet";
                 try {
                   const braceletMsgsRes = await discordFetch(`${DISCORD_API}/channels/${braceletThreadId}/messages?limit=10`, {
                     headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
@@ -2172,26 +2185,21 @@ export default {
                     const poseMatch = firstMsg.content.match(/PosÃ© par : .+?\((\d+)\)/);
                     if (poseMatch) {
                       const agent = await getAgentByMatricule(env, poseMatch[1]);
-                      const ping = agent && agent.discord_id ? `<@${agent.discord_id}>` : `Matricule ${poseMatch[1]}`;
-                      await discordFetch(`${DISCORD_API}/channels/${braceletThreadId}/messages`, {
-                        method: "POST",
-                        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-                        body: JSON.stringify({ content: `${ping} â€” L'affaire est clÃ´turÃ©e, pense Ã  **enlever le bracelet Ã©lectronique**.` })
-                      });
+                      ping = agent && agent.discord_id ? `<@${agent.discord_id}>` : `Matricule ${poseMatch[1]}`;
                     }
                   }
                 } catch {}
-
-                // Fermer (archiver + verrouiller) les deux posts
-                const closeThread = async (tid) => {
-                  await discordFetch(`${DISCORD_API}/channels/${tid}`, {
-                    method: "PATCH",
-                    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({ archived: true, locked: true })
-                  });
-                };
-                await closeThread(interaction.channel_id);
-                await closeThread(braceletThreadId);
+                await discordFetch(`${DISCORD_API}/channels/${braceletThreadId}/messages`, {
+                  method: "POST",
+                  headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    content: `${ping} â€” Le dossier procureur a Ã©tÃ© clÃ´turÃ©. Avez-vous retirÃ© le bracelet Ã©lectronique ?`,
+                    components: [{ type: 1, components: [
+                      { type: 2, style: 3, label: "Oui, bracelet retirÃ©", custom_id: "bracelet_close_confirm_yes" },
+                      { type: 2, style: 4, label: "Non, pas encore", custom_id: "bracelet_close_confirm_no" }
+                    ] }]
+                  })
+                });
               }
             }
           }
@@ -2206,6 +2214,40 @@ export default {
           ], footer: { text: "SASP Â· Proc/Bracelet" }, timestamp: now.toISOString() }] })
         });
         return json({ type: 4, data: { content: `âœ… Statut mis Ã  jour : **${tagName}**`, flags: 64 } });
+      }
+
+      // Confirmation retrait bracelet aprÃ¨s clÃ´ture proc
+      if (interaction.type === 3 && interaction.data.custom_id === "bracelet_close_confirm_yes") {
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        let agentDisplay = `<@${userId}>`;
+        try {
+          const agent = await getAgentByDiscordId(env, userId);
+          if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
+        } catch {}
+
+        await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ content: `âœ… Bracelet confirmÃ© retirÃ© par ${agentDisplay}. Dossier bracelet fermÃ©.` })
+        });
+        await closeDiscordThread(interaction.channel_id);
+        return json({ type: 4, data: { content: "âœ… Bracelet confirmÃ© retirÃ©, dossier bracelet fermÃ©.", flags: 64 } });
+      }
+
+      if (interaction.type === 3 && interaction.data.custom_id === "bracelet_close_confirm_no") {
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        let agentDisplay = `<@${userId}>`;
+        try {
+          const agent = await getAgentByDiscordId(env, userId);
+          if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
+        } catch {}
+
+        await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ content: `âš ï¸ ${agentDisplay} a indiquÃ© que le bracelet n'est pas encore retirÃ©. Merci de le retirer rapidement ou de voir avec le procureur avant fermeture du dossier bracelet.` })
+        });
+        return json({ type: 4, data: { content: "âš ï¸ OK, le dossier bracelet reste ouvert. Retire le bracelet ou vois avec le procureur.", flags: 64 } });
       }
 
       // Bouton pointage bracelet
