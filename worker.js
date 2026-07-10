@@ -1137,7 +1137,10 @@ export default {
     if (url.pathname === "/sync-all-agents" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
-      const { agents } = await request.json();
+      const payload = await request.json();
+      const agents = Array.isArray(payload.agents)
+        ? payload.agents
+        : (payload.agents && typeof payload.agents === "object" ? Object.values(payload.agents) : []);
       const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
       const allCodes = Object.keys(DIVISION_ROLES);
       let ok = 0, errors = 0;
@@ -1179,13 +1182,27 @@ export default {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
       const msgs = await msgsRes.json();
-      const existing = Array.isArray(msgs) && msgs.find(m => m.author?.bot && m.embeds?.[0]?.title?.includes('TÃ©lÃ©phones'));
+      const annuaireMessages = Array.isArray(msgs)
+        ? msgs.filter(m => {
+            const e = m.embeds?.[0] || {};
+            const title = String(e.title || "");
+            const footer = String(e.footer?.text || "");
+            return m.author?.bot && (title.includes("Liste des agents") || footer.includes("SASP Intranet"));
+          })
+        : [];
+      const existing = annuaireMessages[0];
       if (existing) {
         await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${existing.id}`, {
           method: "PATCH",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({ embeds: [embed] })
         });
+        for (const duplicate of annuaireMessages.slice(1)) {
+          await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${duplicate.id}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+        }
       } else {
         await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
           method: "POST",
