@@ -1425,6 +1425,56 @@ export default {
       return match ? match[1].trim() : "";
     }
 
+    function withProcLawyer(content, avocat, telAvocat) {
+      const lawyerBlock = `**Avocat en charge de l'affaire :** ${avocat}\n\n**Num\u00e9ro de tel. de l'avocat:** ${telAvocat}\n\n`;
+      const withoutOldLawyer = String(content || "").replace(/\n*\*\*Avocat en charge de l'affaire :\*\*[\s\S]*?\*\*Num(?:e|é)ro de tel\. de l'avocat:\*\*[^\n]*(?:\n\n)?/i, "\n");
+      return withoutOldLawyer.replace(
+        /(\*\*Num(?:e|é)ros de tel\. du suspect :\*\*[^\n]*\n\n)/i,
+        `$1${lawyerBlock}`
+      );
+    }
+
+    async function updateProcLawyerInThread(threadId, avocat, telAvocat) {
+      const messagesRes = await discordFetch(`${DISCORD_API}/channels/${threadId}/messages?limit=20`, {
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+      });
+      const messagesText = await messagesRes.text();
+      let messages = [];
+      try { messages = messagesText ? JSON.parse(messagesText) : []; } catch {}
+      if (!messagesRes.ok) throw new Error(`${threadId} messages (${messagesRes.status}) ${messagesText}`);
+      const procMsg = Array.isArray(messages)
+        ? messages.find(m => String(m.content || "").includes("Nous sollicitons l'intervention d'un procureur"))
+        : null;
+      if (!procMsg) return false;
+      const patchedContent = withProcLawyer(procMsg.content, avocat, telAvocat);
+      const res = await discordFetch(`${DISCORD_API}/channels/${threadId}/messages/${procMsg.id}`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ content: patchedContent })
+      });
+      if (!res.ok) throw new Error(`${threadId} patch (${res.status}) ${await res.text()}`);
+      return true;
+    }
+
+    async function findActiveProcCopies(threadName) {
+      const forums = new Set(["1521565049729187961", NORD_PROC_FORUM_CHANNEL, DOJ_PROC_FORUM_CHANNEL]);
+      const guilds = [SUD_GUILD_ID, NORD_GUILD_ID, DOJ_GUILD_ID];
+      const threadIds = new Set();
+      for (const guildId of guilds) {
+        try {
+          const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/threads/active`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          if (!res.ok) continue;
+          const data = await res.json();
+          for (const thread of (data.threads || [])) {
+            if (thread.name === threadName && forums.has(thread.parent_id)) threadIds.add(thread.id);
+          }
+        } catch {}
+      }
+      return [...threadIds];
+    }
+
     function parseBraceletMessage(content, thread) {
       const text = String(content || "");
       const suspectMatch = text.match(/BRACELET ELECTRONIQUE DE\s+([^\n]+)/i);
@@ -1910,16 +1960,48 @@ export default {
           if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
         } catch {}
 
-        const avocatMessage = `**Avocat en charge de l'affaire :** ${avocat}\n\n**Num\u00e9ro de tel. de l'avocat:** ${telAvocat}\n\nAjout\u00e9 par : ${agentDisplay}`;
-        const res = await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
+        let threadName = "";
+        try {
+          const threadInfoRes = await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          if (threadInfoRes.ok) {
+            const threadInfo = await threadInfoRes.json();
+            threadName = threadInfo.name || "";
+          }
+        } catch {}
+
+        const threadIds = new Set([interaction.channel_id]);
+        if (threadName) {
+          for (const id of await findActiveProcCopies(threadName)) threadIds.add(id);
+        }
+
+        const updated = [];
+        const errors = [];
+        for (const threadId of threadIds) {
+          try {
+            if (await updateProcLawyerInThread(threadId, avocat, telAvocat)) updated.push(threadId);
+          } catch (e) {
+            errors.push(`${threadId}: ${e.message}`);
+          }
+        }
+        if (!updated.length) {
+          return json({ type: 4, data: { content: `âŒ Impossible de modifier le dossier procureur.${errors.length ? `\n${errors.join("\n").slice(0, 1500)}` : ""}`, flags: 64 } });
+        }
+
+        await discordFetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ content: avocatMessage })
+          body: JSON.stringify({ embeds: [{ title: "âš–ï¸ Avocat ajoutÃ© au dossier procureur", color: 0x2c3e50, fields: [
+            { name: "âš–ï¸ Avocat", value: avocat, inline: true },
+            { name: "ðŸ“ž TÃ©lÃ©phone", value: telAvocat, inline: true },
+            { name: "ðŸ‘® AjoutÃ© par", value: agentDisplay, inline: false },
+            { name: "ðŸ“ Copies modifiÃ©es", value: `${updated.length}`, inline: true }
+          ], footer: { text: "SASP Â· Proc" }, timestamp: new Date().toISOString() }] })
         });
-        if (!res.ok) {
-          return json({ type: 4, data: { content: `âŒ Erreur ajout avocat (${res.status})`, flags: 64 } });
-        }
-        return json({ type: 4, data: { content: "âœ… Avocat ajoutÃ© au dossier.", flags: 64 } });
+
+        const warn = errors.length ? `\nâš ï¸ Certaines copies n'ont pas Ã©tÃ© modifiÃ©es.` : "";
+        return json({ type: 4, data: { content: `âœ… Avocat ajoutÃ© dans le message du dossier et ses copies (${updated.length}).${warn}`, flags: 64 } });
       }
 
       // Bouton bracelet depuis un post proc
