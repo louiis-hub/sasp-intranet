@@ -1110,7 +1110,7 @@ export default {
         const token = request.headers.get("x-log-token");
         if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
         const { discord_ids } = await request.json();
-        const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
         const map = {};
         for (const discordId of (discord_ids || [])) {
           const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
@@ -1282,6 +1282,14 @@ export default {
     const STICKY_PROC_CHANNEL = "1521575058500489478";
     const BRACELET_COMMAND_CHANNEL = "1521575058500489478";
     const BRACELET_FORUM_CHANNEL = "1518656285074128926";
+    const SUD_GUILD_ID = "1500975724750704661";
+    const NORD_GUILD_ID = "1516510943318642950";
+    const DOJ_GUILD_ID = "1512185605805703179";
+    const NORD_COMMAND_CHANNEL = "1525236785293168772";
+    const NORD_PROC_FORUM_CHANNEL = "1525237429613891644";
+    const NORD_BRACELET_FORUM_CHANNEL = "1524218318599487639";
+    const DOJ_PROC_FORUM_CHANNEL = "1517219788781260921";
+    const DOJ_BRACELET_FORUM_CHANNEL = "1525238418097967176";
     const SUBVENTION_CHANNEL = "1523726862075953353";
     const STICKY_PROC_EMBED = { embeds: [{ title: "âš–ï¸ Procureur & bracelet", color: 0x2c3e50, description: "**Commandes disponibles dans ce salon :**\n\nâ€¢ `/proc` â€” crÃ©er une demande procureur complÃ¨te. Le dossier sera automatiquement crÃ©Ã© dans <#1521565049729187961>.\n\nâ€¢ `/bracelet` â€” crÃ©er uniquement un bracelet Ã©lectronique, sans ouvrir de dossier procureur.\n\nPour un dossier procureur dÃ©jÃ  ouvert, utilisez le bouton **Bracelet Ã‰lectronique** dans le thread du `/proc` afin de garder la liaison entre les deux dossiers.", footer: { text: "SASP â€¢ Service judiciaire" } }] };
     async function refreshProcSticky() {
@@ -1301,6 +1309,44 @@ export default {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
         body: JSON.stringify(STICKY_PROC_EMBED)
       });
+    }
+
+    function getSaspOrigin(interaction) {
+      const guildId = interaction.guild_id || "";
+      const channelId = interaction.channel_id || "";
+      if (guildId === NORD_GUILD_ID || channelId === NORD_COMMAND_CHANNEL) {
+        return { key: "nord", label: "SASP NORD", command: NORD_COMMAND_CHANNEL, procForum: NORD_PROC_FORUM_CHANNEL, braceletForum: NORD_BRACELET_FORUM_CHANNEL };
+      }
+      return { key: "sud", label: "SASP SUD", command: BRACELET_COMMAND_CHANNEL, procForum: "1521565049729187961", braceletForum: BRACELET_FORUM_CHANNEL };
+    }
+
+    function getProcDestinations(interaction) {
+      const origin = getSaspOrigin(interaction);
+      return [
+        origin,
+        { key: "doj", label: "DOJ", procForum: DOJ_PROC_FORUM_CHANNEL, braceletForum: DOJ_BRACELET_FORUM_CHANNEL }
+      ];
+    }
+
+    function getBraceletDestinations() {
+      return [
+        { key: "sud", label: "SASP SUD", braceletForum: BRACELET_FORUM_CHANNEL },
+        { key: "nord", label: "SASP NORD", braceletForum: NORD_BRACELET_FORUM_CHANNEL },
+        { key: "doj", label: "DOJ", braceletForum: DOJ_BRACELET_FORUM_CHANNEL }
+      ];
+    }
+
+    async function createForumThread(channelId, name, message) {
+      const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/threads`, {
+        method: "POST",
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ name, message })
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch {}
+      if (!res.ok) throw new Error(`${channelId} (${res.status}) ${text}`);
+      return data;
     }
 
     function extractLineValue(content, labelPattern) {
@@ -1418,11 +1464,20 @@ export default {
       const data = await res.json();
       return json({ ok: res.ok, data });
     }
+    if (url.pathname === "/admin/bot-invite" && request.method === "GET") {
+      const appId = env.DISCORD_APPLICATION_ID;
+      if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+      const permissions = "274878221376";
+      return json({
+        ok: true,
+        invite_url: `https://discord.com/oauth2/authorize?client_id=${appId}&permissions=${permissions}&integration_type=0&scope=bot+applications.commands`
+      });
+    }
 
     // Installer la commande /plainte
     if (url.pathname === "/admin/install-plainte-command" && request.method === "GET") {
       try {
-        const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
@@ -1439,7 +1494,7 @@ export default {
 
     if (url.pathname === "/admin/install-bracelet-command" && request.method === "GET") {
       try {
-        const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
@@ -1455,7 +1510,7 @@ export default {
     }
     if (url.pathname === "/admin/install-subvention-command" && request.method === "GET") {
       try {
-        const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
@@ -1471,7 +1526,7 @@ export default {
     }
     if (url.pathname === "/admin/install-proc-command" && request.method === "GET") {
       try {
-        const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
@@ -1560,6 +1615,9 @@ export default {
 
       // Slash command /proc
       if (interaction.type === 2 && interaction.data.name === "proc") {
+        if (![BRACELET_COMMAND_CHANNEL, NORD_COMMAND_CHANNEL].includes(interaction.channel_id)) {
+          return json({ type: 4, data: { content: `âŒ Utilise cette commande dans <#${BRACELET_COMMAND_CHANNEL}> ou <#${NORD_COMMAND_CHANNEL}>.`, flags: 64 } });
+        }
         return json({
           type: 9,
           data: {
@@ -1604,40 +1662,39 @@ export default {
         ];
         if (avocat) fields.push({ name: "âš–ï¸ Avocat + TÃ©lÃ©phone", value: avocat, inline: false });
 
-        const forumRes = await discordFetch(`${DISCORD_API}/channels/1521565049729187961/threads`, {
-          method: "POST",
-          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: threadTitle,
-            message: {
-              content: "<@&1512410095173238814>",
-              embeds: [{
-                title: "âš–ï¸ Demande Procureur",
-                color: 0x2c3e50,
-                fields,
-                footer: { text: `SASP Â· DÃ©posÃ©e par ${agentDisplay}` },
-                timestamp: now.toISOString()
-              }],
-              components: [
-                { type: 1, components: [{ type: 2, style: 1, label: "ðŸ”— Bracelet Ã‰lectronique", custom_id: "proc_bracelet" }] },
-                { type: 1, components: [
-                  { type: 2, style: 3, label: "âœ… Affaire clÃ´turÃ©e",   custom_id: "proc_tag|AFFAIRE CLOTURER" },
-                  { type: 2, style: 4, label: "ðŸš« Dossier incomplet",  custom_id: "proc_tag|DOSSIER INCOMPLET" },
-                  { type: 2, style: 2, label: "ðŸ”„ Affaire en cours",   custom_id: "proc_tag|AFFAIRE EN COUR" }
-                ]},
-                { type: 1, components: [
-                  { type: 2, style: 2, label: "âš–ï¸ Attente jugement",   custom_id: "proc_tag|ATTENTE DE JUGEMENT" },
-                  { type: 2, style: 2, label: "â³ Attente procureur",  custom_id: "proc_tag|ATTENTE PROCUREUR" }
-                ]}
-              ]
-            }
-          })
-        });
-
-        if (!forumRes.ok) {
-          const err = await forumRes.text();
-          return json({ type: 4, data: { content: `âŒ Erreur crÃ©ation forum (${forumRes.status}): ${err}`, flags: 64 } });
+        const procMessage = {
+          content: "<@&1512410095173238814>",
+          embeds: [{
+            title: "âš–ï¸ Demande Procureur",
+            color: 0x2c3e50,
+            fields,
+            footer: { text: `SASP Â· DÃ©posÃ©e par ${agentDisplay}` },
+            timestamp: now.toISOString()
+          }],
+          components: [
+            { type: 1, components: [{ type: 2, style: 1, label: "ðŸ”— Bracelet Ã‰lectronique", custom_id: "proc_bracelet" }] },
+            { type: 1, components: [
+              { type: 2, style: 3, label: "âœ… Affaire clÃ´turÃ©e",   custom_id: "proc_tag|AFFAIRE CLOTURER" },
+              { type: 2, style: 4, label: "ðŸš« Dossier incomplet",  custom_id: "proc_tag|DOSSIER INCOMPLET" },
+              { type: 2, style: 2, label: "ðŸ”„ Affaire en cours",   custom_id: "proc_tag|AFFAIRE EN COUR" }
+            ]},
+            { type: 1, components: [
+              { type: 2, style: 2, label: "âš–ï¸ Attente jugement",   custom_id: "proc_tag|ATTENTE DE JUGEMENT" },
+              { type: 2, style: 2, label: "â³ Attente procureur",  custom_id: "proc_tag|ATTENTE PROCUREUR" }
+            ]}
+          ]
+        };
+        const procResults = [];
+        const procErrors = [];
+        for (const dest of getProcDestinations(interaction)) {
+          try {
+            const data = await createForumThread(dest.procForum, threadTitle, procMessage);
+            procResults.push({ label: dest.label, id: data.id });
+          } catch (e) {
+            procErrors.push(`${dest.label}: ${e.message}`);
+          }
         }
+        if (!procResults.length) return json({ type: 4, data: { content: `âŒ Erreur crÃ©ation forum : ${procErrors.join(" | ")}`, flags: 64 } });
         await discordFetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
@@ -1650,13 +1707,15 @@ export default {
             ...(avocat ? [{ name: "âš–ï¸ Avocat + TÃ©l", value: avocat, inline: false }] : [])
           ], footer: { text: "SASP Â· Proc" }, timestamp: now.toISOString() }] })
         });
-        return json({ type: 4, data: { content: `âœ… Demande procureur crÃ©Ã©e pour **${suspect}**.`, flags: 64 } });
+        const procLinks = procResults.map(r => `**${r.label}** <#${r.id}>`).join(" | ");
+        const procWarn = procErrors.length ? `\nâš ï¸ Non envoyÃ© : ${procErrors.join(" | ")}` : "";
+        return json({ type: 4, data: { content: `âœ… Demande procureur crÃ©Ã©e pour **${suspect}** : ${procLinks}${procWarn}`, flags: 64 } });
       }
 
       // Slash command /bracelet standalone
       if (interaction.type === 2 && interaction.data.name === "bracelet") {
-        if (interaction.channel_id !== BRACELET_COMMAND_CHANNEL) {
-          return json({ type: 4, data: { content: `âŒ Utilise cette commande dans <#${BRACELET_COMMAND_CHANNEL}>.`, flags: 64 } });
+        if (![BRACELET_COMMAND_CHANNEL, NORD_COMMAND_CHANNEL].includes(interaction.channel_id)) {
+          return json({ type: 4, data: { content: `âŒ Utilise cette commande dans <#${BRACELET_COMMAND_CHANNEL}> ou <#${NORD_COMMAND_CHANNEL}>.`, flags: 64 } });
         }
         const now = new Date();
         const dateDefault = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -1694,27 +1753,26 @@ export default {
 
         const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nPos\u00e9 le : ${date}\nNum\u00e9ro de t\u00e9l\u00e9phone : ${tel}\nRaison : ${raison}\nDemande procureur : ${accordProc}\nPos\u00e9 par : ${agentDisplay}\n\nPensez \u00e0 bien noter quand les individus viennent pointer\n\n\u2139\ufe0f Les bracelets peuvent \u00eatre activ\u00e9s pour voir la position une fois toutes les 24h via un message "BIP" sur le t\u00e9l\u00e9phone de l'individu.`;
 
-        const forumRes = await discordFetch(`${DISCORD_API}/channels/${BRACELET_FORUM_CHANNEL}/threads`, {
-          method: "POST",
-          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: suspect,
-            message: {
-              content,
-              components: [
-                { type: 1, components: [{ type: 2, style: 3, label: "ðŸ“ Pointage", custom_id: "bracelet_pointage" }] }
-              ]
-            }
-          })
-        });
-
-        if (!forumRes.ok) {
-          const err = await forumRes.text();
-          return json({ type: 4, data: { content: `âŒ Erreur crÃ©ation bracelet (${forumRes.status}): ${err}`, flags: 64 } });
+        const braceletMessage = {
+          content,
+          components: [
+            { type: 1, components: [{ type: 2, style: 3, label: "ðŸ“ Pointage", custom_id: "bracelet_pointage" }] }
+          ]
+        };
+        const braceletResults = [];
+        const braceletErrors = [];
+        for (const dest of getBraceletDestinations()) {
+          try {
+            const data = await createForumThread(dest.braceletForum, suspect, braceletMessage);
+            braceletResults.push({ label: dest.label, id: data.id });
+          } catch (e) {
+            braceletErrors.push(`${dest.label}: ${e.message}`);
+          }
         }
-        const braceletData = await forumRes.json();
-        const braceletThreadId = braceletData.id;
-        return json({ type: 4, data: { content: `âœ… Bracelet Ã©lectronique crÃ©Ã© pour **${suspect}** : <#${braceletThreadId}>`, flags: 64 } });
+        if (!braceletResults.length) return json({ type: 4, data: { content: `âŒ Erreur crÃ©ation bracelet : ${braceletErrors.join(" | ")}`, flags: 64 } });
+        const braceletLinks = braceletResults.map(r => `**${r.label}** <#${r.id}>`).join(" | ");
+        const braceletWarn = braceletErrors.length ? `\nâš ï¸ Non envoyÃ© : ${braceletErrors.join(" | ")}` : "";
+        return json({ type: 4, data: { content: `âœ… Bracelet Ã©lectronique crÃ©Ã© pour **${suspect}** : ${braceletLinks}${braceletWarn}`, flags: 64 } });
       }
 
       // Bouton bracelet depuis un post proc
@@ -1761,31 +1819,29 @@ export default {
         const procThreadId = interaction.channel_id;
         const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nDossier proc li\u00e9 : <#${procThreadId}>\n\nPos\u00e9 le : ${date}\nNum\u00e9ro de t\u00e9l\u00e9phone : ${tel}\nRaison : ${raison}\nDemande procureur : ${accordProc}\nPos\u00e9 par : ${agentDisplay}\n\nPensez \u00e0 bien noter quand les individus viennent pointer\n\n\u2139\ufe0f Les bracelets peuvent \u00eatre activ\u00e9s pour voir la position une fois toutes les 24h via un message "BIP" sur le t\u00e9l\u00e9phone de l'individu.`;
 
-        const forumRes = await discordFetch(`${DISCORD_API}/channels/${BRACELET_FORUM_CHANNEL}/threads`, {
-          method: "POST",
-          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: suspect,
-            message: {
-              content,
-              components: [
-                { type: 1, components: [{ type: 2, style: 3, label: "ðŸ“ Pointage", custom_id: "bracelet_pointage" }] }
-              ]
-            }
-          })
-        });
-
-        if (!forumRes.ok) {
-          const err = await forumRes.text();
-          return json({ type: 4, data: { content: `âŒ Erreur crÃ©ation bracelet (${forumRes.status}): ${err}`, flags: 64 } });
+        const braceletMessage = {
+          content,
+          components: [
+            { type: 1, components: [{ type: 2, style: 3, label: "ðŸ“ Pointage", custom_id: "bracelet_pointage" }] }
+          ]
+        };
+        const braceletResults = [];
+        const braceletErrors = [];
+        for (const dest of getBraceletDestinations()) {
+          try {
+            const data = await createForumThread(dest.braceletForum, suspect, braceletMessage);
+            braceletResults.push({ label: dest.label, id: data.id });
+          } catch (e) {
+            braceletErrors.push(`${dest.label}: ${e.message}`);
+          }
         }
-        const braceletData = await forumRes.json();
-        const braceletThreadId = braceletData.id;
+        if (!braceletResults.length) return json({ type: 4, data: { content: `âŒ Erreur crÃ©ation bracelet : ${braceletErrors.join(" | ")}`, flags: 64 } });
+        const braceletLinks = braceletResults.map(r => `**${r.label}** <#${r.id}>`).join(" | ");
         // Poster le lien du bracelet dans le thread proc pour relier les deux
         await discordFetch(`${DISCORD_API}/channels/${procThreadId}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ content: `ðŸ”— Bracelet crÃ©Ã© : <#${braceletThreadId}>` })
+          body: JSON.stringify({ content: `ðŸ”— Bracelet crÃ©Ã© : ${braceletLinks}` })
         });
         await discordFetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
@@ -1799,7 +1855,8 @@ export default {
             { name: "ðŸ‘® PosÃ© par", value: agentDisplay, inline: true }
           ], footer: { text: "SASP Â· Bracelet" }, timestamp: new Date().toISOString() }] })
         });
-        return json({ type: 4, data: { content: `âœ… Bracelet Ã©lectronique crÃ©Ã© pour **${suspect}**.`, flags: 64 } });
+        const braceletWarn = braceletErrors.length ? `\nâš ï¸ Non envoyÃ© : ${braceletErrors.join(" | ")}` : "";
+        return json({ type: 4, data: { content: `âœ… Bracelet Ã©lectronique crÃ©Ã© pour **${suspect}** : ${braceletLinks}${braceletWarn}`, flags: 64 } });
       }
 
       // Boutons tags proc/bracelet
@@ -1857,11 +1914,10 @@ export default {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
           });
           const msgs = await msgsRes.json();
-          const braceletLinkMsg = Array.isArray(msgs) && msgs.find(m => m.content && m.content.includes("ðŸ”— Bracelet crÃ©Ã© : <#"));
+          const braceletLinkMsg = Array.isArray(msgs) && msgs.find(m => m.content && m.content.includes("Bracelet") && m.content.includes("<#"));
           if (braceletLinkMsg) {
-            const match = braceletLinkMsg.content.match(/<#(\d+)>/);
-            if (match) {
-              const braceletThreadId = match[1];
+            const braceletThreadIds = [...braceletLinkMsg.content.matchAll(/<#(\d+)>/g)].map(m => m[1]);
+            for (const braceletThreadId of braceletThreadIds) {
               await applyTagAndMessage(braceletThreadId);
 
               // Si affaire clÃ´turÃ©e : ping l'agent qui a posÃ© le bracelet pour lui dire de l'enlever
