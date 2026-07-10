@@ -3749,9 +3749,13 @@ async function renderPointeuseHistorique() {
           fmtClock(p.clock_in) + ' → ' + (p.clock_out ? fmtClock(p.clock_out) : '<span style="color:var(--gold)">en cours</span>') +
         '</div>';
       }).join('');
+      var iban = a.iban || '';
+      var ibanCell = iban
+        ? '<div style="display:flex;align-items:center;gap:6px;white-space:nowrap"><code style="font-family:monospace;font-size:.8rem;color:var(--t2)">' + esc(iban) + '</code><button class="btn btn-ghost btn-sm" title="Copier l IBAN" onclick="event.stopPropagation();copyIban(\'' + esc(String(iban).replace(/\\/g, '\\\\').replace(/'/g, "\\'")) + '\')">Copier</button></div>'
+        : '<span style="font-family:monospace;font-size:.8rem;color:var(--t3)">—</span>';
       return '<tr style="' + (isPaid ? 'opacity:.5' : '') + '">' +
         '<td style="white-space:nowrap">' + dot + ' <strong>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule || '') + '</small></td>' +
-        '<td style="font-family:monospace;font-size:.8rem;color:var(--t2)">' + esc(a.iban || '—') + '</td>' +
+        '<td>' + ibanCell + '</td>' +
         '<td>' + (sessionsHtml || '<span style="color:var(--t3)">—</span>') + '</td>' +
         '<td style="text-align:center"><strong>' + fmtSec(sec) + '</strong>' + (entry.ongoing ? ' <span style="color:var(--gold);font-size:.75rem">+en cours</span>' : '') + '</td>' +
         '<td style="text-align:center;color:var(--gold);font-weight:700">' + fmtMoney(sal) + '</td>' +
@@ -3795,6 +3799,34 @@ function togglePaidHisto(key, cb) {
   else localStorage.removeItem(key);
   var row = cb.closest('tr');
   if (row) row.style.opacity = cb.checked ? '.5' : '';
+}
+
+function copyIban(iban) {
+  iban = String(iban || '').trim();
+  if (!iban) { toast('Aucun IBAN a copier.', 'info'); return; }
+  function done() { toast('IBAN copie.', 'success'); }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(iban).then(done).catch(function(){ fallbackCopyText(iban, done); });
+  } else {
+    fallbackCopyText(iban, done);
+  }
+}
+
+function fallbackCopyText(text, onDone) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    if (onDone) onDone();
+  } catch(e) {
+    toast('Copie impossible, selectionne l IBAN manuellement.', 'error');
+  }
+  document.body.removeChild(ta);
 }
 
 async function setPrimeHisto(key, value) {
