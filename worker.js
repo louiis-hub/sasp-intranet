@@ -1727,10 +1727,10 @@ export default {
             title: "Demande Procureur",
             components: [
               { type: 1, components: [{ type: 4, custom_id: "suspect", label: "Nom PrÃ©nom du suspect", style: 1, required: true, placeholder: "Ex : John Smith", min_length: 2, max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "rapport_chefs", label: "Rapport + chefs d'accusation", style: 2, required: true, placeholder: "Rapport : #1234\nChefs : Outrage, refus d'obtempÃ©rer...", min_length: 2, max_length: 600 }] },
+              { type: 1, components: [{ type: 4, custom_id: "rapport_arrestation", label: "ID du rapport d'arrestation", style: 1, required: true, placeholder: "Ex : 1234 ou #1234", max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "chefs_accusation", label: "Chef(s) d'accusation", style: 2, required: true, placeholder: "Ex : Outrage, refus d'obtempÃ©rer...", min_length: 2, max_length: 500 }] },
               { type: 1, components: [{ type: 4, custom_id: "heure_interpellation", label: "Heure/date interpellation", style: 1, required: true, placeholder: "Ex : 10/07/2026 17:30", max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "tel_suspect", label: "TÃ©lÃ©phone du suspect", style: 1, required: true, placeholder: "Ex : 555-0123", max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "avocat_contact", label: "Avocat + numÃ©ro avocat", style: 1, required: false, placeholder: "Ex : Me. Dupont - 555-0456", max_length: 160 }] }
+              { type: 1, components: [{ type: 4, custom_id: "tel_suspect", label: "TÃ©lÃ©phone du suspect", style: 1, required: true, placeholder: "Ex : 555-0123", max_length: 80 }] }
             ]
           }
         });
@@ -1740,21 +1740,10 @@ export default {
       if (interaction.type === 5 && interaction.data.custom_id.startsWith("proc_modal")) {
         const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
         const suspect         = getValue("suspect");
-        const rapportChefs = getValue("rapport_chefs").slice(0, 600);
-        const extractFromBlock = (labels, fallback = "") => {
-          const list = Array.isArray(labels) ? labels : [labels];
-          for (const label of list) {
-            const escaped = String(label).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            const match = rapportChefs.match(new RegExp(`^\\s*${escaped}\\s*:?\\s*(.+)$`, "im"));
-            if (match && match[1].trim()) return match[1].trim();
-          }
-          return fallback;
-        };
-        const rapportArrestation = (extractFromBlock(["Rapport", "ID rapport", "Rapport d'arrestation"]) || "").replace(/^#/, "") || "Non renseignÃ©";
-        const chefsAccusation = (extractFromBlock(["Chefs", "Chef(s) d'accusation", "Accusation"], rapportChefs) || "Non renseignÃ©").slice(0, 500);
+        const rapportArrestation = (getValue("rapport_arrestation") || "Non renseignÃ©").replace(/^#/, "");
+        const chefsAccusation = (getValue("chefs_accusation") || "Non renseignÃ©").slice(0, 500);
         const heureInterpellation = getValue("heure_interpellation") || "Non renseignÃ©";
         const telSuspect = getValue("tel_suspect") || "Non renseignÃ©";
-        const avocatContact = getValue("avocat_contact");
 
         const now = new Date();
         const dateStr = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -1768,9 +1757,6 @@ export default {
           if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
         } catch {}
 
-        const avocatBlock = avocatContact
-          ? `\n**Avocat en charge de l'affaire :** ${avocatContact}\n`
-          : "";
         const procContent =
           `<@&1512185605805703188>\n\n` +
           `**Origine :** ${origin.label}\n\n` +
@@ -1781,14 +1767,16 @@ export default {
           `**Agent en charge :** ${agentDisplay}\n\n` +
           `**Heure et date de l'interpellation :** ${heureInterpellation}\n\n` +
           `**Num\u00e9ros de tel. du suspect :** ${telSuspect}\n` +
-          avocatBlock +
           `\n` +
           `Nous sommes actuellement dans l'attente d'une d\u00e9cision du bureau du procureur concernant cette proc\u00e9dure. Merci de bien vouloir prendre connaissance du dossier et nous communiquer vos instructions d\u00e8s que possible.`;
 
         const procMessage = {
           content: procContent,
           components: [
-            { type: 1, components: [{ type: 2, style: 1, label: "ðŸ”— Bracelet Ã‰lectronique", custom_id: "proc_bracelet" }] },
+            { type: 1, components: [
+              { type: 2, style: 1, label: "ðŸ”— Bracelet Ã‰lectronique", custom_id: "proc_bracelet" },
+              { type: 2, style: 2, label: "âš–ï¸ Ajouter avocat", custom_id: "proc_add_avocat" }
+            ] },
             { type: 1, components: [
               { type: 2, style: 3, label: "âœ… Affaire clÃ´turÃ©e",   custom_id: "proc_tag|AFFAIRE CLOTURER" },
               { type: 2, style: 4, label: "ðŸš« Dossier incomplet",  custom_id: "proc_tag|DOSSIER INCOMPLET" },
@@ -1822,8 +1810,7 @@ export default {
             { name: "ðŸ“„ Rapport", value: `#${rapportArrestation}`, inline: true },
             { name: "ðŸ“‹ Chef(s) d'accusation", value: chefsAccusation, inline: false },
             { name: "ðŸ‘® Agent en charge", value: agentDisplay, inline: true },
-            { name: "ðŸ• Interpellation", value: heureInterpellation, inline: true },
-            ...(avocatContact ? [{ name: "âš–ï¸ Avocat + TÃ©l", value: avocatContact, inline: false }] : [])
+            { name: "ðŸ• Interpellation", value: heureInterpellation, inline: true }
           ], footer: { text: "SASP Â· Proc" }, timestamp: now.toISOString() }] })
         });
         const procLinks = procResults.map(r => `**${r.label}** <#${r.id}>`).join(" | ");
@@ -1894,6 +1881,45 @@ export default {
         const braceletLinks = braceletResults.map(r => `**${r.label}** <#${r.id}>`).join(" | ");
         const braceletWarn = braceletErrors.length ? `\nâš ï¸ Non envoyÃ© : ${braceletErrors.join(" | ")}` : "";
         return json({ type: 4, data: { content: `âœ… Bracelet Ã©lectronique crÃ©Ã© pour **${suspect}** : ${braceletLinks}${braceletWarn}`, flags: 64 } });
+      }
+
+      // Bouton avocat depuis un post proc
+      if (interaction.type === 3 && interaction.data.custom_id === "proc_add_avocat") {
+        return json({
+          type: 9,
+          data: {
+            custom_id: "proc_avocat_modal",
+            title: "Ajouter avocat",
+            components: [
+              { type: 1, components: [{ type: 4, custom_id: "proc_avocat_nom", label: "Avocat en charge", style: 1, required: true, placeholder: "Ex : Me. Dupont", max_length: 100 }] },
+              { type: 1, components: [{ type: 4, custom_id: "proc_avocat_tel", label: "NumÃ©ro de tel. avocat", style: 1, required: true, placeholder: "Ex : 555-0456", max_length: 60 }] }
+            ]
+          }
+        });
+      }
+
+      // Modal avocat depuis un post proc
+      if (interaction.type === 5 && interaction.data.custom_id === "proc_avocat_modal") {
+        const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
+        const avocat = getValue("proc_avocat_nom");
+        const telAvocat = getValue("proc_avocat_tel");
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        let agentDisplay = `<@${userId}>`;
+        try {
+          const agent = await getAgentByDiscordId(env, userId);
+          if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
+        } catch {}
+
+        const avocatMessage = `**Avocat en charge de l'affaire :** ${avocat}\n\n**Num\u00e9ro de tel. de l'avocat:** ${telAvocat}\n\nAjout\u00e9 par : ${agentDisplay}`;
+        const res = await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ content: avocatMessage })
+        });
+        if (!res.ok) {
+          return json({ type: 4, data: { content: `âŒ Erreur ajout avocat (${res.status})`, flags: 64 } });
+        }
+        return json({ type: 4, data: { content: "âœ… Avocat ajoutÃ© au dossier.", flags: 64 } });
       }
 
       // Bouton bracelet depuis un post proc
