@@ -1838,13 +1838,13 @@ export default {
           `\n` +
           `Nous sommes actuellement dans l'attente d'une d\u00e9cision du bureau du procureur concernant cette proc\u00e9dure. Merci de bien vouloir prendre connaissance du dossier et nous communiquer vos instructions d\u00e8s que possible.`;
 
-        const procMessage = {
-          content: procContent,
-          components: [
+        const procUtilityComponents = [
             { type: 1, components: [
               { type: 2, style: 1, label: "ðŸ”— Bracelet Ã‰lectronique", custom_id: "proc_bracelet" },
               { type: 2, style: 2, label: "âš–ï¸ Ajouter avocat", custom_id: "proc_add_avocat" }
-            ] },
+            ] }
+        ];
+        const procDecisionComponents = [
             { type: 1, components: [
               { type: 2, style: 3, label: "âœ… Affaire clÃ´turÃ©e",   custom_id: "proc_tag|AFFAIRE CLOTURER" },
               { type: 2, style: 4, label: "ðŸš« Dossier incomplet",  custom_id: "proc_tag|DOSSIER INCOMPLET" },
@@ -1854,14 +1854,19 @@ export default {
               { type: 2, style: 2, label: "âš–ï¸ Attente jugement",   custom_id: "proc_tag|ATTENTE DE JUGEMENT" },
               { type: 2, style: 2, label: "â³ Attente procureur",  custom_id: "proc_tag|ATTENTE PROCUREUR" }
             ]}
-          ]
-        };
+        ];
+        const procMessage = { content: procContent, components: procUtilityComponents };
         const procResults = [];
         const procErrors = [];
         for (const dest of getProcDestinations(interaction)) {
           try {
             const originTagIds = await ensureForumTags(dest.procForum, [origin.label]);
-            const data = await createForumThread(dest.procForum, threadTitle, procMessage, originTagIds);
+            const data = await createForumThread(
+              dest.procForum,
+              threadTitle,
+              dest.key === "doj" ? { ...procMessage, components: procUtilityComponents.concat(procDecisionComponents) } : procMessage,
+              originTagIds
+            );
             procResults.push({ label: dest.label, id: data.id });
           } catch (e) {
             procErrors.push(`${dest.label}: ${e.message}`);
@@ -2141,6 +2146,16 @@ export default {
         };
         const msg = tagMessages[tagName] || `**${tagName}**`;
         const now = new Date();
+        let threadName = "";
+        try {
+          const threadInfoRes = await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          if (threadInfoRes.ok) {
+            const threadInfo = await threadInfoRes.json();
+            threadName = threadInfo.name || "";
+          }
+        } catch {}
 
         const applyTagAndMessage = async (threadId) => {
           try {
@@ -2162,22 +2177,36 @@ export default {
           });
         };
 
-        // Applique sur le thread actuel
-        await applyTagAndMessage(interaction.channel_id);
-        if (tagName === "AFFAIRE CLOTURER") {
-          try { await closeDiscordThread(interaction.channel_id); } catch {}
+        const procThreadIds = new Set([interaction.channel_id]);
+        if (threadName) {
+          for (const id of await findActiveProcCopies(threadName)) procThreadIds.add(id);
         }
 
-        // Si on est dans un thread proc, cherche le bracelet liÃ© et propage
+        // Applique sur toutes les copies proc retrouvees
+        for (const procThreadId of procThreadIds) {
+          await applyTagAndMessage(procThreadId);
+        }
+        if (tagName === "AFFAIRE CLOTURER") {
+          for (const procThreadId of procThreadIds) {
+            try { await closeDiscordThread(procThreadId); } catch {}
+          }
+        }
+
+        // Cherche les bracelets lies depuis toutes les copies proc et propage
         try {
-          const msgsRes = await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages?limit=50`, {
-            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
-          });
-          const msgs = await msgsRes.json();
-          const braceletLinkMsg = Array.isArray(msgs) && msgs.find(m => m.content && m.content.includes("Bracelet") && m.content.includes("<#"));
-          if (braceletLinkMsg) {
-            const braceletThreadIds = [...braceletLinkMsg.content.matchAll(/<#(\d+)>/g)].map(m => m[1]);
-            for (const braceletThreadId of braceletThreadIds) {
+          const braceletThreadIds = new Set();
+          for (const procThreadId of procThreadIds) {
+            const msgsRes = await discordFetch(`${DISCORD_API}/channels/${procThreadId}/messages?limit=50`, {
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+            });
+            if (!msgsRes.ok) continue;
+            const msgs = await msgsRes.json();
+            const braceletLinkMsg = Array.isArray(msgs) && msgs.find(m => m.content && m.content.includes("Bracelet") && m.content.includes("<#"));
+            if (braceletLinkMsg) {
+              for (const match of braceletLinkMsg.content.matchAll(/<#(\d+)>/g)) braceletThreadIds.add(match[1]);
+            }
+          }
+          for (const braceletThreadId of braceletThreadIds) {
               await applyTagAndMessage(braceletThreadId);
 
               // Si affaire clÃ´turÃ©e : demander confirmation avant de fermer le bracelet
@@ -2210,7 +2239,6 @@ export default {
                   })
                 });
               }
-            }
           }
         } catch {}
 
