@@ -1339,7 +1339,7 @@ export default {
     const ORIGIN_FORUM_TAGS = ["SASP NORD", "SASP SUD"];
 
     async function createForumThread(channelId, name, message, appliedTagIds = []) {
-      const payload = { name, message };
+      const payload = { name: String(name || "Dossier").slice(0, 100), message };
       if (appliedTagIds.length) payload.applied_tags = appliedTagIds;
       const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/threads`, {
         method: "POST",
@@ -1727,10 +1727,10 @@ export default {
             title: "Demande Procureur",
             components: [
               { type: 1, components: [{ type: 4, custom_id: "suspect", label: "Nom PrÃ©nom du suspect", style: 1, required: true, placeholder: "Ex : John Smith", min_length: 2, max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "tel_suspect", label: "NumÃ©ro de tÃ©lÃ©phone du suspect", style: 1, required: true, placeholder: "Ex : 555-0123", max_length: 30 }] },
-              { type: 1, components: [{ type: 4, custom_id: "chefs_accusation", label: "Chef(s) d'accusation", style: 2, required: true, min_length: 2, max_length: 1000 }] },
-              { type: 1, components: [{ type: 4, custom_id: "avocat", label: "Avocat + TÃ©lÃ©phone (si reprÃ©sentÃ©)", style: 1, required: false, placeholder: "Ex : Me. Dupont â€” 555-0123", max_length: 150 }] },
-              { type: 1, components: [{ type: 4, custom_id: "heure_faits", label: "Heure des faits (HH:MM)", style: 1, required: true, placeholder: "Ex : 17:30", max_length: 10 }] }
+              { type: 1, components: [{ type: 4, custom_id: "chefs_accusation", label: "Chef(s) d'accusation", style: 2, required: true, min_length: 2, max_length: 500 }] },
+              { type: 1, components: [{ type: 4, custom_id: "rapport_arrestation", label: "ID du rapport d'arrestation", style: 1, required: true, placeholder: "Ex : 1234 ou #1234", max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "interpellation_contacts", label: "Interpellation / tÃ©lÃ©phones / avocat", style: 2, required: true, placeholder: "Heure/date : 10/07/2026 17:30\nTel suspect : 555-0123\nAvocat : Me. Dupont (si reprÃ©sentÃ©)\nTel avocat : 555-0456", max_length: 500 }] },
+              { type: 1, components: [{ type: 4, custom_id: "resume_faits", label: "RÃ©sumÃ© rapide des faits", style: 2, required: true, min_length: 5, max_length: 700 }] }
             ]
           }
         });
@@ -1740,15 +1740,28 @@ export default {
       if (interaction.type === 5 && interaction.data.custom_id.startsWith("proc_modal")) {
         const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
         const suspect         = getValue("suspect");
-        const telSuspect      = getValue("tel_suspect");
-        const chefsAccusation = getValue("chefs_accusation");
-        const avocat          = getValue("avocat");
-        const heureFaits      = getValue("heure_faits");
+        const chefsAccusation = getValue("chefs_accusation").slice(0, 500);
+        const rapportArrestation = getValue("rapport_arrestation").replace(/^#/, "");
+        const interpellationContacts = getValue("interpellation_contacts");
+        const resumeFaits = getValue("resume_faits").slice(0, 700);
+        const extractDetail = (labels, fallback = "Non renseignÃ©") => {
+          const list = Array.isArray(labels) ? labels : [labels];
+          for (const label of list) {
+            const escaped = String(label).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const match = interpellationContacts.match(new RegExp(`^\\s*${escaped}\\s*:?\\s*(.+)$`, "im"));
+            if (match && match[1].trim()) return match[1].trim();
+          }
+          return fallback;
+        };
+        const heureInterpellation = extractDetail(["Heure/date", "Heure et date", "Interpellation"]);
+        const telSuspect = extractDetail(["Tel suspect", "TÃ©l suspect", "Telephone suspect", "TÃ©lÃ©phone suspect", "NumÃ©ro suspect"]);
+        const avocat = extractDetail(["Avocat", "Avocat en charge"], "");
+        const telAvocat = extractDetail(["Tel avocat", "TÃ©l avocat", "Telephone avocat", "TÃ©lÃ©phone avocat", "NumÃ©ro avocat"], "");
 
         const now = new Date();
         const dateStr = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
         const origin = getSaspOrigin(interaction);
-        const threadTitle = `[${origin.label}] ${suspect} - ${dateStr} - ${heureFaits}`;
+        const threadTitle = `[${origin.label}] ${suspect} - ${dateStr} - ${heureInterpellation}`;
 
         const userId = interaction.member?.user?.id || interaction.user?.id;
         let agentDisplay = `<@${userId}>`;
@@ -1757,24 +1770,26 @@ export default {
           if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
         } catch {}
 
-        const fields = [
-          { name: "Origine", value: origin.label, inline: true },
-          { name: "ðŸ§‘ Suspect", value: suspect, inline: false },
-          { name: "ðŸ“ž TÃ©lÃ©phone suspect", value: telSuspect, inline: false },
-          { name: "ðŸ“‹ Chef(s) d'accusation", value: chefsAccusation, inline: false },
-          { name: "ðŸ‘® Agent en charge", value: agentDisplay, inline: false }
-        ];
-        if (avocat) fields.push({ name: "âš–ï¸ Avocat + TÃ©lÃ©phone", value: avocat, inline: false });
+        const avocatBlock = avocat
+          ? `\n**Avocat en charge de l'affaire :** ${avocat}\n\n**Num\u00e9ro de tel. de l'avocat:** ${telAvocat || "Non renseign\u00e9"}\n`
+          : "";
+        const procContent =
+          `<@&1512185605805703188>\n\n` +
+          `**Origine :** ${origin.label}\n\n` +
+          `Nous sollicitons l'intervention d'un procureur concernant une affaire n\u00e9cessitant une validation judiciaire.\n\n` +
+          `**Suspect :** ${suspect}\n\n` +
+          `**Chef(s) d'accusation :** ${chefsAccusation}\n\n` +
+          `**Rapport d'arrestation :** #${rapportArrestation}\n\n` +
+          `**Agent en charge :** ${agentDisplay}\n\n` +
+          `**Heure et date de l'interpellation :** ${heureInterpellation}\n\n` +
+          `**Num\u00e9ros de tel. du suspect :** ${telSuspect}\n` +
+          avocatBlock +
+          `\n**R\u00e9sum\u00e9 des faits :**\n\n` +
+          `${resumeFaits}\n\n` +
+          `Nous sommes actuellement dans l'attente d'une d\u00e9cision du bureau du procureur concernant cette proc\u00e9dure. Merci de bien vouloir prendre connaissance du dossier et nous communiquer vos instructions d\u00e8s que possible.`;
 
         const procMessage = {
-          content: "<@&1512410095173238814>",
-          embeds: [{
-            title: "âš–ï¸ Demande Procureur",
-            color: 0x2c3e50,
-            fields,
-            footer: { text: `${origin.label} Â· DÃ©posÃ©e par ${agentDisplay}` },
-            timestamp: now.toISOString()
-          }],
+          content: procContent,
           components: [
             { type: 1, components: [{ type: 2, style: 1, label: "ðŸ”— Bracelet Ã‰lectronique", custom_id: "proc_bracelet" }] },
             { type: 1, components: [
@@ -1807,10 +1822,12 @@ export default {
             { name: "Origine", value: origin.label, inline: true },
             { name: "ðŸ§‘ Suspect", value: suspect, inline: true },
             { name: "ðŸ“ž TÃ©lÃ©phone", value: telSuspect, inline: true },
+            { name: "ðŸ“„ Rapport", value: `#${rapportArrestation}`, inline: true },
             { name: "ðŸ“‹ Chef(s) d'accusation", value: chefsAccusation, inline: false },
             { name: "ðŸ‘® Agent en charge", value: agentDisplay, inline: true },
-            { name: "ðŸ• Heure des faits", value: heureFaits, inline: true },
-            ...(avocat ? [{ name: "âš–ï¸ Avocat + TÃ©l", value: avocat, inline: false }] : [])
+            { name: "ðŸ• Interpellation", value: heureInterpellation, inline: true },
+            ...(avocat ? [{ name: "âš–ï¸ Avocat + TÃ©l", value: `${avocat}${telAvocat ? ` - ${telAvocat}` : ""}`, inline: false }] : []),
+            { name: "ðŸ“ RÃ©sumÃ©", value: resumeFaits.slice(0, 1024), inline: false }
           ], footer: { text: "SASP Â· Proc" }, timestamp: now.toISOString() }] })
         });
         const procLinks = procResults.map(r => `**${r.label}** <#${r.id}>`).join(" | ");
@@ -1885,12 +1902,16 @@ export default {
 
       // Bouton bracelet depuis un post proc
       if (interaction.type === 3 && interaction.data.custom_id === "proc_bracelet") {
-        const embed = interaction.message?.embeds?.[0] || {};
-        const getField = (kw) => (embed.fields || []).find(f => f.name.includes(kw))?.value || "";
-        const suspectName = getField("Suspect");
-        const telSuspect  = getField("TÃ©lÃ©phone");
-        const chefs       = getField("accusation");
-        const originLabel = getField("Origine") || getSaspOrigin(interaction).label;
+        const content = interaction.message?.content || "";
+        const getProcTextField = (label) => {
+          const escaped = String(label).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const match = content.match(new RegExp(`\\*\\*${escaped}\\s*:?\\*\\*\\s*([\\s\\S]*?)(?=\\n\\n\\*\\*|$)`, "i"));
+          return match ? match[1].trim() : "";
+        };
+        const suspectName = getProcTextField("Suspect");
+        const telSuspect  = getProcTextField("Num\u00e9ros de tel. du suspect");
+        const chefs       = getProcTextField("Chef(s) d'accusation");
+        const originLabel = getProcTextField("Origine") || getSaspOrigin(interaction).label;
         const originToken = encodeURIComponent(originLabel);
         const now = new Date();
         const dateDefault = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
