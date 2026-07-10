@@ -1729,8 +1729,7 @@ export default {
               { type: 1, components: [{ type: 4, custom_id: "suspect", label: "Nom PrÃ©nom du suspect", style: 1, required: true, placeholder: "Ex : John Smith", min_length: 2, max_length: 80 }] },
               { type: 1, components: [{ type: 4, custom_id: "chefs_accusation", label: "Chef(s) d'accusation", style: 2, required: true, min_length: 2, max_length: 500 }] },
               { type: 1, components: [{ type: 4, custom_id: "rapport_arrestation", label: "ID du rapport d'arrestation", style: 1, required: true, placeholder: "Ex : 1234 ou #1234", max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "interpellation_contacts", label: "Interpellation / tÃ©lÃ©phones / avocat", style: 2, required: true, placeholder: "Heure/date : 10/07/2026 17:30\nTel suspect : 555-0123\nAvocat : Me. Dupont (si reprÃ©sentÃ©)\nTel avocat : 555-0456", max_length: 500 }] },
-              { type: 1, components: [{ type: 4, custom_id: "resume_faits", label: "RÃ©sumÃ© rapide des faits", style: 2, required: true, min_length: 5, max_length: 700 }] }
+              { type: 1, components: [{ type: 4, custom_id: "interpellation_contacts", label: "Interpellation, tÃ©ls et avocat", style: 2, required: true, placeholder: "Heure/date : 10/07/2026 17:30\nTel suspect : 555-0123\nAvocat : Me. Dupont\nTel avocat : 555-0456", max_length: 500 }] }
             ]
           }
         });
@@ -1743,7 +1742,6 @@ export default {
         const chefsAccusation = getValue("chefs_accusation").slice(0, 500);
         const rapportArrestation = getValue("rapport_arrestation").replace(/^#/, "");
         const interpellationContacts = getValue("interpellation_contacts");
-        const resumeFaits = getValue("resume_faits").slice(0, 700);
         const extractDetail = (labels, fallback = "Non renseignÃ©") => {
           const list = Array.isArray(labels) ? labels : [labels];
           for (const label of list) {
@@ -1784,8 +1782,7 @@ export default {
           `**Heure et date de l'interpellation :** ${heureInterpellation}\n\n` +
           `**Num\u00e9ros de tel. du suspect :** ${telSuspect}\n` +
           avocatBlock +
-          `\n**R\u00e9sum\u00e9 des faits :**\n\n` +
-          `${resumeFaits}\n\n` +
+          `\n` +
           `Nous sommes actuellement dans l'attente d'une d\u00e9cision du bureau du procureur concernant cette proc\u00e9dure. Merci de bien vouloir prendre connaissance du dossier et nous communiquer vos instructions d\u00e8s que possible.`;
 
         const procMessage = {
@@ -1826,8 +1823,7 @@ export default {
             { name: "ðŸ“‹ Chef(s) d'accusation", value: chefsAccusation, inline: false },
             { name: "ðŸ‘® Agent en charge", value: agentDisplay, inline: true },
             { name: "ðŸ• Interpellation", value: heureInterpellation, inline: true },
-            ...(avocat ? [{ name: "âš–ï¸ Avocat + TÃ©l", value: `${avocat}${telAvocat ? ` - ${telAvocat}` : ""}`, inline: false }] : []),
-            { name: "ðŸ“ RÃ©sumÃ©", value: resumeFaits.slice(0, 1024), inline: false }
+            ...(avocat ? [{ name: "âš–ï¸ Avocat + TÃ©l", value: `${avocat}${telAvocat ? ` - ${telAvocat}` : ""}`, inline: false }] : [])
           ], footer: { text: "SASP Â· Proc" }, timestamp: now.toISOString() }] })
         });
         const procLinks = procResults.map(r => `**${r.label}** <#${r.id}>`).join(" | ");
