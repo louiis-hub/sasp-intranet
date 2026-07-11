@@ -1487,14 +1487,91 @@ export default {
     function parseBraceletMessage(content, thread) {
       const text = String(content || "");
       const suspectMatch = text.match(/BRACELET ELECTRONIQUE DE\s+([^\n]+)/i);
+      const origin = extractLineValue(text, "Origine") || "";
       return {
         suspect: suspectMatch ? suspectMatch[1].trim() : (thread.name || "Inconnu"),
+        origin,
         date: extractLineValue(text, "Pos(?:e|é) le") || "Non precisee",
         tel: extractLineValue(text, "Num(?:e|é)ro de t(?:e|é)l(?:e|é)phone") || "Non precise",
         raison: extractLineValue(text, "Raison") || "Non precisee",
         proc_thread_id: (text.match(/Dossier proc li(?:e|é)\s*:\s*<#(\d+)>/i) || [])[1] || "",
         thread_id: thread.id
       };
+    }
+
+    function normalizeBraceletName(value) {
+      return String(value || "")
+        .replace(/\[[^\]]+\]/g, " ")
+        .replace(/\|.*$/g, " ")
+        .replace(/bracelet electronique de/ig, " ")
+        .replace(/bracelet électronique de/ig, " ")
+        .replace(/bracelet de/ig, " ")
+        .replace(/bracelet/ig, " ")
+        .replace(/sasp\s+(sud|nord)/ig, " ")
+        .replace(/[^a-z0-9]+/ig, " ")
+        .trim()
+        .replace(/\s+/g, " ")
+        .toUpperCase();
+    }
+
+    function normalizeBraceletContent(content, sourceLabel) {
+      let text = String(content || "");
+      if (text.toUpperCase().includes("BRACELET ELECTRONIQUE DE") && !/^Origine\s*:/im.test(text)) {
+        text = text.replace(/(BRACELET ELECTRONIQUE DE[^\n]*\n\n?)/i, `$1Origine : ${sourceLabel}\n`);
+      }
+      return text;
+    }
+
+    function braceletTitle(sourceLabel, suspect) {
+      return `[${sourceLabel}] ${String(suspect || "Inconnu").trim()}`.slice(0, 100);
+    }
+
+    async function getThreadMessages(threadId) {
+      const messagesRes = await discordFetch(`${DISCORD_API}/channels/${threadId}/messages?limit=50`, {
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+      });
+      if (!messagesRes.ok) return [];
+      const messages = await messagesRes.json();
+      return Array.isArray(messages) ? messages.slice().reverse() : [];
+    }
+
+    function isUsefulThreadMessage(message) {
+      const text = String(message.content || "");
+      return (
+        text.trim() ||
+        (message.attachments || []).length ||
+        (message.embeds || []).length ||
+        (message.components || []).length
+      ) && !message.system;
+    }
+
+    async function getActiveForumThreads(guildId, forumId) {
+      const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/threads/active`, {
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch {}
+      if (!res.ok) throw new Error(`${guildId} active threads (${res.status}) ${text}`);
+      return (data.threads || []).filter(thread => thread.parent_id === forumId && !thread.archived);
+    }
+
+    async function findBraceletCopiesByName(suspect) {
+      const wanted = normalizeBraceletName(suspect);
+      const targets = [
+        { label: "SASP SUD", guildId: SUD_GUILD_ID, forumId: BRACELET_FORUM_CHANNEL },
+        { label: "SASP NORD", guildId: NORD_GUILD_ID, forumId: NORD_BRACELET_FORUM_CHANNEL }
+      ];
+      const found = [];
+      for (const target of targets) {
+        try {
+          const threads = await getActiveForumThreads(target.guildId, target.forumId);
+          for (const thread of threads) {
+            if (normalizeBraceletName(thread.name) === wanted) found.push({ ...target, threadId: thread.id, name: thread.name });
+          }
+        } catch {}
+      }
+      return found;
     }
 
     async function getActiveBracelets(env, guildId = env.DISCORD_GUILD_ID || "1500975724750704661", forumId = BRACELET_FORUM_CHANNEL) {
@@ -1561,7 +1638,7 @@ export default {
       return { ok: true, count: bracelets.length, total_count: allBracelets.length, channel_id: channelId, guild_id: guildId, forum_id: forumId, source };
     }
 
-    async function copyActiveForumThreads(sourceGuildId, sourceForumId, targetGuildId, targetForumId, start = 0, limit = 5) {
+    async function copyActiveForumThreads(sourceGuildId, sourceForumId, targetGuildId, targetForumId, start = 0, limit = 5, allowDuplicates = false) {
       await addMissingForumTags(sourceForumId, targetForumId);
       await ensureForumTags(targetForumId, ORIGIN_FORUM_TAGS);
 
@@ -1572,52 +1649,41 @@ export default {
       const targetTagsByName = new Map((targetForum.available_tags || []).map(tag => [String(tag.name || "").toLowerCase(), tag.id]));
       const sourceTagsById = new Map((sourceForum.available_tags || []).map(tag => [tag.id, String(tag.name || "")]));
 
-      const getActiveThreads = async (guildId, forumId) => {
-        const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/threads/active`, {
-          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
-        });
-        const text = await res.text();
-        let data = null;
-        try { data = text ? JSON.parse(text) : null; } catch {}
-        if (!res.ok) throw new Error(`${guildId} active threads (${res.status}) ${text}`);
-        return (data.threads || []).filter(thread => thread.parent_id === forumId && !thread.archived);
-      };
-
-      const allSourceThreads = await getActiveThreads(sourceGuildId, sourceForumId);
+      const sourceLabel = sourceGuildId === NORD_GUILD_ID ? "SASP NORD" : "SASP SUD";
+      const allSourceThreads = await getActiveForumThreads(sourceGuildId, sourceForumId);
       const sourceThreads = allSourceThreads.slice(start, start + limit);
-      const targetThreads = await getActiveThreads(targetGuildId, targetForumId);
-      const existingNames = new Set(targetThreads.map(thread => thread.name));
+      const targetThreads = await getActiveForumThreads(targetGuildId, targetForumId);
+      const existingNames = new Set(targetThreads.map(thread => normalizeBraceletName(thread.name)));
       const results = [];
 
       for (const thread of sourceThreads) {
-        if (existingNames.has(thread.name)) {
+        const messages = (await getThreadMessages(thread.id)).filter(isUsefulThreadMessage);
+        const sourceMessage = messages.find(m => String(m.content || "").toUpperCase().includes("BRACELET ELECTRONIQUE DE")) || messages[0];
+        const fallbackSuspect = thread.name.replace(/\|.*$/g, "").replace(/bracelet de/ig, "").replace(/bracelet/ig, "").trim() || thread.name;
+        const parsed = sourceMessage
+          ? parseBraceletMessage(sourceMessage.content || "", thread)
+          : { suspect: fallbackSuspect };
+        const targetTitle = braceletTitle(sourceLabel, parsed.suspect);
+
+        if (!allowDuplicates && (existingNames.has(normalizeBraceletName(parsed.suspect)) || existingNames.has(normalizeBraceletName(targetTitle)))) {
           results.push({ name: thread.name, skipped: true, reason: "already_exists" });
           continue;
         }
 
-        const messagesRes = await discordFetch(`${DISCORD_API}/channels/${thread.id}/messages?limit=50`, {
-          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
-        });
-        if (!messagesRes.ok) {
-          results.push({ name: thread.name, ok: false, error: `messages ${messagesRes.status}` });
-          continue;
-        }
-        const messages = await messagesRes.json();
-        const sourceMessage = Array.isArray(messages)
-          ? messages.find(m => String(m.content || "").toUpperCase().includes("BRACELET ELECTRONIQUE DE")) || messages[messages.length - 1]
-          : null;
-        if (!sourceMessage) {
-          results.push({ name: thread.name, ok: false, error: "no_message" });
-          continue;
-        }
-
-        const attachmentLinks = (sourceMessage.attachments || []).map(a => a.url).filter(Boolean);
-        const copiedContent = [sourceMessage.content || "", ...attachmentLinks].filter(Boolean).join("\n");
+        const fallbackContent =
+          `BRACELET ELECTRONIQUE DE ${String(parsed.suspect || fallbackSuspect).toUpperCase()}\n\n` +
+          `Origine : ${sourceLabel}\n` +
+          `Informations reprises depuis le forum bracelet ${sourceLabel}. Message source complet non lisible par le bot au moment de la copie.\n\n` +
+          `Pensez a bien noter quand les individus viennent pointer`;
+        const attachmentLinks = (sourceMessage?.attachments || []).map(a => a.url).filter(Boolean);
+        const copiedContent = [normalizeBraceletContent(sourceMessage?.content || fallbackContent, sourceLabel), ...attachmentLinks].filter(Boolean).join("\n");
         const copiedMessage = {
-          content: copiedContent || `Copie du dossier : ${thread.name}`
+          content: copiedContent || `Copie du dossier : ${targetTitle}`
         };
-        if (sourceMessage.embeds?.length) copiedMessage.embeds = sourceMessage.embeds;
-        if (sourceMessage.components?.length) copiedMessage.components = sourceMessage.components;
+        if (sourceMessage?.embeds?.length) copiedMessage.embeds = sourceMessage.embeds;
+        copiedMessage.components = sourceMessage?.components?.length
+          ? sourceMessage.components
+          : [{ type: 1, components: [{ type: 2, style: 3, label: "ðŸ“ Pointage", custom_id: "bracelet_pointage" }] }];
 
         const appliedTagIds = (thread.applied_tags || [])
           .map(id => sourceTagsById.get(id))
@@ -1626,9 +1692,24 @@ export default {
           .filter(Boolean);
 
         try {
-          const created = await createForumThread(targetForumId, thread.name, copiedMessage, appliedTagIds);
-          existingNames.add(thread.name);
-          results.push({ name: thread.name, ok: true, id: created.id });
+          const created = await createForumThread(targetForumId, targetTitle, copiedMessage, appliedTagIds);
+          existingNames.add(normalizeBraceletName(targetTitle));
+          let extraSent = 0;
+          for (const message of messages) {
+            if (sourceMessage && message.id === sourceMessage.id) continue;
+            const extraAttachmentLinks = (message.attachments || []).map(a => a.url).filter(Boolean);
+            const extraContent = [normalizeBraceletContent(message.content || "", sourceLabel), ...extraAttachmentLinks].filter(Boolean).join("\n");
+            const extraPayload = { content: extraContent || `Copie du dossier : ${targetTitle}` };
+            if (message.embeds?.length) extraPayload.embeds = message.embeds;
+            if (message.components?.length) extraPayload.components = message.components;
+            const extraRes = await discordFetch(`${DISCORD_API}/channels/${created.id}/messages`, {
+              method: "POST",
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+              body: JSON.stringify(extraPayload)
+            });
+            if (extraRes.ok) extraSent++;
+          }
+          results.push({ name: thread.name, title: targetTitle, ok: true, id: created.id, extra_messages: extraSent });
         } catch (e) {
           results.push({ name: thread.name, ok: false, error: e.message });
         }
@@ -1662,68 +1743,112 @@ export default {
         return (data.threads || []).filter(thread => thread.parent_id === forumId && !thread.archived);
       };
 
-      const getBraceletMessage = async (threadId, allowFallback = false) => {
+      const getThreadMessages = async (threadId) => {
         const messagesRes = await discordFetch(`${DISCORD_API}/channels/${threadId}/messages?limit=50`, {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
         });
-        if (!messagesRes.ok) return null;
+        if (!messagesRes.ok) return [];
         const messages = await messagesRes.json();
-        if (!Array.isArray(messages)) return null;
-        const braceletMessage = messages.find(m => String(m.content || "").toUpperCase().includes("BRACELET ELECTRONIQUE DE"));
-        return braceletMessage || (allowFallback ? messages[messages.length - 1] : null);
+        return Array.isArray(messages) ? messages.slice().reverse() : [];
+      };
+
+      const normalizeCopiedContent = (content, sourceLabel) => {
+        let text = String(content || "");
+        if (text.toUpperCase().includes("BRACELET ELECTRONIQUE DE") && !/^Origine\s*:/im.test(text)) {
+          text = text.replace(/(BRACELET ELECTRONIQUE DE[^\n]*\n\n?)/i, `$1Origine : ${sourceLabel}\n`);
+        }
+        return text;
+      };
+
+      const isUsefulThreadMessage = (message) => {
+        const text = String(message.content || "");
+        return (
+          text.trim() ||
+          (message.attachments || []).length ||
+          (message.embeds || []).length ||
+          (message.components || []).length
+        ) && !message.system;
+      };
+
+      const messageKey = (message, sourceLabel = "") => {
+        const attachmentLinks = (message.attachments || []).map(a => a.url).filter(Boolean);
+        return [
+          normalizeCopiedContent(message.content || "", sourceLabel),
+          ...attachmentLinks,
+          JSON.stringify(message.embeds || []),
+          JSON.stringify(message.components || [])
+        ].join("\n").trim();
       };
 
       const allSourceThreads = await getActiveThreads(sourceGuildId, sourceForumId);
       const sourceThreads = allSourceThreads.slice(start, start + limit);
       const targetThreads = await getActiveThreads(targetGuildId, targetForumId);
-      const targetByName = new Map(targetThreads.map(thread => [thread.name, thread]));
+      const targetByName = new Map(targetThreads.map(thread => [normalizeBraceletName(thread.name), thread]));
       const results = [];
 
       for (const sourceThread of sourceThreads) {
-        const targetThread = targetByName.get(sourceThread.name);
+        const targetThread = targetByName.get(normalizeBraceletName(sourceThread.name));
         if (!targetThread) {
           results.push({ name: sourceThread.name, ok: false, error: "target_missing" });
           continue;
         }
 
-        const targetMessage = await getBraceletMessage(targetThread.id, true);
-        if (targetMessage) {
-          results.push({ name: sourceThread.name, skipped: true, reason: "message_exists", target_id: targetThread.id });
+        const sourceMessages = (await getThreadMessages(sourceThread.id)).filter(isUsefulThreadMessage);
+        const targetMessages = (await getThreadMessages(targetThread.id)).filter(isUsefulThreadMessage);
+        if (!sourceMessages.length) {
+          results.push({ name: sourceThread.name, ok: false, error: "source_messages_missing", target_id: targetThread.id });
           continue;
         }
 
-        const sourceMessage = await getBraceletMessage(sourceThread.id, true);
-        if (!sourceMessage) {
-          results.push({ name: sourceThread.name, ok: false, error: "source_message_missing", target_id: targetThread.id });
-          continue;
+        const existingKeys = new Set(targetMessages.map(message => messageKey(message, "SASP SUD")));
+        let sentCount = 0;
+        let skippedCount = 0;
+        let failedCount = 0;
+
+        for (const sourceMessage of sourceMessages) {
+          const key = messageKey(sourceMessage, "SASP SUD");
+          if (existingKeys.has(key)) {
+            skippedCount++;
+            continue;
+          }
+
+          const attachmentLinks = (sourceMessage.attachments || []).map(a => a.url).filter(Boolean);
+          const copiedContent = [normalizeCopiedContent(sourceMessage.content || "", "SASP SUD"), ...attachmentLinks].filter(Boolean).join("\n");
+          const payload = { content: copiedContent || `Copie du dossier : ${sourceThread.name}` };
+          if (sourceMessage.embeds?.length) payload.embeds = sourceMessage.embeds;
+          if (sourceMessage.components?.length) payload.components = sourceMessage.components;
+
+          const res = await discordFetch(`${DISCORD_API}/channels/${targetThread.id}/messages`, {
+            method: "POST",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            sentCount++;
+            existingKeys.add(key);
+          } else {
+            failedCount++;
+          }
         }
 
-        const attachmentLinks = (sourceMessage.attachments || []).map(a => a.url).filter(Boolean);
-        const copiedContent = [sourceMessage.content || "", ...attachmentLinks].filter(Boolean).join("\n");
-        const payload = { content: copiedContent || `Copie du dossier : ${sourceThread.name}` };
-        if (sourceMessage.embeds?.length) payload.embeds = sourceMessage.embeds;
-        if (sourceMessage.components?.length) payload.components = sourceMessage.components;
-
-        const res = await discordFetch(`${DISCORD_API}/channels/${targetThread.id}/messages`, {
-          method: "POST",
-          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+        results.push({
+          name: sourceThread.name,
+          ok: failedCount === 0,
+          target_id: targetThread.id,
+          sent: sentCount,
+          skipped: skippedCount,
+          failed: failedCount
         });
-        if (res.ok) {
-          results.push({ name: sourceThread.name, ok: true, target_id: targetThread.id });
-        } else {
-          results.push({ name: sourceThread.name, ok: false, target_id: targetThread.id, error: `send ${res.status} ${await res.text()}` });
-        }
       }
 
       return {
-        ok: results.every(result => result.ok || result.skipped),
+        ok: results.every(result => result.ok),
         total_source: allSourceThreads.length,
         start,
         limit,
-        sent: results.filter(result => result.ok).length,
-        skipped: results.filter(result => result.skipped).length,
-        failed: results.filter(result => !result.ok && !result.skipped).length,
+        sent: results.reduce((sum, result) => sum + (result.sent || 0), 0),
+        skipped: results.reduce((sum, result) => sum + (result.skipped || 0), 0),
+        failed: results.reduce((sum, result) => sum + (result.failed || (result.ok === false ? 1 : 0)), 0),
         results
       };
     }
@@ -1876,7 +2001,8 @@ export default {
           url.searchParams.get("target_guild_id") || NORD_GUILD_ID,
           url.searchParams.get("target_forum_id") || NORD_BRACELET_FORUM_CHANNEL,
           Number(url.searchParams.get("start") || "0"),
-          Number(url.searchParams.get("limit") || "5")
+          Number(url.searchParams.get("limit") || "5"),
+          url.searchParams.get("allow_duplicates") === "true"
         ));
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
@@ -2266,7 +2392,7 @@ export default {
         for (const dest of getBraceletDestinations()) {
           try {
             const originTagIds = await ensureForumTags(dest.braceletForum, [origin.label]);
-            const data = await createForumThread(dest.braceletForum, `[${origin.label}] Bracelet - ${suspect}`, braceletMessage, originTagIds);
+            const data = await createForumThread(dest.braceletForum, braceletTitle(origin.label, suspect), braceletMessage, originTagIds);
             braceletResults.push({ label: dest.label, id: data.id });
           } catch (e) {
             braceletErrors.push(`${dest.label}: ${e.message}`);
@@ -2412,7 +2538,7 @@ export default {
         for (const dest of getBraceletDestinations()) {
           try {
             const originTagIds = await ensureForumTags(dest.braceletForum, [originLabel]);
-            const data = await createForumThread(dest.braceletForum, `[${originLabel}] Bracelet - ${suspect}`, braceletMessage, originTagIds);
+            const data = await createForumThread(dest.braceletForum, braceletTitle(originLabel, suspect), braceletMessage, originTagIds);
             braceletResults.push({ label: dest.label, id: data.id });
           } catch (e) {
             braceletErrors.push(`${dest.label}: ${e.message}`);
@@ -2584,13 +2710,21 @@ export default {
           if (agent) agentDisplay = `${agent.prenom} ${agent.nom} (${agent.matricule})`;
         } catch {}
 
-        await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
-          method: "POST",
-          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ content: `âœ… Bracelet confirmÃ© retirÃ© par ${agentDisplay}. Dossier bracelet fermÃ©.` })
-        });
-        await closeDiscordThread(interaction.channel_id);
-        return json({ type: 4, data: { content: "âœ… Bracelet confirmÃ© retirÃ©, dossier bracelet fermÃ©.", flags: 64 } });
+        const messages = await getThreadMessages(interaction.channel_id);
+        const sourceMessage = messages.find(m => String(m.content || "").toUpperCase().includes("BRACELET ELECTRONIQUE DE"));
+        const parsed = parseBraceletMessage(sourceMessage ? sourceMessage.content : "", { name: interaction.channel?.name || "" });
+        const copies = await findBraceletCopiesByName(parsed.suspect);
+        const closeMessage = `âœ… Bracelet confirmÃ© retirÃ© par ${agentDisplay}. Dossier bracelet fermÃ©.`;
+        const targets = copies.length ? copies : [{ threadId: interaction.channel_id }];
+        for (const copy of targets) {
+          await discordFetch(`${DISCORD_API}/channels/${copy.threadId}/messages`, {
+            method: "POST",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ content: closeMessage })
+          });
+          await closeDiscordThread(copy.threadId);
+        }
+        return json({ type: 4, data: { content: `âœ… Bracelet confirmÃ© retirÃ©, ${targets.length} dossier(s) bracelet fermÃ©(s).`, flags: 64 } });
       }
 
       if (interaction.type === 3 && interaction.data.custom_id === "bracelet_close_confirm_no") {
@@ -2620,12 +2754,20 @@ export default {
         const now = new Date();
         const heureStr = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
         const dateStr  = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
-        const threadName = interaction.message?.thread?.name || interaction.channel?.name || "Inconnu";
-        await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
-          method: "POST",
-          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ content: `âœ… Pointage enregistrÃ© le ${dateStr} Ã  ${heureStr} â€” par ${agentDisplay}` })
-        });
+        const messages = await getThreadMessages(interaction.channel_id);
+        const sourceMessage = messages.find(m => String(m.content || "").toUpperCase().includes("BRACELET ELECTRONIQUE DE"));
+        const parsed = parseBraceletMessage(sourceMessage ? sourceMessage.content : "", { name: interaction.channel?.name || "Inconnu" });
+        const threadName = parsed.suspect || interaction.message?.thread?.name || interaction.channel?.name || "Inconnu";
+        const pointageContent = `âœ… Pointage enregistrÃ© le ${dateStr} Ã  ${heureStr} â€” par ${agentDisplay}`;
+        const copies = await findBraceletCopiesByName(threadName);
+        const targets = copies.length ? copies : [{ threadId: interaction.channel_id }];
+        for (const copy of targets) {
+          await discordFetch(`${DISCORD_API}/channels/${copy.threadId}/messages`, {
+            method: "POST",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ content: pointageContent })
+          });
+        }
         await discordFetch(`${DISCORD_API}/channels/1521587559384223836/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
@@ -2635,7 +2777,7 @@ export default {
             { name: "ðŸ‘® EnregistrÃ© par", value: agentDisplay, inline: false }
           ], footer: { text: "SASP Â· Bracelet" }, timestamp: now.toISOString() }] })
         });
-        return json({ type: 4, data: { content: "âœ… Pointage enregistrÃ©.", flags: 64 } });
+        return json({ type: 4, data: { content: `âœ… Pointage enregistrÃ© sur ${targets.length} dossier(s).`, flags: 64 } });
       }
 
       // Slash command /plainte
