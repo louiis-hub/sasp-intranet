@@ -1560,6 +1560,95 @@ export default {
       if (!res.ok) throw new Error(`send recap failed: ${res.status} ${await res.text()}`);
       return { ok: true, count: bracelets.length, total_count: allBracelets.length, channel_id: channelId, guild_id: guildId, forum_id: forumId, source };
     }
+
+    async function copyActiveForumThreads(sourceGuildId, sourceForumId, targetGuildId, targetForumId, start = 0, limit = 5) {
+      await addMissingForumTags(sourceForumId, targetForumId);
+      await ensureForumTags(targetForumId, ORIGIN_FORUM_TAGS);
+
+      const [sourceForum, targetForum] = await Promise.all([
+        getForumChannel(sourceForumId),
+        getForumChannel(targetForumId)
+      ]);
+      const targetTagsByName = new Map((targetForum.available_tags || []).map(tag => [String(tag.name || "").toLowerCase(), tag.id]));
+      const sourceTagsById = new Map((sourceForum.available_tags || []).map(tag => [tag.id, String(tag.name || "")]));
+
+      const getActiveThreads = async (guildId, forumId) => {
+        const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/threads/active`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        const text = await res.text();
+        let data = null;
+        try { data = text ? JSON.parse(text) : null; } catch {}
+        if (!res.ok) throw new Error(`${guildId} active threads (${res.status}) ${text}`);
+        return (data.threads || []).filter(thread => thread.parent_id === forumId && !thread.archived);
+      };
+
+      const allSourceThreads = await getActiveThreads(sourceGuildId, sourceForumId);
+      const sourceThreads = allSourceThreads.slice(start, start + limit);
+      const targetThreads = await getActiveThreads(targetGuildId, targetForumId);
+      const existingNames = new Set(targetThreads.map(thread => thread.name));
+      const results = [];
+
+      for (const thread of sourceThreads) {
+        if (existingNames.has(thread.name)) {
+          results.push({ name: thread.name, skipped: true, reason: "already_exists" });
+          continue;
+        }
+
+        const messagesRes = await discordFetch(`${DISCORD_API}/channels/${thread.id}/messages?limit=50`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        if (!messagesRes.ok) {
+          results.push({ name: thread.name, ok: false, error: `messages ${messagesRes.status}` });
+          continue;
+        }
+        const messages = await messagesRes.json();
+        const sourceMessage = Array.isArray(messages)
+          ? messages.find(m => String(m.content || "").toUpperCase().includes("BRACELET ELECTRONIQUE DE")) || messages[messages.length - 1]
+          : null;
+        if (!sourceMessage) {
+          results.push({ name: thread.name, ok: false, error: "no_message" });
+          continue;
+        }
+
+        const attachmentLinks = (sourceMessage.attachments || []).map(a => a.url).filter(Boolean);
+        const copiedContent = [sourceMessage.content || "", ...attachmentLinks].filter(Boolean).join("\n");
+        const copiedMessage = {
+          content: copiedContent || `Copie du dossier : ${thread.name}`
+        };
+        if (sourceMessage.embeds?.length) copiedMessage.embeds = sourceMessage.embeds;
+        if (sourceMessage.components?.length) copiedMessage.components = sourceMessage.components;
+
+        const appliedTagIds = (thread.applied_tags || [])
+          .map(id => sourceTagsById.get(id))
+          .filter(Boolean)
+          .map(name => targetTagsByName.get(String(name).toLowerCase()))
+          .filter(Boolean);
+
+        try {
+          const created = await createForumThread(targetForumId, thread.name, copiedMessage, appliedTagIds);
+          existingNames.add(thread.name);
+          results.push({ name: thread.name, ok: true, id: created.id });
+        } catch (e) {
+          results.push({ name: thread.name, ok: false, error: e.message });
+        }
+      }
+
+      return {
+        ok: results.every(result => result.ok || result.skipped),
+        source_guild_id: sourceGuildId,
+        source_forum_id: sourceForumId,
+        target_guild_id: targetGuildId,
+        target_forum_id: targetForumId,
+        total_source: allSourceThreads.length,
+        start,
+        limit,
+        copied: results.filter(result => result.ok).length,
+        skipped: results.filter(result => result.skipped).length,
+        failed: results.filter(result => !result.ok && !result.skipped).length,
+        results
+      };
+    }
     const STICKY_SUBVENTION_EMBED = { embeds: [{ title: "ðŸ’¸ RÃ¨gles subvention", color: 0xc9a84c, description: "Pour faire une demande de subvention, utilisez la commande `/subvention` dans ce salon.\n\n**RÃ¨gles actuelles :**\nâ€¢ La subvention est fixÃ©e Ã  **10 000 $ par voiture** pour le moment.\nâ€¢ Il est interdit de faire des **performances** avec cette subvention.\nâ€¢ Il est interdit d'acheter une **nouvelle voiture** avec cette subvention.", footer: { text: "SASP â€¢ Subvention" } }] };
     async function refreshSubventionSticky() {
       const msgsRes = await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages?limit=20`, {
@@ -1601,6 +1690,20 @@ export default {
           url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661",
           url.searchParams.get("forum_id") || BRACELET_FORUM_CHANNEL,
           url.searchParams.get("source") || "all"
+        ));
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+    if (url.pathname === "/admin/copy-forum-threads" && request.method === "GET") {
+      try {
+        return json(await copyActiveForumThreads(
+          url.searchParams.get("source_guild_id") || SUD_GUILD_ID,
+          url.searchParams.get("source_forum_id") || BRACELET_FORUM_CHANNEL,
+          url.searchParams.get("target_guild_id") || NORD_GUILD_ID,
+          url.searchParams.get("target_forum_id") || NORD_BRACELET_FORUM_CHANNEL,
+          Number(url.searchParams.get("start") || "0"),
+          Number(url.searchParams.get("limit") || "5")
         ));
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
