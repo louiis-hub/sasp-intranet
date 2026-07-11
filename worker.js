@@ -1530,7 +1530,18 @@ export default {
       const messagesRes = await discordFetch(`${DISCORD_API}/channels/${threadId}/messages?limit=50`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
-      if (!messagesRes.ok) return [];
+      if (!messagesRes.ok) {
+        await discordFetch(`${DISCORD_API}/channels/${threadId}/thread-members/@me`, {
+          method: "PUT",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        const retryRes = await discordFetch(`${DISCORD_API}/channels/${threadId}/messages?limit=50`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        if (!retryRes.ok) return [];
+        const retryMessages = await retryRes.json();
+        return Array.isArray(retryMessages) ? retryMessages.slice().reverse() : [];
+      }
       const messages = await messagesRes.json();
       return Array.isArray(messages) ? messages.slice().reverse() : [];
     }
@@ -1560,7 +1571,8 @@ export default {
       const wanted = normalizeBraceletName(suspect);
       const targets = [
         { label: "SASP SUD", guildId: SUD_GUILD_ID, forumId: BRACELET_FORUM_CHANNEL },
-        { label: "SASP NORD", guildId: NORD_GUILD_ID, forumId: NORD_BRACELET_FORUM_CHANNEL }
+        { label: "SASP NORD", guildId: NORD_GUILD_ID, forumId: NORD_BRACELET_FORUM_CHANNEL },
+        { label: "DOJ", guildId: DOJ_GUILD_ID, forumId: DOJ_BRACELET_FORUM_CHANNEL }
       ];
       const found = [];
       for (const target of targets) {
@@ -1747,7 +1759,18 @@ export default {
         const messagesRes = await discordFetch(`${DISCORD_API}/channels/${threadId}/messages?limit=50`, {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
         });
-        if (!messagesRes.ok) return [];
+        if (!messagesRes.ok) {
+          await discordFetch(`${DISCORD_API}/channels/${threadId}/thread-members/@me`, {
+            method: "PUT",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          const retryRes = await discordFetch(`${DISCORD_API}/channels/${threadId}/messages?limit=50`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          if (!retryRes.ok) return [];
+          const retryMessages = await retryRes.json();
+          return Array.isArray(retryMessages) ? retryMessages.slice().reverse() : [];
+        }
         const messages = await messagesRes.json();
         return Array.isArray(messages) ? messages.slice().reverse() : [];
       };
