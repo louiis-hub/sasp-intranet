@@ -1205,7 +1205,13 @@ export default {
           const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members?limit=${batchLimit}&after=${after}`, {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
           });
-          if (!res.ok) return json({ ok: false, error: await res.text(), status: res.status }, res.status);
+          if (!res.ok) {
+            const errText = await res.text();
+            const hint = res.status === 403
+              ? "Active Server Members Intent dans le Discord Developer Portal du bot, puis reessaie."
+              : "";
+            return json({ ok: false, error: errText, hint, status: res.status }, res.status);
+          }
           const batch = await res.json();
           if (!Array.isArray(batch) || !batch.length) break;
           members.push(...batch);
