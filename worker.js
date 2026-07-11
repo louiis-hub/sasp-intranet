@@ -145,6 +145,34 @@ function syncableRolesForGuild(guildId) {
   return { ...cfg.divisions, ...cfg.ppa, ...cfg.grades };
 }
 
+function parseAgentDisplayName(displayName) {
+  const value = String(displayName || "").trim();
+  const match = value.match(/^\s*\[?([A-Za-z0-9-]{1,12})\]?\s+(.+?)\s*$/);
+  if (!match) return null;
+  const fullName = match[2].replace(/\s+/g, " ").trim();
+  const parts = fullName.split(" ").filter(Boolean);
+  if (parts.length < 2) return null;
+  return {
+    matricule: match[1],
+    prenom: parts[0],
+    nom: parts.slice(1).join(" "),
+    display_name: value
+  };
+}
+
+function memberRoleInfo(member, guildId) {
+  const roles = member.roles || [];
+  const roleToDivision = roleToDivisionForGuild(guildId);
+  const ppaRoles = roleConfigForGuild(guildId).ppa;
+  return {
+    divisions: roles.filter(r => roleToDivision[r]).map(r => roleToDivision[r]),
+    ppa1: !!ppaRoles.ppa1 && roles.includes(ppaRoles.ppa1),
+    ppa2: !!ppaRoles.ppa2 && roles.includes(ppaRoles.ppa2),
+    ppa3: (!!ppaRoles.ppa3a && roles.includes(ppaRoles.ppa3a)) || (!!ppaRoles.ppa3b && roles.includes(ppaRoles.ppa3b)),
+    grade: gradeFromRolesForGuild(roles, guildId)
+  };
+}
+
 function gradeFromRoles(roles) {
   const hit = Object.entries(GRADE_ROLES).find(([, roleId]) => roles.includes(roleId));
   return hit ? hit[0] : null;
@@ -1160,6 +1188,49 @@ export default {
         ppa3: (!!ppaRoles.ppa3a && roles.includes(ppaRoles.ppa3a)) || (!!ppaRoles.ppa3b && roles.includes(ppaRoles.ppa3b)),
         grade: gradeFromRolesForGuild(roles, guildId)
       });
+    }
+
+    if (url.pathname === "/discord/agents-roster" && request.method === "GET") {
+      const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+      const roleIds = String(url.searchParams.get("role_ids") || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+      const limit = Math.max(1, Math.min(1000, Number(url.searchParams.get("limit") || "1000") || 1000));
+      const members = [];
+      let after = "0";
+      try {
+        while (members.length < limit) {
+          const batchLimit = Math.min(1000, limit - members.length);
+          const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members?limit=${batchLimit}&after=${after}`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          if (!res.ok) return json({ ok: false, error: await res.text(), status: res.status }, res.status);
+          const batch = await res.json();
+          if (!Array.isArray(batch) || !batch.length) break;
+          members.push(...batch);
+          after = batch[batch.length - 1].user?.id || after;
+          if (batch.length < batchLimit) break;
+        }
+        const agents = members
+          .filter(member => !member.user?.bot)
+          .filter(member => !roleIds.length || roleIds.some(roleId => (member.roles || []).includes(roleId)))
+          .map(member => {
+            const parsed = parseAgentDisplayName(member.nick || member.user?.global_name || member.user?.username || "");
+            if (!parsed) return null;
+            return {
+              ...parsed,
+              discord_id: member.user.id,
+              username: member.user.username || "",
+              ...memberRoleInfo(member, guildId)
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) => String(a.matricule).localeCompare(String(b.matricule), "fr", { numeric: true }));
+        return json({ ok: true, guild_id: guildId, count: agents.length, agents });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
     }
 
     // RÃ©cupÃ¨re les rÃ´les de membres Discord par IDs (Discord â†’ Intranet)
