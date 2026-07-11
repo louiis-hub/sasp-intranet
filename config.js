@@ -1,4 +1,6 @@
 // ── Configuration Supabase ───────────────────────────────────────
+var SITE_KEY       = 'sud';
+var SITE_LABEL     = 'SASP SUD';
 var SUPABASE_URL  = 'https://ufxhxptzcnvelnbprwng.supabase.co';
 var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmeGh4cHR6Y252ZWxuYnByd25nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNDk1MTEsImV4cCI6MjA5NzgyNTUxMX0.FCiF9NvKxDpPd400ZY4gI-Hy3nVGcZFkaSH3F7l9fbE';
 var GUILD_ID        = '1500975724750704661';

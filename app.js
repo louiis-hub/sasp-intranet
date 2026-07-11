@@ -652,6 +652,18 @@ var _ftfNotifyRunning = false;
 var _ftfDossiers = [];
 var _ftfLoaded = false;
 
+function ftfCurrentOrigin() {
+  if (typeof SITE_LABEL !== 'undefined' && SITE_LABEL) return SITE_LABEL;
+  if (typeof SITE_KEY !== 'undefined' && SITE_KEY === 'nord') return 'SASP NORD';
+  return 'SASP SUD';
+}
+function ftfDossierOrigin(d) {
+  if (d && d.origine_service) return d.origine_service;
+  if (d && d.created_from_service) return d.created_from_service;
+  if (d && d.source_site === 'nord') return 'SASP NORD';
+  if (d && d.source_site === 'sud') return 'SASP SUD';
+  return 'SASP SUD';
+}
 function ftfLoadDossiers() {
   return _ftfDossiers || [];
 }
@@ -913,8 +925,9 @@ function renderFTFDossiers() {
     '<option value="all"' + (_ftfArchiveView === 'all' ? ' selected' : '') + '>Tous les dossiers</option>';
   var rows = list.length ? list.map(function(d) {
     var nextInfo = ftfNextStepInfo(d);
+    var origin = ftfDossierOrigin(d);
     return '<tr onclick="openFtfDossierModal(\'' + esc(d.id) + '\')">' +
-      '<td><strong>' + esc((d.prenom || '') + ' ' + (d.nom || '')) + '</strong>' + (d.archived ? ' <span class="badge badge-gray">Archive</span>' : '') + '<div class="text-muted" style="font-size:.72rem">' + esc(d.date_notification || '') + '</div></td>' +
+      '<td><strong>' + esc((d.prenom || '') + ' ' + (d.nom || '')) + '</strong> <span class="badge badge-blue">' + esc(origin) + '</span>' + (d.archived ? ' <span class="badge badge-gray">Archive</span>' : '') + '<div class="text-muted" style="font-size:.72rem">' + esc(d.date_notification || '') + '</div></td>' +
       '<td>' + fmtMoney(Number(d.montant_initial || 0)) + '</td>' +
       '<td>' + ftfStatusBadge(d.statut) + (nextInfo ? '<div class="text-muted" style="font-size:.72rem;margin-top:4px">' + esc(nextInfo) + '</div>' : '') + '</td>' +
       '<td><strong class="text-gold">' + fmtMoney(ftfAmount(d)) + '</strong></td>' +
@@ -935,7 +948,8 @@ function openFtfDossierModal(id) {
   var dossiers = ftfLoadDossiers();
   var d = id ? dossiers.find(function(x){ return x.id === id; }) : null;
   var isEdit = !!d;
-  d = d || { nom:'', prenom:'', montant_initial:'', date_notification:ftfTodayKey(), date_statut:ftfTodayKey(), statut:'Attente paiement', convocation_validee:false, raison_amende:'', notes:'' };
+  d = d || { nom:'', prenom:'', montant_initial:'', date_notification:ftfTodayKey(), date_statut:ftfTodayKey(), statut:'Attente paiement', convocation_validee:false, origine_service:ftfCurrentOrigin(), raison_amende:'', notes:'' };
+  var origin = ftfDossierOrigin(d);
   if (!d.date_statut) d.date_statut = d.date_notification || ftfTodayKey();
   var nextInfo = ftfNextStepInfo(d);
   var statusSelect = '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="ftfStatut">' +
@@ -962,6 +976,10 @@ function openFtfDossierModal(id) {
         fld('Montant initial *','number','ftfMontant',d.montant_initial,'15000') +
         fld('Date 1ere amende / delit','date','ftfDate',d.date_notification,'') +
       '</div>' +
+      '<div class="form-group"><label class="form-label">Service createur</label><select class="form-control" id="ftfOrigineService">' +
+        '<option value="SASP SUD"' + (origin === 'SASP SUD' ? ' selected' : '') + '>SASP SUD</option>' +
+        '<option value="SASP NORD"' + (origin === 'SASP NORD' ? ' selected' : '') + '>SASP NORD</option>' +
+      '</select></div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
         '<input type="hidden" id="ftfDateStatut" value="' + esc(d.date_statut || '') + '">' +
         validatedSelect +
@@ -1002,6 +1020,8 @@ async function saveFtfDossier(id) {
     convocation_validee: false,
     archived: previous ? !!previous.archived : false,
     archived_at: previous ? (previous.archived_at || '') : '',
+    origine_service: document.getElementById('ftfOrigineService').value || ((previous && ftfDossierOrigin(previous)) || ftfCurrentOrigin()),
+    source_site: (document.getElementById('ftfOrigineService').value === 'SASP NORD') ? 'nord' : 'sud',
     created_by_discord_id: (previous && previous.created_by_discord_id) || S.discordUserId || '',
     notif_sent: (statusChanged || advanceStep) ? {} : ((previous && previous.notif_sent) || {}),
     raison_amende: document.getElementById('ftfRaisonAmende').value || '',
