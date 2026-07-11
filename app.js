@@ -197,6 +197,7 @@ var _wikiSlug     = null;
 var _wikiSections = [];
 
 var NAV = [
+  { id: 'faq',      icon: '?', label: 'FAQ' },
   { id: 'dashboard', icon: '🏛️', label: 'Tableau de bord' },
   { divider: true },
   { group: 'RESSOURCES HUMAINES' },
@@ -221,6 +222,7 @@ var NAV = [
 var PAGE_TITLES = {
   dashboard:'Tableau de bord', agents:'Agents', 'agent-profile':'Fiche agent',
   grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', 'pointeuse-historique':'Historique pointages', mdt:'Guide MDT', vehicles:'Véhicules', cartes:'Cartes',
+  faq:'FAQ',
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
   archives:'Archives', ceremonie:'Prépa Cérémonie', completude:'Complétude fiches',
   'global-settings':'Réglages globaux',
@@ -362,8 +364,8 @@ function buildNav() {
   var isCeremony = S.role === 'admin' || S.role === 'rh';
   var isVisiteur = S.role === 'visiteur';
   var isFtfOnly = S.role === 'ftf';
-  var VISITEUR_NAV = ['dashboard', 'pointeuse', 'cartes'];
-  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'cartes', 'stats', 'archives', 'recap', 'ceremonie', 'completude'];
+  var VISITEUR_NAV = ['dashboard', 'pointeuse', 'faq', 'cartes'];
+  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'archives', 'recap', 'ceremonie', 'completude'];
   var html = '';
   NAV.forEach(function(item) {
     if (item.ftfOnly && !canAccessFTF()) return;
@@ -421,7 +423,7 @@ async function navigate(page, pd) {
   _quill = null;
   setContent('<div class="loader-block"><div class="spinner"></div><p>Chargement…</p></div>');
   var _permCfg = {}; try { _permCfg = JSON.parse(localStorage.getItem('sasp_permissions') || '{}'); } catch(e) {}
-  var AGENT_ALLOWED   = _permCfg.agentPages   || ['dashboard','agents','agent-profile','grades','units','pointeuse','mdt','vehicles','cartes','info','manuel','tenue','document'];
+  var AGENT_ALLOWED   = _permCfg.agentPages   || ['dashboard','agents','agent-profile','grades','units','pointeuse','faq','mdt','vehicles','cartes','info','manuel','tenue','document'];
   var ACADEMY_ALLOWED = _permCfg.academyPages  || null;
   if (page === 'ftf' && !canAccessFTF()) {
     setContent('<div class="empty-state"><div class="empty-icon">FTF</div><div class="empty-title">AccÃ¨s FTF restreint</div><div class="empty-sub">Cette page est rÃ©servÃ©e aux utilisateurs avec le rÃ´le Discord FTF.</div></div>');
@@ -435,12 +437,12 @@ async function navigate(page, pd) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au Command Staff et aux Superviseurs.</div></div>');
     return;
   }
-  var RH_ALLOWED = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'cartes', 'stats', 'archives', 'recap', 'ceremonie'];
+  var RH_ALLOWED = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'archives', 'recap', 'ceremonie'];
   if (S.role === 'rh' && page !== 'ftf' && RH_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée aux administrateurs.</div></div>');
     return;
   }
-  var VISITEUR_ALLOWED = ['dashboard', 'pointeuse', 'cartes'];
+  var VISITEUR_ALLOWED = ['dashboard', 'pointeuse', 'faq', 'cartes'];
   if (S.role === 'visiteur' && page !== 'ftf' && VISITEUR_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Votre rôle ne permet pas d\'accéder à cette section.</div></div>');
     return;
@@ -456,6 +458,7 @@ async function navigate(page, pd) {
   try {
     var renderers = {
       dashboard:      renderDashboard,
+      faq:            renderFAQ,
       agents:         renderAgents,
       academie:       renderAcademie,
       recap:          renderRecap,
@@ -1238,6 +1241,37 @@ function statCard(icon, label, val, cls) {
 }
 function quickLink(icon, label, page) {
   return '<button class="btn btn-ghost btn-sm" style="justify-content:flex-start;gap:10px" onclick="navigate(\'' + page + '\')">' + icon + ' ' + label + '</button>';
+}
+
+// FAQ
+function faqBlock(title, body) {
+  return '<div class="card">' +
+    '<div class="card-head"><div class="card-icon">?</div><div><div class="card-title">' + esc(title) + '</div></div></div>' +
+    '<div class="text-muted" style="line-height:1.7;font-size:.92rem">' + body + '</div>' +
+  '</div>';
+}
+
+function faqLink(page, label) {
+  return '<button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="navigate(\'' + page + '\')">' + esc(label) + '</button>';
+}
+
+async function renderFAQ() {
+  setContent(
+    '<div class="flex-between mb-20 flex-wrap gap-8">' +
+      '<div><h1 style="font-size:1.4rem">FAQ SASP Sud</h1><p class="text-muted" style="font-size:.84rem;margin-top:3px">Guide rapide pour utiliser l intranet sans casser les donnees.</p></div>' +
+    '</div>' +
+    '<div class="faq-grid">' +
+      faqBlock('Premiere connexion', '<p>Connectez-vous avec Discord. Le site verifie vos roles sur le Discord SASP Sud. Les roles administrateur donnent acces aux outils de gestion.</p>') +
+      faqBlock('Ajouter un agent', '<p>Allez dans <b>Agents</b>, cliquez sur <b>Ajouter un agent</b>, remplissez au minimum prenom, nom, matricule, grade et Discord ID, puis enregistrez.</p>' + faqLink('agents', 'Ouvrir Agents')) +
+      faqBlock('Modifier une fiche agent', '<p>Depuis <b>Agents</b>, ouvrez la fiche, puis cliquez sur <b>Modifier</b>. Les changements importants sont envoyes dans le salon logs du Sud.</p>' + faqLink('agents', 'Ouvrir Agents')) +
+      faqBlock('Synchroniser Discord vers une fiche', '<p>Sur une fiche agent, le bouton <b>Sync Discord</b> recupere grade, divisions et permissions depuis les roles Discord du membre.</p>') +
+      faqBlock('Pointeuse', '<p>Les agents utilisent la page <b>Pointeuse</b> pour prendre ou quitter leur service. L historique permet de suivre les heures par semaine, les primes et les totaux.</p>' + faqLink('pointeuse', 'Ouvrir Pointeuse')) +
+      faqBlock('Annuaire', '<p>Quand une fiche agent est creee ou modifiee, l annuaire Discord Sud peut etre mis a jour automatiquement avec les matricules, noms et numeros de telephone.</p>') +
+      faqBlock('Grades et divisions', '<p>Les pages <b>Grades</b> et <b>Divisions</b> permettent de consulter la hierarchie, les effectifs et les unites configurees sur le site Sud.</p>' + faqLink('grades', 'Ouvrir Grades') + ' ' + faqLink('units', 'Ouvrir Divisions')) +
+      faqBlock('Fugitive Task Force', '<p>La page <b>FTF</b> est partagee entre le SASP Sud et le SASP Nord. Les dossiers crees d un cote apparaissent aussi de l autre avec le service createur.</p>' + faqLink('ftf', 'Ouvrir FTF')) +
+      faqBlock('Probleme courant', '<p>Si un agent ne voit pas le site, verifiez qu il a bien un role autorise sur Discord. Si une synchronisation Discord ne fonctionne pas, verifiez le Discord ID de la fiche agent.</p>' + faqLink('settings', 'Ouvrir Mon compte')) +
+    '</div>'
+  );
 }
 
 // ══ AGENTS ════════════════════════════════════════════════════════
