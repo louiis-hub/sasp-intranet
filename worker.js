@@ -310,7 +310,12 @@ function enterpriseRoleSpecs(enterprise) {
 function json(data, status = 200) {
   return new Response(JSON.stringify(repairDiscordTextDeep(data)), {
     status,
-    headers: { "content-type": "application/json", "access-control-allow-origin": "*" }
+    headers: {
+      "content-type": "application/json",
+      "access-control-allow-origin": "*",
+      "access-control-allow-headers": "content-type, x-log-token",
+      "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS"
+    }
   });
 }
 
@@ -1042,7 +1047,7 @@ export default {
         headers: {
           "access-control-allow-origin": "*",
           "access-control-allow-headers": "content-type, x-log-token",
-          "access-control-allow-methods": "GET,POST,OPTIONS"
+          "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS"
         }
       });
     }
