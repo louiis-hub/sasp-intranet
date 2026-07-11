@@ -1492,6 +1492,7 @@ export default {
         date: extractLineValue(text, "Pos(?:e|é) le") || "Non precisee",
         tel: extractLineValue(text, "Num(?:e|é)ro de t(?:e|é)l(?:e|é)phone") || "Non precise",
         raison: extractLineValue(text, "Raison") || "Non precisee",
+        proc_thread_id: (text.match(/Dossier proc li(?:e|é)\s*:\s*<#(\d+)>/i) || [])[1] || "",
         thread_id: thread.id
       };
     }
@@ -1518,17 +1519,19 @@ export default {
       return bracelets.sort((a, b) => a.suspect.localeCompare(b.suspect, "fr"));
     }
 
-    async function sendBraceletRecap(env, channelId = STICKY_PROC_CHANNEL, guildId = env.DISCORD_GUILD_ID || "1500975724750704661", forumId = BRACELET_FORUM_CHANNEL) {
-      const bracelets = await getActiveBracelets(env, guildId, forumId);
+    async function sendBraceletRecap(env, channelId = STICKY_PROC_CHANNEL, guildId = env.DISCORD_GUILD_ID || "1500975724750704661", forumId = BRACELET_FORUM_CHANNEL, source = "all") {
+      const allBracelets = await getActiveBracelets(env, guildId, forumId);
+      const bracelets = source === "proc" ? allBracelets.filter(b => b.proc_thread_id) : allBracelets;
       const lines = bracelets.length
         ? bracelets.map((b, i) =>
             `**${i + 1}. ${b.suspect}**\n` +
             `Date de mise : ${b.date}\n` +
             `Telephone : \`${b.tel}\`\n` +
             `Raison : ${b.raison}\n` +
+            (b.proc_thread_id ? `Dossier proc : <#${b.proc_thread_id}>\n` : "") +
             `Dossier : <#${b.thread_id}>`
           )
-        : ["Aucun bracelet actif trouve."];
+        : [source === "proc" ? "Aucun bracelet actif lie a un /proc trouve." : "Aucun bracelet actif trouve."];
       const description = lines.join("\n\n").slice(0, 4000);
       const oldRes = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages?limit=20`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
@@ -1546,7 +1549,7 @@ export default {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           embeds: [{
-            title: "Bracelets actifs",
+            title: source === "proc" ? "Bracelets actifs lies a un /proc" : "Bracelets actifs",
             color: 0xc9a84c,
             description,
             footer: { text: `SASP - ${bracelets.length} bracelet(s) actif(s)` },
@@ -1555,7 +1558,7 @@ export default {
         })
       });
       if (!res.ok) throw new Error(`send recap failed: ${res.status} ${await res.text()}`);
-      return { ok: true, count: bracelets.length, channel_id: channelId, guild_id: guildId, forum_id: forumId };
+      return { ok: true, count: bracelets.length, total_count: allBracelets.length, channel_id: channelId, guild_id: guildId, forum_id: forumId, source };
     }
     const STICKY_SUBVENTION_EMBED = { embeds: [{ title: "ðŸ’¸ RÃ¨gles subvention", color: 0xc9a84c, description: "Pour faire une demande de subvention, utilisez la commande `/subvention` dans ce salon.\n\n**RÃ¨gles actuelles :**\nâ€¢ La subvention est fixÃ©e Ã  **10 000 $ par voiture** pour le moment.\nâ€¢ Il est interdit de faire des **performances** avec cette subvention.\nâ€¢ Il est interdit d'acheter une **nouvelle voiture** avec cette subvention.", footer: { text: "SASP â€¢ Subvention" } }] };
     async function refreshSubventionSticky() {
@@ -1596,7 +1599,8 @@ export default {
           env,
           url.searchParams.get("channel_id") || STICKY_PROC_CHANNEL,
           url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661",
-          url.searchParams.get("forum_id") || BRACELET_FORUM_CHANNEL
+          url.searchParams.get("forum_id") || BRACELET_FORUM_CHANNEL,
+          url.searchParams.get("source") || "all"
         ));
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
