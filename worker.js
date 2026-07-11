@@ -1496,14 +1496,13 @@ export default {
       };
     }
 
-    async function getActiveBracelets(env) {
-      const guildId = env.DISCORD_GUILD_ID || "1500975724750704661";
+    async function getActiveBracelets(env, guildId = env.DISCORD_GUILD_ID || "1500975724750704661", forumId = BRACELET_FORUM_CHANNEL) {
       const activeRes = await discordFetch(`${DISCORD_API}/guilds/${guildId}/threads/active`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
       if (!activeRes.ok) throw new Error(`threads active failed: ${activeRes.status} ${await activeRes.text()}`);
       const activeData = await activeRes.json();
-      const braceletThreads = (activeData.threads || []).filter(t => t.parent_id === BRACELET_FORUM_CHANNEL && !t.archived);
+      const braceletThreads = (activeData.threads || []).filter(t => t.parent_id === forumId && !t.archived);
       const bracelets = [];
       for (const thread of braceletThreads) {
         const messagesRes = await discordFetch(`${DISCORD_API}/channels/${thread.id}/messages?limit=50`, {
@@ -1519,8 +1518,8 @@ export default {
       return bracelets.sort((a, b) => a.suspect.localeCompare(b.suspect, "fr"));
     }
 
-    async function sendBraceletRecap(env, channelId = STICKY_PROC_CHANNEL) {
-      const bracelets = await getActiveBracelets(env);
+    async function sendBraceletRecap(env, channelId = STICKY_PROC_CHANNEL, guildId = env.DISCORD_GUILD_ID || "1500975724750704661", forumId = BRACELET_FORUM_CHANNEL) {
+      const bracelets = await getActiveBracelets(env, guildId, forumId);
       const lines = bracelets.length
         ? bracelets.map((b, i) =>
             `**${i + 1}. ${b.suspect}**\n` +
@@ -1556,7 +1555,7 @@ export default {
         })
       });
       if (!res.ok) throw new Error(`send recap failed: ${res.status} ${await res.text()}`);
-      return { ok: true, count: bracelets.length, channel_id: channelId };
+      return { ok: true, count: bracelets.length, channel_id: channelId, guild_id: guildId, forum_id: forumId };
     }
     const STICKY_SUBVENTION_EMBED = { embeds: [{ title: "ðŸ’¸ RÃ¨gles subvention", color: 0xc9a84c, description: "Pour faire une demande de subvention, utilisez la commande `/subvention` dans ce salon.\n\n**RÃ¨gles actuelles :**\nâ€¢ La subvention est fixÃ©e Ã  **10 000 $ par voiture** pour le moment.\nâ€¢ Il est interdit de faire des **performances** avec cette subvention.\nâ€¢ Il est interdit d'acheter une **nouvelle voiture** avec cette subvention.", footer: { text: "SASP â€¢ Subvention" } }] };
     async function refreshSubventionSticky() {
@@ -1593,7 +1592,12 @@ export default {
     }
     if (url.pathname === "/admin/send-bracelet-recap" && request.method === "GET") {
       try {
-        return json(await sendBraceletRecap(env, url.searchParams.get("channel_id") || STICKY_PROC_CHANNEL));
+        return json(await sendBraceletRecap(
+          env,
+          url.searchParams.get("channel_id") || STICKY_PROC_CHANNEL,
+          url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661",
+          url.searchParams.get("forum_id") || BRACELET_FORUM_CHANNEL
+        ));
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
