@@ -1727,6 +1727,101 @@ export default {
         results
       };
     }
+
+    async function cleanupEmptyBraceletThreads(guildId, forumId, dryRun = true) {
+      const activeRes = await discordFetch(`${DISCORD_API}/guilds/${guildId}/threads/active`, {
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+      });
+      const activeText = await activeRes.text();
+      let activeData = null;
+      try { activeData = activeText ? JSON.parse(activeText) : null; } catch {}
+      if (!activeRes.ok) throw new Error(`${guildId} active threads (${activeRes.status}) ${activeText}`);
+
+      const threads = (activeData.threads || []).filter(thread => thread.parent_id === forumId && !thread.archived);
+      const results = [];
+      for (const thread of threads) {
+        const messagesRes = await discordFetch(`${DISCORD_API}/channels/${thread.id}/messages?limit=50`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        if (!messagesRes.ok) {
+          results.push({ id: thread.id, name: thread.name, ok: false, error: `messages ${messagesRes.status}` });
+          continue;
+        }
+        const messages = await messagesRes.json();
+        const hasBraceletMessage = Array.isArray(messages) && messages.some(m =>
+          String(m.content || "").toUpperCase().includes("BRACELET ELECTRONIQUE DE")
+        );
+        if (hasBraceletMessage) {
+          results.push({ id: thread.id, name: thread.name, kept: true });
+          continue;
+        }
+        if (!dryRun) {
+          try {
+            await closeDiscordThread(thread.id);
+          } catch (e) {
+            results.push({ id: thread.id, name: thread.name, ok: false, error: e.message });
+            continue;
+          }
+        }
+        results.push({ id: thread.id, name: thread.name, removed: !dryRun, would_remove: dryRun });
+      }
+      return {
+        ok: results.every(result => result.kept || result.removed || result.would_remove),
+        dry_run: dryRun,
+        guild_id: guildId,
+        forum_id: forumId,
+        total: threads.length,
+        kept: results.filter(result => result.kept).length,
+        removable: results.filter(result => result.removed || result.would_remove).length,
+        failed: results.filter(result => result.ok === false).length,
+        results
+      };
+    }
+
+    async function cleanupForumThreadsNotInSource(sourceGuildId, sourceForumId, targetGuildId, targetForumId, dryRun = true) {
+      const getActiveThreads = async (guildId, forumId) => {
+        const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/threads/active`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        const text = await res.text();
+        let data = null;
+        try { data = text ? JSON.parse(text) : null; } catch {}
+        if (!res.ok) throw new Error(`${guildId} active threads (${res.status}) ${text}`);
+        return (data.threads || []).filter(thread => thread.parent_id === forumId && !thread.archived);
+      };
+
+      const sourceThreads = await getActiveThreads(sourceGuildId, sourceForumId);
+      const targetThreads = await getActiveThreads(targetGuildId, targetForumId);
+      const sourceNames = new Set(sourceThreads.map(thread => thread.name));
+      const results = [];
+
+      for (const thread of targetThreads) {
+        if (sourceNames.has(thread.name)) {
+          results.push({ id: thread.id, name: thread.name, kept: true });
+          continue;
+        }
+        if (!dryRun) {
+          try {
+            await closeDiscordThread(thread.id);
+          } catch (e) {
+            results.push({ id: thread.id, name: thread.name, ok: false, error: e.message });
+            continue;
+          }
+        }
+        results.push({ id: thread.id, name: thread.name, removed: !dryRun, would_remove: dryRun });
+      }
+
+      return {
+        ok: results.every(result => result.kept || result.removed || result.would_remove),
+        dry_run: dryRun,
+        source_total: sourceThreads.length,
+        target_total: targetThreads.length,
+        kept: results.filter(result => result.kept).length,
+        removable: results.filter(result => result.removed || result.would_remove).length,
+        failed: results.filter(result => result.ok === false).length,
+        results
+      };
+    }
     const STICKY_SUBVENTION_EMBED = { embeds: [{ title: "ðŸ’¸ RÃ¨gles subvention", color: 0xc9a84c, description: "Pour faire une demande de subvention, utilisez la commande `/subvention` dans ce salon.\n\n**RÃ¨gles actuelles :**\nâ€¢ La subvention est fixÃ©e Ã  **10 000 $ par voiture** pour le moment.\nâ€¢ Il est interdit de faire des **performances** avec cette subvention.\nâ€¢ Il est interdit d'acheter une **nouvelle voiture** avec cette subvention.", footer: { text: "SASP â€¢ Subvention" } }] };
     async function refreshSubventionSticky() {
       const msgsRes = await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages?limit=20`, {
@@ -1796,6 +1891,30 @@ export default {
           url.searchParams.get("target_forum_id") || NORD_BRACELET_FORUM_CHANNEL,
           Number(url.searchParams.get("start") || "0"),
           Number(url.searchParams.get("limit") || "5")
+        ));
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+    if (url.pathname === "/admin/cleanup-empty-bracelet-threads" && request.method === "GET") {
+      try {
+        return json(await cleanupEmptyBraceletThreads(
+          url.searchParams.get("guild_id") || NORD_GUILD_ID,
+          url.searchParams.get("forum_id") || NORD_BRACELET_FORUM_CHANNEL,
+          url.searchParams.get("dry_run") !== "false"
+        ));
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+    if (url.pathname === "/admin/cleanup-forum-threads-not-in-source" && request.method === "GET") {
+      try {
+        return json(await cleanupForumThreadsNotInSource(
+          url.searchParams.get("source_guild_id") || SUD_GUILD_ID,
+          url.searchParams.get("source_forum_id") || BRACELET_FORUM_CHANNEL,
+          url.searchParams.get("target_guild_id") || NORD_GUILD_ID,
+          url.searchParams.get("target_forum_id") || NORD_BRACELET_FORUM_CHANNEL,
+          url.searchParams.get("dry_run") !== "false"
         ));
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
