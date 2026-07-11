@@ -197,7 +197,7 @@ var _wikiSlug     = null;
 var _wikiSections = [];
 
 var NAV = [
-  { id: 'faq',      icon: '?', label: 'FAQ' },
+  { id: 'faq',      icon: '❓', label: 'FAQ' },
   { id: 'dashboard', icon: '🏛️', label: 'Tableau de bord' },
   { divider: true },
   { group: 'RESSOURCES HUMAINES' },
