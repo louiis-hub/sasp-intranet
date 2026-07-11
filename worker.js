@@ -825,19 +825,43 @@ async function cleanupEnterpriseDuplicates(env, guildId = ENTERPRISE_GUILD_ID, s
 }
 
 async function sb(env, method, path, body) {
+  const prefer = method === "POST"
+    ? (path.includes("on_conflict") ? "resolution=merge-duplicates,return=representation" : "return=representation")
+    : "return=minimal";
   const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
     method,
     headers: {
       "apikey": env.SUPABASE_SERVICE_KEY,
       "Authorization": `Bearer ${env.SUPABASE_SERVICE_KEY}`,
       "Content-Type": "application/json",
-      "Prefer": method === "POST" ? "return=representation" : "return=minimal"
+      "Prefer": prefer
     },
     body: body ? JSON.stringify(body) : undefined
   });
   if (res.status === 204) return null;
   const data = await res.json();
   if (!res.ok) throw new Error(JSON.stringify(data));
+  return data;
+}
+
+function ftfRowToDossier(row) {
+  return row && row.data ? row.data : null;
+}
+
+async function getFtfDossiers(env) {
+  const rows = await sb(env, "GET", "/ftf_dossiers?select=id,data,updated_at&order=updated_at.desc");
+  return (Array.isArray(rows) ? rows : []).map(ftfRowToDossier).filter(Boolean);
+}
+
+async function upsertFtfDossier(env, dossier) {
+  if (!dossier || !dossier.id) throw new Error("Dossier FTF invalide");
+  const now = new Date().toISOString();
+  const data = { ...dossier, updated_at: dossier.updated_at || now };
+  await sb(env, "POST", "/ftf_dossiers?on_conflict=id", {
+    id: data.id,
+    data,
+    updated_at: data.updated_at
+  });
   return data;
 }
 
@@ -1162,6 +1186,53 @@ export default {
         });
         if (!res.ok) return json({ ok: false, error: await res.text() }, res.status);
         return json({ ok: true });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/ftf/dossiers" && request.method === "GET") {
+      try {
+        return json({ ok: true, dossiers: await getFtfDossiers(env) });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/ftf/dossiers" && (request.method === "POST" || request.method === "PATCH")) {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const body = await request.json();
+        const dossier = body.dossier || body;
+        return json({ ok: true, dossier: await upsertFtfDossier(env, dossier) });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/ftf/dossiers/bulk" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const body = await request.json();
+        const dossiers = Array.isArray(body.dossiers) ? body.dossiers : [];
+        const saved = [];
+        for (const dossier of dossiers) saved.push(await upsertFtfDossier(env, dossier));
+        return json({ ok: true, count: saved.length, dossiers: saved });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/ftf/dossiers" && request.method === "DELETE") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const id = url.searchParams.get("id");
+        if (!id) return json({ ok: false, error: "Missing id" }, 400);
+        await sb(env, "DELETE", `/ftf_dossiers?id=eq.${encodeURIComponent(id)}`);
+        return json({ ok: true, id });
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }

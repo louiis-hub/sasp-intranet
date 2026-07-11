@@ -649,15 +649,61 @@ var _ftfSearch = '';
 var _ftfStatus = '';
 var _ftfArchiveView = 'active';
 var _ftfNotifyRunning = false;
+var _ftfDossiers = [];
+var _ftfLoaded = false;
 
 function ftfLoadDossiers() {
-  try {
-    var data = JSON.parse(localStorage.getItem(FTF_STORAGE_KEY) || '[]');
-    return Array.isArray(data) ? data : [];
-  } catch(e) { return []; }
+  return _ftfDossiers || [];
 }
-function ftfSaveDossiers(list) {
-  localStorage.setItem(FTF_STORAGE_KEY, JSON.stringify(list || []));
+async function ftfFetchDossiers(force) {
+  if (_ftfLoaded && !force) return _ftfDossiers;
+  var res = await fetch(WORKER_BASE + '/ftf/dossiers?t=' + Date.now(), { cache: 'no-store' });
+  var data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Erreur chargement FTF');
+  _ftfDossiers = data.dossiers || [];
+  _ftfLoaded = true;
+  try {
+    var local = JSON.parse(localStorage.getItem(FTF_STORAGE_KEY) || '[]');
+    if (!_ftfDossiers.length && Array.isArray(local) && local.length) {
+      await ftfSaveDossiers(local);
+      _ftfDossiers = local;
+    }
+  } catch(e) {}
+  return _ftfDossiers;
+}
+async function ftfSaveDossier(dossier) {
+  var res = await fetch(WORKER_BASE + '/ftf/dossiers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+    body: JSON.stringify({ dossier: dossier })
+  });
+  var data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Erreur sauvegarde FTF');
+  _ftfDossiers = _ftfDossiers.filter(function(d){ return d.id !== data.dossier.id; });
+  _ftfDossiers.unshift(data.dossier);
+  localStorage.setItem(FTF_STORAGE_KEY, JSON.stringify(_ftfDossiers));
+  return data.dossier;
+}
+async function ftfSaveDossiers(list) {
+  var res = await fetch(WORKER_BASE + '/ftf/dossiers/bulk', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+    body: JSON.stringify({ dossiers: list || [] })
+  });
+  var data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Erreur sauvegarde FTF');
+  _ftfDossiers = data.dossiers || list || [];
+  localStorage.setItem(FTF_STORAGE_KEY, JSON.stringify(_ftfDossiers));
+}
+async function ftfDeleteDossierRemote(id) {
+  var res = await fetch(WORKER_BASE + '/ftf/dossiers?id=' + encodeURIComponent(id), {
+    method: 'DELETE',
+    headers: { 'x-log-token': LOG_TOKEN }
+  });
+  var data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Erreur suppression FTF');
+  _ftfDossiers = _ftfDossiers.filter(function(d){ return d.id !== id; });
+  localStorage.setItem(FTF_STORAGE_KEY, JSON.stringify(_ftfDossiers));
 }
 function ftfTodayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -739,6 +785,12 @@ function renderFTFStat(icon, label, value, sub) {
 async function renderFTF() {
   if (!canAccessFTF()) {
     setContent('<div class="empty-state"><div class="empty-icon">FTF</div><div class="empty-title">Acces FTF restreint</div><div class="empty-sub">Ajoutez l ID du role Discord FTF dans FTF_ROLE_ID pour autoriser cette page.</div></div>');
+    return;
+  }
+  try {
+    await ftfFetchDossiers();
+  } catch(e) {
+    setContent('<div class="empty-state"><div class="empty-icon">FTF</div><div class="empty-title">Erreur de chargement FTF</div><div class="empty-sub">' + esc(e.message || e) + '</div></div>');
     return;
   }
   var dossiers = ftfLoadDossiers();
@@ -844,7 +896,7 @@ async function ftfCheckConvocationNotifications() {
         changed = true;
       }
     }
-    if (changed) ftfSaveDossiers(dossiers);
+    if (changed) await ftfSaveDossiers(dossiers);
   } catch(e) {
     console.warn('FTF notifications:', e);
   } finally {
@@ -926,7 +978,7 @@ function openFtfDossierModal(id) {
       '<button class="btn btn-primary" onclick="saveFtfDossier(' + (isEdit ? '\'' + esc(d.id) + '\'' : 'null') + ')">Sauvegarder</button>'
   });
 }
-function saveFtfDossier(id) {
+async function saveFtfDossier(id) {
   var nom = (document.getElementById('ftfNom').value || '').trim();
   var prenom = (document.getElementById('ftfPrenom').value || '').trim();
   var montant = parseMoneyInput(document.getElementById('ftfMontant').value);
@@ -956,49 +1008,61 @@ function saveFtfDossier(id) {
     notes: document.getElementById('ftfNotes').value || '',
     updated_at: new Date().toISOString()
   };
-  if (id) dossiers = dossiers.map(function(d){ return d.id === id ? Object.assign({}, d, data) : d; });
-  else dossiers.unshift(data);
-  ftfSaveDossiers(dossiers);
-  closeModal();
-  toast('Dossier FTF sauvegarde.', 'success');
-  renderFTF();
+  try {
+    await ftfSaveDossier(data);
+    closeModal();
+    toast('Dossier FTF sauvegarde.', 'success');
+    renderFTF();
+  } catch(e) {
+    toast('Erreur sauvegarde FTF: ' + (e.message || e), 'error');
+  }
 }
-function deleteFtfDossier(id) {
+async function deleteFtfDossier(id) {
   if (!confirm('Supprimer ce dossier FTF ?')) return;
-  ftfSaveDossiers(ftfLoadDossiers().filter(function(d){ return d.id !== id; }));
-  closeModal();
-  toast('Dossier FTF supprime.', 'info');
-  renderFTF();
+  try {
+    await ftfDeleteDossierRemote(id);
+    closeModal();
+    toast('Dossier FTF supprime.', 'info');
+    renderFTF();
+  } catch(e) {
+    toast('Erreur suppression FTF: ' + (e.message || e), 'error');
+  }
 }
-function toggleFtfArchive(id) {
+async function toggleFtfArchive(id) {
   var dossiers = ftfLoadDossiers();
   var archived = false;
   var found = false;
-  dossiers = dossiers.map(function(d) {
+  var updated = null;
+  dossiers.forEach(function(d) {
     if (d.id !== id) return d;
     found = true;
     archived = !d.archived;
-    return Object.assign({}, d, {
+    updated = Object.assign({}, d, {
       archived: archived,
       archived_at: archived ? new Date().toISOString() : '',
       updated_at: new Date().toISOString()
     });
   });
   if (!found) { toast('Dossier introuvable.', 'error'); return; }
-  ftfSaveDossiers(dossiers);
-  closeModal();
-  toast(archived ? 'Dossier archive.' : 'Dossier restaure.', archived ? 'info' : 'success');
-  renderFTF();
+  try {
+    await ftfSaveDossier(updated);
+    closeModal();
+    toast(archived ? 'Dossier archive.' : 'Dossier restaure.', archived ? 'info' : 'success');
+    renderFTF();
+  } catch(e) {
+    toast('Erreur archive FTF: ' + (e.message || e), 'error');
+  }
 }
-function rollbackFtfDossier(id) {
+async function rollbackFtfDossier(id) {
   var dossiers = ftfLoadDossiers();
   var changed = false;
-  dossiers = dossiers.map(function(d) {
+  var updated = null;
+  dossiers.forEach(function(d) {
     if (d.id !== id) return d;
     var previous = ftfPreviousStep(d.statut);
     if (!previous) return d;
     changed = true;
-    return Object.assign({}, d, {
+    updated = Object.assign({}, d, {
       statut: previous,
       date_statut: previous === 'Attente paiement' ? (d.date_notification || ftfTodayKey()) : ftfTodayKey(),
       convocation_validee: false,
@@ -1007,10 +1071,14 @@ function rollbackFtfDossier(id) {
     });
   });
   if (!changed) { toast('Aucune etape precedente disponible.', 'info'); return; }
-  ftfSaveDossiers(dossiers);
-  closeModal();
-  toast('Etape precedente restauree.', 'success');
-  renderFTF();
+  try {
+    await ftfSaveDossier(updated);
+    closeModal();
+    toast('Etape precedente restauree.', 'success');
+    renderFTF();
+  } catch(e) {
+    toast('Erreur retour etape FTF: ' + (e.message || e), 'error');
+  }
 }
 
 async function renderDashboard() {
