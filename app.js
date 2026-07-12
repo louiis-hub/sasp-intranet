@@ -2622,15 +2622,15 @@ async function renderReferents() {
 
   function refLabel(a) {
     return a.referent
-      ? (a.referent.grade + ' ' + a.referent.prenom + ' ' + a.referent.nom + ' (' + a.referent.matricule + ')')
+      ? ('(' + a.referent.matricule + ') ' + a.referent.prenom + ' ' + a.referent.nom)
       : '— Aucun —';
   }
 
   function buildDropdown(agentId, currentLabel) {
     var opts = eligibles.map(function(e) {
-      return '<div class="rdd-opt" data-val="' + e.id + '" onclick="pickRef(\'' + agentId + '\',\'' + e.id + '\',\'' + (e.grade + ' ' + e.prenom + ' ' + e.nom + ' (' + e.matricule + ')').replace(/'/g,"&#39;") + '\')">'
-        + '<span style="color:var(--gold);font-size:.78rem">' + e.grade + '</span> ' + e.prenom + ' ' + e.nom
-        + ' <span class="badge" style="margin-left:4px;font-size:.7rem">' + e.matricule + '</span>'
+      var label = '(' + e.matricule + ') ' + e.prenom + ' ' + e.nom;
+      return '<div class="rdd-opt" data-val="' + e.id + '" onclick="pickRef(\'' + agentId + '\',\'' + e.id + '\',\'' + label.replace(/'/g,"&#39;") + '\')">'
+        + '<span class="badge" style="margin-right:6px;font-size:.7rem">' + e.matricule + '</span>' + e.prenom + ' ' + e.nom
         + '</div>';
     }).join('');
     return '<div class="rdd" id="rdd-' + agentId + '">'
