@@ -811,10 +811,10 @@ async function buildFtfConvocationPng(d, dateValue, hourValue) {
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
   ctx.font = '700 31px Arial, sans-serif';
-  ctx.fillText(((d.nom || '') + ' ' + (d.prenom || '')).trim().toUpperCase(), 718, 552, 360);
+  ctx.fillText(((d.nom || '') + ' ' + (d.prenom || '')).trim().toUpperCase(), 700, 552, 420);
   ctx.font = '700 31px Arial, sans-serif';
-  ctx.fillText(ftfFormatConvocationDate(dateValue), 675, 623, 245);
-  ctx.fillText(ftfFormatConvocationHour(hourValue), 713, 694, 170);
+  ctx.fillText(ftfFormatConvocationDate(dateValue), 700, 623, 245);
+  ctx.fillText(ftfFormatConvocationHour(hourValue), 700, 694, 170);
   return canvas.toDataURL('image/png');
 }
 function ftfFilteredDossiers() {
