@@ -2458,7 +2458,7 @@ export default {
     if (url.pathname === "/admin/kick-non-sasp" && request.method === "GET") {
       const SASP_GUILD   = "1500975724750704661";
       const TARGET_GUILD = "1382167184607940658";
-      const REQUIRED_ROLE = "1501250580058870104";
+      const ALLOWED_ROLES = ["1501250580058870104", "1512410095173238814"];
       try {
         const targetMembers = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members?limit=1000`, {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
@@ -2471,7 +2471,7 @@ export default {
           const saspMember = await discordFetch(`${DISCORD_API}/guilds/${SASP_GUILD}/members/${uid}`, {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
           }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
-          const hasRole = saspMember && (saspMember.roles || []).includes(REQUIRED_ROLE);
+          const hasRole = saspMember && ALLOWED_ROLES.some(r => (saspMember.roles || []).includes(r));
           if (!hasRole) {
             const res = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
               method: "DELETE",
@@ -3560,7 +3560,7 @@ export default {
       ctx.waitUntil((async () => {
         const SOURCE_GUILD  = "1500975724750704661";
         const TARGET_GUILD  = "1382167184607940658";
-        const REQUIRED_ROLE = "1501250580058870104";
+        const ALLOWED_ROLES = ["1501250580058870104", "1512410095173238814"];
         try {
           // Sync pseudos
           const members = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members?limit=1000`, {
@@ -3586,7 +3586,7 @@ export default {
             const saspMember = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members/${uid}`, {
               headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
             }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
-            if (!saspMember || !(saspMember.roles || []).includes(REQUIRED_ROLE)) {
+            if (!saspMember || !ALLOWED_ROLES.some(r => (saspMember.roles || []).includes(r))) {
               await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
                 method: "DELETE",
                 headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
