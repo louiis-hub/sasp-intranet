@@ -1,0 +1,19 @@
+name: Deploy Worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [gh-pages]
+    paths:
+      - 'worker.js'
+      - 'wrangler.toml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 89b291a5e27346d497074d93b5f30402
