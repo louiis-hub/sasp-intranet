@@ -2777,6 +2777,20 @@ window.setReferent = async function(agentId, referentId) {
   await DB.setReferent(agentId, referentId || null);
 };
 
+window.postCompletudDiscord = async function(btn) {
+  var orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Envoi…';
+  try {
+    var res = await fetch(WORKER_BASE + '/admin/post-completude');
+    var data = await res.json();
+    btn.textContent = data.ok ? '✅ Envoyé !' : '❌ Erreur';
+  } catch(e) {
+    btn.textContent = '❌ Erreur';
+  }
+  setTimeout(function() { btn.textContent = orig; btn.disabled = false; }, 2500);
+};
+
 window.postReferentsDiscord = async function(btn) {
   var orig = btn.textContent;
   btn.disabled = true;
@@ -2827,6 +2841,7 @@ async function renderCompletude() {
       '</div>' +
       '<div style="display:flex;gap:8px">' +
         (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="syncGradesFromDiscord(this)">⬇️ Grades Discord</button>' : '') +
+        (canWrite() ? '<button class="btn btn-ghost btn-sm" onclick="postCompletudDiscord(this)">📤 Envoyer sur Discord</button>' : '') +
         '<button class="btn btn-ghost btn-sm" onclick="navigate(\'agents\')">← Retour agents</button>' +
       '</div>' +
     '</div>' +

@@ -3566,6 +3566,56 @@ export default {
       return json({ ok: true, count });
     }
 
+    if (url.pathname === "/admin/post-completude" && request.method === "GET") {
+      const CHANNEL = "1518636313325076672";
+      const FIELDS = [
+        { key: "iban",             label: "IBAN" },
+        { key: "telephone",        label: "Téléphone" },
+        { key: "date_naissance",   label: "Date naissance" },
+        { key: "date_recrutement", label: "Date recrutement" },
+        { key: "discord_id",       label: "Discord ID" }
+      ];
+      try {
+        const agents = await sbForSite(env, "GET", `/agents?select=matricule,nom,prenom,grade,iban,telephone,date_naissance,date_recrutement,discord_id&statut=neq.Arch%C3%A9&order=matricule`, null, "sud");
+        const incomplete = (agents || []).filter(a => FIELDS.some(f => !a[f.key]));
+
+        if (!incomplete.length) {
+          await discordFetch(`${DISCORD_API}/channels/${CHANNEL}/messages`, {
+            method: "POST",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ embeds: [{ title: "✅ Complétude des fiches", description: "Toutes les fiches agents sont complètes.", color: 0x2ecc71 }] })
+          });
+          return json({ ok: true, incomplete: 0 });
+        }
+
+        const lines = incomplete.map(a => {
+          const missing = FIELDS.filter(f => !a[f.key]).map(f => f.label).join(", ");
+          return `> **(${a.matricule})** ${a.prenom} ${a.nom} — ~~${missing}~~`;
+        });
+
+        const chunks = [];
+        let cur = "";
+        for (const l of lines) {
+          if ((cur + "\n" + l).length > 1000) { chunks.push(cur); cur = l; }
+          else cur = cur ? cur + "\n" + l : l;
+        }
+        if (cur) chunks.push(cur);
+
+        const now = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+        const fields = chunks.map((c, i) => ({ name: i === 0 ? `${incomplete.length} fiche(s) incomplète(s)` : "​", value: c, inline: false }));
+        const embed = { title: "📋 Complétude des fiches agents", color: 0xe74c3c, fields, footer: { text: `Mis à jour le ${now}` } };
+
+        await discordFetch(`${DISCORD_API}/channels/${CHANNEL}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [embed] })
+        });
+        return json({ ok: true, incomplete: incomplete.length });
+      } catch(e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     if (url.pathname === "/admin/post-referents" && request.method === "GET") {
       const CHANNEL = "1518640738559197284";
       try {
