@@ -887,13 +887,15 @@ async function getAgentByDiscordId(env, discordId) {
 }
 
 function parseAgentIdentityFromDiscordName(name) {
-  const clean = String(name || "")
+  const raw = String(name || "");
+  const bracketMatricule = raw.match(/\[(\d{1,5})\]/);
+  const clean = raw
     .replace(/\[[^\]]+\]|\([^)]*\)/g, " ")
     .replace(/[|â€¢Â·_]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   const matriculeMatch = clean.match(/(?:^|\s)(?:#|mle\.?|mat\.?|matricule)?\s*(\d{1,5})(?=\s|$)/i);
-  const matricule = matriculeMatch ? matriculeMatch[1] : "";
+  const matricule = bracketMatricule ? bracketMatricule[1] : (matriculeMatch ? matriculeMatch[1] : "");
   const withoutMatricule = matriculeMatch
     ? (clean.slice(0, matriculeMatch.index) + " " + clean.slice(matriculeMatch.index + matriculeMatch[0].length)).replace(/\s+/g, " ").trim()
     : clean;
@@ -918,6 +920,26 @@ async function getAgentIdentityForInteraction(env, interaction) {
   const parsed = parseAgentIdentityFromDiscordName(displayName);
   if (parsed) return { ...parsed, source: "discord" };
   return { nom: "", prenom: displayName || `<@${userId}>`, matricule: "", source: "discord" };
+}
+
+async function getAgentForPointeuseInteraction(env, interaction) {
+  const userId = interaction.member?.user?.id || interaction.user?.id;
+  const byDiscordId = await getAgentByDiscordId(env, userId);
+  if (byDiscordId) return byDiscordId;
+
+  const member = interaction.member || {};
+  const user = member.user || interaction.user || {};
+  const displayName = member.nick || user.global_name || user.username || "";
+  const parsed = parseAgentIdentityFromDiscordName(displayName);
+  if (!parsed || !parsed.matricule) return null;
+
+  const byMatricule = await getAgentByMatricule(env, parsed.matricule);
+  if (!byMatricule) return null;
+
+  if (!byMatricule.discord_id || String(byMatricule.discord_id) !== String(userId)) {
+    await sb(env, "PATCH", `/agents?id=eq.${byMatricule.id}`, { discord_id: userId });
+  }
+  return { ...byMatricule, discord_id: userId };
 }
 
 async function getAgentByMatricule(env, matricule) {
@@ -3309,7 +3331,7 @@ export default {
 
         let agent;
         try {
-          agent = await getAgentByDiscordId(env, discordUserId);
+          agent = await getAgentForPointeuseInteraction(env, interaction);
         } catch (e) {
           return json({ type: 4, data: { content: `âŒ Erreur : ${e.message}`, flags: 64 } });
         }
