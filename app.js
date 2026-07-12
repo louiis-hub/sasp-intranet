@@ -2618,9 +2618,11 @@ async function renderReferents() {
   var byId = {};
   referentsData.forEach(function(a) { byId[a.id] = a; });
 
-  // Options pour le select (tous les agents actifs)
+  // Seuls ces grades peuvent être référent
+  var REFERENT_GRADES = ['Trooper II', 'Trooper III', 'Senior Lead Trooper'];
   var agentOptions = '<option value="">— Aucun —</option>' +
-    agents.map(function(a) {
+    agents.filter(function(a) { return REFERENT_GRADES.indexOf(a.grade) !== -1; })
+    .map(function(a) {
       return '<option value="' + a.id + '">' + a.grade + ' ' + a.prenom + ' ' + a.nom + ' (' + a.matricule + ')</option>';
     }).join('');
 
