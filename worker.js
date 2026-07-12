@@ -3590,7 +3590,7 @@ export default {
 
         const lines = incomplete.map(a => {
           const missing = FIELDS.filter(f => !a[f.key]).map(f => f.label).join(", ");
-          return `> **(${a.matricule})** ${a.prenom} ${a.nom} — ~~${missing}~~`;
+          return `> **(${a.matricule})** ${a.prenom} ${a.nom} — ${missing}`;
         });
 
         const chunks = [];
