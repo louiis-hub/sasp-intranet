@@ -2825,7 +2825,10 @@ async function renderCompletude() {
           '<span style="color:' + (incomplete?'#e74c3c':'#2ecc71') + '">' + incomplete + ' fiche' + (incomplete!==1?'s':'') + ' incomplète' + (incomplete!==1?'s':'') + '</span>' +
         '</div>' +
       '</div>' +
-      '<button class="btn btn-ghost btn-sm" onclick="navigate(\'agents\')">← Retour agents</button>' +
+      '<div style="display:flex;gap:8px">' +
+        (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="syncGradesFromDiscord(this)">⬇️ Grades Discord</button>' : '') +
+        '<button class="btn btn-ghost btn-sm" onclick="navigate(\'agents\')">← Retour agents</button>' +
+      '</div>' +
     '</div>' +
     '<div class="card" style="padding:0;overflow:hidden">' +
       '<table class="table">' +
