@@ -2614,35 +2614,48 @@ async function renderReferents() {
   var agents = await DB.getAgents({});
   var referentsData = await DB.getReferents();
 
-  // Index id → agent complet
   var byId = {};
   referentsData.forEach(function(a) { byId[a.id] = a; });
 
-  // Seuls ces grades peuvent être référent
   var REFERENT_GRADES = ['Trooper II', 'Trooper III', 'Senior Lead Trooper'];
-  var agentOptions = '<option value="">— Aucun —</option>' +
-    agents.filter(function(a) { return REFERENT_GRADES.indexOf(a.grade) !== -1; })
-    .map(function(a) {
-      return '<option value="' + a.id + '">' + a.grade + ' ' + a.prenom + ' ' + a.nom + ' (' + a.matricule + ')</option>';
-    }).join('');
+  var eligibles = agents.filter(function(a) { return REFERENT_GRADES.indexOf(a.grade) !== -1; });
 
-  // Tableau
+  function refLabel(a) {
+    return a.referent
+      ? (a.referent.grade + ' ' + a.referent.prenom + ' ' + a.referent.nom + ' (' + a.referent.matricule + ')')
+      : '— Aucun —';
+  }
+
+  function buildDropdown(agentId, currentLabel) {
+    var opts = eligibles.map(function(e) {
+      return '<div class="rdd-opt" data-val="' + e.id + '" onclick="pickRef(\'' + agentId + '\',\'' + e.id + '\',\'' + (e.grade + ' ' + e.prenom + ' ' + e.nom + ' (' + e.matricule + ')').replace(/'/g,"&#39;") + '\')">'
+        + '<span style="color:var(--gold);font-size:.78rem">' + e.grade + '</span> ' + e.prenom + ' ' + e.nom
+        + ' <span class="badge" style="margin-left:4px;font-size:.7rem">' + e.matricule + '</span>'
+        + '</div>';
+    }).join('');
+    return '<div class="rdd" id="rdd-' + agentId + '">'
+      + '<div class="rdd-trigger" onclick="toggleRdd(\'' + agentId + '\')">'
+      + '<span class="rdd-val" id="rdd-val-' + agentId + '">' + currentLabel + '</span>'
+      + '<span style="color:var(--t3);margin-left:auto;font-size:.7rem">▾</span></div>'
+      + '<div class="rdd-panel" id="rdd-panel-' + agentId + '" style="display:none">'
+      + '<input class="rdd-search" placeholder="Rechercher…" oninput="filterRdd(\'' + agentId + '\',this.value)">'
+      + '<div class="rdd-opt rdd-none" onclick="pickRef(\'' + agentId + '\',\'\',\'— Aucun —\')">— Aucun —</div>'
+      + '<div id="rdd-list-' + agentId + '">' + opts + '</div>'
+      + '</div></div>';
+  }
+
   var rows = referentsData.map(function(a) {
     var refDisplay = a.referent
       ? (a.referent.grade + ' ' + a.referent.prenom + ' ' + a.referent.nom + ' (' + a.referent.matricule + ')')
       : '<span class="muted">—</span>';
-    var sel = '<select onchange="setReferent(\'' + a.id + '\', this.value)" style="max-width:220px;padding:4px 8px;background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:0.85rem">'
-      + agentOptions.replace('value="' + (a.referent_id || '') + '"', 'value="' + (a.referent_id || '') + '" selected')
-      + '</select>';
+    var cell = canWrite() ? buildDropdown(a.id, refLabel(a)) : refDisplay;
     return '<tr>'
       + '<td><strong>' + a.grade + '</strong> ' + a.prenom + ' ' + a.nom + '</td>'
       + '<td><span class="badge">' + a.matricule + '</span></td>'
-      + '<td>' + refDisplay + '</td>'
-      + '<td>' + (canWrite() ? sel : (a.referent ? refDisplay : '<span class="muted">—</span>')) + '</td>'
+      + '<td>' + cell + '</td>'
       + '</tr>';
   }).join('');
 
-  // Vue par référent (groupée)
   var groupMap = {};
   referentsData.forEach(function(a) {
     var key = a.referent_id || '__aucun__';
@@ -2652,27 +2665,61 @@ async function renderReferents() {
 
   var groupHtml = '';
   Object.keys(groupMap).forEach(function(key) {
-    var referentAgent = key !== '__aucun__' && byId[key] ? byId[key] : null;
-    var header = referentAgent
-      ? ('<strong>' + referentAgent.grade + ' ' + referentAgent.prenom + ' ' + referentAgent.nom + '</strong> <span class="badge">' + referentAgent.matricule + '</span>')
+    var ra = key !== '__aucun__' && byId[key] ? byId[key] : null;
+    var header = ra
+      ? ('<strong>' + ra.grade + ' ' + ra.prenom + ' ' + ra.nom + '</strong> <span class="badge">' + ra.matricule + '</span>')
       : '<span class="muted">Sans référent</span>';
     var referes = groupMap[key].map(function(a) {
-      return '<li>' + a.grade + ' ' + a.prenom + ' ' + a.nom + ' <span class="badge">' + a.matricule + '</span></li>';
+      return '<li style="padding:3px 0">' + a.grade + ' ' + a.prenom + ' ' + a.nom + ' <span class="badge">' + a.matricule + '</span></li>';
     }).join('');
     groupHtml += '<div class="card" style="margin-bottom:12px"><div class="card-header">' + header + '</div><ul style="margin:8px 0 4px 20px;padding:0">' + referes + '</ul></div>';
   });
 
+  var css = '<style>'
+    + '.rdd{position:relative;min-width:220px;max-width:280px}'
+    + '.rdd-trigger{display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bgCard);border:1px solid var(--border1);border-radius:var(--rMd);cursor:pointer;font-size:.84rem;color:var(--t1);transition:border-color .2s}'
+    + '.rdd-trigger:hover{border-color:var(--goldBorder)}'
+    + '.rdd-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}'
+    + '.rdd-panel{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bgCard);border:1px solid var(--border1);border-radius:var(--rMd);z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.4);overflow:hidden}'
+    + '.rdd-search{width:100%;padding:8px 10px;background:var(--bgBody);border:none;border-bottom:1px solid var(--border1);color:var(--t1);font-size:.83rem;outline:none;box-sizing:border-box}'
+    + '.rdd-opt{padding:8px 12px;font-size:.83rem;color:var(--t1);cursor:pointer;transition:background .15s}'
+    + '.rdd-opt:hover{background:var(--goldGlow)}'
+    + '.rdd-none{color:var(--t3);font-style:italic}'
+    + '</style>';
+
   setContent(
-    '<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">'
+    css
+    + '<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">'
     + '<button class="btn btn-ghost btn-sm ref-tab-btn active" onclick="switchRefTab(\'table\')">📋 Tableau</button>'
     + '<button class="btn btn-ghost btn-sm ref-tab-btn" onclick="switchRefTab(\'group\')">👥 Par référent</button>'
     + '</div>'
     + '<div id="ref-tab-table">'
-    + '<div class="table-wrap"><table class="table"><thead><tr><th>Agent</th><th>Matricule</th><th>Référent actuel</th>' + (canWrite() ? '<th>Modifier</th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '<div class="table-wrap"><table class="table"><thead><tr><th>Agent</th><th>Matricule</th><th>Référent</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
     + '</div>'
     + '<div id="ref-tab-group" style="display:none">' + groupHtml + '</div>'
   );
+
+  document.addEventListener('click', function closeRdd(e) {
+    if (!e.target.closest('.rdd')) document.querySelectorAll('.rdd-panel').forEach(function(p){ p.style.display='none'; });
+  }, { once: false, capture: false });
 }
+
+window.toggleRdd = function(id) {
+  var p = document.getElementById('rdd-panel-' + id);
+  var open = p.style.display !== 'none';
+  document.querySelectorAll('.rdd-panel').forEach(function(x){ x.style.display='none'; });
+  if (!open) { p.style.display=''; p.querySelector('.rdd-search').focus(); }
+};
+window.filterRdd = function(id, q) {
+  var list = document.getElementById('rdd-list-' + id);
+  q = q.toLowerCase();
+  list.querySelectorAll('.rdd-opt').forEach(function(o){ o.style.display = o.textContent.toLowerCase().includes(q) ? '' : 'none'; });
+};
+window.pickRef = async function(agentId, refId, label) {
+  document.getElementById('rdd-val-' + agentId).textContent = label;
+  document.getElementById('rdd-panel-' + agentId).style.display = 'none';
+  await DB.setReferent(agentId, refId || null);
+};
 
 window.switchRefTab = function(tab) {
   document.getElementById('ref-tab-table').style.display = tab === 'table' ? '' : 'none';
