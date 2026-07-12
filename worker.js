@@ -2507,13 +2507,23 @@ export default {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
           }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
           if (!sourceMember) { skipped++; continue; }
-          const res = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
-            method: "PATCH",
-            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ nick: sourceMember.nick || null })
-          });
+          let res;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            res = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
+              method: "PATCH",
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ nick: sourceMember.nick || null })
+            });
+            if (res.status === 429) {
+              const body = await res.json().catch(() => ({}));
+              const wait = (body.retry_after || 1) * 1000;
+              await new Promise(r => setTimeout(r, wait));
+            } else break;
+          }
           if (res.status === 204 || res.status === 200) synced++;
+          else if (res.status === 403) skipped++;
           else errors.push(`${uid}: ${res.status}`);
+          await new Promise(r => setTimeout(r, 300));
         }
         const next_after = targetMembers.length === PAGE ? targetMembers[targetMembers.length - 1].user.id : null;
         return json({ ok: true, synced, skipped, errors, next_after, done: !next_after });
