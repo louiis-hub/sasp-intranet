@@ -2644,10 +2644,12 @@ async function renderReferents() {
       + '</div></div>';
   }
 
-  var REFERE_GRADES = ['Rookie', 'Trooper I'];
-  var rows = referentsData.filter(function(a) { return REFERE_GRADES.indexOf(a.grade) !== -1; }).map(function(a) {
+  var rookies   = referentsData.filter(function(a) { return a.grade === 'Rookie'; });
+  var troopers1 = referentsData.filter(function(a) { return a.grade === 'Trooper I'; });
+
+  function makeRow(a) {
     var refDisplay = a.referent
-      ? (a.referent.grade + ' ' + a.referent.prenom + ' ' + a.referent.nom + ' (' + a.referent.matricule + ')')
+      ? ('(' + a.referent.matricule + ') ' + a.referent.prenom + ' ' + a.referent.nom)
       : '<span class="muted">—</span>';
     var cell = canWrite() ? buildDropdown(a.id, refLabel(a)) : refDisplay;
     return '<tr>'
@@ -2655,7 +2657,10 @@ async function renderReferents() {
       + '<td><span class="badge">' + a.matricule + '</span></td>'
       + '<td>' + cell + '</td>'
       + '</tr>';
-  }).join('');
+  }
+
+  var sep = '<tr><td colspan="3" style="padding:0"><div style="height:1px;background:var(--border1);margin:4px 0"></div></td></tr>';
+  var rows = rookies.map(makeRow).join('') + (rookies.length && troopers1.length ? sep : '') + troopers1.map(makeRow).join('');
 
   var groupMap = {};
   referentsData.forEach(function(a) {
