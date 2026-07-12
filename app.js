@@ -216,7 +216,6 @@ var NAV = [
   { group: 'ADMINISTRATION', staffOnly: true },
   { id: 'archives',        icon: '🗃️', label: 'Archives',          staffOnly: true },
   { id: 'stats',           icon: '📈', label: 'Statistiques',       staffOnly: true },
-  { id: 'settings',        icon: '⚙️', label: 'Mon compte',         staffOnly: true },
   { id: 'ceremonie',       icon: '🎖️', label: 'Prépa Cérémonie',    ceremonyOnly: true },
 ];
 
@@ -1280,7 +1279,7 @@ async function renderFAQ() {
       faqBlock('Annuaire', '<p>Quand une fiche agent est creee ou modifiee, l annuaire Discord Sud peut etre mis a jour automatiquement avec les matricules, noms et numeros de telephone.</p>') +
       faqBlock('Grades et divisions', '<p>Les pages <b>Grades</b> et <b>Divisions</b> permettent de consulter la hierarchie, les effectifs et les unites configurees sur le site Sud.</p>' + faqLink('grades', 'Ouvrir Grades') + ' ' + faqLink('units', 'Ouvrir Divisions')) +
       faqBlock('Fugitive Task Force', '<p>La page <b>FTF</b> est partagee entre le SASP Sud et le SASP Nord. Les dossiers crees d un cote apparaissent aussi de l autre avec le service createur.</p>' + faqLink('ftf', 'Ouvrir FTF')) +
-      faqBlock('Probleme courant', '<p>Si un agent ne voit pas le site, verifiez qu il a bien un role autorise sur Discord. Si une synchronisation Discord ne fonctionne pas, verifiez le Discord ID de la fiche agent.</p>' + faqLink('settings', 'Ouvrir Mon compte')) +
+      faqBlock('Probleme courant', '<p>Si un agent ne voit pas le site, verifiez qu il a bien un role autorise sur Discord. Si une synchronisation Discord ne fonctionne pas, verifiez le Discord ID de la fiche agent.</p>') +
     '</div>'
   );
 }
