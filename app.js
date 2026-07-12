@@ -1054,6 +1054,7 @@ function openFtfConvocationModal(id) {
   var d = dossiers.find(function(x){ return x.id === id; });
   if (!d) { toast('Dossier introuvable.', 'error'); return; }
   var defaultDate = ftfAddDays(ftfDeadlineStart(d), 7);
+  var defaultHour = d.convocation_heure || '';
   openModal({
     eyebrow: 'CONVOCATION FTF',
     title: ((d.prenom || '') + ' ' + (d.nom || '')).trim(),
@@ -1061,8 +1062,8 @@ function openFtfConvocationModal(id) {
     body:
       '<p class="text-muted" style="font-size:.86rem;line-height:1.6;margin-bottom:14px">Choisis la date et l heure souhaitees. Le PNG sera genere puis envoye dans le salon FTF.</p>' +
       '<div class="badge badge-gold" style="margin-bottom:14px">' + esc(ftfConvocationLabel(d)) + '</div>' +
-      fld('Date de convocation *','date','ftfConvocationDate',defaultDate,'') +
-      fld('Heure de convocation *','time','ftfConvocationHour','',''),
+      fld('Date de convocation *','date','ftfConvocationDate',d.convocation_date || defaultDate,'') +
+      fld('Heure de convocation *','time','ftfConvocationHour',defaultHour,''),
     footer:
       '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
       '<button class="btn btn-primary" onclick="sendFtfConvocation(\'' + esc(id) + '\')">Envoyer le PNG</button>'
