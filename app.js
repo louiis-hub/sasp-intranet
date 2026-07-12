@@ -656,6 +656,7 @@ async function getDashboardGradeCounts(grades, agents, logLabel) {
 
 // ══ DASHBOARD ══════════════════════════════════════════════════════
 var FTF_STORAGE_KEY = 'sasp_ftf_dossiers_v1';
+var FTF_CONVOCATION_TEMPLATE = 'assets/convocation-template.png';
 var FTF_STATUSES = ['Attente paiement', '1ère convocation', '2ème convocation', '3ème convocation', 'Tribunal', 'Clôturé'];
 var _ftfTab = 'dashboard';
 var _ftfSearch = '';
@@ -777,6 +778,43 @@ function ftfAmount(d) {
     'Clôturé': 2.25
   }[d.statut] || 1;
   return Math.round(base * mult);
+}
+function ftfConvocationLabel(d) {
+  var next = ftfNextStep(d && d.statut);
+  return next || (d && d.statut) || 'Convocation';
+}
+function ftfFormatConvocationDate(value) {
+  if (!value) return '';
+  var d = new Date(value + 'T12:00:00');
+  return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+function ftfFormatConvocationHour(value) {
+  if (!value) return '';
+  return String(value).replace(':', 'H');
+}
+function loadFtfImage(src) {
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    img.onload = function(){ resolve(img); };
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+async function buildFtfConvocationPng(d, dateValue, hourValue) {
+  var img = await loadFtfImage(FTF_CONVOCATION_TEMPLATE);
+  var canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth || img.width;
+  canvas.height = img.naturalHeight || img.height;
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  ctx.fillStyle = '#050505';
+  ctx.textBaseline = 'middle';
+  ctx.font = '700 34px Arial, sans-serif';
+  ctx.fillText(((d.nom || '') + ' ' + (d.prenom || '')).trim().toUpperCase(), 720, 548, 330);
+  ctx.font = '700 36px Arial, sans-serif';
+  ctx.fillText(ftfFormatConvocationDate(dateValue), 675, 620, 230);
+  ctx.fillText(ftfFormatConvocationHour(hourValue), 724, 689, 170);
+  return canvas.toDataURL('image/png');
 }
 function ftfFilteredDossiers() {
   var q = (_ftfSearch || '').toLowerCase().trim();
@@ -1003,11 +1041,63 @@ function openFtfDossierModal(id) {
       '<div class="form-group"><label class="form-label">Notes FTF</label><textarea class="form-control" id="ftfNotes" placeholder="Notes internes FTF">' + esc(d.notes || '') + '</textarea></div>',
     footer:
       (isEdit && ftfPreviousStep(d.statut) ? '<button class="btn btn-outline" onclick="rollbackFtfDossier(\'' + esc(d.id) + '\')">← Étape précédente</button>' : '') +
+      (isEdit ? '<button class="btn btn-outline" onclick="openFtfConvocationModal(\'' + esc(d.id) + '\')">Convocation PNG</button>' : '') +
       (isEdit ? '<button class="btn btn-outline" onclick="toggleFtfArchive(\'' + esc(d.id) + '\')">' + (d.archived ? 'Restaurer' : 'Archiver') + '</button>' : '') +
       (isEdit ? '<button class="btn btn-danger" onclick="deleteFtfDossier(\'' + esc(d.id) + '\')">Supprimer</button>' : '') +
       '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
       '<button class="btn btn-primary" onclick="saveFtfDossier(' + (isEdit ? '\'' + esc(d.id) + '\'' : 'null') + ')">Sauvegarder</button>'
   });
+}
+function openFtfConvocationModal(id) {
+  var dossiers = ftfLoadDossiers();
+  var d = dossiers.find(function(x){ return x.id === id; });
+  if (!d) { toast('Dossier introuvable.', 'error'); return; }
+  var defaultDate = ftfAddDays(ftfDeadlineStart(d), 7);
+  openModal({
+    eyebrow: 'CONVOCATION FTF',
+    title: ((d.prenom || '') + ' ' + (d.nom || '')).trim(),
+    size: 'sm',
+    body:
+      '<p class="text-muted" style="font-size:.86rem;line-height:1.6;margin-bottom:14px">Choisis la date et l heure souhaitees. Le PNG sera genere puis envoye dans le salon FTF.</p>' +
+      '<div class="badge badge-gold" style="margin-bottom:14px">' + esc(ftfConvocationLabel(d)) + '</div>' +
+      fld('Date de convocation *','date','ftfConvocationDate',defaultDate,'') +
+      fld('Heure de convocation *','time','ftfConvocationHour','',''),
+    footer:
+      '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
+      '<button class="btn btn-primary" onclick="sendFtfConvocation(\'' + esc(id) + '\')">Envoyer le PNG</button>'
+  });
+}
+async function sendFtfConvocation(id) {
+  var dossiers = ftfLoadDossiers();
+  var d = dossiers.find(function(x){ return x.id === id; });
+  if (!d) { toast('Dossier introuvable.', 'error'); return; }
+  var dateValue = document.getElementById('ftfConvocationDate').value;
+  var hourValue = document.getElementById('ftfConvocationHour').value;
+  if (!dateValue || !hourValue) { toast('Date et heure requises.', 'error'); return; }
+  var loader = toastLoading('Generation de la convocation...');
+  try {
+    var imageData = await buildFtfConvocationPng(d, dateValue, hourValue);
+    var res = await fetch(WORKER_BASE + '/ftf/send-convocation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+      body: JSON.stringify({
+        dossier_id: d.id,
+        creator_id: d.created_by_discord_id || S.discordUserId || '',
+        suspect: ((d.prenom || '') + ' ' + (d.nom || '')).trim(),
+        convocation: ftfConvocationLabel(d),
+        date: ftfFormatConvocationDate(dateValue),
+        heure: ftfFormatConvocationHour(hourValue),
+        source: ftfDossierOrigin(d),
+        image_data: imageData
+      })
+    });
+    var data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Erreur Discord');
+    closeModal();
+    loader.done('Convocation envoyee.', 'success');
+  } catch(e) {
+    loader.done('Erreur convocation: ' + (e.message || e), 'error');
+  }
 }
 async function saveFtfDossier(id) {
   var nom = (document.getElementById('ftfNom').value || '').trim();

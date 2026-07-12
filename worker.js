@@ -199,6 +199,7 @@ const ADMIN_ROLE_IDS = [
 ];
 const FTF_ROLE_ID = "1524117754725007422";
 const FTF_NOTIFICATION_CHANNEL_ID = "1524118534077153330";
+const FTF_CONVOCATION_CHANNEL_ID = "1524118534077153330";
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ENTERPRISE_GUILD_ID = "1523759012623941746";
@@ -853,6 +854,16 @@ function ftfRowToDossier(row) {
   return row && row.data ? row.data : null;
 }
 
+function dataUrlToBytes(dataUrl) {
+  const input = String(dataUrl || "");
+  const match = input.match(/^data:image\/png;base64,(.+)$/);
+  if (!match) throw new Error("Image PNG invalide");
+  const binary = atob(match[1]);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 async function getFtfDossiers(env) {
   const rows = await sb(env, "GET", "/ftf_dossiers?select=id,data,updated_at&order=updated_at.desc");
   return (Array.isArray(rows) ? rows : []).map(ftfRowToDossier).filter(Boolean);
@@ -1164,8 +1175,8 @@ export default {
         const isDeadline = notificationType === "deadline";
         const title = isDeadline ? "Alerte FTF - delai expire" : "Rappel FTF - convocation demain";
         const description = isDeadline
-          ? `Le delai est arrive a expiration pour **${suspect}**. Procedure attendue : **${nextStep}**.`
-          : `Convocation demain pour **${suspect}** : **${nextStep}**.`;
+          ? `Le delai est arrive a expiration pour **${suspect}**. Procedure attendue : **${nextStep}**.\n\nOuvre le dossier FTF, choisis la date et l'heure souhaitees, puis genere la convocation PNG.`
+          : `Convocation demain pour **${suspect}** : **${nextStep}**.\n\nOuvre le dossier FTF, choisis la date et l'heure souhaitees, puis genere la convocation PNG.`;
         const fields = [
           { name: "Statut actuel", value: currentStatus || "Non precise", inline: true },
           { name: "Date limite", value: dueDate || (isDeadline ? "Aujourd'hui" : "Demain"), inline: true },
@@ -1177,7 +1188,7 @@ export default {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            content: `${ping} - ${isDeadline ? "delai FTF expire, action requise." : "rappel FTF, convocation demain."}`,
+            content: `${ping} - ${isDeadline ? "delai FTF expire" : "rappel FTF, convocation demain"} : choisis la date et l'heure de convocation dans le dossier FTF.`,
             allowed_mentions: creatorId ? { users: [creatorId] } : { roles: [FTF_ROLE_ID] },
             embeds: [{
               title,
@@ -1238,6 +1249,46 @@ export default {
         if (!id) return json({ ok: false, error: "Missing id" }, 400);
         await sb(env, "DELETE", `/ftf_dossiers?id=eq.${encodeURIComponent(id)}`);
         return json({ ok: true, id });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/ftf/send-convocation" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const data = await request.json();
+        const creatorId = String(data.creator_id || "").replace(/\D/g, "");
+        const suspect = String(data.suspect || "Suspect").trim();
+        const convocation = String(data.convocation || "Convocation").trim();
+        const date = String(data.date || "").trim();
+        const heure = String(data.heure || "").trim();
+        const source = String(data.source || "").trim();
+        const bytes = dataUrlToBytes(data.image_data);
+        const filename = `convocation-${suspect.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "ftf"}.png`;
+        const content = [
+          creatorId ? `<@${creatorId}>` : `<@&${FTF_ROLE_ID}>`,
+          `Convocation FTF generee pour **${suspect}**.`,
+          convocation ? `Etape : **${convocation}**.` : "",
+          date || heure ? `Rendez-vous : **${date || "date non precisee"}** a **${heure || "heure non precisee"}**.` : "",
+          source ? `Service createur : **${source}**.` : ""
+        ].filter(Boolean).join("\n");
+        const form = new FormData();
+        form.append("payload_json", JSON.stringify({
+          content,
+          allowed_mentions: creatorId ? { users: [creatorId] } : { roles: [FTF_ROLE_ID] }
+        }));
+        form.append("files[0]", new Blob([bytes], { type: "image/png" }), filename);
+        const channelId = String(data.channel_id || FTF_CONVOCATION_CHANNEL_ID).replace(/\D/g, "");
+        const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` },
+          body: form
+        });
+        if (!res.ok) return json({ ok: false, error: await res.text() }, res.status);
+        const posted = await res.json();
+        return json({ ok: true, message_id: posted.id, channel_id: channelId });
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
