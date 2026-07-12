@@ -3031,31 +3031,29 @@ async function renderRecap() {
       var formateur = a.formateur_id ? agentMap[a.formateur_id] : null;
       var divs = (a.unites||[]).map(unitBadge).join(' ') || '<span style="color:var(--t3);font-size:.75rem">—</span>';
       var blameCount = (a.blame1?1:0)+(a.blame2?1:0)+(a.blame3?1:0);
-      return '<div class="card" style="cursor:pointer;transition:border-color .15s" onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'\'">' +
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">' +
-          '<div>' +
-            '<div style="font-size:1rem;font-weight:700;color:var(--t0)">' + esc(a.prenom + ' ' + a.nom) + '</div>' +
-            '<div style="font-size:1.1rem;font-weight:800;color:var(--gold);font-family:\'Share Tech Mono\',monospace;margin-top:3px;letter-spacing:.06em;text-shadow:0 0 8px rgba(201,168,76,.35)">#' + esc(a.matricule) + '</div>' +
-          '</div>' +
-          '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
-            gradeBadge(a.grade) +
-            (isReferent(a.grade) ? referentBadge() : '') +
-            statusBadge(a.statut) +
-          '</div>' +
-        '</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:.78rem;border-top:1px solid var(--border0);padding-top:10px">' +
-          recapRow('📞', a.telephone ? fmtTel(a.telephone) : '—') +
-          recapRow('💳', a.iban || '—') +
-          recapRow('🎓', formateur ? formateur.prenom + ' ' + formateur.nom : '—') +
-          recapRow('📅', a.date_recrutement ? fmt(a.date_recrutement) : '—') +
-        '</div>' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;border-top:1px solid var(--border0);padding-top:10px">' +
-          '<div style="display:flex;gap:6px">' + divs + '</div>' +
-          '<div style="display:flex;align-items:center;gap:8px">' +
-            (blameCount ? '<span class="badge badge-red" style="font-size:.68rem">⚠️ ' + blameCount + ' blâme' + (blameCount>1?'s':'') + '</span>' : '') +
-            (a.notes ? '<span title="' + esc(a.notes.slice(0,80)) + '" style="font-size:.75rem;color:var(--t3);cursor:help">📝</span>' : '') +
+        var statusColor = a.statut === 'En service' ? '#2ecc71' : a.statut === 'En congé' ? '#f39c12' : '#e74c3c';
+      return '<div class="recap-card" onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})">' +
+        '<div class="recap-card-top">' +
+          '<div class="recap-mat">' + esc(a.matricule) + '</div>' +
+          '<div class="recap-info">' +
+            '<div class="recap-name">' + esc(a.prenom) + ' <strong>' + esc(a.nom) + '</strong></div>' +
+            '<div class="recap-meta">' +
+              gradeBadge(a.grade) +
+              '<span class="recap-status-dot" style="background:' + statusColor + '" title="' + esc(a.statut) + '"></span>' +
+              '<span style="font-size:.72rem;color:var(--t3)">' + esc(a.statut) + '</span>' +
+            '</div>' +
           '</div>' +
         '</div>' +
+        '<div class="recap-card-body">' +
+          '<div class="recap-field"><span class="recap-field-label">Tél.</span><span class="recap-field-val mono">' + (a.telephone ? fmtTel(a.telephone) : '<span class="muted">—</span>') + '</span></div>' +
+          '<div class="recap-field"><span class="recap-field-label">IBAN</span><span class="recap-field-val mono">' + (a.iban || '<span class="muted">—</span>') + '</span></div>' +
+          '<div class="recap-field"><span class="recap-field-label">Recrutement</span><span class="recap-field-val">' + (a.date_recrutement ? fmt(a.date_recrutement) : '<span class="muted">—</span>') + '</span></div>' +
+          '<div class="recap-field"><span class="recap-field-label">Formateur</span><span class="recap-field-val">' + (formateur ? esc(formateur.prenom + ' ' + formateur.nom) : '<span class="muted">—</span>') + '</span></div>' +
+        '</div>' +
+        (((a.unites||[]).length || blameCount) ? '<div class="recap-card-foot">' +
+          '<div style="display:flex;gap:5px;flex-wrap:wrap">' + divs + '</div>' +
+          (blameCount ? '<span class="badge badge-red" style="font-size:.65rem;margin-left:auto">⚠️ ' + blameCount + ' blâme' + (blameCount>1?'s':'') + '</span>' : '') +
+        '</div>' : '') +
       '</div>';
     }).join('');
   }
@@ -3076,7 +3074,23 @@ async function renderRecap() {
   }).join('');
 
   setContent(
-    '<div class="welcome-bar"><div><h1 style="font-size:1.5rem">Récap agents</h1><p class="text-muted" style="font-size:.84rem;margin-top:3px">Vue d\'ensemble — toutes les informations</p></div></div>' +
+    '<style>'
+    + '.recap-card{background:var(--bgCard);border:1px solid var(--border1);border-radius:var(--rLg);overflow:hidden;cursor:pointer;transition:border-color .15s}'
+    + '.recap-card:hover{border-color:var(--goldBorder)}'
+    + '.recap-card-top{display:flex;align-items:center;gap:14px;padding:14px 16px}'
+    + '.recap-mat{font-family:"Share Tech Mono",monospace;font-size:1.3rem;font-weight:800;color:var(--gold);min-width:40px;text-align:center;flex-shrink:0}'
+    + '.recap-info{flex:1;min-width:0}'
+    + '.recap-name{font-size:.95rem;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}'
+    + '.recap-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap}'
+    + '.recap-status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}'
+    + '.recap-card-body{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border0)}'
+    + '.recap-field{display:flex;flex-direction:column;gap:1px;padding:8px 16px;border-bottom:1px solid var(--border0)}'
+    + '.recap-field:nth-child(odd){border-right:1px solid var(--border0)}'
+    + '.recap-field-label{font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);font-weight:600}'
+    + '.recap-field-val{font-size:.78rem;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    + '.recap-card-foot{display:flex;align-items:center;gap:6px;padding:8px 14px;border-top:1px solid var(--border0);flex-wrap:wrap}'
+    + '</style>'
+    + '<div class="welcome-bar"><div><h1 style="font-size:1.5rem">Récap agents</h1><p class="text-muted" style="font-size:.84rem;margin-top:3px">Vue d\'ensemble — toutes les informations</p></div></div>' +
     '<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">' +
       '<select class="form-control" style="width:auto" id="recapFilterGrade" onchange="recapFilter()">' + gradeOpts + '</select>' +
       '<select class="form-control" style="width:auto" id="recapFilterStatut" onchange="recapFilter()">' + statutOpts + '</select>' +
