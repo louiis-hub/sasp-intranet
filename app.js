@@ -2644,7 +2644,8 @@ async function renderReferents() {
       + '</div></div>';
   }
 
-  var rows = referentsData.map(function(a) {
+  var REFERE_GRADES = ['Rookie', 'Trooper I'];
+  var rows = referentsData.filter(function(a) { return REFERE_GRADES.indexOf(a.grade) !== -1; }).map(function(a) {
     var refDisplay = a.referent
       ? (a.referent.grade + ' ' + a.referent.prenom + ' ' + a.referent.nom + ' (' + a.referent.matricule + ')')
       : '<span class="muted">—</span>';
