@@ -2455,6 +2455,39 @@ export default {
       }
     }
 
+    if (url.pathname === "/admin/kick-non-sasp" && request.method === "GET") {
+      const SASP_GUILD   = "1500975724750704661";
+      const TARGET_GUILD = "1382167184607940658";
+      const REQUIRED_ROLE = "1501250580058870104";
+      try {
+        const targetMembers = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members?limit=1000`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        }).then(r => r.json());
+        let kicked = 0, kept = 0, errors = [];
+        for (const m of targetMembers) {
+          if (m.user?.bot) continue;
+          const uid = m.user?.id;
+          if (!uid) continue;
+          const saspMember = await discordFetch(`${DISCORD_API}/guilds/${SASP_GUILD}/members/${uid}`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
+          const hasRole = saspMember && (saspMember.roles || []).includes(REQUIRED_ROLE);
+          if (!hasRole) {
+            const res = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
+              method: "DELETE",
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+            });
+            if (res.status === 204) kicked++;
+            else errors.push(`${uid}: ${res.status}`);
+          } else {
+            kept++;
+          }
+        }
+        return json({ ok: true, kicked, kept, errors });
+      } catch(e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/sync-nicks" && request.method === "GET") {
       const SOURCE_GUILD = "1500975724750704661";
       const TARGET_GUILD = url.searchParams.get("target") || "1382167184607940658";
@@ -3525,9 +3558,11 @@ export default {
     } else {
       ctx.waitUntil(autoClockout6h(env));
       ctx.waitUntil((async () => {
-        const SOURCE_GUILD = "1500975724750704661";
-        const TARGET_GUILD = "1382167184607940658";
+        const SOURCE_GUILD  = "1500975724750704661";
+        const TARGET_GUILD  = "1382167184607940658";
+        const REQUIRED_ROLE = "1501250580058870104";
         try {
+          // Sync pseudos
           const members = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members?limit=1000`, {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
           }).then(r => r.json());
@@ -3539,6 +3574,24 @@ export default {
               headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
               body: JSON.stringify({ nick: m.nick || null })
             });
+          }
+          // Kick membres sans rôle SASP requis
+          const targetMembers = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members?limit=1000`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          }).then(r => r.json());
+          for (const m of targetMembers) {
+            if (m.user?.bot) continue;
+            const uid = m.user?.id;
+            if (!uid) continue;
+            const saspMember = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members/${uid}`, {
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+            }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
+            if (!saspMember || !(saspMember.roles || []).includes(REQUIRED_ROLE)) {
+              await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+              });
+            }
           }
         } catch(e) {}
       })());

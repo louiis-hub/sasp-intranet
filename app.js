@@ -942,9 +942,9 @@ function renderFTFProcedure() {
     ['7 jours pour payer', 'Le delai de paiement initial est fixe a 7 jours.'],
     ['Paiement effectue', 'Si le paiement est fait, la procedure est terminee.'],
     ['Non-paiement', 'Si le paiement n est pas fait, le dossier est transfere a la FTF.'],
-    ['1ère convocation', 'Majoration de 25 pourcent, nouveau delai de 7 jours, non-presentation = 5 000 $.'],
-    ['2ème convocation', 'Majoration de 75 pourcent, nouveau delai de 7 jours, non-presentation = 5 000 $.'],
-    ['3ème convocation', 'Majoration de 125 pourcent, nouveau delai de 7 jours, non-presentation = 5 000 $.'],
+    ['1ère convocation', 'Majoration de 25 pourcent, nouveau delai de 7 jours, non-presentation = 1 000 $.'],
+    ['2ème convocation', 'Majoration de 75 pourcent, nouveau delai de 7 jours, non-presentation = 1 000 $.'],
+    ['3ème convocation', 'Majoration de 125 pourcent, nouveau delai de 7 jours, non-presentation = 1 000 $.'],
     ['Apres 3 convocations', 'Localisation, interpellation, presentation au tribunal et saisie des biens.'],
     ['Insolvabilite', 'Echeancier, TIG SASP/SAMC, pointage quotidien ou prison selon la decision.']
   ];
