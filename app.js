@@ -817,6 +817,47 @@ async function buildFtfConvocationPng(d, dateValue, hourValue) {
   ctx.fillText(ftfFormatConvocationHour(hourValue), 705, 682, 170);
   return canvas.toDataURL('image/png');
 }
+async function ftfAutoSendScheduledConvocations() {
+  if (!canAccessFTF()) return;
+  var list = ftfLoadDossiers().filter(function(d) {
+    return d && d.convocation_validee && d.convocation_date && d.convocation_heure && !d.convocation_png_sent && !d.convocation_png_sending && !d.archived;
+  });
+  for (var i = 0; i < list.length; i++) {
+    var d = list[i];
+    d.convocation_png_sending = true;
+    await ftfSaveDossier(d);
+    try {
+      var imageData = await buildFtfConvocationPng(d, d.convocation_date, d.convocation_heure);
+      var res = await fetch(WORKER_BASE + '/ftf/send-convocation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+        body: JSON.stringify({
+          dossier_id: d.id,
+          creator_id: d.created_by_discord_id || S.discordUserId || '',
+          suspect: ((d.prenom || '') + ' ' + (d.nom || '')).trim(),
+          convocation: ftfConvocationLabel(d),
+          date: ftfFormatConvocationDate(d.convocation_date),
+          heure: ftfFormatConvocationHour(d.convocation_heure),
+          source: ftfDossierOrigin(d),
+          image_data: imageData
+        })
+      });
+      var data = await res.json();
+      if (!res.ok || !data.ok) throw new Error((data && data.error) || 'Erreur envoi convocation');
+      d.convocation_png_sent = true;
+      d.convocation_png_sent_at = new Date().toISOString();
+      d.convocation_png_message_id = data.message_id || '';
+      delete d.convocation_png_sending;
+      await ftfSaveDossier(d);
+      toast('Convocation FTF envoyee pour ' + ((d.prenom || '') + ' ' + (d.nom || '')).trim() + '.', 'success');
+    } catch(e) {
+      delete d.convocation_png_sending;
+      d.convocation_png_error = String((e && e.message) || e || 'Erreur');
+      await ftfSaveDossier(d);
+      toast('Erreur auto convocation FTF: ' + d.convocation_png_error, 'error');
+    }
+  }
+}
 function ftfFilteredDossiers() {
   var q = (_ftfSearch || '').toLowerCase().trim();
   return ftfLoadDossiers().filter(function(d) {
@@ -883,6 +924,7 @@ async function renderFTF() {
     '</div>'
   );
   ftfCheckConvocationNotifications();
+  ftfAutoSendScheduledConvocations();
 }
 function renderFTFDashboard(counts) {
   return '<div class="ftf-grid">' +
