@@ -2491,25 +2491,27 @@ export default {
     if (url.pathname === "/admin/sync-nicks" && request.method === "GET") {
       const SOURCE_GUILD = "1500975724750704661";
       const TARGET_GUILD = url.searchParams.get("target") || "1382167184607940658";
+      const after = url.searchParams.get("after") || "0";
+      const PAGE = 40;
       try {
-        const members = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members?limit=1000`, {
+        const members = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members?limit=${PAGE}&after=${after}`, {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
         }).then(r => r.json());
         let synced = 0, skipped = 0, errors = [];
         for (const m of members) {
-          const nick = m.nick;
           const uid = m.user?.id;
           if (!uid) continue;
           const res = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
             method: "PATCH",
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ nick: nick || null })
+            body: JSON.stringify({ nick: m.nick || null })
           });
           if (res.status === 204 || res.status === 200) synced++;
           else if (res.status === 404) skipped++;
           else errors.push(`${uid}: ${res.status}`);
         }
-        return json({ ok: true, synced, skipped, errors });
+        const next_after = members.length === PAGE ? members[members.length - 1].user.id : null;
+        return json({ ok: true, synced, skipped, errors, next_after, done: !next_after });
       } catch(e) {
         return json({ ok: false, error: e.message }, 500);
       }
