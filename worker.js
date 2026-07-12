@@ -1,6 +1,7 @@
 ﻿// SASP Intranet â€” Cloudflare Worker (auth + pointeuse Discord)
 const DISCORD_API = "https://discord.com/api/v10";
 const SUPABASE_URL = "https://ufxhxptzcnvelnbprwng.supabase.co";
+const NORD_SUPABASE_URL = "https://zvyyqqeqqruzqrmbqkkh.supabase.co";
 
 const MOJIBAKE_REPLACEMENTS = [
   ["Ã©", "\u00e9"], ["Ã¨", "\u00e8"], ["Ãª", "\u00ea"], ["Ã«", "\u00eb"],
@@ -831,14 +832,32 @@ async function cleanupEnterpriseDuplicates(env, guildId = ENTERPRISE_GUILD_ID, s
 }
 
 async function sb(env, method, path, body) {
+  return sbForSite(env, method, path, body, "sud");
+}
+
+function getSupabaseConfigForSite(env, siteKey) {
+  if (siteKey === "nord") {
+    const key = env.NORD_SUPABASE_SERVICE_KEY || env.SUPABASE_NORD_SERVICE_KEY;
+    if (!key) throw new Error("Clé Supabase Nord manquante dans Cloudflare.");
+    return { url: NORD_SUPABASE_URL, key };
+  }
+  return { url: SUPABASE_URL, key: env.SUPABASE_SERVICE_KEY };
+}
+
+function siteKeyFromGuildId(guildId) {
+  return String(guildId || "") === NORD_SITE_GUILD_ID ? "nord" : "sud";
+}
+
+async function sbForSite(env, method, path, body, siteKey = "sud") {
+  const cfg = getSupabaseConfigForSite(env, siteKey);
   const prefer = method === "POST"
     ? (path.includes("on_conflict") ? "resolution=merge-duplicates,return=representation" : "return=representation")
     : "return=minimal";
-  const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
+  const res = await fetch(`${cfg.url}/rest/v1${path}`, {
     method,
     headers: {
-      "apikey": env.SUPABASE_SERVICE_KEY,
-      "Authorization": `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+      "apikey": cfg.key,
+      "Authorization": `Bearer ${cfg.key}`,
       "Content-Type": "application/json",
       "Prefer": prefer
     },
@@ -881,8 +900,8 @@ async function upsertFtfDossier(env, dossier) {
   return data;
 }
 
-async function getAgentByDiscordId(env, discordId) {
-  const data = await sb(env, "GET", `/agents?discord_id=eq.${discordId}&select=id,nom,prenom,matricule,discord_id,grade&limit=1`);
+async function getAgentByDiscordId(env, discordId, siteKey = "sud") {
+  const data = await sbForSite(env, "GET", `/agents?discord_id=eq.${discordId}&select=id,nom,prenom,matricule,discord_id,grade&limit=1`, null, siteKey);
   return data && data.length > 0 ? data[0] : null;
 }
 
@@ -922,9 +941,9 @@ async function getAgentIdentityForInteraction(env, interaction) {
   return { nom: "", prenom: displayName || `<@${userId}>`, matricule: "", source: "discord" };
 }
 
-async function getAgentForPointeuseInteraction(env, interaction) {
+async function getAgentForPointeuseInteraction(env, interaction, siteKey = "sud") {
   const userId = interaction.member?.user?.id || interaction.user?.id;
-  const byDiscordId = await getAgentByDiscordId(env, userId);
+  const byDiscordId = await getAgentByDiscordId(env, userId, siteKey);
   if (byDiscordId) return byDiscordId;
 
   const member = interaction.member || {};
@@ -933,27 +952,27 @@ async function getAgentForPointeuseInteraction(env, interaction) {
   const parsed = parseAgentIdentityFromDiscordName(displayName);
   if (!parsed || !parsed.matricule) return null;
 
-  const byMatricule = await getAgentByMatricule(env, parsed.matricule);
+  const byMatricule = await getAgentByMatricule(env, parsed.matricule, siteKey);
   if (!byMatricule) return null;
 
   if (!byMatricule.discord_id || String(byMatricule.discord_id) !== String(userId)) {
-    await sb(env, "PATCH", `/agents?id=eq.${byMatricule.id}`, { discord_id: userId });
+    await sbForSite(env, "PATCH", `/agents?id=eq.${byMatricule.id}`, { discord_id: userId }, siteKey);
   }
   return { ...byMatricule, discord_id: userId };
 }
 
-async function getAgentByMatricule(env, matricule) {
-  const data = await sb(env, "GET", `/agents?matricule=eq.${matricule}&select=id,nom,prenom,matricule,discord_id&limit=1`);
+async function getAgentByMatricule(env, matricule, siteKey = "sud") {
+  const data = await sbForSite(env, "GET", `/agents?matricule=eq.${matricule}&select=id,nom,prenom,matricule,discord_id&limit=1`, null, siteKey);
   return data && data.length > 0 ? data[0] : null;
 }
 
-async function getActivePointage(env, agentId) {
-  const data = await sb(env, "GET", `/pointages?agent_id=eq.${agentId}&clock_out=is.null&limit=1`);
+async function getActivePointage(env, agentId, siteKey = "sud") {
+  const data = await sbForSite(env, "GET", `/pointages?agent_id=eq.${agentId}&clock_out=is.null&limit=1`, null, siteKey);
   return data && data.length > 0 ? data[0] : null;
 }
 
-async function getAllActivePointages(env) {
-  const data = await sb(env, "GET", `/pointages?clock_out=is.null&select=id,agent_id,clock_in,agents(nom,prenom,matricule)&order=clock_in.asc`);
+async function getAllActivePointages(env, siteKey = "sud") {
+  const data = await sbForSite(env, "GET", `/pointages?clock_out=is.null&select=id,agent_id,clock_in,agents(nom,prenom,matricule)&order=clock_in.asc`, null, siteKey);
   return data || [];
 }
 
@@ -1543,7 +1562,8 @@ export default {
     if (url.pathname === "/post-pointeuse" && request.method === "GET") {
       const channelId = url.searchParams.get("channel_id");
       if (!channelId) return json({ error: "Missing channel_id" }, 400);
-      const active = await getAllActivePointages(env);
+      const siteKey = url.searchParams.get("site") || siteKeyFromGuildId(url.searchParams.get("guild_id"));
+      const active = await getAllActivePointages(env, siteKey);
       const payload = buildPointeuseMessage(active);
       const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
         method: "POST",
@@ -3330,8 +3350,9 @@ export default {
         }
 
         let agent;
+        const pointeuseSiteKey = siteKeyFromGuildId(interaction.guild_id);
         try {
-          agent = await getAgentForPointeuseInteraction(env, interaction);
+          agent = await getAgentForPointeuseInteraction(env, interaction, pointeuseSiteKey);
         } catch (e) {
           return json({ type: 4, data: { content: `âŒ Erreur : ${e.message}`, flags: 64 } });
         }
@@ -3341,20 +3362,20 @@ export default {
         }
 
         if (customId === "prise_service") {
-          const existing = await getActivePointage(env, agent.id);
+          const existing = await getActivePointage(env, agent.id, pointeuseSiteKey);
           if (existing) {
             return json({ type: 4, data: { content: `âš ï¸ Tu es dÃ©jÃ  en service, ${agent.prenom} !`, flags: 64 } });
           }
-          await sb(env, "POST", "/pointages", { agent_id: agent.id, clock_in: new Date().toISOString() });
+          await sbForSite(env, "POST", "/pointages", { agent_id: agent.id, clock_in: new Date().toISOString() }, pointeuseSiteKey);
         } else {
-          const active = await getActivePointage(env, agent.id);
+          const active = await getActivePointage(env, agent.id, pointeuseSiteKey);
           if (!active) {
             return json({ type: 4, data: { content: `âš ï¸ Tu n'es pas en service, ${agent.prenom} !`, flags: 64 } });
           }
-          await sb(env, "PATCH", `/pointages?id=eq.${active.id}`, { clock_out: new Date().toISOString() });
+          await sbForSite(env, "PATCH", `/pointages?id=eq.${active.id}`, { clock_out: new Date().toISOString() }, pointeuseSiteKey);
         }
 
-        const allActive = await getAllActivePointages(env);
+        const allActive = await getAllActivePointages(env, pointeuseSiteKey);
         return json({ type: 7, data: buildPointeuseMessage(allActive) });
       }
 
