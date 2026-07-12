@@ -25,6 +25,7 @@ var GRADE_SALAIRE = {
   'Sergeant II':         450,
   'Sergeant I':          400,
   'Senior Lead Officer': 300,
+  'Senior Lead Trooper': 300,
   'Trooper III':         250,
   'Trooper II':          200,
   'Trooper I':           150,
@@ -565,6 +566,12 @@ function esc(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function canonicalGradeName(name) {
+  return name === 'Senior Lead Officer' ? 'Senior Lead Trooper' : name;
+}
+function gradeLabel(name) {
+  return canonicalGradeName(name || '');
+}
 function fmt(dateStr) {
   if (!dateStr) return '—';
   var d = new Date(dateStr);
@@ -591,6 +598,7 @@ function isReferent(grade) {
   return g ? (g.ordre||0) >= (offII.ordre||0) : false;
 }
 function gradeBadge(g) {
+  g = gradeLabel(g);
   var pastille = (g === 'Rookie' || g === 'Trooper I') ? ' <span title="En formation" style="font-size:1.4em;vertical-align:middle">🎓</span>' : '';
   return '<span class="badge badge-gold">' + esc(g) + pastille + '</span>';
 }
@@ -616,7 +624,7 @@ function normRosterText(v) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ');
 }
-function gradeKey(v) { return normRosterText(v); }
+function gradeKey(v) { return normRosterText(canonicalGradeName(v)); }
 function isArchivedStatus(statut) { return normRosterText(statut) === 'archive'; }
 function visibleRosterAgents(agents) {
   return (agents || []).filter(function(a){ return !isArchivedStatus(a.statut); });
@@ -1126,7 +1134,7 @@ async function renderDashboard() {
   // Grade counts — tous les grades dans l'ordre hiérarchique
   var gradesSorted = _grades.slice().sort(function(a,b){ return (b.ordre||0)-(a.ordre||0); });
   var gradeCounts = await getDashboardGradeCounts(gradesSorted, agents, 'dashboard');
-  var topGrades = gradesSorted.map(function(g){ return [g.nom, gradeCounts[gradeKey(g.nom)]||0]; });
+  var topGrades = gradesSorted.map(function(g){ return [gradeLabel(g.nom), gradeCounts[gradeKey(g.nom)]||0]; });
 
   var activityHtml = hist.length ? hist.map(function(h) {
     var dot = typeDotClass(h.type);
@@ -1196,7 +1204,7 @@ function renderOrgChart(agents) {
 
     var header = '<div style="display:flex;align-items:center;gap:10px;margin:' + (idx===0?'4px':'22px') + ' 0 10px 0">' +
       '<div style="width:3px;height:18px;border-radius:2px;background:' + ac.solid + ';flex-shrink:0"></div>' +
-      '<span style="font-size:.7rem;font-weight:800;color:' + ac.text + ';letter-spacing:1.4px;text-transform:uppercase">' + esc(g.nom) + '</span>' +
+      '<span style="font-size:.7rem;font-weight:800;color:' + ac.text + ';letter-spacing:1.4px;text-transform:uppercase">' + esc(gradeLabel(g.nom)) + '</span>' +
       '<div style="flex:1;height:1px;background:linear-gradient(to right,' + ac.solid + '44,transparent)"></div>' +
       '<span style="font-size:.65rem;color:var(--t3);background:var(--bg2);border:1px solid var(--border0);border-radius:20px;padding:1px 8px">' + members.length + ' agent' + (members.length!==1?'s':'') + '</span>' +
     '</div>';
@@ -1283,7 +1291,7 @@ async function renderAgents() {
   var agents = await DB.getAgents(_agentFilters);
 
   var gradeOpts = '<option value="">Tous les grades</option>' +
-    _grades.map(function(g){ return '<option value="' + esc(g.nom) + '"' + (_agentFilters.grade===g.nom?' selected':'') + '>' + esc(g.nom) + '</option>'; }).join('');
+    _grades.map(function(g){ return '<option value="' + esc(g.nom) + '"' + (_agentFilters.grade===g.nom?' selected':'') + '>' + esc(gradeLabel(g.nom)) + '</option>'; }).join('');
   var uniteOpts = '<option value="">Toutes les divisions</option>' +
     _units.map(function(u){
       return '<option value="' + esc(u.code) + '"' + (_agentFilters.unite===u.code?' selected':'') + '>' + esc(u.code) + ' — ' + esc(u.nom) + '</option>';
@@ -1361,9 +1369,9 @@ async function openAgentModal(id) {
 
   var currentGradeKey = gradeKey(v.grade);
   var gradeInList = _grades.some(function(g){ return gradeKey(g.nom) === currentGradeKey; });
-  var gradeOpts = (v.grade && !gradeInList ? '<option value="' + esc(v.grade) + '" selected>' + esc(v.grade) + '</option>' : '') +
+  var gradeOpts = (v.grade && !gradeInList ? '<option value="' + esc(v.grade) + '" selected>' + esc(gradeLabel(v.grade)) + '</option>' : '') +
     _grades.map(function(g){
-      return '<option value="' + esc(g.nom) + '"' + (currentGradeKey && currentGradeKey===gradeKey(g.nom)?' selected':'') + '>' + esc(g.nom) + '</option>';
+      return '<option value="' + esc(g.nom) + '"' + (currentGradeKey && currentGradeKey===gradeKey(g.nom)?' selected':'') + '>' + esc(gradeLabel(g.nom)) + '</option>';
     }).join('');
 
   var uniteChecks = _units.filter(function(u){ return u.code !== 'LP'; }).map(function(u){
@@ -1972,7 +1980,7 @@ async function renderGrades() {
   var rows = _grades.length ? _grades.map(function(g, i){
     return '<tr>' +
       '<td class="mono text-gold" style="width:40px">' + (i+1) + '</td>' +
-      '<td style="font-weight:600;color:var(--t0)">' + esc(g.nom) + '</td>' +
+      '<td style="font-weight:600;color:var(--t0)">' + esc(gradeLabel(g.nom)) + '</td>' +
       '<td class="mono">' + esc(g.abrev||'—') + '</td>' +
       '<td>' + (gradeCounts[gradeKey(g.nom)]||0) + ' agent(s)</td>' +
       (isAdmin() ?
@@ -2726,7 +2734,7 @@ async function renderRecap() {
 
   var gradeOpts = '<option value="">Tous les grades</option>' +
     _grades.slice().sort(function(a,b){ return (b.ordre||0)-(a.ordre||0); }).map(function(g){
-      return '<option value="' + esc(g.nom) + '">' + esc(g.nom) + '</option>';
+      return '<option value="' + esc(g.nom) + '">' + esc(gradeLabel(g.nom)) + '</option>';
     }).join('');
   var statutOpts = ['Tous les statuts','En service','En congé','Suspendu','Licencié','Retraité','Démission'].map(function(s,i){
     return '<option value="' + (i===0?'':s) + '">' + s + '</option>';
@@ -3090,7 +3098,7 @@ async function renderGlobalSettings() {
   var gradesHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">' +
     grades.map(function(g){
       return '<div style="display:flex;align-items:center;gap:6px;background:var(--bg1);border-radius:var(--rSm);padding:6px 12px">' +
-        '<span style="font-size:.83rem;color:var(--t1);font-weight:600">' + esc(g.nom) + '</span>' +
+        '<span style="font-size:.83rem;color:var(--t1);font-weight:600">' + esc(gradeLabel(g.nom)) + '</span>' +
         '<span class="mono" style="font-size:.68rem;color:var(--t3)">' + esc(g.abrev||'') + '</span>' +
         '<button class="btn btn-danger btn-sm btn-icon" style="padding:2px 6px;font-size:.7rem" onclick="deleteGradeGS(\'' + g.id + '\',\'' + esc(g.nom) + '\')">✕</button>' +
       '</div>';

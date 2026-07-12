@@ -80,7 +80,7 @@ const GRADE_ROLES = {
   'Lieutenant I':        '1500975725153620034',
   'Sergeant II':         '1500982880950550752',
   'Sergeant I':          '1500975725153620032',
-  'Senior Lead Officer': '1500975725153620031',
+  'Senior Lead Trooper': '1500975725153620031',
   'Trooper III':         '1500975725153620030',
   'Trooper II':          '1500975724750704669',
   'Trooper I':           '1500975724750704668',
