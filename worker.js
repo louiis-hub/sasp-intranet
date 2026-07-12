@@ -3579,19 +3579,28 @@ export default {
         const TARGET_GUILD  = "1382167184607940658";
         const ALLOWED_ROLES = ["1501250580058870104", "1512410095173238814"];
         try {
-          // Sync pseudos
-          const members = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members?limit=1000`, {
-            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
-          }).then(r => r.json());
-          for (const m of members) {
-            const uid = m.user?.id;
-            if (!uid) continue;
-            await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
-              method: "PATCH",
-              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ nick: m.nick || null })
-            });
-          }
+          // Sync pseudos (itère TARGET, copie nick depuis SOURCE)
+          let afterCursor = "0";
+          do {
+            const targetPage = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members?limit=20&after=${afterCursor}`, {
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+            }).then(r => r.json()).catch(() => []);
+            for (const m of targetPage) {
+              const uid = m.user?.id;
+              if (!uid || m.user?.bot) continue;
+              const src = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members/${uid}`, {
+                headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+              }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
+              if (!src) continue;
+              await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
+                method: "PATCH",
+                headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ nick: src.nick || null })
+              });
+              await new Promise(r => setTimeout(r, 300));
+            }
+            afterCursor = targetPage.length === 20 ? targetPage[targetPage.length - 1].user.id : null;
+          } while (afterCursor);
           // Kick membres sans rôle SASP requis
           const targetMembers = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members?limit=1000`, {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
