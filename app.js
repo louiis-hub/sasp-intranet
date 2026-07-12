@@ -2646,14 +2646,36 @@ async function renderReferents() {
 
   var rookies   = referentsData.filter(function(a) { return a.grade === 'Rookie'; });
   var troopers1 = referentsData.filter(function(a) { return a.grade === 'Trooper I'; });
+  var referes   = rookies.concat(troopers1);
 
+  // Colonne gauche : référents avec leurs référés
+  var refentMap = {};
+  eligibles.forEach(function(e) { refentMap[e.id] = { agent: e, referes: [] }; });
+  referes.forEach(function(a) {
+    if (a.referent_id && refentMap[a.referent_id]) refentMap[a.referent_id].referes.push(a);
+  });
+
+  var colRefent = eligibles.map(function(e) {
+    var r = refentMap[e.id];
+    var chips = r.referes.length
+      ? r.referes.map(function(x){ return '<span class="ref-chip">' + (x.grade === 'Rookie' ? '🎓' : '🔵') + ' <span class="badge" style="font-size:.65rem">' + x.matricule + '</span> ' + x.prenom + ' ' + x.nom + '</span>'; }).join('')
+      : '<span style="color:var(--t3);font-size:.78rem">Aucun référé</span>';
+    return '<div class="ref-card" style="flex-direction:column;align-items:flex-start;gap:8px">'
+      + '<div style="display:flex;align-items:center;gap:8px;width:100%">'
+      + '<span class="badge">' + e.matricule + '</span>'
+      + '<span class="ref-name">' + e.prenom + ' ' + e.nom + '</span>'
+      + '<span style="margin-left:auto;font-size:.7rem;color:var(--t3)">' + e.grade + '</span>'
+      + '</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:4px">' + chips + '</div>'
+      + '</div>';
+  }).join('');
+
+  // Colonne droite : référés avec leur dropdown
   function makeCard(a) {
-    var refDisplay = a.referent
-      ? ('(' + a.referent.matricule + ') ' + a.referent.prenom + ' ' + a.referent.nom)
-      : '<span style="color:var(--t3)">Non assigné</span>';
-    var cell = canWrite() ? buildDropdown(a.id, refLabel(a)) : refDisplay;
+    var cell = canWrite() ? buildDropdown(a.id, refLabel(a)) : (a.referent ? refLabel(a) : '<span style="color:var(--t3)">Non assigné</span>');
     return '<div class="ref-card">'
       + '<div class="ref-card-left">'
+      + (a.grade === 'Rookie' ? '<span title="Rookie" style="font-size:.9rem">🎓</span>' : '<span title="Trooper I" style="font-size:.9rem">🔵</span>')
       + '<span class="badge ref-mat">' + a.matricule + '</span>'
       + '<span class="ref-name">' + a.prenom + ' ' + a.nom + '</span>'
       + '</div>'
@@ -2661,66 +2683,43 @@ async function renderReferents() {
       + '</div>';
   }
 
-  function makeSection(label, count, cards) {
-    return '<div class="ref-section-header"><span class="ref-section-label">' + label + '</span><span class="ref-section-count">' + count + '</span></div>'
-      + '<div class="ref-cards">' + cards + '</div>';
-  }
-
-  var groupMap = {};
-  referentsData.filter(function(a){ return a.grade === 'Rookie' || a.grade === 'Trooper I'; }).forEach(function(a) {
-    var key = a.referent_id || '__aucun__';
-    if (!groupMap[key]) groupMap[key] = [];
-    groupMap[key].push(a);
-  });
-
-  var groupHtml = '';
-  Object.keys(groupMap).sort(function(a,b){ return a === '__aucun__' ? 1 : b === '__aucun__' ? -1 : 0; }).forEach(function(key) {
-    var ra = key !== '__aucun__' && byId[key] ? byId[key] : null;
-    var header = ra
-      ? ('<span class="badge" style="margin-right:6px">' + ra.matricule + '</span><strong>' + ra.prenom + ' ' + ra.nom + '</strong>')
-      : '<span style="color:var(--t3)">Sans référent</span>';
-    var referes = groupMap[key].map(function(a) {
-      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border0)">'
-        + '<span class="badge">' + a.matricule + '</span>'
-        + '<span style="font-size:.85rem">' + a.grade + ' ' + a.prenom + ' ' + a.nom + '</span>'
-        + '</div>';
-    }).join('');
-    groupHtml += '<div class="card" style="margin-bottom:10px;padding:14px 16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border1)">' + header + '</div>' + referes + '</div>';
-  });
-
   var css = '<style>'
-    + '.ref-section-header{display:flex;align-items:center;gap:10px;margin:20px 0 8px}'
-    + '.ref-section-label{font-family:"Rajdhani",sans-serif;font-size:.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}'
-    + '.ref-section-count{background:var(--goldGlow);border:1px solid var(--goldBorder);color:var(--gold);font-size:.7rem;font-weight:700;padding:1px 8px;border-radius:20px}'
+    + '.ref-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}'
+    + '@media(max-width:700px){.ref-cols{grid-template-columns:1fr}}'
+    + '.ref-col-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border1)}'
+    + '.ref-col-title{font-family:"Rajdhani",sans-serif;font-size:.72rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}'
+    + '.ref-col-count{background:var(--goldGlow);border:1px solid var(--goldBorder);color:var(--gold);font-size:.68rem;font-weight:700;padding:1px 7px;border-radius:20px}'
     + '.ref-cards{display:flex;flex-direction:column;gap:6px}'
-    + '.ref-card{display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--bgCard);border:1px solid var(--border1);border-radius:var(--rMd);padding:10px 14px;transition:border-color .2s}'
+    + '.ref-card{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--bgCard);border:1px solid var(--border1);border-radius:var(--rMd);padding:10px 12px;transition:border-color .2s}'
     + '.ref-card:hover{border-color:var(--border2)}'
-    + '.ref-card-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0}'
-    + '.ref-mat{font-size:.75rem;flex-shrink:0}'
-    + '.ref-name{font-size:.88rem;color:var(--t1);font-weight:500}'
+    + '.ref-card-left{display:flex;align-items:center;gap:8px;flex:1;min-width:0}'
+    + '.ref-mat{font-size:.72rem;flex-shrink:0}'
+    + '.ref-name{font-size:.86rem;color:var(--t1);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
     + '.ref-card-right{flex-shrink:0}'
-    + '.rdd{position:relative;min-width:200px;max-width:240px}'
-    + '.rdd-trigger{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bgBody);border:1px solid var(--border1);border-radius:var(--rMd);cursor:pointer;font-size:.82rem;color:var(--t1);transition:border-color .2s}'
+    + '.ref-chip{display:inline-flex;align-items:center;gap:4px;background:var(--goldGlow);border:1px solid var(--goldBorder);border-radius:20px;padding:2px 8px;font-size:.75rem;color:var(--t1)}'
+    + '.rdd{position:relative;min-width:180px;max-width:220px}'
+    + '.rdd-trigger{display:flex;align-items:center;gap:6px;padding:5px 9px;background:var(--bgBody);border:1px solid var(--border1);border-radius:var(--rMd);cursor:pointer;font-size:.8rem;color:var(--t1);transition:border-color .2s}'
     + '.rdd-trigger:hover{border-color:var(--goldBorder)}'
     + '.rdd-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}'
-    + '.rdd-panel{position:absolute;top:calc(100% + 4px);right:0;left:auto;min-width:240px;background:var(--bgCard);border:1px solid var(--border1);border-radius:var(--rMd);z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.5);overflow:hidden}'
-    + '.rdd-search{width:100%;padding:8px 10px;background:var(--bgBody);border:none;border-bottom:1px solid var(--border1);color:var(--t1);font-size:.82rem;outline:none;box-sizing:border-box}'
-    + '.rdd-opt{padding:8px 12px;font-size:.82rem;color:var(--t1);cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:6px}'
+    + '.rdd-panel{position:absolute;top:calc(100% + 4px);right:0;left:auto;min-width:220px;background:var(--bgCard);border:1px solid var(--border1);border-radius:var(--rMd);z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.5);overflow:hidden}'
+    + '.rdd-search{width:100%;padding:7px 10px;background:var(--bgBody);border:none;border-bottom:1px solid var(--border1);color:var(--t1);font-size:.8rem;outline:none;box-sizing:border-box}'
+    + '.rdd-opt{padding:7px 12px;font-size:.8rem;color:var(--t1);cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:6px}'
     + '.rdd-opt:hover{background:var(--goldGlow)}'
     + '.rdd-none{color:var(--t3)}'
     + '</style>';
 
   setContent(
     css
-    + '<div style="display:flex;gap:10px;margin-bottom:4px">'
-    + '<button class="btn btn-ghost btn-sm ref-tab-btn active" onclick="switchRefTab(\'assign\')">🎓 Assignation</button>'
-    + '<button class="btn btn-ghost btn-sm ref-tab-btn" onclick="switchRefTab(\'group\')">👥 Par référent</button>'
+    + '<div class="ref-cols">'
+    + '<div>'
+    + '<div class="ref-col-header"><span class="ref-col-title">Référents</span><span class="ref-col-count">' + eligibles.length + '</span></div>'
+    + '<div class="ref-cards">' + colRefent + '</div>'
     + '</div>'
-    + '<div id="ref-tab-assign">'
-    + makeSection('Rookie', rookies.length, rookies.map(makeCard).join(''))
-    + makeSection('Trooper I', troopers1.length, troopers1.map(makeCard).join(''))
+    + '<div>'
+    + '<div class="ref-col-header"><span class="ref-col-title">Référés</span><span class="ref-col-count">' + referes.length + '</span></div>'
+    + '<div class="ref-cards">' + referes.map(makeCard).join('') + '</div>'
     + '</div>'
-    + '<div id="ref-tab-group" style="display:none">' + groupHtml + '</div>'
+    + '</div>'
   );
 
   document.addEventListener('click', function closeRdd(e) {
