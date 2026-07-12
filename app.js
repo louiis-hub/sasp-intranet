@@ -204,6 +204,7 @@ var NAV = [
   { group: 'RESSOURCES HUMAINES' },
   { id: 'recap',    icon: '📋', label: 'Récap agents', staffOnly: true },
   { id: 'completude', icon: '🗂️', label: 'Complétude fiches', staffOnly: true },
+  { id: 'referents',  icon: '🤝', label: 'Référents',          staffOnly: true },
   { id: 'agents',   icon: '👮', label: 'Agents' },
   { id: 'grades',   icon: '🎖️', label: 'Grades' },
   { id: 'units',     icon: '🚔', label: 'Divisions' },
@@ -224,7 +225,7 @@ var PAGE_TITLES = {
   grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', 'pointeuse-historique':'Historique pointages', mdt:'Guide MDT', vehicles:'Véhicules', cartes:'Cartes',
   faq:'FAQ',
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
-  archives:'Archives', ceremonie:'Prépa Cérémonie', completude:'Complétude fiches',
+  archives:'Archives', ceremonie:'Prépa Cérémonie', completude:'Complétude fiches', referents:'Référents',
   'global-settings':'Réglages globaux',
   ftf:'FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
 };
@@ -365,7 +366,7 @@ function buildNav() {
   var isVisiteur = S.role === 'visiteur';
   var isFtfOnly = S.role === 'ftf';
   var VISITEUR_NAV = ['dashboard', 'pointeuse', 'faq', 'cartes'];
-  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'archives', 'recap', 'ceremonie', 'completude'];
+  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'archives', 'recap', 'ceremonie', 'completude', 'referents'];
   var html = '';
   NAV.forEach(function(item) {
     if (item.ftfOnly && !canAccessFTF()) return;
@@ -476,6 +477,7 @@ async function navigate(page, pd) {
       ceremonie:      renderCeremonie,
       archives:       renderArchives,
       completude:     renderCompletude,
+      referents:      renderReferents,
       'global-settings': renderGlobalSettings,
       ftf:            renderFTF,
       stats:          renderStats,
@@ -2607,6 +2609,79 @@ async function createVehiclePage() {
 }
 
 // ══ COMPLÉTUDE FICHES ═══════════════════════════════════════════════
+async function renderReferents() {
+  setContent('<p class="muted">Chargement…</p>');
+  var agents = await DB.getAgents({});
+  var referentsData = await DB.getReferents();
+
+  // Index id → agent complet
+  var byId = {};
+  referentsData.forEach(function(a) { byId[a.id] = a; });
+
+  // Options pour le select (tous les agents actifs)
+  var agentOptions = '<option value="">— Aucun —</option>' +
+    agents.map(function(a) {
+      return '<option value="' + a.id + '">' + a.grade + ' ' + a.prenom + ' ' + a.nom + ' (' + a.matricule + ')</option>';
+    }).join('');
+
+  // Tableau
+  var rows = referentsData.map(function(a) {
+    var refDisplay = a.referent
+      ? (a.referent.grade + ' ' + a.referent.prenom + ' ' + a.referent.nom + ' (' + a.referent.matricule + ')')
+      : '<span class="muted">—</span>';
+    var sel = '<select onchange="setReferent(\'' + a.id + '\', this.value)" style="max-width:220px;padding:4px 8px;background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:0.85rem">'
+      + agentOptions.replace('value="' + (a.referent_id || '') + '"', 'value="' + (a.referent_id || '') + '" selected')
+      + '</select>';
+    return '<tr>'
+      + '<td><strong>' + a.grade + '</strong> ' + a.prenom + ' ' + a.nom + '</td>'
+      + '<td><span class="badge">' + a.matricule + '</span></td>'
+      + '<td>' + refDisplay + '</td>'
+      + '<td>' + (canWrite() ? sel : (a.referent ? refDisplay : '<span class="muted">—</span>')) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  // Vue par référent (groupée)
+  var groupMap = {};
+  referentsData.forEach(function(a) {
+    var key = a.referent_id || '__aucun__';
+    if (!groupMap[key]) groupMap[key] = [];
+    groupMap[key].push(a);
+  });
+
+  var groupHtml = '';
+  Object.keys(groupMap).forEach(function(key) {
+    var referentAgent = key !== '__aucun__' && byId[key] ? byId[key] : null;
+    var header = referentAgent
+      ? ('<strong>' + referentAgent.grade + ' ' + referentAgent.prenom + ' ' + referentAgent.nom + '</strong> <span class="badge">' + referentAgent.matricule + '</span>')
+      : '<span class="muted">Sans référent</span>';
+    var referes = groupMap[key].map(function(a) {
+      return '<li>' + a.grade + ' ' + a.prenom + ' ' + a.nom + ' <span class="badge">' + a.matricule + '</span></li>';
+    }).join('');
+    groupHtml += '<div class="card" style="margin-bottom:12px"><div class="card-header">' + header + '</div><ul style="margin:8px 0 4px 20px;padding:0">' + referes + '</ul></div>';
+  });
+
+  setContent(
+    '<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">'
+    + '<button class="btn btn-ghost btn-sm ref-tab-btn active" onclick="switchRefTab(\'table\')">📋 Tableau</button>'
+    + '<button class="btn btn-ghost btn-sm ref-tab-btn" onclick="switchRefTab(\'group\')">👥 Par référent</button>'
+    + '</div>'
+    + '<div id="ref-tab-table">'
+    + '<div class="table-wrap"><table class="table"><thead><tr><th>Agent</th><th>Matricule</th><th>Référent actuel</th>' + (canWrite() ? '<th>Modifier</th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '</div>'
+    + '<div id="ref-tab-group" style="display:none">' + groupHtml + '</div>'
+  );
+}
+
+window.switchRefTab = function(tab) {
+  document.getElementById('ref-tab-table').style.display = tab === 'table' ? '' : 'none';
+  document.getElementById('ref-tab-group').style.display = tab === 'group' ? '' : 'none';
+  document.querySelectorAll('.ref-tab-btn').forEach(function(b) { b.classList.toggle('active', b.textContent.includes(tab === 'table' ? 'Tableau' : 'référent')); });
+};
+
+window.setReferent = async function(agentId, referentId) {
+  await DB.setReferent(agentId, referentId || null);
+};
+
 async function renderCompletude() {
   var agents = await DB.getAgents({});
   var FIELDS = [

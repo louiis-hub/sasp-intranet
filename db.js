@@ -81,6 +81,15 @@ var DB = {
     data.updated_at = new Date().toISOString();
     return getDb().from('agents').update(data).eq('id', id);
   },
+  async getReferents() {
+    var { data } = await getDb().from('agents')
+      .select('id, nom, prenom, matricule, grade, referent_id, referent:referent_id(id, nom, prenom, matricule, grade)')
+      .neq('statut', 'Archivé').order('matricule');
+    return data || [];
+  },
+  async setReferent(agentId, referentId) {
+    return getDb().from('agents').update({ referent_id: referentId || null, updated_at: new Date().toISOString() }).eq('id', agentId);
+  },
 
   // ── Grades ───────────────────────────────────────────────────
   async getGrades() {
