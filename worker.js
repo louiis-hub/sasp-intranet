@@ -2455,6 +2455,32 @@ export default {
       }
     }
 
+    if (url.pathname === "/admin/sync-nicks" && request.method === "GET") {
+      const SOURCE_GUILD = "1500975724750704661";
+      const TARGET_GUILD = url.searchParams.get("target") || "1382167184607940658";
+      try {
+        const members = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members?limit=1000`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        }).then(r => r.json());
+        let synced = 0, skipped = 0, errors = [];
+        for (const m of members) {
+          const nick = m.nick;
+          const uid = m.user?.id;
+          if (!uid) continue;
+          const res = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
+            method: "PATCH",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ nick: nick || null })
+          });
+          if (res.status === 204 || res.status === 200) synced++;
+          else if (res.status === 404) skipped++;
+          else errors.push(`${uid}: ${res.status}`);
+        }
+        return json({ ok: true, synced, skipped, errors });
+      } catch(e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/install-bracelet-command" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
@@ -3498,6 +3524,24 @@ export default {
       ctx.waitUntil(autoClockoutAll(env));
     } else {
       ctx.waitUntil(autoClockout6h(env));
+      ctx.waitUntil((async () => {
+        const SOURCE_GUILD = "1500975724750704661";
+        const TARGET_GUILD = "1382167184607940658";
+        try {
+          const members = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members?limit=1000`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          }).then(r => r.json());
+          for (const m of members) {
+            const uid = m.user?.id;
+            if (!uid) continue;
+            await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
+              method: "PATCH",
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ nick: m.nick || null })
+            });
+          }
+        } catch(e) {}
+      })());
     }
   }
 };
