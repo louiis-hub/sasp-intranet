@@ -2712,9 +2712,10 @@ async function renderReferents() {
 
   setContent(
     css
-    + '<div style="display:flex;gap:10px;margin-bottom:4px">'
+    + '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">'
     + '<button class="btn btn-ghost btn-sm ref-tab-btn active" onclick="switchRefTab(\'assign\')">🎓 Assignation</button>'
     + '<button class="btn btn-ghost btn-sm ref-tab-btn" onclick="switchRefTab(\'group\')">👥 Par référent</button>'
+    + (canWrite() ? '<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="postReferentsDiscord(this)">📤 Envoyer sur Discord</button>' : '')
     + '</div>'
     + '<div id="ref-tab-assign">'
     + makeSection('Rookie', rookies.length, rookies.map(makeCard).join(''))
@@ -2753,6 +2754,20 @@ window.switchRefTab = function(tab) {
 
 window.setReferent = async function(agentId, referentId) {
   await DB.setReferent(agentId, referentId || null);
+};
+
+window.postReferentsDiscord = async function(btn) {
+  var orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Envoi…';
+  try {
+    var res = await fetch(WORKER_BASE + '/admin/post-referents');
+    var data = await res.json();
+    btn.textContent = data.ok ? '✅ Envoyé !' : '❌ Erreur';
+  } catch(e) {
+    btn.textContent = '❌ Erreur';
+  }
+  setTimeout(function() { btn.textContent = orig; btn.disabled = false; }, 2500);
 };
 
 async function renderCompletude() {

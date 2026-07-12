@@ -3566,6 +3566,64 @@ export default {
       return json({ ok: true, count });
     }
 
+    if (url.pathname === "/admin/post-referents" && request.method === "GET") {
+      const CHANNEL = "1518640738559197284";
+      try {
+        const agents = await sbForSite(env, "GET",
+          `/agents?select=id,nom,prenom,matricule,grade,statut,referent_id,referent:referent_id(id,nom,prenom,matricule,grade)&statut=neq.Arch%C3%A9&order=matricule`,
+          null, "sud"
+        );
+        const referes = (agents || []).filter(a => a.grade === "Rookie" || a.grade === "Trooper I");
+
+        // Grouper par référent
+        const byRef = {};
+        const sans = [];
+        referes.forEach(a => {
+          if (a.referent_id && a.referent) {
+            const key = a.referent_id;
+            if (!byRef[key]) byRef[key] = { ref: a.referent, list: [] };
+            byRef[key].list.push(a);
+          } else {
+            sans.push(a);
+          }
+        });
+
+        const fields = [];
+        Object.values(byRef).forEach(({ ref, list }) => {
+          fields.push({
+            name: `${ref.grade} ${ref.prenom} ${ref.nom} (${ref.matricule})`,
+            value: list.map(x => `> ${x.grade === "Rookie" ? "🎓" : "🔵"} **(${x.matricule})** ${x.prenom} ${x.nom}`).join("\n"),
+            inline: false
+          });
+        });
+        if (sans.length) {
+          fields.push({
+            name: "❌ Sans référent",
+            value: sans.map(x => `> ${x.grade === "Rookie" ? "🎓" : "🔵"} **(${x.matricule})** ${x.prenom} ${x.nom}`).join("\n"),
+            inline: false
+          });
+        }
+
+        const now = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+        const embed = {
+          title: "📋 Tableau des Référents SASP",
+          color: 0xC9A84C,
+          fields,
+          footer: { text: `Mis à jour le ${now}` }
+        };
+
+        const res = await discordFetch(`${DISCORD_API}/channels/${CHANNEL}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [embed] })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, message_id: data.id });
+      } catch(e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     return json({ error: "Not found" }, 404);
   },
 
