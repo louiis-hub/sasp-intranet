@@ -2647,60 +2647,78 @@ async function renderReferents() {
   var rookies   = referentsData.filter(function(a) { return a.grade === 'Rookie'; });
   var troopers1 = referentsData.filter(function(a) { return a.grade === 'Trooper I'; });
 
-  function makeRow(a) {
+  function makeCard(a) {
     var refDisplay = a.referent
       ? ('(' + a.referent.matricule + ') ' + a.referent.prenom + ' ' + a.referent.nom)
-      : '<span class="muted">—</span>';
+      : '<span style="color:var(--t3)">Non assigné</span>';
     var cell = canWrite() ? buildDropdown(a.id, refLabel(a)) : refDisplay;
-    return '<tr>'
-      + '<td><strong>' + a.grade + '</strong> ' + a.prenom + ' ' + a.nom + '</td>'
-      + '<td><span class="badge">' + a.matricule + '</span></td>'
-      + '<td>' + cell + '</td>'
-      + '</tr>';
+    return '<div class="ref-card">'
+      + '<div class="ref-card-left">'
+      + '<span class="badge ref-mat">' + a.matricule + '</span>'
+      + '<span class="ref-name">' + a.prenom + ' ' + a.nom + '</span>'
+      + '</div>'
+      + '<div class="ref-card-right">' + cell + '</div>'
+      + '</div>';
   }
 
-  var sep = '<tr><td colspan="3" style="padding:0"><div style="height:1px;background:var(--border1);margin:4px 0"></div></td></tr>';
-  var rows = rookies.map(makeRow).join('') + (rookies.length && troopers1.length ? sep : '') + troopers1.map(makeRow).join('');
+  function makeSection(label, count, cards) {
+    return '<div class="ref-section-header"><span class="ref-section-label">' + label + '</span><span class="ref-section-count">' + count + '</span></div>'
+      + '<div class="ref-cards">' + cards + '</div>';
+  }
 
   var groupMap = {};
-  referentsData.forEach(function(a) {
+  referentsData.filter(function(a){ return a.grade === 'Rookie' || a.grade === 'Trooper I'; }).forEach(function(a) {
     var key = a.referent_id || '__aucun__';
     if (!groupMap[key]) groupMap[key] = [];
     groupMap[key].push(a);
   });
 
   var groupHtml = '';
-  Object.keys(groupMap).forEach(function(key) {
+  Object.keys(groupMap).sort(function(a,b){ return a === '__aucun__' ? 1 : b === '__aucun__' ? -1 : 0; }).forEach(function(key) {
     var ra = key !== '__aucun__' && byId[key] ? byId[key] : null;
     var header = ra
-      ? ('<strong>' + ra.grade + ' ' + ra.prenom + ' ' + ra.nom + '</strong> <span class="badge">' + ra.matricule + '</span>')
-      : '<span class="muted">Sans référent</span>';
+      ? ('<span class="badge" style="margin-right:6px">' + ra.matricule + '</span><strong>' + ra.prenom + ' ' + ra.nom + '</strong>')
+      : '<span style="color:var(--t3)">Sans référent</span>';
     var referes = groupMap[key].map(function(a) {
-      return '<li style="padding:3px 0">' + a.grade + ' ' + a.prenom + ' ' + a.nom + ' <span class="badge">' + a.matricule + '</span></li>';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border0)">'
+        + '<span class="badge">' + a.matricule + '</span>'
+        + '<span style="font-size:.85rem">' + a.grade + ' ' + a.prenom + ' ' + a.nom + '</span>'
+        + '</div>';
     }).join('');
-    groupHtml += '<div class="card" style="margin-bottom:12px"><div class="card-header">' + header + '</div><ul style="margin:8px 0 4px 20px;padding:0">' + referes + '</ul></div>';
+    groupHtml += '<div class="card" style="margin-bottom:10px;padding:14px 16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border1)">' + header + '</div>' + referes + '</div>';
   });
 
   var css = '<style>'
-    + '.rdd{position:relative;min-width:220px;max-width:280px}'
-    + '.rdd-trigger{display:flex;align-items:center;gap:6px;padding:7px 10px;background:var(--bgCard);border:1px solid var(--border1);border-radius:var(--rMd);cursor:pointer;font-size:.84rem;color:var(--t1);transition:border-color .2s}'
+    + '.ref-section-header{display:flex;align-items:center;gap:10px;margin:20px 0 8px}'
+    + '.ref-section-label{font-family:"Rajdhani",sans-serif;font-size:.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}'
+    + '.ref-section-count{background:var(--goldGlow);border:1px solid var(--goldBorder);color:var(--gold);font-size:.7rem;font-weight:700;padding:1px 8px;border-radius:20px}'
+    + '.ref-cards{display:flex;flex-direction:column;gap:6px}'
+    + '.ref-card{display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--bgCard);border:1px solid var(--border1);border-radius:var(--rMd);padding:10px 14px;transition:border-color .2s}'
+    + '.ref-card:hover{border-color:var(--border2)}'
+    + '.ref-card-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0}'
+    + '.ref-mat{font-size:.75rem;flex-shrink:0}'
+    + '.ref-name{font-size:.88rem;color:var(--t1);font-weight:500}'
+    + '.ref-card-right{flex-shrink:0}'
+    + '.rdd{position:relative;min-width:200px;max-width:240px}'
+    + '.rdd-trigger{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bgBody);border:1px solid var(--border1);border-radius:var(--rMd);cursor:pointer;font-size:.82rem;color:var(--t1);transition:border-color .2s}'
     + '.rdd-trigger:hover{border-color:var(--goldBorder)}'
     + '.rdd-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}'
-    + '.rdd-panel{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bgCard);border:1px solid var(--border1);border-radius:var(--rMd);z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.4);overflow:hidden}'
-    + '.rdd-search{width:100%;padding:8px 10px;background:var(--bgBody);border:none;border-bottom:1px solid var(--border1);color:var(--t1);font-size:.83rem;outline:none;box-sizing:border-box}'
-    + '.rdd-opt{padding:8px 12px;font-size:.83rem;color:var(--t1);cursor:pointer;transition:background .15s}'
+    + '.rdd-panel{position:absolute;top:calc(100% + 4px);right:0;left:auto;min-width:240px;background:var(--bgCard);border:1px solid var(--border1);border-radius:var(--rMd);z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.5);overflow:hidden}'
+    + '.rdd-search{width:100%;padding:8px 10px;background:var(--bgBody);border:none;border-bottom:1px solid var(--border1);color:var(--t1);font-size:.82rem;outline:none;box-sizing:border-box}'
+    + '.rdd-opt{padding:8px 12px;font-size:.82rem;color:var(--t1);cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:6px}'
     + '.rdd-opt:hover{background:var(--goldGlow)}'
-    + '.rdd-none{color:var(--t3);font-style:italic}'
+    + '.rdd-none{color:var(--t3)}'
     + '</style>';
 
   setContent(
     css
-    + '<div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">'
-    + '<button class="btn btn-ghost btn-sm ref-tab-btn active" onclick="switchRefTab(\'table\')">📋 Tableau</button>'
+    + '<div style="display:flex;gap:10px;margin-bottom:4px">'
+    + '<button class="btn btn-ghost btn-sm ref-tab-btn active" onclick="switchRefTab(\'assign\')">🎓 Assignation</button>'
     + '<button class="btn btn-ghost btn-sm ref-tab-btn" onclick="switchRefTab(\'group\')">👥 Par référent</button>'
     + '</div>'
-    + '<div id="ref-tab-table">'
-    + '<div class="table-wrap"><table class="table"><thead><tr><th>Agent</th><th>Matricule</th><th>Référent</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+    + '<div id="ref-tab-assign">'
+    + makeSection('Rookie', rookies.length, rookies.map(makeCard).join(''))
+    + makeSection('Trooper I', troopers1.length, troopers1.map(makeCard).join(''))
     + '</div>'
     + '<div id="ref-tab-group" style="display:none">' + groupHtml + '</div>'
   );
@@ -2728,9 +2746,9 @@ window.pickRef = async function(agentId, refId, label) {
 };
 
 window.switchRefTab = function(tab) {
-  document.getElementById('ref-tab-table').style.display = tab === 'table' ? '' : 'none';
+  document.getElementById('ref-tab-assign').style.display = tab === 'assign' ? '' : 'none';
   document.getElementById('ref-tab-group').style.display = tab === 'group' ? '' : 'none';
-  document.querySelectorAll('.ref-tab-btn').forEach(function(b) { b.classList.toggle('active', b.textContent.includes(tab === 'table' ? 'Tableau' : 'référent')); });
+  document.querySelectorAll('.ref-tab-btn').forEach(function(b) { b.classList.toggle('active', b.textContent.includes(tab === 'assign' ? 'Assignation' : 'référent')); });
 };
 
 window.setReferent = async function(agentId, referentId) {
