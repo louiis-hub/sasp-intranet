@@ -394,9 +394,12 @@ function buildNav() {
 
   var chipName = S.serverNick || n;
   var chipInitials = chipName.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
-  document.getElementById('userChip').innerHTML =
-    '<div class="user-chip-av">' + chipInitials + '</div>' +
-    '<span class="user-chip-name">' + esc(chipName) + '</span>';
+  var userChip = document.getElementById('userChip');
+  if (userChip) {
+    userChip.innerHTML =
+      '<div class="user-chip-av">' + chipInitials + '</div>' +
+      '<span class="user-chip-name">' + esc(chipName) + '</span>';
+  }
 }
 
 function updateUserUI() {
