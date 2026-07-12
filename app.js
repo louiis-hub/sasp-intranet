@@ -656,7 +656,7 @@ async function getDashboardGradeCounts(grades, agents, logLabel) {
 
 // ══ DASHBOARD ══════════════════════════════════════════════════════
 var FTF_STORAGE_KEY = 'sasp_ftf_dossiers_v1';
-var FTF_CONVOCATION_TEMPLATE = 'assets/convocation-template.png';
+var FTF_CONVOCATION_TEMPLATE = 'assets/convocation-template.png?v=20260712-ftf-template-v2';
 var FTF_STATUSES = ['Attente paiement', '1ère convocation', '2ème convocation', '3ème convocation', 'Tribunal', 'Clôturé'];
 var _ftfTab = 'dashboard';
 var _ftfSearch = '';
