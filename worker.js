@@ -2809,7 +2809,7 @@ export default {
               { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "PosÃ© le", style: 1, required: true, value: dateDefault, max_length: 30 }] },
               { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "NumÃ©ro de tÃ©lÃ©phone", style: 1, required: true, placeholder: "Ex : 555-0198", max_length: 30 }] },
               { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, required: true, placeholder: "Infractions retenuesâ€¦", max_length: 500 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_accord_proc", label: "Demande procureur", style: 1, required: true, placeholder: "Oui ou Non", max_length: 3 }] }
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_dossier", label: "# du dossier", style: 1, required: false, placeholder: "Ex : 2026-0042", max_length: 50 }] }
             ]
           }
         });
@@ -2822,7 +2822,7 @@ export default {
         const date    = getValue("bracelet_date");
         const tel     = getValue("bracelet_tel");
         const raison  = getValue("bracelet_raison");
-        const accordProc = getValue("bracelet_accord_proc") || "Non";
+        const dossier = getValue("bracelet_dossier");
 
         const userId = interaction.member?.user?.id || interaction.user?.id;
         let agentDisplay = `<@${userId}>`;
@@ -2832,7 +2832,8 @@ export default {
         } catch {}
 
         const origin = getSaspOrigin(interaction);
-        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nOrigine : ${origin.label}\nPos\u00e9 le : ${date}\nNum\u00e9ro de t\u00e9l\u00e9phone : ${tel}\nRaison : ${raison}\nDemande procureur : ${accordProc}\nPos\u00e9 par : ${agentDisplay}\n\nPensez \u00e0 bien noter quand les individus viennent pointer\n\n\u2139\ufe0f Les bracelets peuvent \u00eatre activ\u00e9s pour voir la position une fois toutes les 24h via un message "BIP" sur le t\u00e9l\u00e9phone de l'individu.`;
+        const dossierLine = dossier ? `\nN\u00b0 Dossier : ${dossier}` : "";
+        const content = `BRACELET ELECTRONIQUE DE ${suspect.toUpperCase()}\n\nOrigine : ${origin.label}\nPos\u00e9 le : ${date}\nNum\u00e9ro de t\u00e9l\u00e9phone : ${tel}${dossierLine}\nRaison : ${raison}\nPos\u00e9 par : ${agentDisplay}\n\nPensez \u00e0 bien noter quand les individus viennent pointer\n\n\u2139\ufe0f Les bracelets peuvent \u00eatre activ\u00e9s pour voir la position une fois toutes les 24h via un message "BIP" sur le t\u00e9l\u00e9phone de l'individu.`;
 
         const braceletMessage = {
           content,
