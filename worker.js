@@ -3624,6 +3624,41 @@ export default {
       }
     }
 
+    if (url.pathname === "/admin/sync-grades-from-discord" && request.method === "GET") {
+      const guildId = SUD_SITE_GUILD_ID;
+      try {
+        // 1. Tous les agents avec discord_id
+        const agents = await sbForSite(env, "GET", `/agents?select=id,grade,discord_id&discord_id=not.is.null&statut=neq.Arch%C3%A9`, null, "sud");
+        const agentByDiscord = {};
+        for (const a of (agents || [])) agentByDiscord[a.discord_id] = a;
+
+        // 2. Tous les membres Discord (paginé 1000)
+        let after = "0", updated = 0, unchanged = 0, errors = [];
+        do {
+          const members = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members?limit=1000&after=${after}`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          }).then(r => r.json());
+
+          for (const m of members) {
+            const uid = m.user?.id;
+            if (!uid || m.user?.bot) continue;
+            const agent = agentByDiscord[uid];
+            if (!agent) continue;
+            const discordGrade = gradeFromRolesForGuild(m.roles || [], guildId);
+            if (!discordGrade || discordGrade === agent.grade) { unchanged++; continue; }
+            const res = await sbForSite(env, "PATCH", `/agents?id=eq.${agent.id}`, { grade: discordGrade, updated_at: new Date().toISOString() }, "sud");
+            updated++;
+          }
+
+          after = members.length === 1000 ? members[members.length - 1].user.id : null;
+        } while (after);
+
+        return json({ ok: true, updated, unchanged, errors });
+      } catch(e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     return json({ error: "Not found" }, 404);
   },
 

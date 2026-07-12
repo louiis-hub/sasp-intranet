@@ -97,6 +97,26 @@ async function getDiscordGradeCounts() {
   return data.counts || {};
 }
 
+async function syncGradesFromDiscord(btn) {
+  var orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Analyse…';
+  try {
+    var res = await fetch(WORKER_BASE + '/admin/sync-grades-from-discord');
+    var data = await res.json();
+    if (data.ok) {
+      showToast('✅ ' + data.updated + ' grade(s) mis à jour, ' + data.unchanged + ' inchangé(s)', 'success');
+      if (data.updated > 0) await renderAgents();
+    } else {
+      showToast('❌ Erreur : ' + data.error, 'error');
+    }
+  } catch(e) {
+    showToast('❌ ' + e.message, 'error');
+  }
+  btn.textContent = orig;
+  btn.disabled = false;
+}
+
 async function syncAllAgentsToDiscord() {
   if (!confirm('Synchroniser les rôles Discord vers les fiches SASP ?\n\nLes grades, divisions CID/SWAT/PA/CNU/TU/SYND et PPA seront mis à jour pour chaque agent qui a un Discord ID.')) return;
   var loader = toastLoading('Synchronisation en cours…');
@@ -1456,6 +1476,7 @@ async function renderAgents() {
         (canWrite() ? '<button class="btn btn-primary btn-sm" onclick="openAgentModal(null)">+ Ajouter un agent</button>' : '') +
         '<button class="btn btn-ghost btn-sm" onclick="showMatriculesDispos()">🔢 Matricules dispo</button>' +
         (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="syncAllAgentsToDiscord()">🔄 Sync Discord</button>' : '') +
+        (isAdmin() ? '<button class="btn btn-ghost btn-sm" id="syncGradesBtn" onclick="syncGradesFromDiscord(this)">⬇️ Grades Discord</button>' : '') +
         (canWrite() ? '<button class="btn btn-ghost btn-sm" onclick="navigate(\'completude\')">🗂️ Complétude</button>' : '') +
       '</div>' +
     '</div>' +
