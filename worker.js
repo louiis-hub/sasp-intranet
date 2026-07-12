@@ -888,6 +888,12 @@ async function getFtfDossiers(env) {
   return (Array.isArray(rows) ? rows : []).map(ftfRowToDossier).filter(Boolean);
 }
 
+async function getFtfDossier(env, id) {
+  const rows = await sb(env, "GET", `/ftf_dossiers?id=eq.${encodeURIComponent(id)}&select=id,data,updated_at&limit=1`);
+  const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+  return ftfRowToDossier(row);
+}
+
 async function upsertFtfDossier(env, dossier) {
   if (!dossier || !dossier.id) throw new Error("Dossier FTF invalide");
   const now = new Date().toISOString();
@@ -1204,6 +1210,7 @@ export default {
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
       try {
         const data = await request.json();
+        const dossierId = String(data.dossier_id || "").trim();
         const creatorId = String(data.creator_id || "").replace(/\D/g, "");
         const suspect = String(data.suspect || "personne inconnue").trim();
         const nextStep = String(data.next_step || "convocation").trim();
@@ -1238,7 +1245,14 @@ export default {
               fields,
               footer: { text: "SASP - FTF" },
               timestamp: new Date().toISOString()
-            }]
+            }],
+            components: dossierId ? [{
+              type: 1,
+              components: [
+                { type: 2, style: 1, label: "Choisir date/heure", custom_id: `ftf_convocation_schedule|${dossierId}` },
+                { type: 2, style: 3, label: "Marquer traité", custom_id: `ftf_convocation_done|${dossierId}` }
+              ]
+            }] : []
           })
         });
         if (!res.ok) return json({ ok: false, error: await res.text() }, res.status);
@@ -2562,6 +2576,38 @@ export default {
         return json({ type: 4, data: { content: `âœ… Demande de subvention envoyÃ©e pour **${agentName}**.`, flags: 64 } });
       }
 
+      if (interaction.type === 5 && interaction.data.custom_id.startsWith("ftf_convocation_modal|")) {
+        const dossierId = interaction.data.custom_id.split("|")[1];
+        const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
+        const date = getValue("ftf_convocation_date").trim();
+        const heure = getValue("ftf_convocation_hour").trim();
+        if (!date || !heure) {
+          return json({ type: 4, data: { content: "Date et heure obligatoires.", flags: 64 } });
+        }
+        const dossier = await getFtfDossier(env, dossierId);
+        if (!dossier) return json({ type: 4, data: { content: "Dossier FTF introuvable.", flags: 64 } });
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        const suspect = `${dossier.prenom || ""} ${dossier.nom || ""}`.trim() || "Suspect";
+        const updated = {
+          ...dossier,
+          convocation_validee: true,
+          convocation_date: date,
+          convocation_heure: heure,
+          convocation_planifiee_par: userId,
+          updated_at: new Date().toISOString()
+        };
+        await upsertFtfDossier(env, updated);
+        await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: `<@${userId}> a planifie la convocation FTF de **${suspect}** le **${date}** a **${heure}**.\nGenere ensuite le PNG depuis le dossier FTF sur l'intranet.`,
+            allowed_mentions: { users: [userId] }
+          })
+        });
+        return json({ type: 4, data: { content: "Convocation planifiee et rappels arretes pour ce dossier.", flags: 64 } });
+      }
+
       // Slash command /proc
       if (interaction.type === 2 && interaction.data.name === "proc") {
         if (![BRACELET_COMMAND_CHANNEL, NORD_COMMAND_CHANNEL].includes(interaction.channel_id)) {
@@ -3255,6 +3301,47 @@ export default {
         const customId = interaction.data.custom_id;
         const discordUserId = interaction.member?.user?.id || interaction.user?.id;
         const member = interaction.member;
+
+        if (customId.startsWith("ftf_convocation_schedule|")) {
+          const dossierId = customId.split("|")[1];
+          const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          return json({
+            type: 9,
+            data: {
+              custom_id: `ftf_convocation_modal|${dossierId}`,
+              title: "Planifier convocation FTF",
+              components: [
+                { type: 1, components: [{ type: 4, custom_id: "ftf_convocation_date", label: "Date de convocation", style: 1, required: true, value: tomorrow, placeholder: "AAAA-MM-JJ", max_length: 20 }] },
+                { type: 1, components: [{ type: 4, custom_id: "ftf_convocation_hour", label: "Heure de convocation", style: 1, required: true, placeholder: "Ex : 18H30", max_length: 20 }] }
+              ]
+            }
+          });
+        }
+
+        if (customId.startsWith("ftf_convocation_done|")) {
+          const dossierId = customId.split("|")[1];
+          const dossier = await getFtfDossier(env, dossierId);
+          if (!dossier) return json({ type: 4, data: { content: "Dossier FTF introuvable.", flags: 64 } });
+          const updated = {
+            ...dossier,
+            convocation_validee: true,
+            convocation_traitee_par: discordUserId,
+            updated_at: new Date().toISOString()
+          };
+          await upsertFtfDossier(env, updated);
+          const components = (interaction.message.components || []).map(row => ({
+            ...row,
+            components: (row.components || []).map(c => ({ ...c, disabled: true }))
+          }));
+          return json({
+            type: 7,
+            data: {
+              content: interaction.message.content || "",
+              embeds: interaction.message.embeds || [],
+              components
+            }
+          });
+        }
 
         // â”€â”€ Bouton modifier plainte â”€â”€
         if (customId.startsWith("edit_plainte|")) {

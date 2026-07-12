@@ -196,7 +196,8 @@ select.form-control{cursor:pointer}
 .btn-close-m{background:none;border:1px solid var(--border0);color:var(--t2);width:28px;height:28px;border-radius:var(--rMd);cursor:pointer;font-size:.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all var(--dur) var(--ease)}
 .btn-close-m:hover{border-color:var(--red);color:var(--red)}
 .modal-body{padding:22px;overflow-y:auto;flex:1}
-.modal-ft{display:flex;gap:10px;justify-content:flex-end;padding:14px 22px;border-top:1px solid var(--border0);flex-shrink:0}
+.modal-ft{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:14px 22px;border-top:1px solid var(--border0);flex-shrink:0}
+.modal-ft .btn{white-space:nowrap}
 .modal-ft:empty{display:none}
 
 /* ── FILTERS ─────────────────────────────────────────────────────── */
