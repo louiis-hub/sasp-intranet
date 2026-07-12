@@ -2490,27 +2490,32 @@ export default {
     }
     if (url.pathname === "/admin/sync-nicks" && request.method === "GET") {
       const SOURCE_GUILD = "1500975724750704661";
-      const TARGET_GUILD = url.searchParams.get("target") || "1382167184607940658";
+      const TARGET_GUILD = "1382167184607940658";
       const after = url.searchParams.get("after") || "0";
-      const PAGE = 40;
+      const PAGE = 20;
       try {
-        const members = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members?limit=${PAGE}&after=${after}`, {
+        // Parcourt les membres du serveur secondaire
+        const targetMembers = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members?limit=${PAGE}&after=${after}`, {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
         }).then(r => r.json());
         let synced = 0, skipped = 0, errors = [];
-        for (const m of members) {
+        for (const m of targetMembers) {
           const uid = m.user?.id;
-          if (!uid) continue;
+          if (!uid || m.user?.bot) continue;
+          // Récupère le pseudo depuis le SASP principal
+          const sourceMember = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members/${uid}`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
+          if (!sourceMember) { skipped++; continue; }
           const res = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
             method: "PATCH",
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ nick: m.nick || null })
+            body: JSON.stringify({ nick: sourceMember.nick || null })
           });
           if (res.status === 204 || res.status === 200) synced++;
-          else if (res.status === 404) skipped++;
           else errors.push(`${uid}: ${res.status}`);
         }
-        const next_after = members.length === PAGE ? members[members.length - 1].user.id : null;
+        const next_after = targetMembers.length === PAGE ? targetMembers[targetMembers.length - 1].user.id : null;
         return json({ ok: true, synced, skipped, errors, next_after, done: !next_after });
       } catch(e) {
         return json({ ok: false, error: e.message }, 500);
