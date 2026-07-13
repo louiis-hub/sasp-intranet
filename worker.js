@@ -2634,7 +2634,9 @@ export default {
         return json({ error: "Unauthorized" }, 401);
       }
 
-      const interaction = JSON.parse(body);
+      let interaction;
+      try { interaction = JSON.parse(body); } catch { return json({ error: "Bad JSON" }, 400); }
+      try {
 
       // Ping
       if (interaction.type === 1) return json({ type: 1 });
@@ -3642,10 +3644,13 @@ export default {
         return json({ type: 7, data: buildPointeuseMessage(allActive) });
       }
 
-      return json({ type: 4, data: { content: "Type d'interaction non supportÃ©.", flags: 64 } });
+      return json({ type: 4, data: { content: “Type d'interaction non supporté.”, flags: 64 } });
+      } catch(e) {
+        return json({ type: 4, data: { content: `❌ Erreur interne : ${e.message || e}`, flags: 64 } });
+      }
     }
 
-    // â”€â”€ Forcer fin de service pour un agent prÃ©cis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Forcer fin de service pour un agent précis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (url.pathname === "/clockout-agent" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
