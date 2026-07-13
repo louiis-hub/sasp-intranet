@@ -186,11 +186,12 @@ function countGradesFromRoleCounts(roleCounts) {
 }
 
 const STAFF_ROLE_IDS = [
-  '1519507318188933140', // rÃ´le gestionnaire
+  '1519507318188933140', // rôle gestionnaire
   '1500975725153620033', // Command Staff
-  '1504451288065118248', // Ã‰tat Major
+  '1504451288065118248', // État Major
   '1504452141518032956', // Supervisor Team
-  '1518631987462668358'  // Police Academy
+  '1518631987462668358', // Police Academy
+  '1519171150884769873'  // Admin Division
 ];
 
 const ADMIN_ROLE_IDS = [
