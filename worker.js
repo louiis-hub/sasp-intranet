@@ -2468,9 +2468,11 @@ export default {
           if (m.user?.bot) continue;
           const uid = m.user?.id;
           if (!uid) continue;
-          const saspMember = await discordFetch(`${DISCORD_API}/guilds/${SASP_GUILD}/members/${uid}`, {
+          const saspRes = await discordFetch(`${DISCORD_API}/guilds/${SASP_GUILD}/members/${uid}`, {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
-          }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
+          }).catch(() => null);
+          if (!saspRes || (saspRes.status !== 200 && saspRes.status !== 404)) { kept++; continue; } // erreur API → on ne kicike pas
+          const saspMember = saspRes.status === 200 ? await saspRes.json() : null;
           const hasRole = saspMember && ALLOWED_ROLES.some(r => (saspMember.roles || []).includes(r));
           if (!hasRole) {
             const res = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
@@ -3753,9 +3755,11 @@ export default {
             if (m.user?.bot) continue;
             const uid = m.user?.id;
             if (!uid) continue;
-            const saspMember = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members/${uid}`, {
+            const saspRes = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members/${uid}`, {
               headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
-            }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
+            }).catch(() => null);
+            if (!saspRes || (saspRes.status !== 200 && saspRes.status !== 404)) continue;
+            const saspMember = saspRes.status === 200 ? await saspRes.json() : null;
             if (!saspMember || !ALLOWED_ROLES.some(r => (saspMember.roles || []).includes(r))) {
               await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
                 method: "DELETE",
