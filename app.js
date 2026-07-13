@@ -953,24 +953,49 @@ async function renderFTF() {
   ftfAutoSendScheduledConvocations();
 }
 function renderFTFDashboard(counts) {
-  return '<div class="ftf-grid">' +
-    renderFTFStat('ACT', 'Dossiers actifs', counts.active, 'hors dossiers clotures') +
-    renderFTFStat('C1', 'Convocation 1', counts.c1, '+25 pourcent') +
-    renderFTFStat('C2', 'Convocation 2', counts.c2, '+75 pourcent') +
-    renderFTFStat('C3', 'Convocation 3', counts.c3, '+125 pourcent') +
-    renderFTFStat('TRIBUNAL', 'A presenter au tribunal', counts.tribunal, 'phase judiciaire') +
-    renderFTFStat('OK', 'Dossiers clotures', counts.closed, 'procedure terminee') +
+  var active = Number(counts.active || 0);
+  var totalConv = Number(counts.c1 || 0) + Number(counts.c2 || 0) + Number(counts.c3 || 0);
+  var tribunal = Number(counts.tribunal || 0);
+  var closed = Number(counts.closed || 0);
+  var pressure = active ? Math.min(100, Math.round(((totalConv + tribunal) / Math.max(active, 1)) * 100)) : 0;
+  var tile = function(code, label, value, sub, tone) {
+    return '<div class="ftf-dash-tile ftf-dash-' + tone + '">' +
+      '<div class="ftf-dash-code">' + esc(code) + '</div>' +
+      '<strong>' + esc(String(value)) + '</strong>' +
+      '<h3>' + esc(label) + '</h3>' +
+      '<p>' + esc(sub || '') + '</p>' +
+    '</div>';
+  };
+  return '<div class="ftf-dashboard-ops">' +
+    '<div class="ftf-command-panel">' +
+      '<div><div class="ftf-kicker">TABLEAU DE BORD FTF</div><h2>Vue op\u00e9rationnelle</h2><p>Suivi instantan\u00e9 des dossiers actifs, convocations et transmissions tribunal.</p></div>' +
+      '<div class="ftf-command-meter"><div style="--p:' + pressure + '%"><span>' + pressure + '%</span></div><small>pression dossiers</small></div>' +
+    '</div>' +
+    '<div class="ftf-dashboard-grid">' +
+      tile('ACT', 'Dossiers actifs', active, 'hors dossiers cl\u00f4tur\u00e9s', 'blue') +
+      tile('C1', 'Convocation 1', counts.c1, 'majoration +25 pourcent', 'gold') +
+      tile('C2', 'Convocation 2', counts.c2, 'majoration +75 pourcent', 'orange') +
+      tile('C3', 'Convocation 3', counts.c3, 'majoration +125 pourcent', 'red') +
+      tile('TRB', 'Tribunal', tribunal, 'phase judiciaire', 'red') +
+      tile('OK', 'Dossiers cl\u00f4tur\u00e9s', closed, 'proc\u00e9dure termin\u00e9e', 'green') +
+    '</div>' +
+    '<div class="ftf-dashboard-lanes">' +
+      '<div><span>Recouvrement</span><strong>' + (active - tribunal) + '</strong><small>dossiers suivis avant tribunal</small></div>' +
+      '<div><span>Convocations</span><strong>' + totalConv + '</strong><small>dossiers actuellement convoqu\u00e9s</small></div>' +
+      '<div><span>Judiciaire</span><strong>' + tribunal + '</strong><small>dossiers \u00e0 pr\u00e9senter</small></div>' +
+      '<div><span>Cl\u00f4ture</span><strong>' + closed + '</strong><small>dossiers termin\u00e9s</small></div>' +
+    '</div>' +
   '</div>';
 }
 function renderFTFProcedure() {
   var stages = [
-    { code:'PV', title:'Amende notifiee', sub:'Notification SASP', detail:'La personne re?oit officiellement son amende. Le d?lai initial commence ? la date de l amende / d?lit.', tone:'blue' },
-    { code:'J+7', title:'D?lai paiement', sub:'7 jours', detail:'Pendant 7 jours, le dossier reste en attente. Si la personne paie, la proc?dure s arr?te.', tone:'gold' },
-    { code:'FTF', title:'Transfert FTF', sub:'Impay?', detail:'Sans paiement, le dossier passe ? la Fugitive Task Force pour convocation et suivi.', tone:'gold' },
-    { code:'C1', title:'1?re convocation', sub:'+25 pourcent', detail:'Nouveau d?lai de 7 jours. Non-pr?sentation ? la convocation judiciaire : +1 000 $.', tone:'orange' },
-    { code:'C2', title:'2?me convocation', sub:'+75 pourcent', detail:'Deuxi?me convocation, m?me d?lai de 7 jours. Le dossier devient prioritaire.', tone:'orange' },
-    { code:'C3', title:'3?me convocation', sub:'+125 pourcent', detail:'Dernier rappel avant phase judiciaire. Pr?parer localisation et ?l?ments de dossier.', tone:'red' },
-    { code:'TRB', title:'Tribunal', sub:'Pr?sentation', detail:'Localisation, interpellation, pr?sentation tribunal et saisie des biens si n?cessaire.', tone:'red' }
+    { code:'PV', title:'Amende notifi\u00e9e', sub:'Notification SASP', detail:'La personne re\u00e7oit officiellement son amende. Le d\u00e9lai initial commence \u00e0 la date de l amende / d\u00e9lit.', tone:'blue' },
+    { code:'J+7', title:'D\u00e9lai paiement', sub:'7 jours', detail:'Pendant 7 jours, le dossier reste en attente. Si la personne paie, la proc\u00e9dure s arr\u00eate.', tone:'gold' },
+    { code:'FTF', title:'Transfert FTF', sub:'Impay\u00e9', detail:'Sans paiement, le dossier passe \u00e0 la Fugitive Task Force pour convocation et suivi.', tone:'gold' },
+    { code:'C1', title:'1\u00e8re convocation', sub:'+25 pourcent', detail:'Nouveau d\u00e9lai de 7 jours. Non-pr\u00e9sentation \u00e0 la convocation judiciaire : +1 000 $.', tone:'orange' },
+    { code:'C2', title:'2\u00e8me convocation', sub:'+75 pourcent', detail:'Deuxi\u00e8me convocation, m\u00eame d\u00e9lai de 7 jours. Le dossier devient prioritaire.', tone:'orange' },
+    { code:'C3', title:'3\u00e8me convocation', sub:'+125 pourcent', detail:'Dernier rappel avant phase judiciaire. Pr\u00e9parer localisation et \u00e9l\u00e9ments de dossier.', tone:'red' },
+    { code:'TRB', title:'Tribunal', sub:'Pr\u00e9sentation', detail:'Localisation, interpellation, pr\u00e9sentation tribunal et saisie des biens si n\u00e9cessaire.', tone:'red' }
   ];
   var stageHtml = stages.map(function(s, i) {
     return '<div class="ftf-flow-card ftf-flow-' + s.tone + '">' +
@@ -984,17 +1009,17 @@ function renderFTFProcedure() {
   };
   return '<div class="ftf-procedure-ops">' +
     '<div class="ftf-procedure-brief">' +
-      '<div><div class="ftf-kicker">PROTOCOLE FTF</div><h2>Cycle de recouvrement</h2><p>Lecture rapide de la proc?dure compl?te, du premier d?lai de paiement jusqu ? la transmission tribunal.</p></div>' +
-      '<div class="ftf-brief-badge"><strong>7</strong><span>jours par ?tape</span></div>' +
+      '<div><div class="ftf-kicker">PROTOCOLE FTF</div><h2>Cycle de recouvrement</h2><p>Lecture rapide de la proc\u00e9dure compl\u00e8te, du premier d\u00e9lai de paiement jusqu \u00e0 la transmission tribunal.</p></div>' +
+      '<div class="ftf-brief-badge"><strong>7</strong><span>jours par \u00e9tape</span></div>' +
     '</div>' +
     '<div class="ftf-flow">' + stageHtml + '</div>' +
     '<div class="ftf-outcomes">' +
-      outcome('?', 'Paiement re?u', 'Le dossier est cl?tur? imm?diatement, quelle que soit l ?tape en cours.', 'ok') +
-      outcome('??', 'Absence convocation', 'Chaque non-pr?sentation ? une convocation judiciaire ajoute 1 000 $.', 'warn') +
-      outcome('??', 'Apr?s C3', 'Localisation, interpellation, pr?sentation tribunal et saisie des biens.', 'danger') +
-      outcome('??', 'Insolvabilit?', '?ch?ancier, TIG SASP/SAMC, pointage quotidien ou prison selon d?cision.', 'neutral') +
+      outcome('OK', 'Paiement re\u00e7u', 'Le dossier est cl\u00f4tur\u00e9 imm\u00e9diatement, quelle que soit l \u00e9tape en cours.', 'ok') +
+      outcome('!', 'Absence convocation', 'Chaque non-pr\u00e9sentation \u00e0 une convocation judiciaire ajoute 1 000 $.', 'warn') +
+      outcome('TRB', 'Apr\u00e8s C3', 'Localisation, interpellation, pr\u00e9sentation tribunal et saisie des biens.', 'danger') +
+      outcome('$', 'Insolvabilit\u00e9', '\u00c9ch\u00e9ancier, TIG SASP/SAMC, pointage quotidien ou prison selon d\u00e9cision.', 'neutral') +
     '</div>' +
-    '<div class="ftf-procedure-note"><span>??</span><p><strong>Date 1?re amende / d?lit</strong> = d?part du premier d?lai. Apr?s chaque convocation trait?e, le d?lai repart automatiquement sur 7 jours.</p></div>' +
+    '<div class="ftf-procedure-note"><span>NOTE</span><p><strong>Date 1\u00e8re amende / d\u00e9lit</strong> = d\u00e9part du premier d\u00e9lai. Apr\u00e8s chaque convocation trait\u00e9e, le d\u00e9lai repart automatiquement sur 7 jours.</p></div>' +
   '</div>';
 }
 function renderFTFGuide() {
