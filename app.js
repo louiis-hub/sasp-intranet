@@ -247,7 +247,7 @@ var PAGE_TITLES = {
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
   archives:'Archives', ceremonie:'Prépa Cérémonie', completude:'Complétude fiches', referents:'Référents',
   'global-settings':'Réglages globaux',
-  ftf:'FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
+  ftf:'FTF', 'ftf-dossier':'Dossier FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
 };
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -500,6 +500,7 @@ async function navigate(page, pd) {
       referents:      renderReferents,
       'global-settings': renderGlobalSettings,
       ftf:            renderFTF,
+      'ftf-dossier':  renderFtfDossierPage,
       stats:          renderStats,
       search:         renderSearch,
       settings:       renderSettings
@@ -1227,8 +1228,8 @@ function renderFTFDossiers() {
   var rows = list.length ? list.map(function(d) {
     var nextInfo = ftfNextStepInfo(d);
     var origin = ftfDossierOrigin(d);
-    return '<tr onclick="openFtfDossierModal(\'' + esc(d.id) + '\')">' +
-      '<td><strong>' + esc((d.prenom || '') + ' ' + (d.nom || '')) + '</strong> <span class="badge badge-blue">' + esc(origin) + '</span>' + (d.archived ? ' <span class="badge badge-gray">Archive</span>' : '') + '<div class="text-muted" style="font-size:.72rem">' + esc(d.date_notification || '') + '</div></td>' +
+    return '<tr onclick="navigate(\'ftf-dossier\',{id:\'' + esc(d.id) + '\'})" style="cursor:pointer">' +
+      '<td><strong>' + esc((d.prenom || '') + ' ' + (d.nom || '')) + '</strong> <span class="badge badge-blue">' + esc(origin) + '</span>' + (d.archived ? ' <span class="badge badge-gray">Archive</span>' : '') + ((d.mandat && d.mandat.actif) ? ' <span class="badge badge-red" style="font-size:.65rem">⚠️ Mandat</span>' : '') + '<div class="text-muted" style="font-size:.72rem">' + esc(d.date_notification || '') + '</div></td>' +
       '<td>' + fmtMoney(Number(d.montant_initial || 0)) + '</td>' +
       '<td>' + ftfStatusBadge(d.statut) + (nextInfo ? '<div class="text-muted" style="font-size:.72rem;margin-top:4px">' + esc(nextInfo) + '</div>' : '') + '</td>' +
       '<td><strong class="text-gold">' + fmtMoney(ftfAmount(d)) + '</strong></td>' +
@@ -1245,6 +1246,118 @@ function renderFTFDossiers() {
     '<div class="table-wrap"><table><thead><tr><th>PERSONNE</th><th>MONTANT INITIAL</th><th>STATUT</th><th>MONTANT ACTUEL</th><th>RAISON / NOTES</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
   '</div>';
 }
+async function renderFtfDossierPage() {
+  var id = S.pd.id;
+  if (!id) { navigate('ftf'); return; }
+  var dossiers = await ftfFetchDossiers();
+  var d = dossiers.find(function(x){ return x.id === id; });
+  if (!d) { navigate('ftf'); return; }
+
+  var origin = ftfDossierOrigin(d);
+  var m = d.mandat || {};
+  var photos = Array.isArray(d.photos) ? d.photos : [];
+  var nextInfo = ftfNextStepInfo(d);
+  var stepIdx = FTF_STATUSES.indexOf(d.statut);
+
+  function row(label, val) {
+    return '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--border0)">' +
+      '<span style="font-size:.78rem;color:var(--t3)">' + esc(label) + '</span>' +
+      '<span style="font-size:.86rem;color:var(--t0);max-width:65%;text-align:right">' + val + '</span>' +
+    '</div>';
+  }
+
+  var timelineHtml = '<div style="display:flex;gap:4px;flex-wrap:wrap;margin:4px 0 10px">' +
+    FTF_STATUSES.map(function(s, i) {
+      var active = i === stepIdx, past = i < stepIdx;
+      return '<div style="flex:1;min-width:90px;text-align:center;padding:7px 6px;border-radius:8px;font-size:.73rem;font-weight:' + (active ? '700' : '500') + ';' +
+        'background:' + (active ? 'rgba(234,179,8,.15)' : past ? 'rgba(74,139,212,.08)' : 'var(--bg2)') + ';' +
+        'color:' + (active ? 'var(--gold)' : past ? 'var(--blue)' : 'var(--t3)') + ';' +
+        'border:1px solid ' + (active ? 'rgba(234,179,8,.4)' : past ? 'rgba(74,139,212,.2)' : 'var(--border0)') + '">' +
+        esc(s) + '</div>';
+    }).join('') +
+  '</div>';
+
+  var photosHtml = photos.length
+    ? '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
+        photos.map(function(p) {
+          var url = typeof p === 'string' ? p : (p.url || '');
+          return '<a href="' + esc(url) + '" target="_blank" style="display:block;width:110px;height:110px;border-radius:8px;overflow:hidden;border:1px solid var(--border0)">' +
+            '<img src="' + esc(url) + '" style="width:100%;height:100%;object-fit:cover"></a>';
+        }).join('') +
+      '</div>'
+    : '<div style="font-size:.82rem;color:var(--t3)">Aucune photo.</div>';
+
+  var mandatHtml = m.actif
+    ? row('Autorité', esc(m.autorite || '—')) +
+      row('Date d\'émission', esc(m.date_emission || '—')) +
+      row('Statut', '<span class="badge badge-red" style="font-size:.68rem">' + esc(m.statut || 'En cours') + '</span>') +
+      (m.raison ? '<div style="margin-top:10px;font-size:.82rem;color:var(--t1);line-height:1.5">' + esc(m.raison) + '</div>' : '') +
+      (m.notes ? '<div style="margin-top:6px;font-size:.76rem;color:var(--t3)">' + esc(m.notes) + '</div>' : '')
+    : '<div style="font-size:.82rem;color:var(--t3)">Aucun mandat actif.</div>';
+
+  setContent(
+    '<button class="btn btn-ghost btn-sm mb-14" onclick="navigate(\'ftf\')">← Retour FTF</button>' +
+
+    '<div class="profile-hd">' +
+      '<div class="profile-av">⚖️</div>' +
+      '<div style="flex:1">' +
+        '<h1 class="profile-name">' + esc((d.prenom || '') + ' ' + (d.nom || '')) + '</h1>' +
+        '<div class="profile-mat">' + esc(origin) + '</div>' +
+        '<div class="profile-meta">' +
+          ftfStatusBadge(d.statut) +
+          (m.actif ? ' <span class="badge badge-red" style="font-size:.7rem">⚠️ Mandat actif</span>' : '') +
+          (d.archived ? ' <span class="badge badge-gray">Archivé</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="profile-actions">' +
+        '<button class="btn btn-outline btn-sm" onclick="openFtfDossierModal(\'' + esc(id) + '\')">✏️ Modifier</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="openFtfConvocationModal(\'' + esc(id) + '\')">📄 Convocation</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="toggleFtfArchive(\'' + esc(id) + '\')">' + (d.archived ? '📤 Restaurer' : '🗃️ Archiver') + '</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteFtfDossier(\'' + esc(id) + '\')">Supprimer</button>' +
+      '</div>' +
+    '</div>' +
+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">' +
+      '<div style="display:contents">' +
+
+        '<div class="card">' +
+          '<div class="card-head"><div class="card-icon">📋</div><div><div class="card-title">Informations</div></div></div>' +
+          row('Montant initial', '<strong>' + esc(fmtMoney(Number(d.montant_initial || 0))) + '</strong>') +
+          row('Montant actuel', '<strong class="text-gold">' + esc(fmtMoney(ftfAmount(d))) + '</strong>') +
+          row('Date amende / délit', esc(d.date_notification || '—')) +
+          row('Date statut', esc(d.date_statut || '—')) +
+          row('Service créateur', esc(origin)) +
+          (d.raison_amende ? '<div style="margin-top:10px;font-size:.82rem;color:var(--t1);line-height:1.5">' + esc(d.raison_amende) + '</div>' : '') +
+        '</div>' +
+
+        '<div class="card">' +
+          '<div class="card-head"><div class="card-icon">📝</div><div><div class="card-title">Notes internes</div></div></div>' +
+          (d.notes ? '<div style="font-size:.84rem;color:var(--t1);white-space:pre-wrap;line-height:1.5">' + esc(d.notes) + '</div>' : '<div style="font-size:.82rem;color:var(--t3)">Aucune note.</div>') +
+        '</div>' +
+
+        '<div class="card" style="grid-column:span 2">' +
+          '<div class="card-head"><div class="card-icon">📊</div><div><div class="card-title">Progression du dossier</div></div></div>' +
+          timelineHtml +
+          (nextInfo ? '<p style="font-size:.78rem;color:var(--t3);margin:0">' + esc(nextInfo) + '</p>' : '') +
+        '</div>' +
+
+        (photos.length
+          ? '<div class="card" style="grid-column:span 2">' +
+              '<div class="card-head"><div class="card-icon">📸</div><div><div class="card-title">Photos / Pièces jointes (' + photos.length + ')</div></div></div>' +
+              photosHtml +
+            '</div>'
+          : '') +
+
+        '<div class="card">' +
+          '<div class="card-head"><div class="card-icon">📜</div><div><div class="card-title">Mandat d\'arrêt</div></div></div>' +
+          mandatHtml +
+        '</div>' +
+
+      '</div>' +
+    '</div>'
+  );
+}
+
 function openFtfDossierModal(id) {
   var dossiers = ftfLoadDossiers();
   var d = id ? dossiers.find(function(x){ return x.id === id; }) : null;
@@ -1436,7 +1549,7 @@ async function saveFtfDossier(id) {
     await ftfSaveDossier(data);
     closeModal();
     toast('Dossier FTF sauvegarde.', 'success');
-    renderFTF();
+    if (S.page === 'ftf-dossier') { S.pd = { id: data.id }; await renderFtfDossierPage(); } else renderFTF();
   } catch(e) {
     toast('Erreur sauvegarde FTF: ' + (e.message || e), 'error');
   }
@@ -1472,7 +1585,7 @@ async function toggleFtfArchive(id) {
     await ftfSaveDossier(updated);
     closeModal();
     toast(archived ? 'Dossier archive.' : 'Dossier restaure.', archived ? 'info' : 'success');
-    renderFTF();
+    if (S.page === 'ftf-dossier') await renderFtfDossierPage(); else renderFTF();
   } catch(e) {
     toast('Erreur archive FTF: ' + (e.message || e), 'error');
   }
@@ -1499,7 +1612,7 @@ async function rollbackFtfDossier(id) {
     await ftfSaveDossier(updated);
     closeModal();
     toast('Etape precedente restauree.', 'success');
-    renderFTF();
+    if (S.page === 'ftf-dossier') await renderFtfDossierPage(); else renderFTF();
   } catch(e) {
     toast('Erreur retour etape FTF: ' + (e.message || e), 'error');
   }
