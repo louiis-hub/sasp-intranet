@@ -2983,6 +2983,13 @@ export default {
           const clean = String(value || "").replace(/\s+/g, " ").trim();
           return clean.length > max ? clean.slice(0, max) : clean;
         };
+        const modalInput = ({ custom_id, label, style = 1, required = true, value, placeholder, max_length }) => {
+          const input = { type: 4, custom_id, label, style, required, max_length };
+          const cleanValue = modalValue(value, max_length);
+          if (cleanValue) input.value = cleanValue;
+          if (placeholder) input.placeholder = placeholder;
+          return { type: 1, components: [input] };
+        };
         const getProcTextField = (label) => {
           const escaped = String(label).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
           const match = content.match(new RegExp(`\\*\\*${escaped}\\s*:?\\*\\*\\s*([\\s\\S]*?)(?=\\n\\n\\*\\*|$)`, "i"));
@@ -2992,7 +2999,7 @@ export default {
         const telSuspect  = getProcTextField("Num\u00e9ros de tel. du suspect");
         const chefs       = getProcTextField("Chef(s) d'accusation");
         const originLabel = getProcTextField("Origine") || getSaspOrigin(interaction).label;
-        const originToken = encodeURIComponent(originLabel);
+        const originToken = String(originLabel).toUpperCase().includes("NORD") ? "nord" : "sud";
         const now = new Date();
         const dateDefault = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
         return json({
@@ -3001,11 +3008,11 @@ export default {
             custom_id: `bracelet_modal|${originToken}`,
             title: "Bracelet Ã‰lectronique",
             components: [
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_suspect", label: "Nom PrÃ©nom du suspect", style: 1, required: true, value: modalValue(suspectName, 80), max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "PosÃ© le", style: 1, required: true, value: modalValue(dateDefault, 30), max_length: 30 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "NumÃ©ro de tÃ©lÃ©phone", style: 1, required: true, value: modalValue(telSuspect, 30), max_length: 30 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, required: true, value: modalValue(chefs, 500), max_length: 500 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_accord_proc", label: "Demande procureur", style: 1, required: true, placeholder: "Oui ou Non", max_length: 3 }] }
+              modalInput({ custom_id: "bracelet_suspect", label: "Nom PrÃ©nom du suspect", value: suspectName, max_length: 80 }),
+              modalInput({ custom_id: "bracelet_date", label: "PosÃ© le", value: dateDefault, max_length: 30 }),
+              modalInput({ custom_id: "bracelet_tel", label: "NumÃ©ro de tÃ©lÃ©phone", value: telSuspect, max_length: 30 }),
+              modalInput({ custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, value: chefs, max_length: 500 }),
+              modalInput({ custom_id: "bracelet_accord_proc", label: "Demande procureur", placeholder: "Oui ou Non", max_length: 3 })
             ]
           }
         });
@@ -3020,7 +3027,7 @@ export default {
         const raison  = getValue("bracelet_raison");
         const accordProc = getValue("bracelet_accord_proc") || "Non";
         const originToken = interaction.data.custom_id.split("|")[1] || "";
-        const originLabel = originToken ? decodeURIComponent(originToken) : getSaspOrigin(interaction).label;
+        const originLabel = originToken === "nord" ? "SASP NORD" : originToken === "sud" ? "SASP SUD" : originToken ? decodeURIComponent(originToken) : getSaspOrigin(interaction).label;
 
         const userId = interaction.member?.user?.id || interaction.user?.id;
         let agentDisplay = `<@${userId}>`;
