@@ -144,11 +144,40 @@ textarea.form-control{resize:vertical;min-height:80px}
 .ftf-stat-top strong{font-family:'Rajdhani',sans-serif;font-size:2.55rem;line-height:1;color:var(--goldLight);text-shadow:0 0 18px rgba(201,168,76,.14)}
 .ftf-stat div:nth-child(2){font-family:'Share Tech Mono',monospace;font-size:.67rem;letter-spacing:1.8px;text-transform:uppercase;color:#d9e7f5}
 .ftf-stat small{display:block;color:#506985;font-size:.72rem;margin-top:5px}
-.ftf-procedure{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
-.ftf-step{display:flex;gap:14px;background:linear-gradient(180deg,rgba(14,23,38,.94),rgba(7,12,21,.96));border:1px solid rgba(74,139,212,.13);border-left:2px solid rgba(201,168,76,.38);border-radius:var(--rMd);padding:16px;min-height:124px}
-.ftf-step-index{width:32px;height:32px;border-radius:50%;border:1px solid var(--goldBorderHover);background:var(--goldGlow);color:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:800;flex-shrink:0}
-.ftf-step h3{font-size:1rem;margin-bottom:6px}
-.ftf-step p{font-size:.84rem;color:var(--t2);line-height:1.5}
+.ftf-procedure-ops{display:flex;flex-direction:column;gap:16px}
+.ftf-procedure-brief{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:18px;background:linear-gradient(135deg,rgba(14,23,38,.96),rgba(7,12,21,.98));border:1px solid rgba(201,168,76,.22);border-left:2px solid rgba(201,168,76,.56);border-radius:var(--rMd);padding:22px 24px;box-shadow:0 12px 30px rgba(0,0,0,.22)}
+.ftf-procedure-brief::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(201,168,76,.10),transparent 44%),repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 1px,transparent 1px 70px);pointer-events:none}
+.ftf-procedure-brief>*{position:relative}
+.ftf-procedure-brief h2{font-size:1.55rem;text-transform:uppercase;letter-spacing:1px;margin:0 0 6px}
+.ftf-procedure-brief p{color:var(--t2);font-size:.9rem;line-height:1.55;margin:0;max-width:760px}
+.ftf-brief-badge{width:92px;height:92px;border-radius:50%;border:1px solid rgba(201,168,76,.56);background:radial-gradient(circle,rgba(201,168,76,.14),rgba(3,7,13,.92));display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 24px rgba(201,168,76,.12),inset 0 0 20px rgba(201,168,76,.08)}
+.ftf-brief-badge strong{font-family:'Rajdhani',sans-serif;font-size:2.1rem;line-height:.9;color:var(--goldLight)}
+.ftf-brief-badge span{font-size:.62rem;letter-spacing:1px;text-transform:uppercase;color:var(--t2);text-align:center}
+.ftf-flow{display:grid;grid-template-columns:repeat(7,minmax(130px,1fr));gap:10px;align-items:stretch}
+.ftf-flow-card{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:12px;min-height:188px;background:linear-gradient(180deg,rgba(14,23,38,.95),rgba(7,12,21,.98));border:1px solid rgba(74,139,212,.14);border-radius:var(--rMd);padding:16px 14px;box-shadow:0 12px 26px rgba(0,0,0,.20)}
+.ftf-flow-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.035),transparent 42%),repeating-linear-gradient(0deg,rgba(255,255,255,.022) 0 1px,transparent 1px 16px);pointer-events:none}
+.ftf-flow-card>*{position:relative}
+.ftf-flow-code{width:46px;height:34px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.8px;border:1px solid rgba(201,168,76,.44);background:rgba(201,168,76,.10);color:var(--gold)}
+.ftf-flow-body h3{font-size:.94rem;line-height:1.05;text-transform:uppercase;margin:0 0 7px}
+.ftf-flow-body strong{display:inline-block;color:var(--goldLight);font-family:'Share Tech Mono',monospace;font-size:.68rem;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px}
+.ftf-flow-body p{font-size:.78rem;color:var(--t2);line-height:1.45;margin:0}
+.ftf-flow-line{position:absolute;right:-12px;top:32px;width:14px;height:2px;background:rgba(201,168,76,.54);z-index:2}
+.ftf-flow-blue{border-top:2px solid rgba(74,139,212,.56)}
+.ftf-flow-gold{border-top:2px solid rgba(201,168,76,.58)}
+.ftf-flow-orange{border-top:2px solid rgba(230,145,45,.62)}
+.ftf-flow-red{border-top:2px solid rgba(220,80,80,.65)}
+.ftf-outcomes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.ftf-outcome{background:linear-gradient(180deg,rgba(14,23,38,.94),rgba(7,12,21,.96));border:1px solid rgba(74,139,212,.12);border-radius:var(--rMd);padding:16px;min-height:150px}
+.ftf-outcome>div{font-size:1.55rem;margin-bottom:10px}
+.ftf-outcome h3{font-size:.95rem;margin-bottom:8px;text-transform:uppercase}
+.ftf-outcome p{font-size:.8rem;color:var(--t2);line-height:1.5;margin:0}
+.ftf-outcome.ok{border-left:2px solid rgba(76,175,133,.64)}
+.ftf-outcome.warn{border-left:2px solid rgba(240,180,41,.68)}
+.ftf-outcome.danger{border-left:2px solid rgba(220,80,80,.68)}
+.ftf-outcome.neutral{border-left:2px solid rgba(120,145,180,.54)}
+.ftf-procedure-note{display:flex;align-items:flex-start;gap:12px;background:rgba(201,168,76,.07);border:1px solid rgba(201,168,76,.22);border-radius:var(--rMd);padding:14px 16px;color:var(--t2)}
+.ftf-procedure-note span{font-size:1.2rem}
+.ftf-procedure-note p{font-size:.84rem;line-height:1.55;margin:0}
 .ftf-toolbar{display:grid;grid-template-columns:1fr 220px 190px;gap:12px;margin-bottom:16px}
 .ftf-dossiers-card tbody tr{cursor:pointer}
 
@@ -159,6 +188,12 @@ textarea.form-control{resize:vertical;min-height:80px}
   .ftf-hero h1{font-size:1.7rem}
   .ftf-seal{display:none}
   .ftf-tab{flex:1;justify-content:center}
+  .ftf-procedure-brief{align-items:flex-start;padding:18px;flex-direction:column}
+  .ftf-brief-badge{width:auto;height:auto;border-radius:var(--rMd);padding:10px 14px;align-items:flex-start}
+  .ftf-flow{grid-template-columns:1fr}
+  .ftf-flow-card{min-height:0}
+  .ftf-flow-line{left:35px;right:auto;top:auto;bottom:-12px;width:2px;height:14px}
+  .ftf-outcomes{grid-template-columns:1fr}
   .ftf-toolbar{grid-template-columns:1fr}
 }
 select.form-control{cursor:pointer}

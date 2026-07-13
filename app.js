@@ -963,20 +963,39 @@ function renderFTFDashboard(counts) {
   '</div>';
 }
 function renderFTFProcedure() {
-  var steps = [
-    ['Amende notifiee par le SASP', 'La personne recoit la notification officielle de l amende.'],
-    ['7 jours pour payer', 'Le delai de paiement initial est fixe a 7 jours.'],
-    ['Paiement effectue', 'Si le paiement est fait, la procedure est terminee.'],
-    ['Non-paiement', 'Si le paiement n est pas fait, le dossier est transfere a la FTF.'],
-    ['1ère convocation', 'Majoration de 25 pourcent, nouveau delai de 7 jours, non-presentation = 1 000 $.'],
-    ['2ème convocation', 'Majoration de 75 pourcent, nouveau delai de 7 jours, non-presentation = 1 000 $.'],
-    ['3ème convocation', 'Majoration de 125 pourcent, nouveau delai de 7 jours, non-presentation = 1 000 $.'],
-    ['Apres 3 convocations', 'Localisation, interpellation, presentation au tribunal et saisie des biens.'],
-    ['Insolvabilite', 'Echeancier, TIG SASP/SAMC, pointage quotidien ou prison selon la decision.']
+  var stages = [
+    { code:'PV', title:'Amende notifiee', sub:'Notification SASP', detail:'La personne re?oit officiellement son amende. Le d?lai initial commence ? la date de l amende / d?lit.', tone:'blue' },
+    { code:'J+7', title:'D?lai paiement', sub:'7 jours', detail:'Pendant 7 jours, le dossier reste en attente. Si la personne paie, la proc?dure s arr?te.', tone:'gold' },
+    { code:'FTF', title:'Transfert FTF', sub:'Impay?', detail:'Sans paiement, le dossier passe ? la Fugitive Task Force pour convocation et suivi.', tone:'gold' },
+    { code:'C1', title:'1?re convocation', sub:'+25 pourcent', detail:'Nouveau d?lai de 7 jours. Non-pr?sentation ? la convocation judiciaire : +1 000 $.', tone:'orange' },
+    { code:'C2', title:'2?me convocation', sub:'+75 pourcent', detail:'Deuxi?me convocation, m?me d?lai de 7 jours. Le dossier devient prioritaire.', tone:'orange' },
+    { code:'C3', title:'3?me convocation', sub:'+125 pourcent', detail:'Dernier rappel avant phase judiciaire. Pr?parer localisation et ?l?ments de dossier.', tone:'red' },
+    { code:'TRB', title:'Tribunal', sub:'Pr?sentation', detail:'Localisation, interpellation, pr?sentation tribunal et saisie des biens si n?cessaire.', tone:'red' }
   ];
-  return '<div class="ftf-procedure">' + steps.map(function(s, i) {
-    return '<div class="ftf-step"><div class="ftf-step-index">' + (i + 1) + '</div><div><h3>' + esc(s[0]) + '</h3><p>' + esc(s[1]) + '</p></div></div>';
-  }).join('') + '</div>';
+  var stageHtml = stages.map(function(s, i) {
+    return '<div class="ftf-flow-card ftf-flow-' + s.tone + '">' +
+      '<div class="ftf-flow-code">' + esc(s.code) + '</div>' +
+      '<div class="ftf-flow-body"><h3>' + esc(s.title) + '</h3><strong>' + esc(s.sub) + '</strong><p>' + esc(s.detail) + '</p></div>' +
+      (i < stages.length - 1 ? '<div class="ftf-flow-line"></div>' : '') +
+    '</div>';
+  }).join('');
+  var outcome = function(icon, title, text, cls) {
+    return '<div class="ftf-outcome ' + cls + '"><div>' + icon + '</div><h3>' + esc(title) + '</h3><p>' + esc(text) + '</p></div>';
+  };
+  return '<div class="ftf-procedure-ops">' +
+    '<div class="ftf-procedure-brief">' +
+      '<div><div class="ftf-kicker">PROTOCOLE FTF</div><h2>Cycle de recouvrement</h2><p>Lecture rapide de la proc?dure compl?te, du premier d?lai de paiement jusqu ? la transmission tribunal.</p></div>' +
+      '<div class="ftf-brief-badge"><strong>7</strong><span>jours par ?tape</span></div>' +
+    '</div>' +
+    '<div class="ftf-flow">' + stageHtml + '</div>' +
+    '<div class="ftf-outcomes">' +
+      outcome('?', 'Paiement re?u', 'Le dossier est cl?tur? imm?diatement, quelle que soit l ?tape en cours.', 'ok') +
+      outcome('??', 'Absence convocation', 'Chaque non-pr?sentation ? une convocation judiciaire ajoute 1 000 $.', 'warn') +
+      outcome('??', 'Apr?s C3', 'Localisation, interpellation, pr?sentation tribunal et saisie des biens.', 'danger') +
+      outcome('??', 'Insolvabilit?', '?ch?ancier, TIG SASP/SAMC, pointage quotidien ou prison selon d?cision.', 'neutral') +
+    '</div>' +
+    '<div class="ftf-procedure-note"><span>??</span><p><strong>Date 1?re amende / d?lit</strong> = d?part du premier d?lai. Apr?s chaque convocation trait?e, le d?lai repart automatiquement sur 7 jours.</p></div>' +
+  '</div>';
 }
 function renderFTFGuide() {
   var card = 'background:linear-gradient(180deg,rgba(14,23,38,.94),rgba(7,12,21,.96));border:1px solid rgba(74,139,212,.13);border-radius:var(--rMd);padding:22px 26px;margin-bottom:16px;';
