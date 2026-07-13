@@ -3644,7 +3644,7 @@ export default {
         return json({ type: 7, data: buildPointeuseMessage(allActive) });
       }
 
-      return json({ type: 4, data: { content: “Type d'interaction non supporté.”, flags: 64 } });
+      return json({ type: 4, data: { content: "Type d'interaction non supporté.", flags: 64 } });
       } catch(e) {
         return json({ type: 4, data: { content: `❌ Erreur interne : ${e.message || e}`, flags: 64 } });
       }
