@@ -1014,7 +1014,7 @@ function renderFTFGuide() {
     '</div>';
   };
 
-  return '<div style="max-width:900px">' +
+  return '<div>' +
 
     // Intro
     '<div style="' + cardGold + '">' +
