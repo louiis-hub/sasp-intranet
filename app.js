@@ -939,9 +939,9 @@ async function renderFTF() {
       '</div>' +
       '<div class="ftf-tabs">' +
         ftfTabButton('dashboard', 'Tableau de bord', '01') +
-        ftfTabButton('procedure', 'Procedure', '02') +
-        ftfTabButton('dossiers', 'Dossiers', '03') +
-        ftfTabButton('guide', 'Guide complet', '04') +
+        ftfTabButton('guide', 'Guide complet', '02') +
+        ftfTabButton('procedure', 'Procedure', '03') +
+        ftfTabButton('dossiers', 'Dossiers', '04') +
       '</div>' +
       body +
     '</div>'
@@ -976,125 +976,140 @@ function renderFTFProcedure() {
   }).join('') + '</div>';
 }
 function renderFTFGuide() {
-  var s = 'background:linear-gradient(180deg,rgba(14,23,38,.94),rgba(7,12,21,.96));border:1px solid rgba(74,139,212,.13);border-left:2px solid rgba(201,168,76,.38);border-radius:var(--rMd);padding:20px 24px;margin-bottom:14px;';
-  var h2s = 'font-family:Rajdhani,sans-serif;font-size:1.1rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:10px;';
-  var badge = 'display:inline-block;font-family:Share Tech Mono,monospace;font-size:.58rem;letter-spacing:1.2px;padding:3px 8px;border-radius:3px;border:1px solid rgba(201,168,76,.44);background:rgba(201,168,76,.09);color:var(--gold);margin-right:6px;vertical-align:middle;';
-  var p = 'font-size:.88rem;color:var(--t2);line-height:1.7;margin-bottom:8px;';
-  var li = 'font-size:.86rem;color:var(--t2);line-height:1.8;margin-left:16px;list-style:none;';
-  var dot = '<span style="color:var(--gold);margin-right:8px">›</span>';
-  var warn = 'font-size:.82rem;color:#f0b429;background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.22);border-radius:var(--rMd);padding:10px 14px;margin-top:8px;';
-  var ok  = 'font-size:.82rem;color:#4caf85;background:rgba(76,175,133,.08);border:1px solid rgba(76,175,133,.22);border-radius:var(--rMd);padding:10px 14px;margin-top:8px;';
+  var card = 'background:linear-gradient(180deg,rgba(14,23,38,.94),rgba(7,12,21,.96));border:1px solid rgba(74,139,212,.13);border-radius:var(--rMd);padding:22px 26px;margin-bottom:16px;';
+  var cardGold = card + 'border-left:3px solid rgba(201,168,76,.6);';
+  var cardBlue = card + 'border-left:3px solid rgba(74,139,212,.6);';
+  var cardRed  = card + 'border-left:3px solid rgba(220,80,80,.5);';
+  var cardGreen= card + 'border-left:3px solid rgba(76,175,133,.5);';
+  var h2 = 'font-family:Rajdhani,sans-serif;font-size:1.05rem;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:10px;';
+  var icon = function(e) { return '<span style="font-size:1.3rem;line-height:1">' + e + '</span>'; };
+  var p = 'font-size:.86rem;color:var(--t2);line-height:1.75;margin:0 0 6px;';
+  var warn = 'display:flex;align-items:flex-start;gap:10px;font-size:.82rem;color:#f0b429;background:rgba(240,180,41,.07);border:1px solid rgba(240,180,41,.2);border-radius:var(--rMd);padding:11px 14px;margin-top:12px;';
+  var ok   = 'display:flex;align-items:flex-start;gap:10px;font-size:.82rem;color:#4caf85;background:rgba(76,175,133,.07);border:1px solid rgba(76,175,133,.2);border-radius:var(--rMd);padding:11px 14px;margin-top:12px;';
 
-  // Tableau des montants
-  var tableStyle = 'width:100%;border-collapse:collapse;font-size:.84rem;margin-top:10px;';
-  var thStyle = 'text-align:left;padding:8px 12px;background:rgba(201,168,76,.10);color:var(--gold);font-family:Share Tech Mono,monospace;font-size:.72rem;letter-spacing:1px;border-bottom:1px solid rgba(201,168,76,.22);';
-  var tdStyle = 'padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--t1);';
-  var tdAmt  = 'padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);color:var(--gold);font-family:Share Tech Mono,monospace;font-weight:700;';
+  // Timeline node helper
+  var node = function(label, color, amt, sub) {
+    return '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;min-width:100px">' +
+      '<div style="width:48px;height:48px;border-radius:50%;background:' + color + ';border:2px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-family:Rajdhani,sans-serif;font-size:.7rem;font-weight:800;letter-spacing:.5px;text-align:center;color:#fff;line-height:1.2;padding:4px">' + label + '</div>' +
+      (amt ? '<div style="font-family:Share Tech Mono,monospace;font-size:.72rem;color:var(--gold);font-weight:700">' + amt + '</div>' : '') +
+      (sub ? '<div style="font-size:.68rem;color:var(--t3);text-align:center;max-width:90px;line-height:1.3">' + sub + '</div>' : '') +
+    '</div>';
+  };
+  var arrow = '<div style="flex:1;height:2px;background:linear-gradient(90deg,rgba(201,168,76,.4),rgba(201,168,76,.1));margin-top:-22px;min-width:12px"></div>';
 
-  return (
-    '<div style="max-width:860px">' +
+  // How-to step helper
+  var step = function(n, txt) {
+    return '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">' +
+      '<div style="width:24px;height:24px;border-radius:50%;border:1px solid rgba(201,168,76,.5);background:rgba(201,168,76,.1);color:var(--gold);font-family:Share Tech Mono,monospace;font-size:.64rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">' + n + '</div>' +
+      '<div style="font-size:.86rem;color:var(--t2);line-height:1.65">' + txt + '</div>' +
+    '</div>';
+  };
 
-    // 1. Présentation
-    '<div style="' + s + '">' +
-      '<div style="' + h2s + '"><span style="' + badge + '">01</span>Présentation de la FTF</div>' +
-      '<p style="' + p + '">La <strong style="color:var(--t0)">Fugitive Task Force</strong> est une unité spéciale du SASP chargée du recouvrement des amendes impayées. Elle intervient uniquement après l\'expiration du délai initial de paiement accordé par l\'agent verbalisateur.</p>' +
-      '<p style="' + p + '">Les dossiers sont <strong style="color:var(--t0)">partagés entre le SASP Sud et le SASP Nord</strong> — chaque équipe voit les dossiers de l\'autre avec le service créateur indiqué.</p>' +
+  // Insolvabilité option card
+  var opt = function(e, title, desc) {
+    return '<div style="background:rgba(8,16,28,.6);border:1px solid rgba(255,255,255,.06);border-radius:var(--rMd);padding:14px;display:flex;flex-direction:column;gap:6px">' +
+      '<div style="font-size:1.4rem">' + e + '</div>' +
+      '<div style="font-family:Rajdhani,sans-serif;font-size:.9rem;font-weight:700;color:var(--t0)">' + title + '</div>' +
+      '<div style="font-size:.78rem;color:var(--t3);line-height:1.5">' + desc + '</div>' +
+    '</div>';
+  };
+
+  return '<div style="max-width:900px">' +
+
+    // Intro
+    '<div style="' + cardGold + '">' +
+      '<div style="' + h2 + '">' + icon('🎯') + 'Fugitive Task Force — Vue d\'ensemble</div>' +
+      '<p style="' + p + '">Unité chargée du <strong style="color:var(--t0)">recouvrement des amendes impayées</strong>. Intervient après l\'expiration du délai de paiement initial accordé par l\'agent verbalisateur. Les dossiers sont <strong style="color:var(--t0)">communs SASP Sud &amp; Nord</strong>.</p>' +
     '</div>' +
 
-    // 2. Délais et montants
-    '<div style="' + s + '">' +
-      '<div style="' + h2s + '"><span style="' + badge + '">02</span>Délais et majorations</div>' +
-      '<p style="' + p + '">Chaque étape donne <strong style="color:var(--t0)">7 jours</strong> au suspect pour régulariser. Le délai repart à zéro à chaque changement de statut.</p>' +
-      '<table style="' + tableStyle + '">' +
-        '<thead><tr>' +
-          '<th style="' + thStyle + '">Étape</th>' +
-          '<th style="' + thStyle + '">Déclenchement</th>' +
-          '<th style="' + thStyle + '">Majoration</th>' +
-          '<th style="' + thStyle + '">Non-présentation</th>' +
-        '</tr></thead>' +
-        '<tbody>' +
-          '<tr><td style="' + tdStyle + '">Attente paiement</td><td style="' + tdStyle + '">Amende notifiée</td><td style="' + tdAmt + '">—</td><td style="' + tdStyle + '">→ Transfert FTF</td></tr>' +
-          '<tr><td style="' + tdStyle + '">1ère convocation</td><td style="' + tdStyle + '">Non-paiement J+7</td><td style="' + tdAmt + '">+25%</td><td style="' + tdStyle + '">+1 000 $</td></tr>' +
-          '<tr><td style="' + tdStyle + '">2ème convocation</td><td style="' + tdStyle + '">Non-présentation C1</td><td style="' + tdAmt + '">+75%</td><td style="' + tdStyle + '">+1 000 $</td></tr>' +
-          '<tr><td style="' + tdStyle + '">3ème convocation</td><td style="' + tdStyle + '">Non-présentation C2</td><td style="' + tdAmt + '">+125%</td><td style="' + tdStyle + '">+1 000 $</td></tr>' +
-          '<tr><td style="' + tdStyle + '">Tribunal</td><td style="' + tdStyle + '">Non-présentation C3</td><td style="' + tdAmt + '">—</td><td style="' + tdStyle + '">Localisation + interpellation</td></tr>' +
-        '</tbody>' +
-      '</table>' +
-      '<div style="' + warn + '">⚠️ Le bot envoie un rappel automatique dans le salon FTF la veille du délai (J-1) et le jour J si aucune action n\'a été faite.</div>' +
+    // Timeline flow
+    '<div style="' + card + 'border-left:3px solid rgba(201,168,76,.4);">' +
+      '<div style="' + h2 + '">' + icon('📋') + 'Flux de la procédure</div>' +
+      '<div style="display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding-bottom:8px;flex-wrap:nowrap">' +
+        node('AMENDE', 'rgba(74,139,212,.7)', '', 'Notification') + arrow +
+        node('J+7', 'rgba(201,168,76,.35)', '', 'Paiement ?') + arrow +
+        node('C1', 'rgba(240,140,30,.65)', '+25%', '7 jours') + arrow +
+        node('C2', 'rgba(220,100,30,.65)', '+75%', '7 jours') + arrow +
+        node('C3', 'rgba(200,60,60,.65)', '+125%', '7 jours') + arrow +
+        node('TRIBUNAL', 'rgba(180,30,30,.8)', '', 'Localisation') +
+      '</div>' +
+      '<div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+        '<div style="' + ok.replace('margin-top:12px','') + '"><span>✅</span><span>Paiement à n\'importe quelle étape → dossier <strong>Clôturé</strong></span></div>' +
+        '<div style="' + warn.replace('margin-top:12px','') + '"><span>⚠️</span><span>Non-présentation à une convocation = <strong>+1 000 $</strong> supplémentaires</span></div>' +
+      '</div>' +
     '</div>' +
 
-    // 3. Créer un dossier
-    '<div style="' + s + '">' +
-      '<div style="' + h2s + '"><span style="' + badge + '">03</span>Créer un dossier</div>' +
-      '<ul style="' + li + '">' +
-        '<li>' + dot + 'Aller dans l\'onglet <strong style="color:var(--t0)">Dossiers</strong> → bouton <strong style="color:var(--t0)">Créer un dossier</strong></li>' +
-        '<li>' + dot + 'Remplir : <strong style="color:var(--t0)">Nom</strong>, <strong style="color:var(--t0)">Prénom</strong>, <strong style="color:var(--t0)">montant initial</strong> de l\'amende, <strong style="color:var(--t0)">date de la 1ère amende</strong></li>' +
-        '<li>' + dot + 'Sélectionner le <strong style="color:var(--t0)">service créateur</strong> (SASP SUD ou SASP NORD)</li>' +
-        '<li>' + dot + 'Indiquer la <strong style="color:var(--t0)">raison</strong> de l\'amende et les notes FTF internes</li>' +
-        '<li>' + dot + 'Sauvegarder → le dossier passe en statut <strong style="color:var(--t0)">Attente paiement</strong></li>' +
-      '</ul>' +
-      '<div style="' + ok + '">✅ La date de la 1ère amende est le point de départ du premier délai de 7 jours.</div>' +
+    // Créer un dossier
+    '<div style="' + cardBlue + '">' +
+      '<div style="' + h2 + '">' + icon('📁') + 'Créer un dossier</div>' +
+      step(1, 'Aller dans l\'onglet <strong style="color:var(--t0)">Dossiers</strong> → bouton <strong style="color:var(--t0)">Créer un dossier</strong>') +
+      step(2, 'Renseigner <strong style="color:var(--t0)">Nom</strong>, <strong style="color:var(--t0)">Prénom</strong>, <strong style="color:var(--t0)">montant initial</strong> et <strong style="color:var(--t0)">date de la 1ère amende</strong>') +
+      step(3, 'Choisir le <strong style="color:var(--t0)">service créateur</strong> (SASP SUD ou SASP NORD) et remplir la raison + notes internes') +
+      step(4, 'Sauvegarder → statut initial : <strong style="color:var(--t0)">Attente paiement</strong>. Le délai de 7 jours démarre à la date de la 1ère amende.') +
     '</div>' +
 
-    // 4. Faire avancer un dossier
-    '<div style="' + s + '">' +
-      '<div style="' + h2s + '"><span style="' + badge + '">04</span>Faire avancer un dossier</div>' +
-      '<ul style="' + li + '">' +
-        '<li>' + dot + 'Cliquer sur la ligne du dossier dans le tableau pour l\'ouvrir</li>' +
-        '<li>' + dot + 'Cocher <strong style="color:var(--t0)">Convocation traitée ?</strong> → <strong style="color:var(--t0)">Oui</strong> pour passer automatiquement à l\'étape suivante</li>' +
-        '<li>' + dot + 'Ou changer manuellement le <strong style="color:var(--t0)">Statut</strong> puis sauvegarder</li>' +
-        '<li>' + dot + 'Le bouton <strong style="color:var(--t0)">← Étape précédente</strong> permet de revenir en arrière en cas d\'erreur</li>' +
-      '</ul>' +
-      '<div style="' + warn + '">⚠️ Chaque changement de statut remet le délai de 7 jours à zéro à partir du jour de la modification.</div>' +
+    // Avancer + Convocation
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">' +
+      '<div style="' + cardGold + 'margin-bottom:0">' +
+        '<div style="' + h2 + '">' + icon('⏩') + 'Avancer un dossier</div>' +
+        step(1, 'Cliquer sur la ligne du dossier') +
+        step(2, 'Cocher <strong style="color:var(--t0)">Convocation traitée → Oui</strong> pour passer à l\'étape suivante automatiquement') +
+        step(3, 'Ou changer le <strong style="color:var(--t0)">Statut</strong> manuellement') +
+        '<div style="font-size:.78rem;color:#f0b429;background:rgba(240,180,41,.07);border:1px solid rgba(240,180,41,.2);border-radius:var(--rMd);padding:9px 12px;margin-top:10px;">⚠️ Chaque changement remet le délai à 7 jours</div>' +
+      '</div>' +
+      '<div style="' + cardBlue + 'margin-bottom:0">' +
+        '<div style="' + h2 + '">' + icon('📨') + 'Envoyer une convocation</div>' +
+        step(1, 'Ouvrir le dossier → <strong style="color:var(--t0)">Envoyer convocation</strong>') +
+        step(2, 'Choisir la <strong style="color:var(--t0)">date</strong> et l\'<strong style="color:var(--t0)">heure</strong> du rendez-vous') +
+        step(3, 'Un <strong style="color:var(--t0)">PNG officiel</strong> est généré et envoyé dans le salon FTF avec un ping') +
+        '<div style="font-size:.78rem;color:#4caf85;background:rgba(76,175,133,.07);border:1px solid rgba(76,175,133,.2);border-radius:var(--rMd);padding:9px 12px;margin-top:10px;">✅ Aussi planifiable directement depuis Discord via le rappel bot</div>' +
+      '</div>' +
     '</div>' +
 
-    // 5. Envoyer une convocation PNG
-    '<div style="' + s + '">' +
-      '<div style="' + h2s + '"><span style="' + badge + '">05</span>Envoyer une convocation</div>' +
-      '<ul style="' + li + '">' +
-        '<li>' + dot + 'Ouvrir le dossier → bouton <strong style="color:var(--t0)">Envoyer convocation</strong></li>' +
-        '<li>' + dot + 'Choisir la <strong style="color:var(--t0)">date</strong> et l\'<strong style="color:var(--t0)">heure</strong> du rendez-vous</li>' +
-        '<li>' + dot + 'Le worker génère un <strong style="color:var(--t0)">PNG officiel</strong> à partir du template et l\'envoie dans le salon FTF Discord</li>' +
-        '<li>' + dot + 'Il est aussi possible de planifier depuis Discord directement via le bouton <strong style="color:var(--t0)">Choisir date/heure</strong> dans le rappel automatique</li>' +
-      '</ul>' +
-      '<div style="' + ok + '">✅ Le PNG est envoyé avec un ping vers le créateur du dossier.</div>' +
+    // Tribunal
+    '<div style="' + cardRed + '">' +
+      '<div style="' + h2 + '">' + icon('⚖️') + 'Après 3 convocations — Tribunal</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">' +
+        '<div style="text-align:center;background:rgba(220,80,80,.08);border:1px solid rgba(220,80,80,.18);border-radius:var(--rMd);padding:14px 10px">' +
+          '<div style="font-size:1.6rem;margin-bottom:6px">🔍</div>' +
+          '<div style="font-family:Rajdhani,sans-serif;font-size:.85rem;font-weight:700;color:var(--t0);margin-bottom:4px">Localisation</div>' +
+          '<div style="font-size:.76rem;color:var(--t3)">MDT, patrouille, renseignement</div>' +
+        '</div>' +
+        '<div style="text-align:center;background:rgba(220,80,80,.08);border:1px solid rgba(220,80,80,.18);border-radius:var(--rMd);padding:14px 10px">' +
+          '<div style="font-size:1.6rem;margin-bottom:6px">🚔</div>' +
+          '<div style="font-family:Rajdhani,sans-serif;font-size:.85rem;font-weight:700;color:var(--t0);margin-bottom:4px">Interpellation</div>' +
+          '<div style="font-size:.76rem;color:var(--t3)">Présentation physique au tribunal</div>' +
+        '</div>' +
+        '<div style="text-align:center;background:rgba(220,80,80,.08);border:1px solid rgba(220,80,80,.18);border-radius:var(--rMd);padding:14px 10px">' +
+          '<div style="font-size:1.6rem;margin-bottom:6px">💼</div>' +
+          '<div style="font-family:Rajdhani,sans-serif;font-size:.85rem;font-weight:700;color:var(--t0);margin-bottom:4px">Saisie des biens</div>' +
+          '<div style="font-size:.76rem;color:var(--t3)">Si montant recouvrable</div>' +
+        '</div>' +
+      '</div>' +
     '</div>' +
 
-    // 6. Passage au tribunal
-    '<div style="' + s + '">' +
-      '<div style="' + h2s + '"><span style="' + badge + '">06</span>Passage au tribunal</div>' +
-      '<p style="' + p + '">Après 3 convocations sans résultat, le dossier passe en statut <strong style="color:var(--t0)">Tribunal</strong>. La procédure est :</p>' +
-      '<ul style="' + li + '">' +
-        '<li>' + dot + '<strong style="color:var(--t0)">Localisation</strong> du suspect (via MDT, patrouille, renseignement)</li>' +
-        '<li>' + dot + '<strong style="color:var(--t0)">Interpellation</strong> et présentation physique devant le tribunal</li>' +
-        '<li>' + dot + '<strong style="color:var(--t0)">Saisie des biens</strong> si le montant est recouvrable</li>' +
-      '</ul>' +
+    // Insolvabilité
+    '<div style="' + cardGreen + '">' +
+      '<div style="' + h2 + '">' + icon('💸') + 'Insolvabilité — Options tribunal</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">' +
+        opt('📅', 'Échéancier', 'Paiement fractionné sur plusieurs semaines') +
+        opt('🔧', 'TIG SASP/SAMC', 'Travaux d\'intérêt général en service') +
+        opt('📍', 'Pointage quotidien', 'Présentation obligatoire chaque jour') +
+        opt('🔒', 'Prison', 'En dernier recours sur décision judiciaire') +
+      '</div>' +
     '</div>' +
 
-    // 7. Insolvabilité
-    '<div style="' + s + '">' +
-      '<div style="' + h2s + '"><span style="' + badge + '">07</span>Insolvabilité</div>' +
-      '<p style="' + p + '">Si le suspect est insolvable (incapable de payer même après tribunal), plusieurs options sont possibles selon la décision du tribunal :</p>' +
-      '<ul style="' + li + '">' +
-        '<li>' + dot + '<strong style="color:var(--t0)">Échéancier</strong> — paiement en plusieurs fois</li>' +
-        '<li>' + dot + '<strong style="color:var(--t0)">TIG SASP / SAMC</strong> — travaux d\'intérêt général</li>' +
-        '<li>' + dot + '<strong style="color:var(--t0)">Pointage quotidien</strong> — présentation obligatoire chaque jour</li>' +
-        '<li>' + dot + '<strong style="color:var(--t0)">Prison</strong> — en dernier recours sur décision judiciaire</li>' +
-      '</ul>' +
-      '<div style="' + ok + '">✅ Une fois la procédure terminée, archiver le dossier → il disparaît de la vue active mais reste consultable dans l\'historique.</div>' +
+    // Archiver
+    '<div style="' + card + 'border-left:3px solid rgba(100,120,150,.4);display:flex;gap:20px;align-items:center">' +
+      '<div style="font-size:2rem;flex-shrink:0">📦</div>' +
+      '<div>' +
+        '<div style="font-family:Rajdhani,sans-serif;font-size:.95rem;font-weight:700;color:var(--t0);margin-bottom:6px">Clôturer un dossier</div>' +
+        '<p style="' + p + 'margin:0"><strong style="color:#4caf85">Archiver</strong> → dossier clôturé, consultable via le filtre "Archives" — <em>action recommandée</em><br><strong style="color:#e05555">Supprimer</strong> → suppression définitive — à réserver aux erreurs de saisie</p>' +
+      '</div>' +
     '</div>' +
 
-    // 8. Archiver / supprimer
-    '<div style="' + s + '">' +
-      '<div style="' + h2s + '"><span style="' + badge + '">08</span>Archiver et supprimer</div>' +
-      '<ul style="' + li + '">' +
-        '<li>' + dot + '<strong style="color:var(--t0)">Archiver</strong> : dossier clôturé, reste consultable via le filtre "Archives" — action recommandée</li>' +
-        '<li>' + dot + '<strong style="color:var(--t0)">Supprimer</strong> : suppression définitive — à éviter sauf erreur de saisie</li>' +
-      '</ul>' +
-    '</div>' +
-
-    '</div>'
-  );
+  '</div>';
+}
 }
 function ftfIsNotificationDue(d) {
   return !!ftfNotificationToSend(d);
