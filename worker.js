@@ -2979,6 +2979,10 @@ export default {
       // Bouton bracelet depuis un post proc
       if (interaction.type === 3 && interaction.data.custom_id === "proc_bracelet") {
         const content = interaction.message?.content || "";
+        const modalValue = (value, max) => {
+          const clean = String(value || "").replace(/\s+/g, " ").trim();
+          return clean.length > max ? clean.slice(0, max) : clean;
+        };
         const getProcTextField = (label) => {
           const escaped = String(label).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
           const match = content.match(new RegExp(`\\*\\*${escaped}\\s*:?\\*\\*\\s*([\\s\\S]*?)(?=\\n\\n\\*\\*|$)`, "i"));
@@ -2997,10 +3001,10 @@ export default {
             custom_id: `bracelet_modal|${originToken}`,
             title: "Bracelet Ã‰lectronique",
             components: [
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_suspect", label: "Nom PrÃ©nom du suspect", style: 1, required: true, value: suspectName, max_length: 80 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "PosÃ© le", style: 1, required: true, value: dateDefault, max_length: 30 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "NumÃ©ro de tÃ©lÃ©phone", style: 1, required: true, value: telSuspect, max_length: 30 }] },
-              { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, required: true, value: chefs, max_length: 500 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_suspect", label: "Nom PrÃ©nom du suspect", style: 1, required: true, value: modalValue(suspectName, 80), max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_date", label: "PosÃ© le", style: 1, required: true, value: modalValue(dateDefault, 30), max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_tel", label: "NumÃ©ro de tÃ©lÃ©phone", style: 1, required: true, value: modalValue(telSuspect, 30), max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "bracelet_raison", label: "Chef(s) d'inculpation", style: 2, required: true, value: modalValue(chefs, 500), max_length: 500 }] },
               { type: 1, components: [{ type: 4, custom_id: "bracelet_accord_proc", label: "Demande procureur", style: 1, required: true, placeholder: "Oui ou Non", max_length: 3 }] }
             ]
           }
