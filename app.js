@@ -1110,7 +1110,6 @@ function renderFTFGuide() {
 
   '</div>';
 }
-}
 function ftfIsNotificationDue(d) {
   return !!ftfNotificationToSend(d);
 }
