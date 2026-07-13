@@ -2565,6 +2565,22 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/install-sync-command" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || "1382167184607940658";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "sync", description: "Forcer la synchronisation des pseudos depuis le SASP Centrale" })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, data });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/install-proc-command" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
@@ -3234,6 +3250,60 @@ export default {
           ], footer: { text: "SASP Â· Bracelet" }, timestamp: now.toISOString() }] })
         });
         return json({ type: 4, data: { content: `âœ… Pointage enregistrÃ© sur ${targets.length} dossier(s).`, flags: 64 } });
+      }
+
+      // Slash command /sync
+      if (interaction.type === 2 && interaction.data.name === "sync") {
+        const member = interaction.member;
+        if (!hasStaffRole(member)) {
+          return json({ type: 4, data: { content: "❌ Accès réservé au staff.", flags: 64 } });
+        }
+        const token = interaction.token;
+        const appId = env.DISCORD_APPLICATION_ID;
+        ctx.waitUntil((async () => {
+          const SOURCE_GUILD = "1500975724750704661";
+          const TARGET_GUILD = "1382167184607940658";
+          const PAGE = 20;
+          let afterCursor = "0";
+          let totalSynced = 0, totalSkipped = 0, totalErrors = 0;
+          do {
+            const targetPage = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members?limit=${PAGE}&after=${afterCursor}`, {
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+            }).then(r => r.json()).catch(() => []);
+            if (!Array.isArray(targetPage) || !targetPage.length) break;
+            for (const m of targetPage) {
+              const uid = m.user?.id;
+              if (!uid || m.user?.bot) continue;
+              const sourceMember = await discordFetch(`${DISCORD_API}/guilds/${SOURCE_GUILD}/members/${uid}`, {
+                headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+              }).then(r => r.status === 200 ? r.json() : null).catch(() => null);
+              if (!sourceMember) { totalSkipped++; continue; }
+              let res;
+              for (let attempt = 0; attempt < 3; attempt++) {
+                res = await discordFetch(`${DISCORD_API}/guilds/${TARGET_GUILD}/members/${uid}`, {
+                  method: "PATCH",
+                  headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({ nick: sourceMember.nick || null })
+                });
+                if (res.status === 429) {
+                  const body = await res.json().catch(() => ({}));
+                  await new Promise(r => setTimeout(r, (body.retry_after || 1) * 1000));
+                } else break;
+              }
+              if (res.status === 204 || res.status === 200) totalSynced++;
+              else if (res.status === 403) totalSkipped++;
+              else totalErrors++;
+              await new Promise(r => setTimeout(r, 300));
+            }
+            afterCursor = targetPage.length === PAGE ? targetPage[targetPage.length - 1].user.id : null;
+          } while (afterCursor);
+          await discordFetch(`${DISCORD_API}/webhooks/${appId}/${token}/messages/@original`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: `✅ Sync terminé — ${totalSynced} renommés, ${totalSkipped} ignorés${totalErrors ? `, ${totalErrors} erreurs` : ""}.` })
+          });
+        })());
+        return json({ type: 5, data: { flags: 64 } });
       }
 
       // Slash command /plainte
