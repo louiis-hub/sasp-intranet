@@ -1310,6 +1310,32 @@ export default {
       }
     }
 
+    if (url.pathname === "/ftf/upload-photo" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const formData = await request.formData();
+        const file = formData.get("file");
+        const dossierId = formData.get("dossier_id") || "unknown";
+        if (!file || typeof file === "string") return json({ ok: false, error: "Fichier manquant" }, 400);
+        const df = new FormData();
+        df.append("file", file, file.name || "photo.png");
+        df.append("payload_json", JSON.stringify({ content: `[FTF] Photo dossier ${dossierId}` }));
+        const res = await fetch(`${DISCORD_API}/channels/${FTF_NOTIFICATION_CHANNEL_ID}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` },
+          body: df
+        });
+        if (!res.ok) { const e = await res.text(); return json({ ok: false, error: `Discord ${res.status}: ${e}` }, 500); }
+        const msg = await res.json();
+        const att = msg.attachments?.[0];
+        if (!att) return json({ ok: false, error: "Aucune pièce jointe retournée" }, 500);
+        return json({ ok: true, url: att.url, filename: att.filename });
+      } catch(e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     if (url.pathname === "/ftf/send-convocation" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);

@@ -678,6 +678,8 @@ async function getDashboardGradeCounts(grades, agents, logLabel) {
 
 // ══ DASHBOARD ══════════════════════════════════════════════════════
 var FTF_STORAGE_KEY = 'sasp_ftf_dossiers_v1';
+var _ftfPhotosDraft = [];
+var _ftfCurrentDossierId = null;
 var FTF_CONVOCATION_TEMPLATE = 'assets/convocation-template.png?v=20260712-ftf-template-v2';
 var FTF_STATUSES = ['Attente paiement', '1ère convocation', '2ème convocation', '3ème convocation', 'Tribunal', 'Clôturé'];
 var _ftfTab = 'dashboard';
@@ -1110,6 +1112,53 @@ function renderFTFGuide() {
 
   '</div>';
 }
+function ftfRenderPhotosGrid() {
+  var grid = _ftfPhotosDraft.map(function(p, i) {
+    return '<div style="position:relative;width:84px;height:84px;flex-shrink:0">' +
+      '<img src="' + esc(p.url) + '" style="width:84px;height:84px;object-fit:cover;border-radius:8px;cursor:pointer;border:1px solid rgba(255,255,255,.1);display:block" onclick="window.open(\'' + esc(p.url) + '\',\'_blank\')" title="' + esc(p.filename || '') + '">' +
+      '<button onclick="ftfRemoveDraftPhoto(' + i + ')" style="position:absolute;top:-5px;right:-5px;width:20px;height:20px;border-radius:50%;background:#c0392b;border:none;color:#fff;font-size:.75rem;cursor:pointer;line-height:20px;text-align:center;padding:0;font-weight:700">×</button>' +
+    '</div>';
+  }).join('');
+  return '<div style="display:flex;gap:8px;flex-wrap:wrap;min-height:84px;align-items:flex-start">' + grid + '</div>';
+}
+window.ftfRemoveDraftPhoto = function(idx) {
+  _ftfPhotosDraft.splice(idx, 1);
+  var el = document.getElementById('ftfPhotosGrid');
+  if (el) el.innerHTML = ftfRenderPhotosGrid();
+};
+async function ftfUploadPhoto() {
+  var input = document.getElementById('ftfPhotoInput');
+  if (!input || !input.files[0]) return;
+  var file = input.files[0];
+  input.value = '';
+  var loader = toastLoading('Upload en cours...');
+  try {
+    var form = new FormData();
+    form.append('file', file);
+    form.append('dossier_id', _ftfCurrentDossierId || 'new');
+    var res = await fetch(WORKER_BASE + '/ftf/upload-photo', {
+      method: 'POST',
+      headers: { 'x-log-token': LOG_TOKEN },
+      body: form
+    });
+    var data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Erreur upload');
+    _ftfPhotosDraft.push({ url: data.url, filename: data.filename || file.name, uploaded_at: new Date().toISOString() });
+    var el = document.getElementById('ftfPhotosGrid');
+    if (el) el.innerHTML = ftfRenderPhotosGrid();
+    loader.done('Photo ajoutée.', 'success');
+  } catch(e) {
+    loader.done('Erreur: ' + (e.message || e), 'error');
+  }
+}
+window.ftfToggleMandat = function() {
+  var v = document.getElementById('ftfMandatActif').value;
+  var el = document.getElementById('ftfMandatFields');
+  if (el) el.style.display = v === 'true' ? 'block' : 'none';
+};
+function ftfisNotificationDue(d) {
+  return !!ftfNotificationToSend(d);
+}
 function ftfIsNotificationDue(d) {
   return !!ftfNotificationToSend(d);
 }
@@ -1200,46 +1249,83 @@ function openFtfDossierModal(id) {
   var dossiers = ftfLoadDossiers();
   var d = id ? dossiers.find(function(x){ return x.id === id; }) : null;
   var isEdit = !!d;
-  d = d || { nom:'', prenom:'', montant_initial:'', date_notification:ftfTodayKey(), date_statut:ftfTodayKey(), statut:'Attente paiement', convocation_validee:false, origine_service:ftfCurrentOrigin(), raison_amende:'', notes:'' };
+  d = d || { nom:'', prenom:'', montant_initial:'', date_notification:ftfTodayKey(), date_statut:ftfTodayKey(), statut:'Attente paiement', convocation_validee:false, origine_service:ftfCurrentOrigin(), raison_amende:'', notes:'', photos:[], mandat:{} };
+  _ftfPhotosDraft = Array.isArray(d.photos) ? d.photos.slice() : [];
+  _ftfCurrentDossierId = d.id || null;
   var origin = ftfDossierOrigin(d);
+  var m = d.mandat || {};
+  var mandatActif = !!m.actif;
   if (!d.date_statut) d.date_statut = d.date_notification || ftfTodayKey();
   var nextInfo = ftfNextStepInfo(d);
   var statusSelect = '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="ftfStatut">' +
     FTF_STATUSES.map(function(s){ return '<option value="' + esc(s) + '"' + (d.statut === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') +
     '</select></div>';
-  var validatedSelect = '<div class="form-group"><label class="form-label">Convocation validée ?</label><select class="form-control" id="ftfConvocationValidee">' +
-    '<option value="false"' + (!d.convocation_validee ? ' selected' : '') + '>Non - continuer les rappels</option>' +
-    '<option value="true"' + (d.convocation_validee ? ' selected' : '') + '>Oui - arrêter les rappels</option>' +
-    '</select></div>';
-  validatedSelect = '<div class="form-group"><label class="form-label">Convocation traitee ?</label><select class="form-control" id="ftfConvocationValidee">' +
+  var validatedSelect = '<div class="form-group"><label class="form-label">Convocation traitee ?</label><select class="form-control" id="ftfConvocationValidee">' +
     '<option value="false" selected>Non</option>' +
     '<option value="true">Oui - passer a l etape suivante</option>' +
     '</select></div>';
+  var sep = '<div style="border-top:1px solid rgba(255,255,255,.07);margin:16px 0"></div>';
   openModal({
     eyebrow: 'DOSSIER FTF',
-    title: isEdit ? 'Modifier le dossier' : 'Creer un dossier',
-    size: 'md',
+    title: isEdit ? ((d.prenom || '') + ' ' + (d.nom || '')).trim() || 'Modifier le dossier' : 'Creer un dossier',
+    size: 'lg',
     body:
+      // Identité
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
         fld('Nom *','text','ftfNom',d.nom,'Nom') +
         fld('Prenom *','text','ftfPrenom',d.prenom,'Prenom') +
       '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">' +
         fld('Montant initial *','number','ftfMontant',d.montant_initial,'15000') +
         fld('Date 1ere amende / delit','date','ftfDate',d.date_notification,'') +
+        '<div class="form-group"><label class="form-label">Service createur</label><select class="form-control" id="ftfOrigineService">' +
+          '<option value="SASP SUD"' + (origin === 'SASP SUD' ? ' selected' : '') + '>SASP SUD</option>' +
+          '<option value="SASP NORD"' + (origin === 'SASP NORD' ? ' selected' : '') + '>SASP NORD</option>' +
+        '</select></div>' +
       '</div>' +
-      '<div class="form-group"><label class="form-label">Service createur</label><select class="form-control" id="ftfOrigineService">' +
-        '<option value="SASP SUD"' + (origin === 'SASP SUD' ? ' selected' : '') + '>SASP SUD</option>' +
-        '<option value="SASP NORD"' + (origin === 'SASP NORD' ? ' selected' : '') + '>SASP NORD</option>' +
-      '</select></div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
         '<input type="hidden" id="ftfDateStatut" value="' + esc(d.date_statut || '') + '">' +
         validatedSelect +
+        statusSelect +
       '</div>' +
       (nextInfo ? '<div class="badge badge-gold" style="margin-bottom:14px">' + esc(nextInfo) + '</div>' : '') +
-      statusSelect +
-      '<div class="form-group"><label class="form-label">Raison de l amende</label><textarea class="form-control" id="ftfRaisonAmende" placeholder="Ex : refus d obtemperer, stationnement abusif, amende impayee...">' + esc(d.raison_amende || '') + '</textarea></div>' +
-      '<div class="form-group"><label class="form-label">Notes FTF</label><textarea class="form-control" id="ftfNotes" placeholder="Notes internes FTF">' + esc(d.notes || '') + '</textarea></div>',
+      '<div class="form-group"><label class="form-label">Raison de l amende</label><textarea class="form-control" id="ftfRaisonAmende" placeholder="Ex : refus d obtemperer, stationnement abusif...">' + esc(d.raison_amende || '') + '</textarea></div>' +
+      '<div class="form-group"><label class="form-label">Notes FTF</label><textarea class="form-control" id="ftfNotes" placeholder="Notes internes FTF" style="min-height:60px">' + esc(d.notes || '') + '</textarea></div>' +
+
+      // Photos
+      sep +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+        '<label class="form-label" style="margin:0">📸 Photos / Pièces jointes</label>' +
+        '<label style="cursor:pointer;padding:6px 14px;background:rgba(74,139,212,.15);border:1px solid rgba(74,139,212,.3);border-radius:var(--rMd);font-size:.8rem;color:var(--blue);font-weight:600">' +
+          'Ajouter une photo' +
+          '<input type="file" id="ftfPhotoInput" accept="image/*" style="display:none" onchange="ftfUploadPhoto()">' +
+        '</label>' +
+      '</div>' +
+      '<div id="ftfPhotosGrid">' + ftfRenderPhotosGrid() + '</div>' +
+
+      // Mandat
+      sep +
+      '<div class="form-group"><label class="form-label">📜 Mandat d\'arrêt</label>' +
+        '<select class="form-control" id="ftfMandatActif" onchange="ftfToggleMandat()" style="margin-bottom:10px">' +
+          '<option value="false"' + (!mandatActif ? ' selected' : '') + '>Aucun mandat actif</option>' +
+          '<option value="true"' + (mandatActif ? ' selected' : '') + '>Mandat actif</option>' +
+        '</select>' +
+      '</div>' +
+      '<div id="ftfMandatFields" style="display:' + (mandatActif ? 'block' : 'none') + '">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+          fld('Autorité émettrice','text','ftfMandatAutorite',m.autorite||'','Ex : Capitaine Miller') +
+          fld('Date d\'émission','date','ftfMandatDate',m.date_emission||'','') +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">Statut du mandat</label>' +
+          '<select class="form-control" id="ftfMandatStatut">' +
+            '<option value="En cours"' + (m.statut === 'En cours' || !m.statut ? ' selected' : '') + '>En cours</option>' +
+            '<option value="Exécuté"' + (m.statut === 'Exécuté' ? ' selected' : '') + '>Exécuté</option>' +
+            '<option value="Annulé"' + (m.statut === 'Annulé' ? ' selected' : '') + '>Annulé</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">Raison du mandat</label><textarea class="form-control" id="ftfMandatRaison" placeholder="Ex : Fuite après interpellation, récidive..." style="min-height:60px">' + esc(m.raison||'') + '</textarea></div>' +
+        '<div class="form-group"><label class="form-label">Notes mandat</label><textarea class="form-control" id="ftfMandatNotes" placeholder="Notes internes..." style="min-height:50px">' + esc(m.notes||'') + '</textarea></div>' +
+      '</div>',
     footer:
       (isEdit && ftfPreviousStep(d.statut) ? '<button class="btn btn-outline" onclick="rollbackFtfDossier(\'' + esc(d.id) + '\')">← Étape précédente</button>' : '') +
       (isEdit ? '<button class="btn btn-outline" onclick="openFtfConvocationModal(\'' + esc(d.id) + '\')">Convocation PNG</button>' : '') +
@@ -1331,6 +1417,19 @@ async function saveFtfDossier(id) {
     notif_sent: (statusChanged || advanceStep) ? {} : ((previous && previous.notif_sent) || {}),
     raison_amende: document.getElementById('ftfRaisonAmende').value || '',
     notes: document.getElementById('ftfNotes').value || '',
+    photos: _ftfPhotosDraft.slice(),
+    mandat: (function() {
+      var actif = document.getElementById('ftfMandatActif') && document.getElementById('ftfMandatActif').value === 'true';
+      if (!actif) return { actif: false };
+      return {
+        actif: true,
+        autorite: (document.getElementById('ftfMandatAutorite') || {}).value || '',
+        date_emission: (document.getElementById('ftfMandatDate') || {}).value || '',
+        statut: (document.getElementById('ftfMandatStatut') || {}).value || 'En cours',
+        raison: (document.getElementById('ftfMandatRaison') || {}).value || '',
+        notes: (document.getElementById('ftfMandatNotes') || {}).value || ''
+      };
+    })(),
     updated_at: new Date().toISOString()
   };
   try {
