@@ -57,6 +57,36 @@ async function discordFetch(url, init = {}) {
   return fetch(url, next);
 }
 
+const AUTO_REACTION_CHANNEL_ID = "1500994818543849723";
+const AUTO_REACTION_EMOJI = "%E2%9C%85";
+
+async function reactToChannelMessages(env, channelId = AUTO_REACTION_CHANNEL_ID, limit = 20) {
+  const messagesRes = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages?limit=${Math.max(1, Math.min(Number(limit) || 50, 100))}`, {
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+  });
+  if (!messagesRes.ok) {
+    const text = await messagesRes.text().catch(() => "");
+    throw new Error(`messages ${messagesRes.status}: ${text.slice(0, 300)}`);
+  }
+  const messages = await messagesRes.json();
+  let reacted = 0;
+  let skipped = 0;
+  let errors = 0;
+  for (const message of Array.isArray(messages) ? messages : []) {
+    if (!message?.id) continue;
+    const alreadyReacted = (message.reactions || []).some(r => r?.emoji?.name === "✅" && r.me);
+    if (alreadyReacted) { skipped++; continue; }
+    const reactionRes = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${message.id}/reactions/${AUTO_REACTION_EMOJI}/@me`, {
+      method: "PUT",
+      headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+    });
+    if (reactionRes.ok || reactionRes.status === 204) reacted++;
+    else errors++;
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  return { ok: true, channel_id: channelId, scanned: Array.isArray(messages) ? messages.length : 0, reacted, skipped, errors };
+}
+
 const DIVISION_ROLES = {
   'CID':  '1518631634524569641',
   'SWAT': '1504454935645786222',
@@ -3824,6 +3854,16 @@ export default {
       }
     }
 
+    if (url.pathname === "/admin/react-channel-check" && request.method === "GET") {
+      try {
+        const channelId = url.searchParams.get("channel_id") || AUTO_REACTION_CHANNEL_ID;
+        const limit = Number(url.searchParams.get("limit") || 20);
+        return json(await reactToChannelMessages(env, channelId, limit));
+      } catch(e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     return json({ error: "Not found" }, 404);
   },
 
@@ -3833,6 +3873,7 @@ export default {
       ctx.waitUntil(autoClockoutAll(env));
     } else {
       ctx.waitUntil(autoClockout6h(env));
+      ctx.waitUntil(reactToChannelMessages(env).catch(() => null));
       ctx.waitUntil((async () => {
         const SOURCE_GUILD  = "1500975724750704661";
         const TARGET_GUILD  = "1382167184607940658";
