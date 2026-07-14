@@ -258,7 +258,7 @@ function finishArrivalSplash(delay) {
     window.setTimeout(function() {
       if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
     }, 900);
-  }, typeof delay === 'number' ? delay : 1850);
+  }, typeof delay === 'number' ? delay : 3200);
 }
 
 // ── Boot ───────────────────────────────────────────────────────────
