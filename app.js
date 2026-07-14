@@ -465,6 +465,10 @@ async function navigate(page, pd) {
     setContent('<div class="empty-state"><div class="empty-icon">FTF</div><div class="empty-title">AccÃ¨s FTF restreint</div><div class="empty-sub">Cette page est rÃ©servÃ©e aux utilisateurs avec le rÃ´le Discord FTF.</div></div>');
     return;
   }
+  if (page === 'ftf') {
+    setContent(renderFtfAccessGate());
+    await wait(900);
+  }
   if (S.role === 'ftf' && page !== 'ftf') {
     await navigate('ftf');
     return;
@@ -542,6 +546,10 @@ function setContent(html) {
   el.classList.remove('page-in');
   void el.offsetWidth;
   el.classList.add('page-in');
+}
+
+function wait(ms) {
+  return new Promise(function(resolve) { window.setTimeout(resolve, ms); });
 }
 
 // ── Modal ──────────────────────────────────────────────────────────
@@ -923,6 +931,22 @@ function ftfSetStatus(v) { _ftfStatus = v || ''; renderFTF(); }
 function ftfSetArchiveView(v) { _ftfArchiveView = v || 'active'; renderFTF(); }
 function renderFTFStat(icon, label, value, sub) {
   return '<div class="ftf-stat"><div class="ftf-stat-top"><span>' + icon + '</span><strong>' + value + '</strong></div><div>' + esc(label) + '</div>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div>';
+}
+function renderFtfAccessGate() {
+  return '<div class="ftf-access-gate">' +
+    '<div class="ftf-access-panel">' +
+      '<div class="ftf-access-ring"><img src="assets/7_Glock_19_28.png" alt="FTF"></div>' +
+      '<div class="ftf-kicker">FUGITIVE TASK FORCE</div>' +
+      '<h1>Acc&egrave;s r&eacute;serv&eacute;</h1>' +
+      '<p>V&eacute;rification de vos permissions Discord et ouverture du canal s&eacute;curis&eacute;.</p>' +
+      '<div class="ftf-access-steps">' +
+        '<span><i></i>Identit&eacute; confirm&eacute;e</span>' +
+        '<span><i></i>R&ocirc;le FTF valid&eacute;</span>' +
+        '<span><i></i>Dossiers partag&eacute;s charg&eacute;s</span>' +
+      '</div>' +
+      '<div class="ftf-access-bar"><i></i></div>' +
+    '</div>' +
+  '</div>';
 }
 async function renderFTF() {
   if (!canAccessFTF()) {
