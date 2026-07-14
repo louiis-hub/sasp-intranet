@@ -25,9 +25,23 @@ var DB = {
     if (error) throw new Error(error);
     var code = params.get('code');
     if (!code) return null;
-    var result = await getDb().auth.exchangeCodeForSession(code);
-    if (result.error) throw result.error;
+    await new Promise(function(resolve) { setTimeout(resolve, 350); });
     var cleanUrl = window.location.origin + window.location.pathname;
+    var current = await getDb().auth.getSession();
+    if (current.data && current.data.session) {
+      window.history.replaceState({}, document.title, cleanUrl);
+      return current.data.session;
+    }
+    var result = await getDb().auth.exchangeCodeForSession(code);
+    if (result.error) {
+      await new Promise(function(resolve) { setTimeout(resolve, 650); });
+      current = await getDb().auth.getSession();
+      if (current.data && current.data.session) {
+        window.history.replaceState({}, document.title, cleanUrl);
+        return current.data.session;
+      }
+      throw result.error;
+    }
     window.history.replaceState({}, document.title, cleanUrl);
     return result.data && result.data.session ? result.data.session : null;
   },
