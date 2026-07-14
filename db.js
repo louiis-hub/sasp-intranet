@@ -12,7 +12,7 @@ var DB = {
     return getDb().auth.signInWithOAuth({
       provider: 'discord',
       options: {
-        scopes: 'identify guilds.members.read',
+        scopes: 'identify email',
         redirectTo: 'https://louiis-hub.github.io/sasp-intranet/'
       }
     });
