@@ -467,7 +467,7 @@ async function navigate(page, pd) {
   }
   if (page === 'ftf') {
     setContent(renderFtfAccessGate());
-    await wait(900);
+    await wait(2400);
   }
   if (S.role === 'ftf' && page !== 'ftf') {
     await navigate('ftf');
