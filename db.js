@@ -19,6 +19,18 @@ var DB = {
   },
   async logout() { return getDb().auth.signOut(); },
   async getSession() { return getDb().auth.getSession(); },
+  async finishOAuthRedirect() {
+    var params = new URLSearchParams(window.location.search || '');
+    var error = params.get('error_description') || params.get('error');
+    if (error) throw new Error(error);
+    var code = params.get('code');
+    if (!code) return null;
+    var result = await getDb().auth.exchangeCodeForSession(code);
+    if (result.error) throw result.error;
+    var cleanUrl = window.location.origin + window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+    return result.data && result.data.session ? result.data.session : null;
+  },
   onAuthChange(cb) { return getDb().auth.onAuthStateChange(cb); },
 
   // ── App users (admin/academy roles) ──────────────────────────

@@ -265,10 +265,16 @@ function finishArrivalSplash(delay) {
 (async function boot() {
   finishArrivalSplash();
   try {
-    var { data: { session } } = await DB.getSession();
+    var redirectSession = await DB.finishOAuthRedirect();
+    var session = redirectSession || (await DB.getSession()).data.session;
     if (session) { await afterLogin(session.user, session); }
     else { showLogin(); }
-  } catch(e) { showLogin(); }
+  } catch(e) {
+    console.error('[auth] boot failed:', e);
+    showLogin();
+    var errEl = document.getElementById('loginErr');
+    if (errEl) { errEl.textContent = 'Erreur retour Discord: ' + (e.message || e); errEl.classList.add('show'); }
+  }
   DB.onAuthChange(async function(event, session) {
     if (event === 'SIGNED_IN' && session && !S.user) { await afterLogin(session.user, session); }
     if (event === 'SIGNED_OUT') { S.user = null; S.role = 'agent'; showLogin(); }
