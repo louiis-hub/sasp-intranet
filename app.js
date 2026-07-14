@@ -250,8 +250,20 @@ var PAGE_TITLES = {
   ftf:'FTF', 'ftf-dossier':'Dossier FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
 };
 
+function finishArrivalSplash(delay) {
+  var splash = document.getElementById('arrivalSplash');
+  if (!splash || splash.classList.contains('done')) return;
+  window.setTimeout(function() {
+    splash.classList.add('done');
+    window.setTimeout(function() {
+      if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
+    }, 900);
+  }, typeof delay === 'number' ? delay : 1850);
+}
+
 // ── Boot ───────────────────────────────────────────────────────────
 (async function boot() {
+  finishArrivalSplash();
   try {
     var { data: { session } } = await DB.getSession();
     if (session) { await afterLogin(session.user, session); }
