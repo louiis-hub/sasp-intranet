@@ -319,36 +319,48 @@ async function getDiscordRole(discordUserId) {
 }
 
 async function afterLogin(user, session) {
-  S.user = user;
-  var discordIdentity = user.identities && user.identities.find(function(i){ return i.provider === 'discord'; });
-  var discordUserId = (discordIdentity && (discordIdentity.id || (discordIdentity.identity_data && discordIdentity.identity_data.sub))) || (user.user_metadata && user.user_metadata.provider_id);
-  S.discordUserId = discordUserId;
-  console.log('[auth] identities:', user.identities, 'discordUserId:', discordUserId);
-  var appUser = await DB.getAppUser(user.id);
-  var result = await getDiscordRole(discordUserId);
-  S.discordRoles = result.roles || [];
-  if (result.role) {
-    S.role = result.role;
-    await DB.upsertAppUser({
-      user_id: user.id,
-      nom: (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.global_name || user.user_metadata.name)) || '',
-      prenom: '',
-      app_role: S.role
-    });
-  } else if (!result.apiOk && appUser && appUser.app_role) {
-    S.role = appUser.app_role;
-  } else {
-    await DB.logout();
+  try {
+    S.user = user;
+    var discordIdentity = user.identities && user.identities.find(function(i){ return i.provider === 'discord'; });
+    var discordUserId = (discordIdentity && (discordIdentity.id || (discordIdentity.identity_data && discordIdentity.identity_data.sub))) || (user.user_metadata && user.user_metadata.provider_id);
+    S.discordUserId = discordUserId;
+    console.log('[auth] identities:', user.identities, 'discordUserId:', discordUserId);
+    var appUser = null;
+    try { appUser = await DB.getAppUser(user.id); } catch(e) { console.warn('[auth] app user fetch failed:', e); }
+    var result = await getDiscordRole(discordUserId);
+    S.discordRoles = result.roles || [];
+    if (result.role) {
+      S.role = result.role;
+      try {
+        await DB.upsertAppUser({
+          user_id: user.id,
+          nom: (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.global_name || user.user_metadata.name)) || '',
+          prenom: '',
+          app_role: S.role
+        });
+      } catch(e) {
+        console.warn('[auth] app user upsert failed:', e);
+      }
+    } else if (!result.apiOk && appUser && appUser.app_role) {
+      S.role = appUser.app_role;
+    } else {
+      await DB.logout();
+      showLogin();
+      var errEl = document.getElementById('loginErr');
+      if (errEl) { errEl.textContent = 'Acces refuse - vous n avez pas les roles requis sur le serveur Discord.'; errEl.classList.add('show'); }
+      return;
+    }
+    _grades = await DB.getGrades();
+    _units  = await DB.getUnits();
+    await loadWikiSections();
+    showApp();
+    await navigate('dashboard');
+  } catch(err) {
+    console.error('[auth] afterLogin failed:', err);
     showLogin();
-    var errEl = document.getElementById('loginErr');
-    if (errEl) { errEl.textContent = '⚠ Accès refusé — vous n\'avez pas les rôles requis sur le serveur Discord.'; errEl.classList.add('show'); }
-    return;
+    var loginErr = document.getElementById('loginErr');
+    if (loginErr) { loginErr.textContent = 'Erreur de connexion intranet: ' + (err.message || err); loginErr.classList.add('show'); }
   }
-  _grades = await DB.getGrades();
-  _units  = await DB.getUnits();
-  await loadWikiSections();
-  showApp();
-  await navigate('dashboard');
 }
 
 var _WIKI_DEFAULTS = [
