@@ -37,8 +37,9 @@ a{color:var(--gold);text-decoration:none}
 .arrival-status{display:flex;align-items:center;gap:8px;margin-top:20px;color:var(--t1);font-size:.78rem;text-transform:uppercase;letter-spacing:1.2px}
 .arrival-status span{width:8px;height:8px;border-radius:50%;background:#46e58a;box-shadow:0 0 16px rgba(70,229,138,.7);animation:arrivalBlink .7s steps(2,end) infinite}
 .arrival-status b{font-weight:700}
-.arrival-bar{width:78%;height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:18px;border:1px solid rgba(201,168,76,.16);box-shadow:0 0 20px rgba(201,168,76,.08)}
-.arrival-bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--goldDk),var(--goldLight),#fff1a8);transform:translateX(-100%);animation:arrivalLoad 2.85s .28s var(--ease) forwards}
+.arrival-bar{position:relative;width:78%;height:8px;border-radius:999px;background:rgba(255,255,255,.11);overflow:hidden;margin-top:18px;border:1px solid rgba(201,168,76,.26);box-shadow:inset 0 0 10px rgba(0,0,0,.55),0 0 22px rgba(201,168,76,.12)}
+.arrival-bar::after{content:'';position:absolute;inset:1px;border-radius:999px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.32),transparent);transform:translateX(-100%);animation:arrivalSheen 1.15s .3s linear infinite}
+.arrival-bar i{position:relative;z-index:1;display:block;height:100%;width:100%;border-radius:999px;background:linear-gradient(90deg,#2f7bff 0%,var(--goldLight) 58%,#46e58a 100%);transform:translateX(-100%);animation:arrivalLoad 2.85s .28s var(--ease) forwards;box-shadow:0 0 18px rgba(201,168,76,.55)}
 .arrival-loading{margin-top:9px;font-family:'Share Tech Mono',monospace;font-size:.58rem;letter-spacing:1.8px;color:var(--blue);text-transform:uppercase}
 .arrival-footer{margin-top:16px;font-family:'Share Tech Mono',monospace;font-size:.56rem;letter-spacing:2.6px;color:var(--t3);text-transform:uppercase}
 @keyframes arrivalGrid{to{background-position:0 54px,54px 0}}
@@ -48,6 +49,7 @@ a{color:var(--gold);text-decoration:none}
 @keyframes arrivalPulse{50%{box-shadow:0 0 0 12px rgba(201,168,76,.035),0 0 52px rgba(201,168,76,.28)}}
 @keyframes arrivalBlink{50%{opacity:.35}}
 @keyframes arrivalLoad{to{transform:translateX(0)}}
+@keyframes arrivalSheen{to{transform:translateX(100%)}}
 @media (prefers-reduced-motion:reduce){.arrival-grid,.arrival-scan,.arrival-core,.arrival-core::before,.arrival-ring,.arrival-status span,.arrival-bar i{animation:none}.arrival-splash{transition:opacity .2s ease}}
 
 /* ── LOGIN ─────────────────────────────────────────────────────── */
