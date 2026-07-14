@@ -263,12 +263,19 @@ function finishArrivalSplash(delay) {
 
 // ── Boot ───────────────────────────────────────────────────────────
 (async function boot() {
-  finishArrivalSplash();
+  var isOAuthReturn = /[?&](code|error|error_description)=/.test(window.location.search || '');
+  finishArrivalSplash(isOAuthReturn ? 250 : undefined);
   try {
     var redirectSession = await DB.finishOAuthRedirect();
     var session = redirectSession || (await DB.getSession()).data.session;
     if (session) { await afterLogin(session.user, session); }
-    else { showLogin(); }
+    else {
+      showLogin();
+      if (isOAuthReturn) {
+        var loginErr = document.getElementById('loginErr');
+        if (loginErr) { loginErr.textContent = 'Session Discord non recuperee. Recharge la page puis reessaie la connexion.'; loginErr.classList.add('show'); }
+      }
+    }
   } catch(e) {
     console.error('[auth] boot failed:', e);
     showLogin();
