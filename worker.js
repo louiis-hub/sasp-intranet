@@ -925,6 +925,43 @@ async function getFtfDossier(env, id) {
   return ftfRowToDossier(row);
 }
 
+const BACKUP_TABLES = [
+  "app_users",
+  "agents",
+  "grades",
+  "units",
+  "agent_historique",
+  "dossiers_disciplinaires",
+  "agent_armes",
+  "wiki_sections",
+  "mdt_categories",
+  "mdt_pages",
+  "pointages",
+  "ceremonie_votes",
+  "ftf_dossiers"
+];
+
+async function exportSiteBackup(env, siteKey = "sud") {
+  const tables = {};
+  const errors = {};
+  for (const table of BACKUP_TABLES) {
+    try {
+      const rows = await sbForSite(env, "GET", `/${table}?select=*`, null, siteKey);
+      tables[table] = Array.isArray(rows) ? rows : [];
+    } catch (e) {
+      tables[table] = [];
+      errors[table] = e.message;
+    }
+  }
+  return {
+    ok: true,
+    site: siteKey,
+    generated_at: new Date().toISOString(),
+    tables,
+    errors
+  };
+}
+
 async function upsertFtfDossier(env, dossier) {
   if (!dossier || !dossier.id) throw new Error("Dossier FTF invalide");
   const now = new Date().toISOString();
@@ -1139,6 +1176,17 @@ export default {
           "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS"
         }
       });
+    }
+
+    if (url.pathname === "/admin/backup-site" && request.method === "GET") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const siteKey = url.searchParams.get("site") === "nord" ? "nord" : "sud";
+      try {
+        return json(await exportSiteBackup(env, siteKey));
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
     }
 
     // Sync divisions intranet â†’ Discord
