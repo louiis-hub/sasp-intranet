@@ -12,31 +12,13 @@ var DB = {
     return getDb().auth.signInWithOAuth({
       provider: 'discord',
       options: {
-        scopes: 'identify email',
+        scopes: 'identify guilds.members.read',
         redirectTo: 'https://louiis-hub.github.io/sasp-intranet/'
       }
     });
   },
   async logout() { return getDb().auth.signOut(); },
   async getSession() { return getDb().auth.getSession(); },
-  async finishOAuthRedirect() {
-    var params = new URLSearchParams(window.location.search || '');
-    var error = params.get('error_description') || params.get('error');
-    if (error) throw new Error(error);
-    var code = params.get('code');
-    if (!code) return null;
-    var cleanUrl = window.location.origin + window.location.pathname;
-    for (var i = 0; i < 12; i++) {
-      var current = await getDb().auth.getSession();
-      if (current.data && current.data.session) {
-        window.history.replaceState({}, document.title, cleanUrl);
-        return current.data.session;
-      }
-      await new Promise(function(resolve) { setTimeout(resolve, 500); });
-    }
-    window.history.replaceState({}, document.title, cleanUrl);
-    return null;
-  },
   onAuthChange(cb) { return getDb().auth.onAuthStateChange(cb); },
 
   // ── App users (admin/academy roles) ──────────────────────────
