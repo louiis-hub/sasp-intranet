@@ -250,36 +250,9 @@ var PAGE_TITLES = {
   ftf:'FTF', 'ftf-dossier':'Dossier FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
 };
 
-var TEMP_DISABLE_DISCORD_LOGIN = true;
-
-async function startTemporaryLocalSession() {
-  S.user = {
-    id: 'temporary-local-admin',
-    email: 'temporaire@sasp.local',
-    user_metadata: {
-      full_name: 'Acces temporaire',
-      name: 'Acces temporaire',
-      user_name: 'temporaire'
-    }
-  };
-  S.appUser = null;
-  S.discordUserId = null;
-  S.discordRoles = [];
-  S.role = 'admin';
-  _grades = await DB.getGrades();
-  _units  = await DB.getUnits();
-  await loadWikiSections();
-  showApp();
-  await navigate('dashboard');
-}
-
 // ── Boot ───────────────────────────────────────────────────────────
 (async function boot() {
   var isOAuthReturn = /[?&](code|error|error_description)=/.test(window.location.search || '');
-  if (TEMP_DISABLE_DISCORD_LOGIN) {
-    await startTemporaryLocalSession();
-    return;
-  }
   try {
     var redirectSession = await DB.finishOAuthRedirect();
     var session = redirectSession || (await DB.getSession()).data.session;
@@ -305,10 +278,6 @@ async function startTemporaryLocalSession() {
 
 // ── Auth ───────────────────────────────────────────────────────────
 async function doDiscordLogin() {
-  if (TEMP_DISABLE_DISCORD_LOGIN) {
-    await startTemporaryLocalSession();
-    return;
-  }
   var btn = document.getElementById('loginBtn');
   var txt = document.getElementById('loginBtnTxt');
   var errEl = document.getElementById('loginErr');
@@ -414,10 +383,6 @@ async function loadWikiSections() {
 }
 
 async function doLogout() {
-  if (TEMP_DISABLE_DISCORD_LOGIN) {
-    window.location.href = window.location.origin + window.location.pathname;
-    return;
-  }
   await DB.logout();
   S.user = null; S.appUser = null; S.role = 'agent'; S.discordRoles = []; S.discordUserId = null;
   showLogin();
