@@ -121,10 +121,11 @@ var DB = {
     return getDb().from('service_logements').update(data).eq('id', id).select().single();
   },
   async getServiceLogementPaiements(logementId) {
-    var { data } = await getDb().from('service_logement_paiements')
+    var { data, error } = await getDb().from('service_logement_paiements')
       .select('*')
       .eq('logement_id', logementId)
       .order('date_paiement', { ascending: false });
+    if (error) throw error;
     return data || [];
   },
   async upsertServiceLogementPaiement(data) {

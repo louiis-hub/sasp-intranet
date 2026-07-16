@@ -3911,6 +3911,47 @@ function serviceLogementSetupSql() {
   ].join('\n');
 }
 
+function serviceLogementPaiementsSetupSql() {
+  return [
+    "create table if not exists public.service_logement_paiements (",
+    "  id uuid primary key default uuid_generate_v4(),",
+    "  logement_id uuid not null references public.service_logements(id) on delete cascade,",
+    "  date_paiement date not null,",
+    "  montant integer not null,",
+    "  paye boolean not null default true,",
+    "  note text,",
+    "  created_at timestamp default now(),",
+    "  updated_at timestamp default now(),",
+    "  unique(logement_id, date_paiement)",
+    ");",
+    "",
+    "alter table public.service_logement_paiements enable row level security;",
+    "",
+    "drop policy if exists service_logement_paiements_auth_all on public.service_logement_paiements;",
+    "create policy service_logement_paiements_auth_all on public.service_logement_paiements",
+    "  for all to authenticated",
+    "  using (true)",
+    "  with check (true);"
+  ].join('\n');
+}
+
+function isMissingServicePaymentsTableError(e) {
+  var msg = String((e && (e.message || e.details || e.hint)) || e || '');
+  return /service_logement_paiements|schema cache|Could not find the table/i.test(msg);
+}
+
+function openServicePaymentsSetup() {
+  openModal({
+    eyebrow: 'SUPABASE SUD',
+    title: 'Initialiser l’historique paiements',
+    size: 'lg',
+    body:
+      '<p class="text-muted" style="font-size:.86rem;margin-bottom:12px">La table des historiques de paiement n’existe pas encore. Exécute ce SQL dans Supabase Sud > SQL Editor, puis recharge la page.</p>' +
+      '<textarea class="form-control" rows="16" readonly onclick="this.select()" style="font-family:monospace;font-size:.78rem">' + esc(serviceLogementPaiementsSetupSql()) + '</textarea>',
+    footer: '<button class="btn btn-primary" onclick="closeModal()">OK</button>'
+  });
+}
+
 function serviceDateKey(date) {
   var d = new Date(date);
   if (isNaN(d.getTime())) return '';
@@ -3955,7 +3996,12 @@ function buildServicePaymentHistory(logement, savedPayments) {
   return rows;
 }
 
-function renderServicePaymentHistory(logement, savedPayments) {
+function renderServicePaymentHistory(logement, savedPayments, tableMissing) {
+  if (tableMissing) {
+    return '<div class="card" style="margin-top:14px;border-color:rgba(255,193,7,.45)"><div class="card-head"><div class="card-icon">$</div><div><div class="card-title">Historique paiements à initialiser</div><div class="card-sub">TABLE SUPABASE MANQUANTE</div></div></div>' +
+      '<p class="text-muted" style="font-size:.84rem;margin-bottom:12px">Le calcul automatique fonctionne, mais la confirmation payé / non payé nécessite la table historique.</p>' +
+      '<button class="btn btn-primary btn-sm" onclick="openServicePaymentsSetup()">Afficher le SQL</button></div>';
+  }
   if (logement.statut !== 'Occupé') {
     return '<div class="card" style="margin-top:14px"><div class="card-title">Historique paiements</div><p class="text-muted" style="font-size:.82rem;margin-top:8px">Aucun historique tant que le logement n’est pas occupé.</p></div>';
   }
@@ -4069,7 +4115,14 @@ async function openServiceLogementModal(id) {
   var l = _serviceLogements.find(function(x){ return x.id === id; });
   if (!l) return;
   var payments = [];
-  try { payments = await DB.getServiceLogementPaiements(id); } catch(e) { payments = []; }
+  var paymentsTableMissing = false;
+  try {
+    payments = await DB.getServiceLogementPaiements(id);
+  } catch(e) {
+    payments = [];
+    paymentsTableMissing = isMissingServicePaymentsTableError(e);
+    if (!paymentsTableMissing) toast(e.message || e, 'error');
+  }
   var agentOptions = '<option value="">- Aucun agent lié -</option>' +
     _serviceAgents.map(function(a) {
       var selected = l.agent_id === a.id ? ' selected' : '';
@@ -4089,7 +4142,7 @@ async function openServiceLogementModal(id) {
       '<div class="form-group"><label class="form-label">Agent lié</label><select class="form-control" id="lgAgent">' + agentOptions + '</select></div>' +
       fld('Occupant manuel', 'text', 'lgOccupant', l.occupant_nom || '', 'Si la personne n’est pas dans la base agents') +
       '<div class="form-group"><label class="form-label">Notes</label><textarea class="form-control" id="lgNotes" rows="4" placeholder="Remarques, état du logement, suivi paiement...">' + esc(l.notes || '') + '</textarea></div>' +
-      renderServicePaymentHistory(l, payments),
+      renderServicePaymentHistory(l, payments, paymentsTableMissing),
     footer:
       '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
       '<button class="btn btn-primary" onclick="saveServiceLogement(\'' + id + '\')">Sauvegarder</button>'
@@ -4110,7 +4163,12 @@ async function setServiceLogementPayment(logementId, datePaiement, paye) {
     toast(paye ? 'Paiement confirmé.' : 'Paiement marqué non payé.', paye ? 'success' : 'error');
     await openServiceLogementModal(logementId);
   } catch(e) {
-    toast(e.message || e, 'error');
+    if (isMissingServicePaymentsTableError(e)) {
+      openServicePaymentsSetup();
+      toast('Table historique paiements manquante.', 'error');
+    } else {
+      toast(e.message || e, 'error');
+    }
   }
 }
 
