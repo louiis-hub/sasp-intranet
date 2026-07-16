@@ -936,6 +936,7 @@ const BACKUP_TABLES = [
   "wiki_sections",
   "mdt_categories",
   "mdt_pages",
+  "service_logements",
   "pointages",
   "ceremonie_votes",
   "ftf_dossiers"

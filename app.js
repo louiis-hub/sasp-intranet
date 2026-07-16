@@ -237,6 +237,7 @@ var NAV = [
   { group: 'ADMINISTRATION', staffOnly: true },
   { id: 'archives',        icon: '🗃️', label: 'Archives',          staffOnly: true },
   { id: 'stats',           icon: '📈', label: 'Statistiques',       staffOnly: true },
+  { id: 'service-logements', icon: 'Lg', label: 'Logements service', adminOnly: true },
   { id: 'ceremonie',       icon: '🎖️', label: 'Prépa Cérémonie',    ceremonyOnly: true },
 ];
 
@@ -247,6 +248,7 @@ var PAGE_TITLES = {
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
   archives:'Archives', ceremonie:'Prépa Cérémonie', completude:'Complétude fiches', referents:'Référents',
   'global-settings':'Réglages globaux',
+  'service-logements':'Logements de service',
   ftf:'FTF', 'ftf-dossier':'Dossier FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
 };
 
@@ -403,6 +405,7 @@ function buildNav() {
   NAV.forEach(function(item) {
     if (item.ftfOnly && !canAccessFTF()) return;
     if (isFtfOnly && item.id && item.id !== 'ftf') return;
+    if (item.adminOnly && !isAdmin()) return;
     if (item.staffOnly && !isStaff) return;
     if (item.ceremonyOnly && !isCeremony) return;
     if (isVisiteur && item.id && !item.ftfOnly && VISITEUR_NAV.indexOf(item.id) === -1) return;
@@ -465,6 +468,10 @@ async function navigate(page, pd) {
     setContent('<div class="empty-state"><div class="empty-icon">FTF</div><div class="empty-title">AccÃ¨s FTF restreint</div><div class="empty-sub">Cette page est rÃ©servÃ©e aux utilisateurs avec le rÃ´le Discord FTF.</div></div>');
     return;
   }
+  if (page === 'service-logements' && !isAdmin()) {
+    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès réservé aux administrateurs</div><div class="empty-sub">La gestion des logements de service est réservée au Command Staff.</div></div>');
+    return;
+  }
   if (page === 'ftf') {
     setContent(renderFtfAccessGate());
     await wait(2400);
@@ -515,6 +522,7 @@ async function navigate(page, pd) {
       completude:     renderCompletude,
       referents:      renderReferents,
       'global-settings': renderGlobalSettings,
+      'service-logements': renderServiceLogements,
       ftf:            renderFTF,
       'ftf-dossier':  renderFtfDossierPage,
       stats:          renderStats,
@@ -3842,6 +3850,201 @@ async function openMdtPageFromSearch(catId, pageId) {
   _mdtSelPage = pageId;
   await navigate('mdt');
   await openMdtPage(pageId);
+}
+
+// ══ LOGEMENTS DE SERVICE ═════════════════════════════════════════
+var _serviceLogements = [];
+var _serviceAgents = [];
+
+function serviceHousingMoney(value) {
+  return (parseInt(value, 10) || 0).toLocaleString('fr-FR') + ' $';
+}
+
+function serviceLogementStatusBadge(statut) {
+  var cls = statut === 'Occupé' ? 'badge-green' : (statut === 'Maintenance' ? 'badge-orange' : 'badge-blue');
+  return '<span class="badge ' + cls + '">' + esc(statut || 'Libre') + '</span>';
+}
+
+function serviceLogementSetupSql() {
+  return [
+    "create table if not exists public.service_logements (",
+    "  id uuid primary key default uuid_generate_v4(),",
+    "  numero integer not null unique,",
+    "  gamme text not null check (gamme in ('Haut de gamme','Bas de gamme')),",
+    "  loyer integer not null,",
+    "  statut text not null default 'Libre' check (statut in ('Libre','Occupé','Maintenance')),",
+    "  agent_id uuid references public.agents(id) on delete set null,",
+    "  occupant_nom text,",
+    "  date_attribution date,",
+    "  notes text,",
+    "  created_at timestamp default now(),",
+    "  updated_at timestamp default now()",
+    ");",
+    "",
+    "alter table public.service_logements enable row level security;",
+    "drop policy if exists service_logements_auth_all on public.service_logements;",
+    "create policy service_logements_auth_all on public.service_logements for all to authenticated using (true) with check (true);",
+    "",
+    "insert into public.service_logements (numero, gamme, loyer)",
+    "select n, 'Haut de gamme', 3500 from generate_series(1, 10) n",
+    "on conflict (numero) do nothing;",
+    "",
+    "insert into public.service_logements (numero, gamme, loyer)",
+    "select n, 'Bas de gamme', 2500 from generate_series(11, 20) n",
+    "on conflict (numero) do nothing;"
+  ].join('\n');
+}
+
+async function renderServiceLogements() {
+  if (!isAdmin()) { toast('Accès réservé aux administrateurs.', 'error'); return; }
+  _serviceAgents = visibleRosterAgents(await DB.getAgents()).filter(function(a){ return a.statut !== 'Archivé'; });
+  _serviceLogements = await DB.getServiceLogements();
+
+  if (!_serviceLogements.length) {
+    setContent(
+      '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Logements de service</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">Table Supabase Sud non initialisée ou vide.</p></div></div>' +
+      '<div class="card"><div class="card-head"><div class="card-icon">Lg</div><div><div class="card-title">Initialisation requise</div><div class="card-sub">SUPABASE SUD</div></div></div>' +
+      '<p class="text-muted" style="font-size:.86rem;margin-bottom:12px">Exécute le SQL ci-dessous dans Supabase Sud > SQL Editor, puis recharge cette page.</p>' +
+      '<textarea class="form-control" rows="18" readonly onclick="this.select()" style="font-family:monospace;font-size:.78rem">' + esc(serviceLogementSetupSql()) + '</textarea></div>'
+    );
+    return;
+  }
+
+  var occupied = _serviceLogements.filter(function(l){ return l.statut === 'Occupé'; });
+  var free = _serviceLogements.filter(function(l){ return l.statut === 'Libre'; });
+  var maint = _serviceLogements.filter(function(l){ return l.statut === 'Maintenance'; });
+  var monthly = occupied.reduce(function(sum, l){ return sum + (parseInt(l.loyer, 10) || 0); }, 0);
+  var high = _serviceLogements.filter(function(l){ return l.gamme === 'Haut de gamme'; });
+  var low = _serviceLogements.filter(function(l){ return l.gamme === 'Bas de gamme'; });
+
+  function stat(icon, title, value, sub) {
+    return '<div class="stat-card"><div><div class="stat-num">' + value + '</div><div class="stat-label">' + title + '</div>' + (sub ? '<div class="text-muted" style="font-size:.76rem;margin-top:4px">' + sub + '</div>' : '') + '</div><div class="stat-ico">' + icon + '</div></div>';
+  }
+
+  function logementTable(list, title, sub) {
+    return '<div class="card" style="padding:0;overflow:hidden">' +
+      '<div class="card-head" style="padding:16px 18px;margin:0"><div class="card-icon">Lg</div><div style="flex:1"><div class="card-title">' + title + '</div><div class="card-sub">' + sub + '</div></div></div>' +
+      '<div class="table-wrap"><table><thead><tr><th>#</th><th>STATUT</th><th>OCCUPANT</th><th>LOYER</th><th>ATTRIBUTION</th><th>NOTES</th><th>ACTIONS</th></tr></thead><tbody>' +
+      list.map(function(l) {
+        var agent = l.agent ? ((l.agent.prenom || '') + ' ' + (l.agent.nom || '')).trim() + ' (' + (l.agent.matricule || '-') + ')' : (l.occupant_nom || '-');
+        return '<tr>' +
+          '<td><span class="mono text-gold">L-' + String(l.numero).padStart(2, '0') + '</span></td>' +
+          '<td>' + serviceLogementStatusBadge(l.statut) + '</td>' +
+          '<td style="font-weight:600;color:var(--t0)">' + esc(agent) + '</td>' +
+          '<td><strong>' + serviceHousingMoney(l.loyer) + '</strong><div class="text-muted" style="font-size:.72rem">prélevé lundi</div></td>' +
+          '<td>' + esc(l.date_attribution || '-') + '</td>' +
+          '<td class="text-muted" style="max-width:260px">' + esc(l.notes || '-') + '</td>' +
+          '<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="openServiceLogementModal(\'' + l.id + '\')">Gérer</button> ' +
+            (l.statut === 'Occupé' ? '<button class="btn btn-danger btn-sm" onclick="releaseServiceLogement(\'' + l.id + '\')">Libérer</button>' : '') +
+          '</td></tr>';
+      }).join('') +
+      '</tbody></table></div></div>';
+  }
+
+  setContent(
+    '<div class="flex-between mb-20 flex-wrap gap-8"><div><h1 style="font-size:1.4rem">Logements de service</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">Gestion admin des 20 logements SASP Sud. Paiements prélevés chaque lundi.</p></div>' +
+      '<button class="btn btn-primary btn-sm" onclick="openServiceHousingHelp()">Règles</button></div>' +
+    '<div class="stats-grid" style="margin-bottom:18px">' +
+      stat('Lg', 'Occupés', occupied.length + '/20', free.length + ' libres') +
+      stat('$', 'Loyer mensuel', serviceHousingMoney(monthly), 'prélevé le lundi') +
+      stat('HDG', 'Haut de gamme', high.filter(function(l){ return l.statut === 'Occupé'; }).length + '/10', '3500 $') +
+      stat('BDG', 'Bas de gamme', low.filter(function(l){ return l.statut === 'Occupé'; }).length + '/10', '2500 $') +
+      stat('M', 'Maintenance', maint.length, 'à suivre') +
+    '</div>' +
+    '<div class="page-grid2">' +
+      logementTable(high, 'Haut de gamme', '10 logements - 3500 $ / mois') +
+      logementTable(low, 'Bas de gamme', '10 logements - 2500 $ / mois') +
+    '</div>'
+  );
+}
+
+function openServiceHousingHelp() {
+  openModal({
+    eyebrow: 'LOGEMENTS DE SERVICE',
+    title: 'Règles de gestion',
+    size: 'sm',
+    body:
+      '<div style="font-size:.88rem;color:var(--t1);line-height:1.65">' +
+      '<p><strong>20 logements disponibles :</strong></p>' +
+      '<p>- 10 logements haut de gamme à <strong>3500 $</strong>.</p>' +
+      '<p>- 10 logements bas de gamme à <strong>2500 $</strong>.</p>' +
+      '<p><strong>Prélèvement :</strong> tous les lundis.</p>' +
+      '<p>Statuts possibles : Libre, Occupé, Maintenance.</p>' +
+      '<p>La page est accessible uniquement aux administrateurs.</p>' +
+      '</div>',
+    footer: '<button class="btn btn-primary" onclick="closeModal()">OK</button>'
+  });
+}
+
+function openServiceLogementModal(id) {
+  var l = _serviceLogements.find(function(x){ return x.id === id; });
+  if (!l) return;
+  var agentOptions = '<option value="">- Aucun agent lié -</option>' +
+    _serviceAgents.map(function(a) {
+      var selected = l.agent_id === a.id ? ' selected' : '';
+      return '<option value="' + a.id + '"' + selected + '>' + esc(a.matricule + ' - ' + a.prenom + ' ' + a.nom + ' - ' + a.grade) + '</option>';
+    }).join('');
+  openModal({
+    eyebrow: 'LOGEMENT L-' + String(l.numero).padStart(2, '0'),
+    title: l.gamme + ' - ' + serviceHousingMoney(l.loyer),
+    size: 'md',
+    body:
+      '<div class="form-grid2">' +
+        '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="lgStatut">' +
+          ['Libre','Occupé','Maintenance'].map(function(s){ return '<option value="' + s + '"' + (l.statut === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+        '</select></div>' +
+        fld('Date attribution', 'date', 'lgDate', l.date_attribution || '', '') +
+      '</div>' +
+      '<div class="form-group"><label class="form-label">Agent lié</label><select class="form-control" id="lgAgent">' + agentOptions + '</select></div>' +
+      fld('Occupant manuel', 'text', 'lgOccupant', l.occupant_nom || '', 'Si la personne n’est pas dans la base agents') +
+      '<div class="form-group"><label class="form-label">Notes</label><textarea class="form-control" id="lgNotes" rows="4" placeholder="Remarques, état du logement, suivi paiement...">' + esc(l.notes || '') + '</textarea></div>',
+    footer:
+      '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
+      '<button class="btn btn-primary" onclick="saveServiceLogement(\'' + id + '\')">Sauvegarder</button>'
+  });
+}
+
+async function saveServiceLogement(id) {
+  var statut = document.getElementById('lgStatut').value;
+  var agentId = document.getElementById('lgAgent').value || null;
+  var occupant = (document.getElementById('lgOccupant').value || '').trim();
+  var data = {
+    statut: statut,
+    agent_id: statut === 'Occupé' ? agentId : null,
+    occupant_nom: statut === 'Occupé' ? (occupant || null) : null,
+    date_attribution: statut === 'Occupé' ? (document.getElementById('lgDate').value || new Date().toISOString().slice(0, 10)) : null,
+    notes: (document.getElementById('lgNotes').value || '').trim() || null
+  };
+  if (statut === 'Occupé' && !agentId && !occupant) {
+    toast('Choisis un agent ou indique un occupant manuel.', 'error');
+    return;
+  }
+  try {
+    var r = await DB.updateServiceLogement(id, data);
+    if (r.error) throw r.error;
+    closeModal();
+    toast('Logement mis à jour.', 'success');
+    await renderServiceLogements();
+  } catch(e) {
+    toast(e.message || e, 'error');
+  }
+}
+
+async function releaseServiceLogement(id) {
+  if (!confirm('Libérer ce logement ?')) return;
+  try {
+    var r = await DB.updateServiceLogement(id, {
+      statut: 'Libre',
+      agent_id: null,
+      occupant_nom: null,
+      date_attribution: null
+    });
+    if (r.error) throw r.error;
+    toast('Logement libéré.', 'info');
+    await renderServiceLogements();
+  } catch(e) {
+    toast(e.message || e, 'error');
+  }
 }
 
 // ══ GLOBAL SETTINGS ═══════════════════════════════════════════════

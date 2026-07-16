@@ -109,6 +109,18 @@ var DB = {
   async updateUnit(id, data) { return getDb().from('units').update(data).eq('id', id); },
   async deleteUnit(id) { return getDb().from('units').delete().eq('id', id); },
 
+  // Logements de service
+  async getServiceLogements() {
+    var { data } = await getDb().from('service_logements')
+      .select('*, agent:agent_id(id, nom, prenom, matricule, grade, telephone)')
+      .order('numero');
+    return data || [];
+  },
+  async updateServiceLogement(id, data) {
+    data.updated_at = new Date().toISOString();
+    return getDb().from('service_logements').update(data).eq('id', id).select().single();
+  },
+
   // ── Agent history ────────────────────────────────────────────
   async getHistory(agentId) {
     var { data } = await getDb().from('agent_historique')
