@@ -3885,6 +3885,22 @@ function serviceLogementSetupSql() {
     "drop policy if exists service_logements_auth_all on public.service_logements;",
     "create policy service_logements_auth_all on public.service_logements for all to authenticated using (true) with check (true);",
     "",
+    "create table if not exists public.service_logement_paiements (",
+    "  id uuid primary key default uuid_generate_v4(),",
+    "  logement_id uuid not null references public.service_logements(id) on delete cascade,",
+    "  date_paiement date not null,",
+    "  montant integer not null,",
+    "  paye boolean not null default true,",
+    "  note text,",
+    "  created_at timestamp default now(),",
+    "  updated_at timestamp default now(),",
+    "  unique(logement_id, date_paiement)",
+    ");",
+    "",
+    "alter table public.service_logement_paiements enable row level security;",
+    "drop policy if exists service_logement_paiements_auth_all on public.service_logement_paiements;",
+    "create policy service_logement_paiements_auth_all on public.service_logement_paiements for all to authenticated using (true) with check (true);",
+    "",
     "insert into public.service_logements (numero, gamme, loyer)",
     "select n, 'Haut de gamme', 3500 from generate_series(1, 10) n",
     "on conflict (numero) do nothing;",
@@ -3893,6 +3909,79 @@ function serviceLogementSetupSql() {
     "select n, 'Bas de gamme', 2500 from generate_series(11, 20) n",
     "on conflict (numero) do nothing;"
   ].join('\n');
+}
+
+function serviceDateKey(date) {
+  var d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return d.toISOString().slice(0, 10);
+}
+
+function serviceNextMondayOnOrAfter(dateStr) {
+  var d = new Date(dateStr + 'T12:00:00');
+  if (isNaN(d.getTime())) return null;
+  var day = d.getDay();
+  var add = (8 - day) % 7;
+  d.setDate(d.getDate() + add);
+  return d;
+}
+
+function buildServicePaymentHistory(logement, savedPayments) {
+  var overrides = {};
+  (savedPayments || []).forEach(function(p) { overrides[p.date_paiement] = p; });
+  var rows = [];
+  if (logement.statut === 'Occupé' && logement.date_attribution) {
+    var d = serviceNextMondayOnOrAfter(logement.date_attribution);
+    var today = new Date();
+    today.setHours(23, 59, 59, 999);
+    while (d && d <= today) {
+      var key = serviceDateKey(d);
+      var saved = overrides[key];
+      rows.push({
+        date_paiement: key,
+        montant: saved ? saved.montant : logement.loyer,
+        paye: saved ? !!saved.paye : true,
+        auto: !saved
+      });
+      delete overrides[key];
+      d.setDate(d.getDate() + 7);
+    }
+  }
+  Object.keys(overrides).forEach(function(key) {
+    var p = overrides[key];
+    rows.push({ date_paiement: key, montant: p.montant, paye: !!p.paye, auto: false });
+  });
+  rows.sort(function(a, b) { return b.date_paiement.localeCompare(a.date_paiement); });
+  return rows;
+}
+
+function renderServicePaymentHistory(logement, savedPayments) {
+  if (logement.statut !== 'Occupé') {
+    return '<div class="card" style="margin-top:14px"><div class="card-title">Historique paiements</div><p class="text-muted" style="font-size:.82rem;margin-top:8px">Aucun historique tant que le logement n’est pas occupé.</p></div>';
+  }
+  if (!logement.date_attribution) {
+    return '<div class="card" style="margin-top:14px"><div class="card-title">Historique paiements</div><p class="text-muted" style="font-size:.82rem;margin-top:8px">Ajoute une date d’attribution pour générer les lundis de paiement.</p></div>';
+  }
+  var rows = buildServicePaymentHistory(logement, savedPayments);
+  var paid = rows.filter(function(r) { return r.paye; }).reduce(function(sum, r) { return sum + (parseInt(r.montant, 10) || 0); }, 0);
+  var unpaid = rows.filter(function(r) { return !r.paye; }).reduce(function(sum, r) { return sum + (parseInt(r.montant, 10) || 0); }, 0);
+  return '<div class="card" style="margin-top:14px;padding:0;overflow:hidden">' +
+    '<div class="card-head" style="padding:14px 16px;margin:0"><div class="card-icon">$</div><div><div class="card-title">Historique paiements</div><div class="card-sub">Prélevé automatiquement chaque lundi, modifiable en cas d’impayé</div></div></div>' +
+    '<div class="stats-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));padding:0 16px 14px">' +
+      '<div class="stat-card"><div><div class="stat-num">' + serviceHousingMoney(paid) + '</div><div class="stat-label">TOTAL PAYÉ</div></div></div>' +
+      '<div class="stat-card"><div><div class="stat-num">' + serviceHousingMoney(unpaid) + '</div><div class="stat-label">IMPAYÉ</div></div></div>' +
+      '<div class="stat-card"><div><div class="stat-num">' + rows.length + '</div><div class="stat-label">LUNDIS</div></div></div>' +
+    '</div>' +
+    '<div class="table-wrap"><table><thead><tr><th>DATE</th><th>MONTANT</th><th>CONFIRMATION</th><th>ACTION</th></tr></thead><tbody>' +
+      (rows.length ? rows.map(function(r) {
+        return '<tr>' +
+          '<td><strong>' + esc(r.date_paiement) + '</strong>' + (r.auto ? '<div class="text-muted" style="font-size:.72rem">auto</div>' : '') + '</td>' +
+          '<td>' + serviceHousingMoney(r.montant) + '</td>' +
+          '<td>' + (r.paye ? '<span class="badge badge-green">Payé</span>' : '<span class="badge badge-red">Non payé</span>') + '</td>' +
+          '<td><button class="btn btn-sm ' + (r.paye ? 'btn-danger' : 'btn-primary') + '" onclick="setServiceLogementPayment(\'' + logement.id + '\',\'' + r.date_paiement + '\',' + (!r.paye) + ')">' + (r.paye ? 'Mettre non payé' : 'Confirmer payé') + '</button></td>' +
+        '</tr>';
+      }).join('') : '<tr><td colspan="4" class="text-muted">Aucun lundi dû pour le moment.</td></tr>') +
+    '</tbody></table></div></div>';
 }
 
 async function renderServiceLogements() {
@@ -3976,9 +4065,11 @@ function openServiceHousingHelp() {
   });
 }
 
-function openServiceLogementModal(id) {
+async function openServiceLogementModal(id) {
   var l = _serviceLogements.find(function(x){ return x.id === id; });
   if (!l) return;
+  var payments = [];
+  try { payments = await DB.getServiceLogementPaiements(id); } catch(e) { payments = []; }
   var agentOptions = '<option value="">- Aucun agent lié -</option>' +
     _serviceAgents.map(function(a) {
       var selected = l.agent_id === a.id ? ' selected' : '';
@@ -3997,11 +4088,30 @@ function openServiceLogementModal(id) {
       '</div>' +
       '<div class="form-group"><label class="form-label">Agent lié</label><select class="form-control" id="lgAgent">' + agentOptions + '</select></div>' +
       fld('Occupant manuel', 'text', 'lgOccupant', l.occupant_nom || '', 'Si la personne n’est pas dans la base agents') +
-      '<div class="form-group"><label class="form-label">Notes</label><textarea class="form-control" id="lgNotes" rows="4" placeholder="Remarques, état du logement, suivi paiement...">' + esc(l.notes || '') + '</textarea></div>',
+      '<div class="form-group"><label class="form-label">Notes</label><textarea class="form-control" id="lgNotes" rows="4" placeholder="Remarques, état du logement, suivi paiement...">' + esc(l.notes || '') + '</textarea></div>' +
+      renderServicePaymentHistory(l, payments),
     footer:
       '<button class="btn btn-ghost" onclick="closeModal()">Annuler</button>' +
       '<button class="btn btn-primary" onclick="saveServiceLogement(\'' + id + '\')">Sauvegarder</button>'
   });
+}
+
+async function setServiceLogementPayment(logementId, datePaiement, paye) {
+  var logement = _serviceLogements.find(function(x){ return x.id === logementId; });
+  if (!logement) return;
+  try {
+    var r = await DB.upsertServiceLogementPaiement({
+      logement_id: logementId,
+      date_paiement: datePaiement,
+      montant: parseInt(logement.loyer, 10) || 0,
+      paye: !!paye
+    });
+    if (r.error) throw r.error;
+    toast(paye ? 'Paiement confirmé.' : 'Paiement marqué non payé.', paye ? 'success' : 'error');
+    await openServiceLogementModal(logementId);
+  } catch(e) {
+    toast(e.message || e, 'error');
+  }
 }
 
 async function saveServiceLogement(id) {

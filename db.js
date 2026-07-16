@@ -120,6 +120,20 @@ var DB = {
     data.updated_at = new Date().toISOString();
     return getDb().from('service_logements').update(data).eq('id', id).select().single();
   },
+  async getServiceLogementPaiements(logementId) {
+    var { data } = await getDb().from('service_logement_paiements')
+      .select('*')
+      .eq('logement_id', logementId)
+      .order('date_paiement', { ascending: false });
+    return data || [];
+  },
+  async upsertServiceLogementPaiement(data) {
+    data.updated_at = new Date().toISOString();
+    return getDb().from('service_logement_paiements')
+      .upsert(data, { onConflict: 'logement_id,date_paiement' })
+      .select()
+      .single();
+  },
 
   // ── Agent history ────────────────────────────────────────────
   async getHistory(agentId) {

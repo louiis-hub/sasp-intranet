@@ -937,6 +937,7 @@ const BACKUP_TABLES = [
   "mdt_categories",
   "mdt_pages",
   "service_logements",
+  "service_logement_paiements",
   "pointages",
   "ceremonie_votes",
   "ftf_dossiers"
