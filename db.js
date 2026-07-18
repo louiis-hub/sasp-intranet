@@ -226,10 +226,18 @@ var DB = {
     return data || [];
   },
   async clockIn(agentId) {
+    var existing = await getDb().from('pointages').select('id').eq('agent_id', agentId).is('clock_out', null).limit(1);
+    if (existing.data && existing.data.length) return { data: existing.data[0], alreadyActive: true };
     return getDb().from('pointages').insert({ agent_id: agentId, clock_in: new Date().toISOString() }).select().single();
   },
   async clockOut(id) {
     return getDb().from('pointages').update({ clock_out: new Date().toISOString() }).eq('id', id);
+  },
+  async clockOutActiveForAgent(agentId) {
+    return getDb().from('pointages')
+      .update({ clock_out: new Date().toISOString() })
+      .eq('agent_id', agentId)
+      .is('clock_out', null);
   },
   async getAllPointages() {
     var { data } = await getDb().from('pointages')

@@ -67,6 +67,14 @@ function syncDiscordRoles(discordId, addCodes, removeCodes) {
   }).catch(function(e) { console.warn('Discord role sync error:', e); });
 }
 
+function refreshPointeuseDiscordMessage() {
+  fetch(WORKER_BASE + '/refresh-pointeuse', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+    body: JSON.stringify({ site: 'sud' })
+  }).catch(function(e) { console.warn('refresh pointeuse error:', e); });
+}
+
 var _discordRosterCache = { key: '', ts: 0, map: {} };
 async function getDiscordRosterMap(agents) {
   var ids = (agents || []).map(function(a){ return a.discord_id; }).filter(Boolean).sort();
@@ -4656,6 +4664,7 @@ async function confirmResetRecap() {
   var { error } = await DB.deletePointagesSince(monday.toISOString());
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
   toast('Récap réinitialisé', 'success');
+  refreshPointeuseDiscordMessage();
   await renderPointeuse();
 }
 
@@ -4691,26 +4700,30 @@ async function confirmDeleteAgentRecap(agentId) {
 }
 
 async function doClockIn(agentId, agentName, matricule) {
-  var { error } = await DB.clockIn(agentId);
+  var res = await DB.clockIn(agentId);
+  var error = res.error;
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
+  if (res.alreadyActive) { toast('Tu es déjà en service.', 'info'); await renderPointeuse(); return; }
   toast('Entrée enregistrée', 'success');
   sendLog('🟢 Prise de service', 0x27ae60, [
     { name: 'Agent', value: (agentName || '—') + (matricule ? ' · ' + matricule : ''), inline: true },
     { name: 'Par', value: _whoAmI(), inline: true }
   ]);
+  refreshPointeuseDiscordMessage();
   await renderPointeuse();
 }
 
 async function doClockOut(agentId, agentName, matricule) {
   var p = _pointageActifs[agentId];
   if (!p) return;
-  var { error } = await DB.clockOut(p.id);
+  var { error } = await DB.clockOutActiveForAgent(agentId);
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
   toast('Sortie enregistrée', 'success');
   sendLog('🔴 Fin de service', 0x7f8c8d, [
     { name: 'Agent', value: (agentName || '—') + (matricule ? ' · ' + matricule : ''), inline: true },
     { name: 'Par', value: _whoAmI(), inline: true }
   ]);
+  refreshPointeuseDiscordMessage();
   await renderPointeuse();
 }
 

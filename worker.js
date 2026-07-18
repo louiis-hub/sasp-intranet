@@ -1043,8 +1043,17 @@ async function getAgentByMatricule(env, matricule, siteKey = "sud") {
 }
 
 async function getActivePointage(env, agentId, siteKey = "sud") {
-  const data = await sbForSite(env, "GET", `/pointages?agent_id=eq.${agentId}&clock_out=is.null&limit=1`, null, siteKey);
+  const data = await sbForSite(env, "GET", `/pointages?agent_id=eq.${agentId}&clock_out=is.null&order=clock_in.desc&limit=1`, null, siteKey);
   return data && data.length > 0 ? data[0] : null;
+}
+
+async function closeActivePointagesForAgent(env, agentId, siteKey = "sud") {
+  const now = new Date().toISOString();
+  const data = await sbForSite(env, "GET", `/pointages?agent_id=eq.${agentId}&clock_out=is.null&select=id`, null, siteKey);
+  const active = Array.isArray(data) ? data : [];
+  if (!active.length) return { count: 0, clock_out: now };
+  await sbForSite(env, "PATCH", `/pointages?agent_id=eq.${agentId}&clock_out=is.null`, { clock_out: now }, siteKey);
+  return { count: active.length, clock_out: now };
 }
 
 async function getAllActivePointages(env, siteKey = "sud") {
@@ -1052,10 +1061,25 @@ async function getAllActivePointages(env, siteKey = "sud") {
   return data || [];
 }
 
+function uniqueActivePointages(active) {
+  const byAgent = new Map();
+  for (const p of active || []) {
+    const key = p.agent_id || p.id;
+    if (!byAgent.has(key)) {
+      byAgent.set(key, p);
+      continue;
+    }
+    const current = byAgent.get(key);
+    if (String(p.clock_in || "") < String(current.clock_in || "")) byAgent.set(key, p);
+  }
+  return Array.from(byAgent.values());
+}
+
 // â”€â”€ Message pointeuse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function buildPointeuseMessage(active) {
-  const count = active.length;
-  const list = active.map(p => {
+  const unique = uniqueActivePointages(active);
+  const count = unique.length;
+  const list = unique.map(p => {
     const a = p.agents || {};
     return `\u2022 ${(a.prenom + " " + a.nom).trim()} (${a.matricule || "\u2014"})`;
   }).join("\n");
@@ -1096,14 +1120,29 @@ async function editMessage(env, channelId, messageId, payload) {
 // â”€â”€ Auto clock-out agents en service depuis +6h â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function autoClockout6h(env) {
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-  const data = await sb(env, "GET", `/pointages?clock_out=is.null&clock_in=lt.${encodeURIComponent(sixHoursAgo)}&select=id,agent_id,clock_in,agents(nom,prenom,matricule)&order=clock_in.asc`);
-  const expired = data || [];
-  if (!expired.length) return 0;
-  const now = new Date().toISOString();
-  for (const p of expired) {
-    await sb(env, "PATCH", `/pointages?id=eq.${p.id}`, { clock_out: now });
+  const data = await sb(env, "GET", `/pointages?clock_out=is.null&select=id,agent_id,clock_in,agents(nom,prenom,matricule)&order=clock_in.asc`);
+  const active = data || [];
+  const recentAgentIds = new Set(active.filter(p => String(p.clock_in || "") >= sixHoursAgo).map(p => p.agent_id));
+  const expired = active.filter(p => String(p.clock_in || "") < sixHoursAgo);
+  const staleDuplicates = expired.filter(p => recentAgentIds.has(p.agent_id));
+  const realExpired = uniqueActivePointages(expired.filter(p => !recentAgentIds.has(p.agent_id)));
+  for (const p of staleDuplicates) {
+    await sb(env, "PATCH", `/pointages?id=eq.${p.id}`, { clock_out: new Date().toISOString() });
   }
-  const lines = expired.map(p => {
+  if (!realExpired.length) {
+    if (staleDuplicates.length) {
+      const remaining = await getAllActivePointages(env);
+      const chId = env.POINTEUSE_CHANNEL_ID;
+      const msgId = env.POINTEUSE_MESSAGE_ID;
+      if (chId && msgId) await editMessage(env, chId, msgId, buildPointeuseMessage(remaining));
+    }
+    return 0;
+  }
+  const now = new Date().toISOString();
+  for (const p of realExpired) {
+    await closeActivePointagesForAgent(env, p.agent_id, "sud");
+  }
+  const lines = realExpired.map(p => {
     const a = p.agents || {};
     return `\u2022 **${(a.prenom + ' ' + a.nom).trim()}** (${a.matricule || '\u2014'}) a oubli\u00e9 de terminer son service et a bien \u00e9t\u00e9 d\u00e9connect\u00e9 automatiquement.`;
   }).join('\n');
@@ -1127,18 +1166,19 @@ async function autoClockout6h(env) {
     const remaining = await getAllActivePointages(env);
     await editMessage(env, chId, msgId, buildPointeuseMessage(remaining));
   }
-  return expired.length;
+  return realExpired.length;
 }
 
 // â”€â”€ Auto clock-out tous les agents actifs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function autoClockoutAll(env) {
   const active = await getAllActivePointages(env);
   if (!active.length) return 0;
+  const activeUnique = uniqueActivePointages(active);
   const now = new Date().toISOString();
   for (const p of active) {
     await sb(env, "PATCH", `/pointages?id=eq.${p.id}`, { clock_out: now });
   }
-  const names = active.map(p => {
+  const names = activeUnique.map(p => {
     const a = p.agents || {};
     return `\u2022 ${(a.prenom + ' ' + a.nom).trim()} (${a.matricule || '\u2014'})`;
   }).join('\n');
@@ -1148,7 +1188,7 @@ async function autoClockoutAll(env) {
     body: JSON.stringify({
       embeds: [{
         title: '\ud83d\udd57 Fin de service automatique \u2014 Dimanche 20h',
-        description: `**${active.length} agent${active.length > 1 ? 's' : ''} d\u00e9connect\u00e9${active.length > 1 ? 's' : ''} automatiquement :**\n${names}`,
+        description: `**${activeUnique.length} agent${activeUnique.length > 1 ? 's' : ''} d\u00e9connect\u00e9${activeUnique.length > 1 ? 's' : ''} automatiquement :**\n${names}`,
         color: 0xe74c3c,
         footer: { text: 'CENTRALE PA \u00b7 Auto clock-out hebdomadaire' },
         timestamp: now
@@ -1161,7 +1201,7 @@ async function autoClockoutAll(env) {
   if (chId && msgId) {
     await editMessage(env, chId, msgId, buildPointeuseMessage([]));
   }
-  return active.length;
+  return activeUnique.length;
 }
 
 // â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -3652,13 +3692,11 @@ export default {
           const channelId = parts[1];
           const messageId = parts[2];
           const agentId = interaction.data.values[0];
+          const siteKey = siteKeyFromGuildId(interaction.guild_id);
 
-          const active = await getActivePointage(env, agentId);
-          if (active) {
-            await sb(env, "PATCH", `/pointages?id=eq.${active.id}`, { clock_out: new Date().toISOString() });
-          }
+          await closeActivePointagesForAgent(env, agentId, siteKey);
 
-          const allActive = await getAllActivePointages(env);
+          const allActive = await getAllActivePointages(env, siteKey);
           await editMessage(env, channelId, messageId, buildPointeuseMessage(allActive));
 
           return json({ type: 7, data: { content: "âœ… Agent retirÃ© du service.", components: [], flags: 64 } });
@@ -3669,7 +3707,7 @@ export default {
           if (!hasStaffRole(member)) {
             return json({ type: 4, data: { content: "âŒ Tu n'as pas les permissions pour cette action.", flags: 64 } });
           }
-          const active = await getAllActivePointages(env);
+          const active = uniqueActivePointages(await getAllActivePointages(env, siteKeyFromGuildId(interaction.guild_id)));
           if (!active.length) {
             return json({ type: 4, data: { content: "Aucun agent en service actuellement.", flags: 64 } });
           }
@@ -3728,7 +3766,7 @@ export default {
           if (!active) {
             return json({ type: 4, data: { content: `âš ï¸ Tu n'es pas en service, ${agent.prenom} !`, flags: 64 } });
           }
-          await sbForSite(env, "PATCH", `/pointages?id=eq.${active.id}`, { clock_out: new Date().toISOString() }, pointeuseSiteKey);
+          await closeActivePointagesForAgent(env, agent.id, pointeuseSiteKey);
         }
 
         const allActive = await getAllActivePointages(env, pointeuseSiteKey);
@@ -3745,12 +3783,24 @@ export default {
     if (url.pathname === "/clockout-agent" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
-      const { agent_id } = await request.json();
+      const { agent_id, site } = await request.json();
       if (!agent_id) return json({ error: "Missing agent_id" }, 400);
-      const active = await getActivePointage(env, agent_id);
-      if (!active) return json({ ok: false, message: "Agent non en service" });
-      await sb(env, "PATCH", `/pointages?id=eq.${active.id}`, { clock_out: new Date().toISOString() });
-      return json({ ok: true });
+      const siteKey = site === "nord" ? "nord" : "sud";
+      const closed = await closeActivePointagesForAgent(env, agent_id, siteKey);
+      return json({ ok: closed.count > 0, count: closed.count, message: closed.count ? "Agent retiré du service" : "Agent non en service" });
+    }
+
+    if (url.pathname === "/refresh-pointeuse" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const body = await request.json().catch(() => ({}));
+      const siteKey = body.site === "nord" ? "nord" : "sud";
+      const chId = body.channel_id || env.POINTEUSE_CHANNEL_ID;
+      const msgId = body.message_id || env.POINTEUSE_MESSAGE_ID;
+      if (!chId || !msgId) return json({ ok: false, error: "Missing pointeuse message config" }, 400);
+      const active = await getAllActivePointages(env, siteKey);
+      await editMessage(env, chId, msgId, buildPointeuseMessage(active));
+      return json({ ok: true, count: uniqueActivePointages(active).length });
     }
 
     // â”€â”€ Reset manuel tous les agents (admin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
