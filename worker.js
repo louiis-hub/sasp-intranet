@@ -3876,14 +3876,82 @@ export default {
     }
 
     // â”€â”€ Reset manuel tous les agents (admin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    if (url.pathname === "/clockout-all" && request.method === "POST") {
-      const token = request.headers.get("x-log-token");
-      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+    if (url.pathname === “/clockout-all” && request.method === “POST”) {
+      const token = request.headers.get(“x-log-token”);
+      if (token !== (env.LOG_TOKEN || “SASPlogs2026!”)) return json({ error: “Unauthorized” }, 401);
       const count = await autoClockoutAll(env);
       return json({ ok: true, count });
     }
 
-    if (url.pathname === "/admin/post-completude" && request.method === "GET") {
+    // ── Envoyer salaires de la semaine sur Discord ─────────────────────────
+    if (url.pathname === “/send-salaires” && request.method === “POST”) {
+      const token = request.headers.get(“x-log-token”);
+      if (token !== (env.LOG_TOKEN || “SASPlogs2026!”)) return json({ error: “Unauthorized” }, 401);
+      const { channel_id, site = “sud” } = await request.json();
+      if (!channel_id) return json({ error: “channel_id requis” }, 400);
+
+      const now = new Date();
+      const dow = now.getDay();
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
+      monday.setHours(0, 0, 0, 0);
+      const mondayISO = monday.toISOString();
+
+      const rows = await sbForSite(env, “GET”,
+        `/pointages?clock_in=gte.${encodeURIComponent(mondayISO)}&select=agent_id,clock_in,clock_out,agents(nom,prenom,matricule,grade)&order=clock_in.asc`,
+        null, site);
+
+      const GRADE_SALAIRE = {
+        “Commandant”: 700, “Capitaine”: 600, “Lieutenant II”: 550, “Lieutenant I”: 500,
+        “Sergeant II”: 450, “Sergeant I”: 400, “Senior Lead Officer”: 300, “Senior Lead Trooper”: 300,
+        “Trooper III”: 250, “Trooper II”: 200, “Trooper I”: 150, “Rookie”: 100
+      };
+      const fmtSec = s => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return `${h}h${String(m).padStart(2, “0”)}`; };
+      const fmtMoney = n => “$” + n.toLocaleString(“fr-FR”);
+
+      const byAgent = {};
+      for (const p of rows || []) {
+        if (!p.clock_out) continue;
+        const sec = Math.max(0, Math.floor((new Date(p.clock_out) - new Date(p.clock_in)) / 1000));
+        if (!byAgent[p.agent_id]) byAgent[p.agent_id] = { agent: p.agents, totalSec: 0 };
+        byAgent[p.agent_id].totalSec += sec;
+      }
+
+      const entries = Object.values(byAgent)
+        .filter(e => e.totalSec > 0)
+        .sort((a, b) => parseInt(a.agent?.matricule || 999) - parseInt(b.agent?.matricule || 999));
+
+      if (!entries.length) return json({ ok: false, message: “Aucun pointage clôturé cette semaine” });
+
+      let totalSalaire = 0;
+      const fields = entries.map(e => {
+        const a = e.agent || {};
+        const rate = GRADE_SALAIRE[a.grade] || 200;
+        const salaire = Math.round((e.totalSec / 3600) * rate);
+        totalSalaire += salaire;
+        const name = (`${a.prenom || “”} ${a.nom || “”}`).trim() + (a.matricule ? ` (${a.matricule})` : “”);
+        return { name, value: `${a.grade || “?”} · ${fmtSec(e.totalSec)} · **${fmtMoney(salaire)}**`, inline: true };
+      });
+
+      const mondayStr = monday.toLocaleDateString(“fr-FR”, { day: “2-digit”, month: “2-digit”, year: “numeric” });
+      const embed = {
+        title: `💰 Salaires — Semaine du ${mondayStr}`,
+        color: 0xf0c040,
+        fields,
+        footer: { text: `SASP · Total à verser : ${fmtMoney(totalSalaire)}` },
+        timestamp: new Date().toISOString()
+      };
+
+      await discordFetch(`${DISCORD_API}/channels/${channel_id}/messages`, {
+        method: “POST”,
+        headers: { “Authorization”: `Bot ${env.DISCORD_BOT_TOKEN}`, “Content-Type”: “application/json” },
+        body: JSON.stringify({ embeds: [embed] })
+      });
+
+      return json({ ok: true, count: entries.length, total: totalSalaire });
+    }
+
+    if (url.pathname === “/admin/post-completude” && request.method === "GET") {
       const CHANNEL = "1518636313325076672";
       const FIELDS = [
         { key: "iban",             label: "IBAN" },

@@ -4611,11 +4611,14 @@ async function renderPointeuse() {
     var resetBtn = isAdmin()
       ? '<button class="btn btn-danger btn-sm" onclick="resetPointageRecap()">🗑️ Réinitialiser</button>'
       : '';
+    var discordSalBtn = isAdmin()
+      ? '<button class="btn btn-ghost btn-sm" onclick="sendSalairesDiscord()">📤 Discord</button>'
+      : '';
     rapportHtml = '<div class="card" style="margin-top:18px">' +
       '<div class="card-head"><div class="card-icon">📊</div><div>' +
         '<div class="card-title">Récapitulatif — semaine en cours</div>' +
         '<div class="card-sub">HEURES PAR AGENT ET PAR JOUR</div>' +
-      '</div>' + resetBtn + '</div>' +
+      '</div><div style="display:flex;gap:8px">' + discordSalBtn + resetBtn + '</div></div>' +
       '<div class="table-wrap"><table>' +
         '<thead><tr><th>AGENT</th>' + dayHeaders + '<th style="text-align:center">TOTAL</th><th style="text-align:center">SALAIRE</th><th></th></tr></thead>' +
         '<tbody>' + rapportRows + '</tbody>' +
@@ -4643,6 +4646,28 @@ async function renderPointeuse() {
     '</div>' +
     rapportHtml
   );
+}
+
+async function sendSalairesDiscord() {
+  var channelId = (localStorage.getItem('discordSalairesChannelId') || '').trim();
+  channelId = (prompt('ID du salon Discord :', channelId) || '').trim();
+  if (!channelId) return;
+  localStorage.setItem('discordSalairesChannelId', channelId);
+  try {
+    var res = await fetch(WORKER_BASE + '/send-salaires', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+      body: JSON.stringify({ channel_id: channelId, site: 'sud' })
+    });
+    var data = await res.json();
+    if (data.ok) {
+      toast('Salaires envoyés (' + data.count + ' agents · Total $' + (data.total || 0).toLocaleString('fr-FR') + ')', 'success');
+    } else {
+      toast(data.message || data.error || 'Erreur', 'error');
+    }
+  } catch(e) {
+    toast(e.message || String(e), 'error');
+  }
 }
 
 function resetPointageRecap() {
