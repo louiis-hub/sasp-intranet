@@ -2712,6 +2712,41 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/install-message-command" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "message",
+            description: "Envoyer un message avec le bot",
+            options: [
+              {
+                type: 7,
+                name: "salon",
+                description: "Salon où envoyer le message",
+                required: true,
+                channel_types: [0, 5, 10, 11, 12, 15]
+              },
+              {
+                type: 3,
+                name: "texte",
+                description: "Message à envoyer",
+                required: true,
+                max_length: 2000
+              }
+            ]
+          })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, data });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/install-sync-command" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || "1382167184607940658";
@@ -2760,6 +2795,43 @@ export default {
 
       // Ping
       if (interaction.type === 1) return json({ type: 1 });
+
+      // Slash command /message
+      if (interaction.type === 2 && interaction.data.name === "message") {
+        const member = interaction.member || {};
+        if (!hasStaffRole(member)) {
+          return json({ type: 4, data: { content: "Tu n'as pas les permissions pour utiliser cette commande.", flags: 64 } });
+        }
+
+        const options = interaction.data.options || [];
+        const channelId = options.find(o => o.name === "salon")?.value;
+        const text = String(options.find(o => o.name === "texte")?.value || "").trim();
+
+        if (!channelId || !text) {
+          return json({ type: 4, data: { content: "Salon ou texte manquant.", flags: 64 } });
+        }
+        if (text.length > 2000) {
+          return json({ type: 4, data: { content: "Message trop long : limite Discord 2000 caracteres.", flags: 64 } });
+        }
+
+        const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: text,
+            allowed_mentions: { parse: ["users", "roles", "everyone"] }
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.text().catch(() => "");
+          return json({ type: 4, data: { content: `Impossible d'envoyer le message (${res.status}) : ${err.slice(0, 500)}`, flags: 64 } });
+        }
+
+        const sent = await res.json().catch(() => ({}));
+        const link = sent.id ? `\nhttps://discord.com/channels/${interaction.guild_id}/${channelId}/${sent.id}` : "";
+        return json({ type: 4, data: { content: `Message envoye dans <#${channelId}>.${link}`, flags: 64 } });
+      }
 
       // Slash command /subvention
       if (interaction.type === 2 && interaction.data.name === "subvention") {
