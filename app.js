@@ -4038,6 +4038,14 @@ function renderServicePaymentHistory(logement, savedPayments, tableMissing) {
     '</tbody></table></div></div>';
 }
 
+function serviceHousingVisual(gamme) {
+  if (gamme !== 'Haut de gamme') return '';
+  return '<div style="margin:0 0 14px;border:1px solid rgba(201,168,76,.35);border-radius:8px;overflow:hidden;background:#050a12">' +
+    '<img src="assets/service-housing-luxury-3.png?v=20260719" alt="Appartement haut de gamme" style="display:block;width:100%;max-height:320px;object-fit:cover">' +
+    '<div style="padding:10px 14px;color:var(--gold);font-weight:800;font-size:.86rem;letter-spacing:.08em;text-transform:uppercase">Luxury Housing 3 - 3500 $</div>' +
+  '</div>';
+}
+
 async function renderServiceLogements() {
   if (!isAdmin()) { toast('Accès réservé aux administrateurs.', 'error'); return; }
   _serviceAgents = visibleRosterAgents(await DB.getAgents()).filter(function(a){ return a.statut !== 'Archivé'; });
@@ -4067,6 +4075,7 @@ async function renderServiceLogements() {
   function logementTable(list, title, sub) {
     return '<div class="card" style="padding:0;overflow:hidden">' +
       '<div class="card-head" style="padding:16px 18px;margin:0"><div class="card-icon">Lg</div><div style="flex:1"><div class="card-title">' + title + '</div><div class="card-sub">' + sub + '</div></div></div>' +
+      serviceHousingVisual(title) +
       '<div class="table-wrap"><table><thead><tr><th>#</th><th>STATUT</th><th>OCCUPANT</th><th>LOYER</th><th>ATTRIBUTION</th><th>NOTES</th><th>ACTIONS</th></tr></thead><tbody>' +
       list.map(function(l) {
         var agent = l.agent ? ((l.agent.prenom || '') + ' ' + (l.agent.nom || '')).trim() + ' (' + (l.agent.matricule || '-') + ')' : (l.occupant_nom || '-');
@@ -4141,6 +4150,7 @@ async function openServiceLogementModal(id) {
     title: l.gamme + ' - ' + serviceHousingMoney(l.loyer),
     size: 'md',
     body:
+      serviceHousingVisual(l.gamme) +
       '<div class="form-grid2">' +
         '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="lgStatut">' +
           ['Libre','Occupé','Maintenance'].map(function(s){ return '<option value="' + s + '"' + (l.statut === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
