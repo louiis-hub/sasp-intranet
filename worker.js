@@ -2722,19 +2722,12 @@ export default {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             name: "message",
-            description: "Envoyer un message avec le bot",
+            description: "Faire envoyer un message par le bot dans ce salon",
             options: [
-              {
-                type: 7,
-                name: "salon",
-                description: "Salon où envoyer le message",
-                required: true,
-                channel_types: [0, 5, 10, 11, 12, 15]
-              },
               {
                 type: 3,
                 name: "texte",
-                description: "Message à envoyer",
+                description: "Message a envoyer dans ce salon",
                 required: true,
                 max_length: 2000
               }
@@ -2804,11 +2797,11 @@ export default {
         }
 
         const options = interaction.data.options || [];
-        const channelId = options.find(o => o.name === "salon")?.value;
+        const channelId = interaction.channel_id;
         const text = String(options.find(o => o.name === "texte")?.value || "").trim();
 
-        if (!channelId || !text) {
-          return json({ type: 4, data: { content: "Salon ou texte manquant.", flags: 64 } });
+        if (!text) {
+          return json({ type: 4, data: { content: "Texte manquant.", flags: 64 } });
         }
         if (text.length > 2000) {
           return json({ type: 4, data: { content: "Message trop long : limite Discord 2000 caracteres.", flags: 64 } });
