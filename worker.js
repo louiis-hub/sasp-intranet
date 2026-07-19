@@ -625,6 +625,112 @@ async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminR
   };
 }
 
+async function copySwatChannels(env, sourceGuildId = "1382167184607940658", targetGuildId = "1500975724750704661") {
+  const sourceChannels = await discordRequest(env, "GET", `/guilds/${sourceGuildId}/channels`, null, "Copy SWAT source channels");
+  const targetChannels = await discordRequest(env, "GET", `/guilds/${targetGuildId}/channels`, null, "Copy SWAT target channels");
+
+  const normalize = (name) => String(name || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+  const simplifyName = (name) => normalize(String(name || "").split(/[・•]/).pop() || name);
+
+  const sourceCategory = sourceChannels.find(channel =>
+    channel.type === 4 &&
+    (normalize(channel.name).includes("swat") || channel.name.includes("S.W.A.T"))
+  );
+  if (!sourceCategory) throw new Error(`Categorie S.W.A.T introuvable sur ${sourceGuildId}`);
+
+  let targetCategory = targetChannels.find(channel =>
+    channel.type === 4 &&
+    (normalize(channel.name) === "swat" || normalize(channel.name).includes("swat"))
+  );
+  let createdCategory = false;
+  if (!targetCategory) {
+    targetCategory = await discordRequest(env, "POST", `/guilds/${targetGuildId}/channels`, {
+      name: "SWAT",
+      type: 4
+    }, "Create SWAT category");
+    createdCategory = true;
+  }
+
+  const sourceChildren = sourceChannels
+    .filter(channel => channel.parent_id === sourceCategory.id)
+    .sort((a, b) => (a.position || 0) - (b.position || 0));
+  const targetChildren = targetChannels.filter(channel => channel.parent_id === targetCategory.id);
+
+  const targetByKey = new Map();
+  const pushTarget = (key, channel) => {
+    if (!targetByKey.has(key)) targetByKey.set(key, []);
+    targetByKey.get(key).push(channel);
+  };
+  for (const channel of targetChildren) {
+    pushTarget(`${normalize(channel.name)}:${channel.type}`, channel);
+    pushTarget(`${simplifyName(channel.name)}:${channel.type}`, channel);
+  }
+
+  const created = [];
+  const renamed = [];
+  const kept = [];
+  const ordered = [];
+  const usedTargetIds = new Set();
+
+  for (const source of sourceChildren) {
+    const key = `${normalize(source.name)}:${source.type}`;
+    const simpleKey = `${simplifyName(source.name)}:${source.type}`;
+    const candidates = [...(targetByKey.get(key) || []), ...(targetByKey.get(simpleKey) || [])];
+    let target = candidates.find(channel => !usedTargetIds.has(channel.id));
+    const payload = {
+      name: source.name,
+      parent_id: targetCategory.id,
+      topic: source.topic || undefined,
+      nsfw: Boolean(source.nsfw),
+      rate_limit_per_user: source.rate_limit_per_user || 0
+    };
+
+    if (target) {
+      if (target.name !== source.name || target.parent_id !== targetCategory.id) {
+        target = await discordRequest(env, "PATCH", `/channels/${target.id}`, payload, "Rename SWAT channel");
+        renamed.push({ id: target.id, name: target.name });
+      } else {
+        kept.push({ id: target.id, name: target.name });
+      }
+    } else {
+      const createPayload = { ...payload, type: source.type };
+      if (source.type === 15) {
+        createPayload.available_tags = source.available_tags || [];
+        createPayload.default_sort_order = source.default_sort_order ?? null;
+        createPayload.default_forum_layout = source.default_forum_layout ?? 0;
+      }
+      target = await discordRequest(env, "POST", `/guilds/${targetGuildId}/channels`, createPayload, "Create SWAT channel");
+      created.push({ id: target.id, name: target.name, type: target.type });
+    }
+    usedTargetIds.add(target.id);
+    ordered.push(target);
+  }
+
+  if (ordered.length) {
+    await discordRequest(env, "PATCH", `/guilds/${targetGuildId}/channels`, ordered.map((channel, index) => ({
+      id: channel.id,
+      position: index
+    })), "Order SWAT channels");
+  }
+
+  return {
+    ok: true,
+    source_guild_id: sourceGuildId,
+    target_guild_id: targetGuildId,
+    source_category: sourceCategory.name,
+    target_category: targetCategory.name,
+    created_category: createdCategory,
+    source_channels: sourceChildren.map(channel => ({ name: channel.name, type: channel.type })),
+    created,
+    renamed,
+    kept
+  };
+}
+
 // â”€â”€ Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminRoleId = ENTERPRISE_ADMIN_ROLE_ID, start = 0, limit = ENTERPRISES.length) {
   const VIEW = 1024n;
@@ -1117,6 +1223,108 @@ async function editMessage(env, channelId, messageId, payload) {
   });
 }
 
+async function deleteRecentChannelMessages(env, channelId, count) {
+  const limit = Math.max(1, Math.min(Number(count) || 1, 100));
+  const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages?limit=${limit}`, {
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Lecture messages impossible (${res.status}) ${err}`);
+  }
+  const messages = await res.json();
+  const ids = (messages || []).map(m => m.id).filter(Boolean);
+  if (!ids.length) return { deleted: 0, skipped: 0 };
+
+  const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+  const youngIds = [];
+  const oldIds = [];
+  for (const id of ids) {
+    const timestamp = Number((BigInt(id) >> 22n) + 1420070400000n);
+    if (timestamp > fourteenDaysAgo) youngIds.push(id);
+    else oldIds.push(id);
+  }
+
+  let deleted = 0;
+  if (youngIds.length === 1) {
+    const del = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${youngIds[0]}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+    });
+    if (del.ok || del.status === 404) deleted++;
+  } else if (youngIds.length > 1) {
+    const bulk = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/bulk-delete`, {
+      method: "POST",
+      headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: youngIds })
+    });
+    if (!bulk.ok) {
+      const err = await bulk.text().catch(() => "");
+      throw new Error(`Suppression bulk impossible (${bulk.status}) ${err}`);
+    }
+    deleted += youngIds.length;
+  }
+
+  for (const id of oldIds) {
+    const del = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${id}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+    });
+    if (del.ok || del.status === 404) deleted++;
+  }
+
+  return { deleted, skipped: ids.length - deleted };
+}
+
+async function cloneAndDeleteChannel(env, guildId, channelId) {
+  const infoRes = await discordFetch(`${DISCORD_API}/channels/${channelId}`, {
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+  });
+  if (!infoRes.ok) {
+    const err = await infoRes.text().catch(() => "");
+    throw new Error(`Lecture salon impossible (${infoRes.status}) ${err}`);
+  }
+  const channel = await infoRes.json();
+  const payload = {
+    name: channel.name,
+    type: channel.type,
+    parent_id: channel.parent_id || undefined,
+    topic: channel.topic || undefined,
+    nsfw: Boolean(channel.nsfw),
+    rate_limit_per_user: channel.rate_limit_per_user || 0,
+    permission_overwrites: channel.permission_overwrites || []
+  };
+  if (channel.type === 15) {
+    payload.available_tags = channel.available_tags || [];
+    payload.default_sort_order = channel.default_sort_order ?? null;
+    payload.default_forum_layout = channel.default_forum_layout ?? 0;
+  }
+  const createRes = await discordFetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
+    method: "POST",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!createRes.ok) {
+    const err = await createRes.text().catch(() => "");
+    throw new Error(`Duplication salon impossible (${createRes.status}) ${err}`);
+  }
+  const created = await createRes.json();
+  await discordFetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
+    method: "PATCH",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify([{ id: created.id, position: channel.position || 0 }])
+  }).catch(() => null);
+  const deleteRes = await discordFetch(`${DISCORD_API}/channels/${channelId}`, {
+    method: "DELETE",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+  });
+  if (!deleteRes.ok) {
+    const err = await deleteRes.text().catch(() => "");
+    throw new Error(`Suppression ancien salon impossible (${deleteRes.status}) ${err}`);
+  }
+  return { old_channel_id: channelId, new_channel_id: created.id, name: created.name };
+}
+
 // â”€â”€ Auto clock-out agents en service depuis +6h â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function autoClockout6h(env) {
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
@@ -1269,6 +1477,17 @@ export default {
       try {
         const guildId = url.searchParams.get("guild") || ENTERPRISE_GUILD_ID;
         const result = await setupPublicServiceCategories(env, guildId);
+        return json(result);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/copy-swat-channels" && request.method === "GET") {
+      try {
+        const sourceGuildId = url.searchParams.get("source") || "1382167184607940658";
+        const targetGuildId = url.searchParams.get("target") || "1500975724750704661";
+        const result = await copySwatChannels(env, sourceGuildId, targetGuildId);
         return json(result);
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
@@ -2740,6 +2959,45 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/install-clear-command" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "clear",
+            description: "Nettoyer le salon actuel",
+            options: [
+              {
+                type: 1,
+                name: "messages",
+                description: "Supprimer un nombre de messages recents",
+                options: [{
+                  type: 4,
+                  name: "nombre",
+                  description: "Nombre de messages a supprimer, maximum 100",
+                  required: true,
+                  min_value: 1,
+                  max_value: 100
+                }]
+              },
+              {
+                type: 1,
+                name: "all",
+                description: "Remettre ce salon a zero en le recreant"
+              }
+            ]
+          })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, data });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/install-sync-command" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || "1382167184607940658";
@@ -2788,6 +3046,48 @@ export default {
 
       // Ping
       if (interaction.type === 1) return json({ type: 1 });
+
+      // Slash command /clear
+      if (interaction.type === 2 && interaction.data.name === "clear") {
+        const member = interaction.member || {};
+        if (!hasStaffRole(member)) {
+          return json({ type: 4, data: { content: "Tu n'as pas les permissions pour utiliser cette commande.", flags: 64 } });
+        }
+
+        const sub = (interaction.data.options || [])[0];
+        if (!sub) {
+          return json({ type: 4, data: { content: "Utilise `/clear messages nombre` ou `/clear all`.", flags: 64 } });
+        }
+
+        try {
+          if (sub.name === "messages") {
+            const count = sub.options?.find(o => o.name === "nombre")?.value || 1;
+            const result = await deleteRecentChannelMessages(env, interaction.channel_id, count);
+            return json({
+              type: 4,
+              data: {
+                content: `Nettoyage termine : ${result.deleted} message${result.deleted > 1 ? "s" : ""} supprime${result.deleted > 1 ? "s" : ""}.` + (result.skipped ? ` ${result.skipped} non supprime(s).` : ""),
+                flags: 64
+              }
+            });
+          }
+
+          if (sub.name === "all") {
+            const result = await cloneAndDeleteChannel(env, interaction.guild_id, interaction.channel_id);
+            return json({
+              type: 4,
+              data: {
+                content: `Salon remis a zero : <#${result.new_channel_id}>.`,
+                flags: 64
+              }
+            });
+          }
+        } catch (e) {
+          return json({ type: 4, data: { content: `Erreur clear : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
+        }
+
+        return json({ type: 4, data: { content: "Mode clear inconnu.", flags: 64 } });
+      }
 
       // Slash command /message
       if (interaction.type === 2 && interaction.data.name === "message") {
