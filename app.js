@@ -4040,8 +4040,8 @@ function renderServicePaymentHistory(logement, savedPayments, tableMissing) {
 
 function serviceHousingVisual(gamme) {
   var isHigh = gamme === 'Haut de gamme';
-  var img = isHigh ? '<img src="assets/service-housing-luxury-3.png?v=20260719" alt="Appartement haut de gamme" style="display:block;width:100%;height:260px;object-fit:cover">' : '<div style="height:260px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(16,33,52,.9),rgba(8,12,20,.95));color:var(--muted);font-size:.86rem;letter-spacing:.12em;text-transform:uppercase">Image bas de gamme à ajouter</div>';
-  var title = isHigh ? 'Luxury Housing 3' : 'Logement bas de gamme';
+  var img = isHigh ? '<img src="assets/service-housing-luxury-3.png?v=20260719" alt="Appartement haut de gamme" style="display:block;width:100%;height:260px;object-fit:cover">' : '<img src="assets/service-housing-safe-house.png?v=20260719" alt="Logement bas de gamme Safe House" style="display:block;width:100%;height:260px;object-fit:cover">';
+  var title = isHigh ? 'Luxury Housing 3' : 'Safe House';
   var price = isHigh ? '3500 $' : '2500 $';
   return '<div style="border:1px solid rgba(201,168,76,.35);border-radius:8px;overflow:hidden;background:#050a12">' +
     img +
