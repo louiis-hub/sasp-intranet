@@ -232,6 +232,8 @@ const ADMIN_ROLE_IDS = [
 const FTF_ROLE_ID = "1524117754725007422";
 const FTF_NOTIFICATION_CHANNEL_ID = "1524118534077153330";
 const FTF_CONVOCATION_CHANNEL_ID = "1524118534077153330";
+const SERVICE_HOUSING_PANEL_CHANNEL_ID = "1518674483060281454";
+const SERVICE_HOUSING_CATEGORY_ID = "1501323835562000384";
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ENTERPRISE_GUILD_ID = "1523759012623941746";
@@ -1323,6 +1325,61 @@ async function cloneAndDeleteChannel(env, guildId, channelId) {
     throw new Error(`Suppression ancien salon impossible (${deleteRes.status}) ${err}`);
   }
   return { old_channel_id: channelId, new_channel_id: created.id, name: created.name };
+}
+
+async function createServiceHousingLiaison(env, interaction, gamme) {
+  const VIEW = "1024";
+  const SEND = "2048";
+  const READ_HISTORY = "65536";
+  const MANAGE_CHANNELS = "16";
+  const userId = interaction.member?.user?.id || interaction.user?.id;
+  if (!userId) throw new Error("Utilisateur introuvable");
+
+  const isHigh = gamme === "haut";
+  const label = isHigh ? "haut de gamme" : "bas de gamme";
+  const channelName = `location-${isHigh ? "haut" : "bas"}-${userId.slice(-4)}`;
+  const staffRoles = Array.from(new Set([...ADMIN_ROLE_IDS, ...STAFF_ROLE_IDS]));
+  const permissionOverwrites = [
+    { id: interaction.guild_id, type: 0, deny: VIEW },
+    { id: userId, type: 1, allow: String(BigInt(VIEW) | BigInt(SEND) | BigInt(READ_HISTORY)) },
+    ...staffRoles.map(roleId => ({
+      id: roleId,
+      type: 0,
+      allow: String(BigInt(VIEW) | BigInt(SEND) | BigInt(READ_HISTORY) | BigInt(MANAGE_CHANNELS))
+    }))
+  ];
+
+  const createRes = await discordFetch(`${DISCORD_API}/guilds/${interaction.guild_id}/channels`, {
+    method: "POST",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: channelName,
+      type: 0,
+      parent_id: SERVICE_HOUSING_CATEGORY_ID,
+      topic: `Location logement ${label} - demandeur ${userId}`,
+      permission_overwrites: permissionOverwrites
+    })
+  });
+  if (!createRes.ok) {
+    const err = await createRes.text().catch(() => "");
+    throw new Error(`Creation liaison impossible (${createRes.status}) ${err}`);
+  }
+  const channel = await createRes.json();
+
+  const msgRes = await discordFetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      content: `<@${userId}> souhaite louer un logement ${label}.`,
+      allowed_mentions: { users: [userId], parse: [] }
+    })
+  });
+  if (!msgRes.ok) {
+    const err = await msgRes.text().catch(() => "");
+    throw new Error(`Message liaison impossible (${msgRes.status}) ${err}`);
+  }
+
+  return { channel_id: channel.id, label };
 }
 
 // â”€â”€ Auto clock-out agents en service depuis +6h â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -2998,6 +3055,25 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/install-location-command" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "location",
+            description: "Poster le panneau de location des logements de service"
+          })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, data });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/install-sync-command" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || "1382167184607940658";
@@ -3046,6 +3122,57 @@ export default {
 
       // Ping
       if (interaction.type === 1) return json({ type: 1 });
+
+      // Slash command /location
+      if (interaction.type === 2 && interaction.data.name === "location") {
+        const member = interaction.member || {};
+        if (!hasStaffRole(member)) {
+          return json({ type: 4, data: { content: "Tu n'as pas les permissions pour utiliser cette commande.", flags: 64 } });
+        }
+        if (interaction.channel_id !== SERVICE_HOUSING_PANEL_CHANNEL_ID) {
+          return json({ type: 4, data: { content: `Utilise cette commande dans <#${SERVICE_HOUSING_PANEL_CHANNEL_ID}>.`, flags: 64 } });
+        }
+
+        const res = await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            embeds: [{
+              title: "Location logements de service",
+              description: "Selectionne le type de logement souhaite. Une liaison privee sera ouverte avec l'administration.",
+              color: 0xc9a84c,
+              fields: [
+                { name: "Bas de gamme", value: "2500 $ / semaine", inline: true },
+                { name: "Haut de gamme", value: "3500 $ / semaine", inline: true }
+              ],
+              footer: { text: "SASP - Logements de service" }
+            }],
+            components: [{
+              type: 1,
+              components: [
+                { type: 2, style: 2, label: "Location bas de gamme", custom_id: "service_housing_location|bas" },
+                { type: 2, style: 1, label: "Location haut de gamme", custom_id: "service_housing_location|haut" }
+              ]
+            }]
+          })
+        });
+        if (!res.ok) {
+          const err = await res.text().catch(() => "");
+          return json({ type: 4, data: { content: `Erreur panneau location (${res.status}) : ${err.slice(0, 500)}`, flags: 64 } });
+        }
+        return json({ type: 4, data: { content: "Panneau location envoye.", flags: 64 } });
+      }
+
+      // Boutons location logements
+      if (interaction.type === 3 && interaction.data.custom_id?.startsWith("service_housing_location|")) {
+        const gamme = interaction.data.custom_id.split("|")[1] === "haut" ? "haut" : "bas";
+        try {
+          const result = await createServiceHousingLiaison(env, interaction, gamme);
+          return json({ type: 4, data: { content: `Liaison ouverte : <#${result.channel_id}>.`, flags: 64 } });
+        } catch (e) {
+          return json({ type: 4, data: { content: `Erreur location : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
+        }
+      }
 
       // Slash command /clear
       if (interaction.type === 2 && interaction.data.name === "clear") {
