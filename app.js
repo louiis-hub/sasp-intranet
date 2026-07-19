@@ -4110,12 +4110,12 @@ async function renderServiceLogements() {
     '</div>' +
     '<div class="page-grid2">' +
       '<div style="display:flex;flex-direction:column;gap:16px">' +
-        serviceHousingVisual('Haut de gamme') +
-        logementTable(high, 'Haut de gamme', '10 logements - 3500 $ / semaine') +
-      '</div>' +
-      '<div style="display:flex;flex-direction:column;gap:16px">' +
         serviceHousingVisual('Bas de gamme') +
         logementTable(low, 'Bas de gamme', '10 logements - 2500 $ / semaine') +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:16px">' +
+        serviceHousingVisual('Haut de gamme') +
+        logementTable(high, 'Haut de gamme', '10 logements - 3500 $ / semaine') +
       '</div>' +
     '</div>'
   );
