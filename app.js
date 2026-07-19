@@ -18,18 +18,18 @@ var S = { user: null, appUser: null, role: 'agent', page: 'dashboard', pd: {}, d
 
 // ── Salaires par grade ($/h) ─────────────────────────────────────────
 var GRADE_SALAIRE = {
-  'Commandant':          700,
-  'Capitaine':           600,
-  'Lieutenant II':       550,
-  'Lieutenant I':        500,
-  'Sergeant II':         450,
-  'Sergeant I':          400,
-  'Senior Lead Officer': 300,
-  'Senior Lead Trooper': 300,
-  'Trooper III':         250,
-  'Trooper II':          200,
-  'Trooper I':           150,
-  'Rookie':              100
+  'Commandant':          1050,
+  'Capitaine':           900,
+  'Lieutenant II':       825,
+  'Lieutenant I':        750,
+  'Sergeant II':         675,
+  'Sergeant I':          600,
+  'Senior Lead Officer': 450,
+  'Senior Lead Trooper': 450,
+  'Trooper III':         375,
+  'Trooper II':          300,
+  'Trooper I':           225,
+  'Rookie':              150
 };
 function calcSalaire(grade, seconds) {
   var rate = GRADE_SALAIRE[grade] || GRADE_SALAIRE['Trooper II'];
