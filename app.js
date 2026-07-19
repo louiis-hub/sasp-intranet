@@ -245,7 +245,7 @@ var NAV = [
   { group: 'ADMINISTRATION', staffOnly: true },
   { id: 'archives',        icon: '🗃️', label: 'Archives',          staffOnly: true },
   { id: 'stats',           icon: '📈', label: 'Statistiques',       staffOnly: true },
-  { id: 'service-logements', icon: 'Lg', label: 'Logements service', adminOnly: true },
+  { id: 'service-logements', icon: '🏠', label: 'Logements service', adminOnly: true },
   { id: 'ceremonie',       icon: '🎖️', label: 'Prépa Cérémonie',    ceremonyOnly: true },
 ];
 
@@ -4060,7 +4060,7 @@ async function renderServiceLogements() {
   if (!_serviceLogements.length) {
     setContent(
       '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Logements de service</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">Table Supabase Sud non initialisée ou vide.</p></div></div>' +
-      '<div class="card"><div class="card-head"><div class="card-icon">Lg</div><div><div class="card-title">Initialisation requise</div><div class="card-sub">SUPABASE SUD</div></div></div>' +
+      '<div class="card"><div class="card-head"><div class="card-icon">🏠</div><div><div class="card-title">Initialisation requise</div><div class="card-sub">SUPABASE SUD</div></div></div>' +
       '<p class="text-muted" style="font-size:.86rem;margin-bottom:12px">Exécute le SQL ci-dessous dans Supabase Sud > SQL Editor, puis recharge cette page.</p>' +
       '<textarea class="form-control" rows="18" readonly onclick="this.select()" style="font-family:monospace;font-size:.78rem">' + esc(serviceLogementSetupSql()) + '</textarea></div>'
     );
@@ -4080,7 +4080,7 @@ async function renderServiceLogements() {
 
   function logementTable(list, title, sub) {
     return '<div class="card" style="padding:0;overflow:hidden">' +
-      '<div class="card-head" style="padding:16px 18px;margin:0"><div class="card-icon">Lg</div><div style="flex:1"><div class="card-title">' + title + '</div><div class="card-sub">' + sub + '</div></div></div>' +
+      '<div class="card-head" style="padding:16px 18px;margin:0"><div class="card-icon">🏠</div><div style="flex:1"><div class="card-title">' + title + '</div><div class="card-sub">' + sub + '</div></div></div>' +
       '<div class="table-wrap"><table><thead><tr><th>#</th><th>STATUT</th><th>OCCUPANT</th><th>LOYER</th><th>ATTRIBUTION</th><th>NOTES</th><th>ACTIONS</th></tr></thead><tbody>' +
       list.map(function(l) {
         var agent = l.agent ? ((l.agent.prenom || '') + ' ' + (l.agent.nom || '')).trim() + ' (' + (l.agent.matricule || '-') + ')' : (l.occupant_nom || '-');
@@ -4102,7 +4102,7 @@ async function renderServiceLogements() {
     '<div class="flex-between mb-20 flex-wrap gap-8"><div><h1 style="font-size:1.4rem">Logements de service</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">Gestion admin des 20 logements SASP Sud. Paiements prélevés chaque lundi.</p></div>' +
       '<button class="btn btn-primary btn-sm" onclick="openServiceHousingHelp()">Règles</button></div>' +
     '<div class="stats-grid" style="margin-bottom:18px">' +
-      stat('Lg', 'Occupés', occupied.length + '/20', free.length + ' libres') +
+      stat('🏠', 'Occupés', occupied.length + '/20', free.length + ' libres') +
       stat('$', 'Loyer mensuel', serviceHousingMoney(monthly), 'prélevé le lundi') +
       stat('HDG', 'Haut de gamme', high.filter(function(l){ return l.statut === 'Occupé'; }).length + '/10', '3500 $') +
       stat('BDG', 'Bas de gamme', low.filter(function(l){ return l.statut === 'Occupé'; }).length + '/10', '2500 $') +
@@ -4111,11 +4111,11 @@ async function renderServiceLogements() {
     '<div class="page-grid2">' +
       '<div style="display:flex;flex-direction:column;gap:16px">' +
         serviceHousingVisual('Haut de gamme') +
-        logementTable(high, 'Haut de gamme', '10 logements - 3500 $ / mois') +
+        logementTable(high, 'Haut de gamme', '10 logements - 3500 $ / semaine') +
       '</div>' +
       '<div style="display:flex;flex-direction:column;gap:16px">' +
         serviceHousingVisual('Bas de gamme') +
-        logementTable(low, 'Bas de gamme', '10 logements - 2500 $ / mois') +
+        logementTable(low, 'Bas de gamme', '10 logements - 2500 $ / semaine') +
       '</div>' +
     '</div>'
   );
