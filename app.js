@@ -4039,10 +4039,16 @@ function renderServicePaymentHistory(logement, savedPayments, tableMissing) {
 }
 
 function serviceHousingVisual(gamme) {
-  if (gamme !== 'Haut de gamme') return '';
-  return '<div style="margin:0 0 14px;border:1px solid rgba(201,168,76,.35);border-radius:8px;overflow:hidden;background:#050a12">' +
-    '<img src="assets/service-housing-luxury-3.png?v=20260719" alt="Appartement haut de gamme" style="display:block;width:100%;max-height:320px;object-fit:cover">' +
-    '<div style="padding:10px 14px;color:var(--gold);font-weight:800;font-size:.86rem;letter-spacing:.08em;text-transform:uppercase">Luxury Housing 3 - 3500 $</div>' +
+  var isHigh = gamme === 'Haut de gamme';
+  var img = isHigh ? '<img src="assets/service-housing-luxury-3.png?v=20260719" alt="Appartement haut de gamme" style="display:block;width:100%;height:260px;object-fit:cover">' : '<div style="height:260px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(16,33,52,.9),rgba(8,12,20,.95));color:var(--muted);font-size:.86rem;letter-spacing:.12em;text-transform:uppercase">Image bas de gamme à ajouter</div>';
+  var title = isHigh ? 'Luxury Housing 3' : 'Logement bas de gamme';
+  var price = isHigh ? '3500 $' : '2500 $';
+  return '<div style="border:1px solid rgba(201,168,76,.35);border-radius:8px;overflow:hidden;background:#050a12">' +
+    img +
+    '<div style="padding:12px 14px;border-top:1px solid rgba(201,168,76,.22);display:flex;justify-content:space-between;gap:12px;align-items:center">' +
+      '<div style="color:var(--gold);font-weight:800;font-size:.86rem;letter-spacing:.08em;text-transform:uppercase">' + title + '</div>' +
+      '<div class="badge badge-gold">' + price + '</div>' +
+    '</div>' +
   '</div>';
 }
 
@@ -4075,7 +4081,6 @@ async function renderServiceLogements() {
   function logementTable(list, title, sub) {
     return '<div class="card" style="padding:0;overflow:hidden">' +
       '<div class="card-head" style="padding:16px 18px;margin:0"><div class="card-icon">Lg</div><div style="flex:1"><div class="card-title">' + title + '</div><div class="card-sub">' + sub + '</div></div></div>' +
-      serviceHousingVisual(title) +
       '<div class="table-wrap"><table><thead><tr><th>#</th><th>STATUT</th><th>OCCUPANT</th><th>LOYER</th><th>ATTRIBUTION</th><th>NOTES</th><th>ACTIONS</th></tr></thead><tbody>' +
       list.map(function(l) {
         var agent = l.agent ? ((l.agent.prenom || '') + ' ' + (l.agent.nom || '')).trim() + ' (' + (l.agent.matricule || '-') + ')' : (l.occupant_nom || '-');
@@ -4104,8 +4109,14 @@ async function renderServiceLogements() {
       stat('M', 'Maintenance', maint.length, 'à suivre') +
     '</div>' +
     '<div class="page-grid2">' +
-      logementTable(high, 'Haut de gamme', '10 logements - 3500 $ / mois') +
-      logementTable(low, 'Bas de gamme', '10 logements - 2500 $ / mois') +
+      '<div style="display:flex;flex-direction:column;gap:16px">' +
+        serviceHousingVisual('Haut de gamme') +
+        logementTable(high, 'Haut de gamme', '10 logements - 3500 $ / mois') +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:16px">' +
+        serviceHousingVisual('Bas de gamme') +
+        logementTable(low, 'Bas de gamme', '10 logements - 2500 $ / mois') +
+      '</div>' +
     '</div>'
   );
 }
@@ -4150,7 +4161,7 @@ async function openServiceLogementModal(id) {
     title: l.gamme + ' - ' + serviceHousingMoney(l.loyer),
     size: 'md',
     body:
-      serviceHousingVisual(l.gamme) +
+      '<div style="margin-bottom:16px">' + serviceHousingVisual(l.gamme) + '</div>' +
       '<div class="form-grid2">' +
         '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="lgStatut">' +
           ['Libre','Occupé','Maintenance'].map(function(s){ return '<option value="' + s + '"' + (l.statut === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
