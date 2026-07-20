@@ -61,7 +61,7 @@ html, body { width:100%; height:100%; overflow:hidden; background:#163f6b; }
 .leaflet-popup-content img { margin:4px 0; border-radius:6px; display:block; }
 .leaflet-popup-tip { background:#0d2240; }
 
-#map-1020, #map-road {
+#map-1020, #map-road, #map-zone {
   position:fixed; inset:0; width:100vw; height:100vh;
 }
 .hidden { visibility:hidden; pointer-events:none; }
@@ -71,6 +71,42 @@ html, body { width:100%; height:100%; overflow:hidden; background:#163f6b; }
 /* On force le background de leaflet à la couleur océan */
 #map-1020.leaflet-container, #map-1020 .leaflet-container { background:#163f6b !important; }
 #map-road.leaflet-container, #map-road .leaflet-container { background:#18a9d0 !important; }
+#map-zone.leaflet-container, #map-zone .leaflet-container { background:#163f6b !important; }
+
+#zone-panel {
+  position:fixed; right:16px; top:74px; z-index:1000;
+  width:min(320px, calc(100vw - 32px));
+  background:rgba(6,14,28,.92); color:#d9eaff;
+  border:1px solid rgba(212,175,55,.45); border-radius:10px;
+  box-shadow:0 14px 40px rgba(0,0,0,.45);
+  padding:14px 14px 12px; font-family:Arial,sans-serif;
+  backdrop-filter:blur(8px);
+}
+#zone-panel.hidden { display:none; }
+#zone-panel h2 { margin:0 0 6px; color:#f4c542; font-size:1rem; letter-spacing:.06em; text-transform:uppercase; }
+#zone-panel p { margin:0 0 12px; color:#9fc8f5; font-size:.82rem; line-height:1.35; }
+.zone-legend { display:grid; gap:7px; margin-bottom:12px; }
+.zone-legend span { display:flex; align-items:center; gap:8px; font-size:.82rem; }
+.zone-dot { width:11px; height:11px; border-radius:50%; display:inline-block; box-shadow:0 0 12px currentColor; }
+.zone-actions { display:flex; gap:8px; }
+.zone-actions button, .zone-popup button {
+  border:1px solid rgba(212,175,55,.45); background:rgba(212,175,55,.12);
+  color:#f4c542; border-radius:6px; padding:7px 10px; cursor:pointer; font-weight:700;
+}
+.zone-actions button:hover, .zone-popup button:hover { background:rgba(212,175,55,.22); }
+.zone-label { pointer-events:none; }
+.zone-label span {
+  display:inline-block; transform:translate(-50%,-50%);
+  padding:4px 8px; border-radius:999px;
+  background:rgba(2,8,18,.75); color:#f7d45a;
+  border:1px solid rgba(247,212,90,.45);
+  font:700 11px Arial,sans-serif; letter-spacing:.04em; white-space:nowrap;
+  text-shadow:0 1px 2px #000;
+}
+.zone-popup { min-width:190px; font-family:Arial,sans-serif; }
+.zone-popup h3 { margin:0 0 6px; color:#4fc3f7; }
+.zone-popup p { margin:0 0 10px; color:#d9eaff; }
+.zone-popup .buttons { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
 </style>
 </head>
 <body>
@@ -80,10 +116,20 @@ html, body { width:100%; height:100%; overflow:hidden; background:#163f6b; }
 <div id="tabs">
   <button class="active" onclick="switchTab('1020',this)">Carte 10-20</button>
   <button onclick="switchTab('road',this)">Carte Routes</button>
+  <button onclick="switchTab('zone',this)">Carte Zones</button>
 </div>
 
 <div id="map-1020"></div>
 <div id="map-road" class="hidden"></div>
+<div id="map-zone" class="hidden"></div>
+<div id="zone-panel" class="hidden">
+  <h2>Zones PO</h2>
+  <p>Clique sur une zone pour indiquer son etat pendant une operation.</p>
+  <div class="zone-legend" id="zone-legend"></div>
+  <div class="zone-actions">
+    <button onclick="resetZones()">Reset zones</button>
+  </div>
+</div>
 
 <script>
 const BLIP_ICONS = {
@@ -391,6 +437,133 @@ function initMapRoad() {
   }).addTo(mapRoad);
 }
 
+// ══ CARTE ZONES ══
+let mapZone = null;
+const zoneLayers = {};
+const zoneLabels = {};
+const ZONE_STORAGE_KEY = 'sasp_map_zone_statuses_v1';
+const ZONE_ORDER = ['unknown','clear','watch','suspect','danger'];
+const ZONE_STATUS = {
+  unknown: {label:'Non verifie', color:'#95a5a6', fill:'#64748b'},
+  clear: {label:'Clear', color:'#22c55e', fill:'#16a34a'},
+  watch: {label:'Surveillance', color:'#38bdf8', fill:'#0284c7'},
+  suspect: {label:'Suspect', color:'#f59e0b', fill:'#d97706'},
+  danger: {label:'Danger', color:'#ef4444', fill:'#dc2626'}
+};
+const MAP_ZONES = [
+  {id:'paleto', label:'Paleto Bay', bounds:[[4800,-1900],[7000,700]]},
+  {id:'chiliad', label:'Mont Chiliad', bounds:[[4000,-1800],[6500,2300]]},
+  {id:'grapeseed', label:'Grapeseed', bounds:[[3600,2300],[5400,4300]]},
+  {id:'sandy', label:'Sandy Shores', bounds:[[2300,900],[4100,3000]]},
+  {id:'stab', label:'Stab City', bounds:[[2500,-1700],[3900,-300]]},
+  {id:'zancudo', label:'Zancudo', bounds:[[1500,-3600],[3300,-1700]]},
+  {id:'harmony', label:'Harmony / Route 68', bounds:[[900,-900],[2600,1100]]},
+  {id:'vinewood', label:'Vinewood', bounds:[[250,-500],[1700,1300]]},
+  {id:'mirror', label:'Mirror Park', bounds:[[-750,650],[650,2000]]},
+  {id:'delperro', label:'Del Perro / Vespucci', bounds:[[-1300,-2500],[350,-700]]},
+  {id:'centre', label:'Centre Ville LS', bounds:[[-1200,-850],[350,700]]},
+  {id:'estls', label:'Est LS', bounds:[[-1700,650],[-100,2300]]},
+  {id:'sudls', label:'Sud LS', bounds:[[-2600,-800],[-1200,1000]]},
+  {id:'ports', label:'Port / Industriel', bounds:[[-3400,700],[-1900,2800]]},
+  {id:'aeroport', label:'Aeroport', bounds:[[-3500,-2500],[-1850,-650]]}
+];
+
+function createSatLayer() {
+  return L.tileLayer(BASE+'/mapStyles/styleSatelite/{z}/{x}/{y}.jpg', {
+    minZoom:0, maxZoom:8, noWrap:true,
+    attribution:'Map Satellite Zones - GTA V | SpartanThom'
+  });
+}
+
+function createAtlasLayer() {
+  return L.tileLayer(BASE+'/mapStyles/styleAtlas/{z}/{x}/{y}.jpg', {
+    minZoom:0, maxZoom:5, noWrap:true,
+    attribution:'Map Atlas Zones - GTA V | SpartanThom'
+  });
+}
+
+function getZoneStates() {
+  try { return JSON.parse(localStorage.getItem(ZONE_STORAGE_KEY) || '{}') || {}; }
+  catch (e) { return {}; }
+}
+
+function saveZoneStates(states) {
+  localStorage.setItem(ZONE_STORAGE_KEY, JSON.stringify(states));
+}
+
+function getZoneStatus(id) {
+  return getZoneStates()[id] || 'unknown';
+}
+
+function zoneCenter(bounds) {
+  return [(bounds[0][0]+bounds[1][0])/2, (bounds[0][1]+bounds[1][1])/2];
+}
+
+function styleForZone(status) {
+  const s = ZONE_STATUS[status] || ZONE_STATUS.unknown;
+  return {color:s.color, fillColor:s.fill, fillOpacity:.22, opacity:.95, weight:2};
+}
+
+function zonePopupHtml(zone) {
+  const status = ZONE_STATUS[getZoneStatus(zone.id)] || ZONE_STATUS.unknown;
+  return `<div class="zone-popup">
+    <h3>${zone.label}</h3>
+    <p>Etat actuel : <strong style="color:${status.color}">${status.label}</strong></p>
+    <div class="buttons">
+      ${ZONE_ORDER.map(key => `<button onclick="setZoneStatus('${zone.id}','${key}')">${ZONE_STATUS[key].label}</button>`).join('')}
+    </div>
+  </div>`;
+}
+
+function setZoneStatus(id, status) {
+  const states = getZoneStates();
+  states[id] = status;
+  saveZoneStates(states);
+  const zone = MAP_ZONES.find(z => z.id === id);
+  if (zoneLayers[id]) {
+    zoneLayers[id].setStyle(styleForZone(status));
+    zoneLayers[id].setPopupContent(zonePopupHtml(zone));
+  }
+}
+
+function resetZones() {
+  localStorage.removeItem(ZONE_STORAGE_KEY);
+  MAP_ZONES.forEach(zone => setZoneStatus(zone.id, 'unknown'));
+}
+
+function buildZoneLegend() {
+  const legend = document.getElementById('zone-legend');
+  if (!legend) return;
+  legend.innerHTML = ZONE_ORDER.map(key => {
+    const s = ZONE_STATUS[key];
+    return `<span><i class="zone-dot" style="color:${s.color};background:${s.color}"></i>${s.label}</span>`;
+  }).join('');
+}
+
+function initMapZone() {
+  if (mapZone) return;
+  mapZone = L.map('map-zone', {
+    center:[0,0], zoom:1, minZoom:1, maxZoom:5,
+    crs:buildCRS(), preferCanvas:true, zoomControl:true, attributionControl:false
+  });
+
+  const zoneSat = createSatLayer().addTo(mapZone);
+  const zoneAtlas = createAtlasLayer();
+  L.control.layers({Satellite:zoneSat, Atlas:zoneAtlas}).addTo(mapZone);
+
+  MAP_ZONES.forEach(zone => {
+    const layer = L.rectangle(zone.bounds, styleForZone(getZoneStatus(zone.id))).addTo(mapZone);
+    layer.bindPopup(zonePopupHtml(zone));
+    layer.on('click', () => layer.setPopupContent(zonePopupHtml(zone)));
+    zoneLayers[zone.id] = layer;
+    zoneLabels[zone.id] = L.marker(zoneCenter(zone.bounds), {
+      icon:L.divIcon({className:'zone-label', html:`<span>${zone.label}</span>`, iconSize:[0,0]}),
+      interactive:false
+    }).addTo(mapZone);
+  });
+  buildZoneLegend();
+}
+
 // ══ SWITCH ══
 function switchTab(which, el) {
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));
@@ -398,18 +571,30 @@ function switchTab(which, el) {
   if (which==='1020') {
     document.getElementById('map-1020').classList.remove('hidden');
     document.getElementById('map-road').classList.add('hidden');
+    document.getElementById('map-zone').classList.add('hidden');
+    document.getElementById('zone-panel').classList.add('hidden');
     setTimeout(()=>map1020.invalidateSize(),60);
-  } else {
+  } else if (which==='road') {
     document.getElementById('map-road').classList.remove('hidden');
     document.getElementById('map-1020').classList.add('hidden');
+    document.getElementById('map-zone').classList.add('hidden');
+    document.getElementById('zone-panel').classList.add('hidden');
     initMapRoad();
     setTimeout(()=>mapRoad&&mapRoad.invalidateSize(),60);
+  } else {
+    document.getElementById('map-zone').classList.remove('hidden');
+    document.getElementById('map-1020').classList.add('hidden');
+    document.getElementById('map-road').classList.add('hidden');
+    document.getElementById('zone-panel').classList.remove('hidden');
+    initMapZone();
+    setTimeout(()=>mapZone&&mapZone.invalidateSize(),60);
   }
 }
 
 window.addEventListener('resize',()=>{
   map1020.invalidateSize();
   if(mapRoad) mapRoad.invalidateSize();
+  if(mapZone) mapZone.invalidateSize();
 });
 </script>
 </body>
