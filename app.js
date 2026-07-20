@@ -539,7 +539,7 @@ async function navigate(page, pd) {
       pointeuse:               renderPointeuse,
       'pointeuse-historique':  renderPointeuseHistorique,
       cartes:                  renderCartes,
-      cid:                     renderCID,
+      cid:                     renderCID2,
       ceremonie:      renderCeremonie,
       archives:       renderArchives,
       completude:     renderCompletude,
@@ -5003,7 +5003,7 @@ function cidNextNumber(list){ var y=new Date().getFullYear(); var m=(list||[]).r
 function cidGet(id){ return cidLoad().find(function(c){return c.id===id;}); }
 function cidUpsert(data){ var list=cidLoad(); if(data.id){list=list.map(function(c){return c.id===data.id?Object.assign({},c,data,{updated_at:cidNow()}):c;});}else{data.id='cid_'+Date.now();data.numero=cidNextNumber(list);data.date_ouverture=cidNow();data.updated_at=cidNow();data.personnes=[];data.preuves=[];data.journal=[{date:cidNow(),texte:'Dossier cree'}];list.unshift(data);} cidSave(list); }
 function cidDelete(id){ if(!confirm('Supprimer ce dossier CID ?'))return; cidSave(cidLoad().filter(function(c){return c.id!==id;})); navigate('cid'); }
-function cidCreateFromForm(){ var f=document.getElementById('cidCreateForm'); if(!f)return; var fd=new FormData(f); cidUpsert({titre:fd.get('titre')||'Dossier sans titre',resume:fd.get('resume')||'',description:fd.get('description')||'',date_faits:fd.get('date_faits')||'',lieu:fd.get('lieu')||'',nature:fd.get('nature')||'',classification:fd.get('classification')||'Autre',priorite:fd.get('priorite')||'Normale',confidentialite:fd.get('confidentialite')||'CID uniquement',statut:'Ouvert',responsable:S.serverNick||(S.appUser?((S.appUser.prenom||'')+' '+(S.appUser.nom||'')).trim():'CID'),membres:'',suspects:0}); navigate('cid'); }
+function cidCreateFromForm(){ var f=document.getElementById('cidCreateForm'); if(!f)return; var fd=new FormData(f); cidUpsert({titre:fd.get('titre')||'Dossier sans titre',resume:fd.get('resume')||'',description:fd.get('description')||'',date_faits:fd.get('date_faits')||'',lieu:fd.get('lieu')||'',nature:fd.get('nature')||'',classification:fd.get('classification')||'Autre',priorite:fd.get('priorite')||'Normale',confidentialite:fd.get('confidentialite')||'CID uniquement',statut:'Ouvert',responsable:S.serverNick||(S.appUser?((S.appUser.prenom||'')+' '+(S.appUser.nom||'')).trim():'CID'),membres:'',suspects:0}); closeModal(); navigate('cid'); }
 function cidUpdateCase(id){ var c=cidGet(id), f=document.getElementById('cidEditForm'); if(!c||!f)return; var fd=new FormData(f); cidUpsert(Object.assign({},c,{titre:fd.get('titre')||c.titre,statut:fd.get('statut')||c.statut,priorite:fd.get('priorite')||c.priorite,classification:fd.get('classification')||c.classification,confidentialite:fd.get('confidentialite')||c.confidentialite,responsable:fd.get('responsable')||'',membres:fd.get('membres')||'',lieu:fd.get('lieu')||'',nature:fd.get('nature')||'',resume:fd.get('resume')||'',description:fd.get('description')||''})); toast('Dossier CID sauvegarde.'); navigate('cid',{id:id}); }
 function cidAddPerson(id){ var c=cidGet(id); if(!c)return; var nom=prompt('Nom / Prenom de la personne ?'); if(!nom)return; var type=prompt('Type : Citoyen, Suspect, Victime, Temoin, Informateur, Agent infiltre, Enqueteur','Suspect')||'Citoyen'; var tel=prompt('Numero de telephone ?','')||''; var danger=prompt('Dangerosite ?','Inconnue')||'Inconnue'; c.personnes=c.personnes||[]; c.personnes.push({id:'p_'+Date.now(),nom:nom,type:type,tel:tel,danger:danger,statut:'Actif',commentaires:''}); c.suspects=c.personnes.filter(function(p){return /suspect/i.test(p.type);}).length; c.journal=c.journal||[]; c.journal.unshift({date:cidNow(),texte:'Personne ajoutee : '+nom}); cidUpsert(c); navigate('cid',{id:id}); }
 function cidAddProof(id){ var c=cidGet(id); if(!c)return; var type=prompt('Type de preuve ?','Document')||'Autre'; var desc=prompt('Description de la preuve ?','')||''; var lieu=prompt('Lieu de decouverte ?',c.lieu||'')||''; c.preuves=c.preuves||[]; var seal='SC-'+new Date().getFullYear()+'-'+String(c.preuves.length+1).padStart(4,'0'); c.preuves.push({id:'e_'+Date.now(),scelle:seal,codebarres:seal.replace(/\D/g,'')+Date.now().toString().slice(-4),type:type,description:desc,lieu:lieu,date:cidNow(),decouvert_par:S.serverNick||'CID',etat:'Inventorie',localisation:'CID',chaine:[{date:cidNow(),texte:'Ajout au dossier'}]}); c.journal=c.journal||[]; c.journal.unshift({date:cidNow(),texte:'Preuve ajoutee : '+seal}); cidUpsert(c); navigate('cid',{id:id}); }
@@ -5011,6 +5011,250 @@ function cidAddLog(id){ var c=cidGet(id); if(!c)return; var texte=prompt('Note /
 function cidCss(){ return '<style>.cid-page{display:grid;gap:18px}.cid-hero,.cid-card{background:linear-gradient(135deg,rgba(9,18,34,.98),rgba(8,15,28,.94));border:1px solid rgba(90,132,180,.35);border-radius:8px;padding:18px;box-shadow:0 14px 36px rgba(0,0,0,.25)}.cid-hero{border-color:rgba(212,175,55,.45);display:flex;justify-content:space-between;gap:18px;align-items:center}.cid-kicker{font-size:10px;letter-spacing:.35em;color:#d4af37;text-transform:uppercase}.cid-title{font-size:30px;margin:8px 0 4px}.cid-sub{color:#8fb6e6}.cid-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.cid-stat strong{display:block;font-size:28px;color:#f0c94a}.cid-stat span{font-size:10px;letter-spacing:.2em;color:#8fb6e6;text-transform:uppercase}.cid-toolbar{display:flex;gap:10px;flex-wrap:wrap}.cid-toolbar input,.cid-toolbar select,.cid-card input,.cid-card select,.cid-card textarea{background:#071120;border:1px solid #1f3c60;color:#e8f2ff;border-radius:7px;padding:10px;width:100%}.cid-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.cid-btn{border:1px solid rgba(212,175,55,.5);background:#d4af37;color:#071120;border-radius:7px;padding:10px 13px;font-weight:800;cursor:pointer}.cid-btn.secondary{background:rgba(31,60,96,.35);color:#b8d8ff;border-color:#1f3c60}.cid-btn.danger{background:#3a1418;color:#ff6b6b;border-color:#7f2a35}.cid-table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:8px}.cid-table th,.cid-table td{border-bottom:1px solid rgba(90,132,180,.22);padding:12px;text-align:left}.cid-table th{font-size:10px;letter-spacing:.22em;color:#6f8db1;text-transform:uppercase}.cid-badge{display:inline-flex;border:1px solid rgba(212,175,55,.45);border-radius:999px;padding:4px 8px;color:#f0c94a;background:rgba(212,175,55,.1);font-size:12px;font-weight:800}.cid-panels{display:grid;grid-template-columns:1fr 1fr;gap:14px}.cid-mini-list{display:grid;gap:8px}.cid-mini{border:1px solid rgba(90,132,180,.25);border-radius:7px;padding:10px;background:rgba(5,12,24,.55)}@media(max-width:900px){.cid-stats,.cid-grid,.cid-panels{grid-template-columns:1fr}.cid-hero{display:block}.cid-table{font-size:13px}}</style>'; }
 function renderCID(){ if(!canAccessCID()){setContent('<div class="empty-state"><div class="empty-icon">CID</div><div class="empty-title">Acces restreint</div><div class="empty-sub">Role CID requis.</div></div>');return;} var list=cidLoad(); if(S.pd&&S.pd.id)return renderCIDCase(S.pd.id); var q=(S.pd&&S.pd.q)||'', filter=(S.pd&&S.pd.filter)||'Toutes'; var visible=list.filter(function(c){var ok=filter==='Toutes'||c.statut===filter;var hay=[c.numero,c.titre,c.statut,c.priorite,c.classification,c.responsable].join(' ').toLowerCase();return ok&&hay.indexOf(q.toLowerCase())!==-1;}).sort(function(a,b){return String(b.updated_at||'').localeCompare(String(a.updated_at||''));}); var counts={ouverts:list.filter(function(c){return c.statut==='Ouvert';}).length,attente:list.filter(function(c){return c.statut==='En attente';}).length,cold:list.filter(function(c){return c.statut==='Cold Case';}).length,preuves:list.reduce(function(n,c){return n+((c.preuves||[]).length);},0)}; setContent('<div class="cid-page">'+cidCss()+'<section class="cid-hero"><div><div class="cid-kicker">SASP - Criminal Investigation Division</div><h1 class="cid-title">Dossiers CID</h1><p class="cid-sub">Enquetes criminelles, preuves, suspects, victimes et chaines de possession.</p></div><button class="cid-btn" onclick="document.getElementById(\'cidCreate\').scrollIntoView({behavior:\'smooth\'})">Creer un dossier</button></section><section class="cid-stats"><div class="cid-card cid-stat"><strong>'+counts.ouverts+'</strong><span>Ouvertes</span></div><div class="cid-card cid-stat"><strong>'+counts.attente+'</strong><span>En attente</span></div><div class="cid-card cid-stat"><strong>'+counts.cold+'</strong><span>Cold case</span></div><div class="cid-card cid-stat"><strong>'+counts.preuves+'</strong><span>Preuves</span></div></section><section class="cid-card"><div class="cid-toolbar"><input style="max-width:360px" placeholder="Recherche instantanee..." value="'+esc(q)+'" oninput="navigate(\'cid\',{q:this.value,filter:\''+esc(filter)+'\'})"><select style="max-width:220px" onchange="navigate(\'cid\',{filter:this.value,q:\''+esc(q)+'\'})"><option>Toutes</option>'+cidOptions(CID_STATUTS,filter)+'</select></div></section><section class="cid-card"><table class="cid-table"><thead><tr><th>Numero</th><th>Enquete</th><th>Statut</th><th>Priorite</th><th>Classification</th><th>Resp.</th><th>Suspects</th><th>Preuves</th><th>Modification</th></tr></thead><tbody>'+(visible.length?visible.map(function(c){return '<tr onclick="navigate(\'cid\',{id:\''+c.id+'\'})" style="cursor:pointer"><td>'+esc(c.numero)+'</td><td><strong>'+esc(c.titre)+'</strong><br><small>'+esc(c.resume||'')+'</small></td><td><span class="cid-badge">'+esc(c.statut)+'</span></td><td>'+esc(c.priorite)+'</td><td>'+esc(c.classification)+'</td><td>'+esc(c.responsable||'-')+'</td><td>'+(c.suspects||0)+'</td><td>'+((c.preuves||[]).length)+'</td><td>'+esc(c.updated_at||'-')+'</td></tr>';}).join(''):'<tr><td colspan="9">Aucun dossier CID.</td></tr>')+'</tbody></table></section><section class="cid-card" id="cidCreate"><h2>Creation dossier</h2><form id="cidCreateForm" onsubmit="event.preventDefault();cidCreateFromForm()"><div class="cid-grid"><input name="titre" placeholder="Titre de l enquete" required><input name="lieu" placeholder="Lieu"><select name="classification">'+cidOptions(CID_CLASSIFICATIONS,'Autre')+'</select><select name="priorite">'+cidOptions(CID_PRIORITES,'Normale')+'</select><select name="confidentialite">'+cidOptions(CID_CONFIDENTIALITES,'CID uniquement')+'</select><input name="date_faits" type="datetime-local"></div><textarea name="nature" rows="2" placeholder="Nature des faits" style="margin-top:10px"></textarea><textarea name="resume" rows="2" placeholder="Resume rapide" style="margin-top:10px"></textarea><textarea name="description" rows="5" placeholder="Description complete" style="margin-top:10px"></textarea><button class="cid-btn" style="margin-top:12px">Creer le dossier</button></form></section></div>'); }
 function renderCIDCase(id){ var c=cidGet(id); if(!c){navigate('cid');return;} setContent('<div class="cid-page">'+cidCss()+'<section class="cid-card"><button class="cid-btn secondary" onclick="navigate(\'cid\')">Retour</button><div class="cid-kicker">'+esc(c.numero)+'</div><h1 class="cid-title">'+esc(c.titre)+'</h1><span class="cid-badge">'+esc(c.confidentialite)+'</span></section><section class="cid-card"><form id="cidEditForm" onsubmit="event.preventDefault();cidUpdateCase(\''+c.id+'\')"><div class="cid-grid"><input name="titre" value="'+esc(c.titre)+'"><select name="statut">'+cidOptions(CID_STATUTS,c.statut)+'</select><select name="priorite">'+cidOptions(CID_PRIORITES,c.priorite)+'</select><select name="classification">'+cidOptions(CID_CLASSIFICATIONS,c.classification)+'</select><select name="confidentialite">'+cidOptions(CID_CONFIDENTIALITES,c.confidentialite)+'</select><input name="responsable" value="'+esc(c.responsable||'')+'" placeholder="Responsable"><input name="membres" value="'+esc(c.membres||'')+'" placeholder="Membres affectes"><input name="lieu" value="'+esc(c.lieu||'')+'" placeholder="Lieu"></div><textarea name="nature" rows="2" style="margin-top:10px" placeholder="Nature des faits">'+esc(c.nature||'')+'</textarea><textarea name="resume" rows="2" style="margin-top:10px" placeholder="Resume">'+esc(c.resume||'')+'</textarea><textarea name="description" rows="5" style="margin-top:10px" placeholder="Description complete">'+esc(c.description||'')+'</textarea><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px"><button class="cid-btn">Sauvegarder</button><button type="button" class="cid-btn secondary" onclick="cidAddLog(\''+c.id+'\')">Ajouter journal</button><button type="button" class="cid-btn danger" onclick="cidDelete(\''+c.id+'\')">Supprimer</button></div></form></section><section class="cid-panels"><div class="cid-card"><h2>Personnes</h2><button class="cid-btn secondary" onclick="cidAddPerson(\''+c.id+'\')">Ajouter personne</button><div class="cid-mini-list" style="margin-top:10px">'+((c.personnes||[]).length?c.personnes.map(function(p){return '<div class="cid-mini"><strong>'+esc(p.nom)+'</strong> <span class="cid-badge">'+esc(p.type)+'</span><br>Tel: '+esc(p.tel||'-')+' - Danger: '+esc(p.danger||'-')+'</div>';}).join(''):'<div class="cid-mini">Aucune personne.</div>')+'</div></div><div class="cid-card"><h2>Preuves</h2><button class="cid-btn secondary" onclick="cidAddProof(\''+c.id+'\')">Ajouter preuve</button><div class="cid-mini-list" style="margin-top:10px">'+((c.preuves||[]).length?c.preuves.map(function(e){return '<div class="cid-mini"><strong>'+esc(e.scelle)+'</strong> <span class="cid-badge">'+esc(e.type)+'</span><br>'+esc(e.description||'')+'<br>Lieu: '+esc(e.lieu||'-')+' - Code: '+esc(e.codebarres||'-')+'</div>';}).join(''):'<div class="cid-mini">Aucune preuve.</div>')+'</div></div></section><section class="cid-card"><h2>Journal / Chain of custody</h2><div class="cid-mini-list">'+((c.journal||[]).length?c.journal.map(function(j){return '<div class="cid-mini"><strong>'+esc(j.date)+'</strong><br>'+esc(j.texte)+'</div>';}).join(''):'<div class="cid-mini">Aucun historique.</div>')+'</div></section></div>'); }
+
+function cidCreateFromForm(){
+  var f = document.getElementById('cidCreateForm');
+  if (!f) return;
+  var fd = new FormData(f);
+  cidUpsert({
+    titre: fd.get('titre') || 'Dossier sans titre',
+    resume: fd.get('resume') || '',
+    description: fd.get('description') || '',
+    date_faits: fd.get('date_faits') || '',
+    lieu: fd.get('lieu') || '',
+    nature: fd.get('nature') || '',
+    classification: fd.get('classification') || 'Autre',
+    priorite: fd.get('priorite') || 'Normale',
+    confidentialite: fd.get('confidentialite') || 'CID uniquement',
+    statut: 'Ouvert',
+    responsable: S.serverNick || (S.appUser ? ((S.appUser.prenom || '') + ' ' + (S.appUser.nom || '')).trim() : 'CID'),
+    membres: '',
+    suspects: 0
+  });
+  closeModal();
+  navigate('cid');
+}
+
+function cidOpenCreate(){
+  openModal({
+    eyebrow: 'CID',
+    title: 'Creation dossier',
+    size: 'xl',
+    body: `
+      <div class="cid-page">${cidCss()}
+        <section class="cid-card">
+          <form id="cidCreateForm" onsubmit="event.preventDefault();cidCreateFromForm()">
+            <div class="cid-grid">
+              <input name="titre" placeholder="Titre de l'enquete" required>
+              <input name="lieu" placeholder="Lieu">
+              <select name="classification">${cidOptions(CID_CLASSIFICATIONS, 'Autre')}</select>
+              <select name="priorite">${cidOptions(CID_PRIORITES, 'Normale')}</select>
+              <select name="confidentialite">${cidOptions(CID_CONFIDENTIALITES, 'CID uniquement')}</select>
+              <input name="date_faits" type="datetime-local">
+            </div>
+            <textarea name="nature" rows="2" placeholder="Nature des faits" style="margin-top:10px"></textarea>
+            <textarea name="resume" rows="2" placeholder="Resume rapide" style="margin-top:10px"></textarea>
+            <textarea name="description" rows="5" placeholder="Description complete" style="margin-top:10px"></textarea>
+          </form>
+        </section>
+      </div>`,
+    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidCreateFromForm()">Creer le dossier</button>'
+  });
+}
+
+function cidAddPerson(id){
+  var c = cidGet(id);
+  if (!c) return;
+  openModal({
+    eyebrow: 'CID - Personne liee',
+    title: 'Ajouter une personne',
+    size: 'lg',
+    body: `
+      <div class="cid-page">${cidCss()}
+        <section class="cid-card">
+          <form id="cidPersonForm" onsubmit="event.preventDefault();cidSavePersonModal('${id}')">
+            <div class="cid-grid">
+              <input name="nom" placeholder="Nom / prenom" required>
+              <select name="type">${cidOptions(['Citoyen','Suspect','Victime','Temoin','Informateur','Agent infiltre','Enqueteur'], 'Suspect')}</select>
+              <input name="tel" placeholder="Numero de telephone">
+              <select name="danger">${cidOptions(['Inconnue','Faible','Moyenne','Elevee','Critique'], 'Inconnue')}</select>
+              <select name="statut">${cidOptions(['Actif','A surveiller','Localise','Interroge','Archive'], 'Actif')}</select>
+            </div>
+            <textarea name="commentaires" rows="4" placeholder="Commentaires CID" style="margin-top:10px"></textarea>
+          </form>
+        </section>
+      </div>`,
+    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSavePersonModal(\'' + id + '\')">Ajouter</button>'
+  });
+}
+
+function cidSavePersonModal(id){
+  var c = cidGet(id), f = document.getElementById('cidPersonForm');
+  if (!c || !f) return;
+  var fd = new FormData(f);
+  var nom = fd.get('nom');
+  if (!nom) return toast('Nom requis.');
+  c.personnes = c.personnes || [];
+  c.personnes.push({
+    id: 'p_' + Date.now(),
+    nom: nom,
+    type: fd.get('type') || 'Citoyen',
+    tel: fd.get('tel') || '',
+    danger: fd.get('danger') || 'Inconnue',
+    statut: fd.get('statut') || 'Actif',
+    commentaires: fd.get('commentaires') || ''
+  });
+  c.suspects = c.personnes.filter(function(p){ return /suspect/i.test(p.type); }).length;
+  c.journal = c.journal || [];
+  c.journal.unshift({date: cidNow(), texte: 'Personne ajoutee : ' + nom});
+  cidUpsert(c);
+  closeModal();
+  navigate('cid', {id: id});
+}
+
+function cidAddProof(id){
+  var c = cidGet(id);
+  if (!c) return;
+  openModal({
+    eyebrow: 'CID - Preuve',
+    title: 'Ajouter une preuve',
+    size: 'lg',
+    body: `
+      <div class="cid-page">${cidCss()}
+        <section class="cid-card">
+          <form id="cidProofForm" onsubmit="event.preventDefault();cidSaveProofModal('${id}')">
+            <div class="cid-grid">
+              <select name="type">${cidOptions(['Document','Photo','Video','Audio','Arme','Objet','ADN','Temoignage','Telephone','Autre'], 'Document')}</select>
+              <input name="lieu" placeholder="Lieu de decouverte" value="${esc(c.lieu || '')}">
+              <input name="decouvert_par" placeholder="Decouvert par" value="${esc(S.serverNick || 'CID')}">
+              <select name="etat">${cidOptions(['Inventorie','Analyse en cours','Exploitee','Archivee'], 'Inventorie')}</select>
+              <input name="localisation" placeholder="Localisation / stockage" value="CID">
+            </div>
+            <textarea name="description" rows="4" placeholder="Description de la preuve" style="margin-top:10px"></textarea>
+          </form>
+        </section>
+      </div>`,
+    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSaveProofModal(\'' + id + '\')">Ajouter</button>'
+  });
+}
+
+function cidSaveProofModal(id){
+  var c = cidGet(id), f = document.getElementById('cidProofForm');
+  if (!c || !f) return;
+  var fd = new FormData(f);
+  c.preuves = c.preuves || [];
+  var seal = 'SC-' + new Date().getFullYear() + '-' + String(c.preuves.length + 1).padStart(4, '0');
+  c.preuves.push({
+    id: 'e_' + Date.now(),
+    scelle: seal,
+    codebarres: seal.replace(/\D/g, '') + Date.now().toString().slice(-4),
+    type: fd.get('type') || 'Autre',
+    description: fd.get('description') || '',
+    lieu: fd.get('lieu') || '',
+    date: cidNow(),
+    decouvert_par: fd.get('decouvert_par') || S.serverNick || 'CID',
+    etat: fd.get('etat') || 'Inventorie',
+    localisation: fd.get('localisation') || 'CID',
+    chaine: [{date: cidNow(), texte: 'Ajout au dossier'}]
+  });
+  c.journal = c.journal || [];
+  c.journal.unshift({date: cidNow(), texte: 'Preuve ajoutee : ' + seal});
+  cidUpsert(c);
+  closeModal();
+  navigate('cid', {id: id});
+}
+
+function cidAddLog(id){
+  var c = cidGet(id);
+  if (!c) return;
+  openModal({
+    eyebrow: 'CID - Journal',
+    title: 'Ajouter une note',
+    size: 'lg',
+    body: `
+      <div class="cid-page">${cidCss()}
+        <section class="cid-card">
+          <form id="cidLogForm" onsubmit="event.preventDefault();cidSaveLogModal('${id}')">
+            <textarea name="texte" rows="5" placeholder="Note, action, instruction ou observation" required></textarea>
+          </form>
+        </section>
+      </div>`,
+    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSaveLogModal(\'' + id + '\')">Ajouter</button>'
+  });
+}
+
+function cidSaveLogModal(id){
+  var c = cidGet(id), f = document.getElementById('cidLogForm');
+  if (!c || !f) return;
+  var texte = new FormData(f).get('texte');
+  if (!texte) return toast('Note requise.');
+  c.journal = c.journal || [];
+  c.journal.unshift({date: cidNow(), texte: texte});
+  cidUpsert(c);
+  closeModal();
+  navigate('cid', {id: id});
+}
+
+function renderCID2(){
+  if (!canAccessCID()) {
+    setContent('<div class="empty-state"><div class="empty-icon">CID</div><div class="empty-title">Acces restreint</div><div class="empty-sub">Role CID requis.</div></div>');
+    return;
+  }
+  if (S.pd && S.pd.id) return renderCIDCase(S.pd.id);
+  var list = cidLoad();
+  var q = (S.pd && S.pd.q) || '';
+  var filter = (S.pd && S.pd.filter) || 'Toutes';
+  var visible = list.filter(function(c){
+    var ok = filter === 'Toutes' || c.statut === filter;
+    var hay = [c.numero, c.titre, c.statut, c.priorite, c.classification, c.responsable].join(' ').toLowerCase();
+    return ok && hay.indexOf(q.toLowerCase()) !== -1;
+  }).sort(function(a,b){ return String(b.updated_at || '').localeCompare(String(a.updated_at || '')); });
+  var counts = {
+    ouverts: list.filter(function(c){ return c.statut === 'Ouvert'; }).length,
+    attente: list.filter(function(c){ return c.statut === 'En attente'; }).length,
+    cold: list.filter(function(c){ return c.statut === 'Cold Case'; }).length,
+    preuves: list.reduce(function(n,c){ return n + ((c.preuves || []).length); }, 0)
+  };
+  setContent(`
+    <div class="cid-page">
+      ${cidCss()}
+      <section class="cid-hero">
+        <div>
+          <div class="cid-kicker">SASP - Criminal Investigation Division</div>
+          <h1 class="cid-title">Dossiers CID</h1>
+          <p class="cid-sub">Enquetes criminelles, preuves, suspects, victimes et chaines de possession.</p>
+        </div>
+        <button class="cid-btn" onclick="cidOpenCreate()">Creer un dossier</button>
+      </section>
+      <section class="cid-stats">
+        <div class="cid-card cid-stat"><strong>${counts.ouverts}</strong><span>Ouvertes</span></div>
+        <div class="cid-card cid-stat"><strong>${counts.attente}</strong><span>En attente</span></div>
+        <div class="cid-card cid-stat"><strong>${counts.cold}</strong><span>Cold case</span></div>
+        <div class="cid-card cid-stat"><strong>${counts.preuves}</strong><span>Preuves</span></div>
+      </section>
+      <section class="cid-card">
+        <div class="cid-toolbar">
+          <input id="cidSearchInput" style="max-width:360px" placeholder="Recherche instantanee..." value="${esc(q)}">
+          <select id="cidFilterSelect" style="max-width:220px"><option>Toutes</option>${cidOptions(CID_STATUTS, filter)}</select>
+        </div>
+      </section>
+      <section class="cid-card">
+        <table class="cid-table">
+          <thead><tr><th>Numero</th><th>Enquete</th><th>Statut</th><th>Priorite</th><th>Classification</th><th>Resp.</th><th>Suspects</th><th>Preuves</th><th>Modification</th></tr></thead>
+          <tbody>
+            ${visible.length ? visible.map(function(c){
+              return "<tr onclick=\"navigate('cid',{id:'" + c.id + "'})\" style=\"cursor:pointer\"><td>" + esc(c.numero) + "</td><td><strong>" + esc(c.titre) + "</strong><br><small>" + esc(c.resume || "") + "</small></td><td><span class=\"cid-badge\">" + esc(c.statut) + "</span></td><td>" + esc(c.priorite) + "</td><td>" + esc(c.classification) + "</td><td>" + esc(c.responsable || "-") + "</td><td>" + (c.suspects || 0) + "</td><td>" + ((c.preuves || []).length) + "</td><td>" + esc(c.updated_at || "-") + "</td></tr>";
+            }).join('') : '<tr><td colspan="9">Aucun dossier CID.</td></tr>'}
+          </tbody>
+        </table>
+      </section>
+    </div>
+  `);
+  var search = document.getElementById('cidSearchInput');
+  var select = document.getElementById('cidFilterSelect');
+  if (search) search.addEventListener('input', function(){ navigate('cid', {q: this.value, filter: select ? select.value : filter}); });
+  if (select) select.addEventListener('change', function(){ navigate('cid', {filter: this.value, q: search ? search.value : q}); });
+}
 
 function renderCartes() {
   setContent(
