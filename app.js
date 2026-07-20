@@ -539,7 +539,7 @@ async function navigate(page, pd) {
       pointeuse:               renderPointeuse,
       'pointeuse-historique':  renderPointeuseHistorique,
       cartes:                  renderCartes,
-      cid:                     renderCID2,
+      cid:                     renderCID3,
       ceremonie:      renderCeremonie,
       archives:       renderArchives,
       completude:     renderCompletude,
@@ -5254,6 +5254,195 @@ function renderCID2(){
   var select = document.getElementById('cidFilterSelect');
   if (search) search.addEventListener('input', function(){ navigate('cid', {q: this.value, filter: select ? select.value : filter}); });
   if (select) select.addEventListener('change', function(){ navigate('cid', {filter: this.value, q: search ? search.value : q}); });
+}
+
+function cidCss2(){
+  return `<style>
+    .cid-mdt{display:grid;gap:14px;color:#dbeafe}
+    .cid-mdt *{box-sizing:border-box}
+    .cid-topbar{display:grid;grid-template-columns:1fr minmax(280px,520px) auto;gap:14px;align-items:center;background:linear-gradient(135deg,rgba(11,24,43,.96),rgba(7,14,26,.96));border:1px solid rgba(76,112,154,.32);border-radius:8px;padding:12px 14px;box-shadow:0 16px 42px rgba(0,0,0,.28)}
+    .cid-brand{display:flex;align-items:center;gap:12px}.cid-brand-icon{width:36px;height:36px;border:1px solid rgba(75,140,255,.32);border-radius:8px;display:grid;place-items:center;background:rgba(15,30,52,.85);color:#7db4ff;font-weight:900}
+    .cid-brand-title{font-size:18px;font-weight:900;letter-spacing:.02em}.cid-brand-sub{font-size:11px;color:#8ea8c8}.cid-global-search{position:relative}.cid-global-search input{width:100%;background:#07111f;border:1px solid rgba(80,122,170,.35);border-radius:7px;color:#dbeafe;padding:12px 44px 12px 36px}.cid-global-search:before{content:'⌕';position:absolute;left:13px;top:9px;color:#7fa8d6}.cid-key{position:absolute;right:8px;top:8px;border:1px solid rgba(126,162,208,.28);border-radius:5px;padding:3px 8px;color:#93a9c4;font-size:11px;background:rgba(255,255,255,.04)}
+    .cid-session{display:flex;gap:10px;align-items:center;justify-content:flex-end}.cid-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(78,117,161,.35);border-radius:7px;background:rgba(9,18,34,.82);padding:9px 11px;color:#c9dcf5;font-size:12px}.cid-dot{width:7px;height:7px;border-radius:50%;background:#20df78;box-shadow:0 0 14px rgba(32,223,120,.7)}
+    .cid-shell{display:grid;grid-template-columns:340px minmax(0,1fr);gap:14px;min-height:690px}.cid-list-pane,.cid-workspace,.cid-panel{background:linear-gradient(145deg,rgba(11,24,43,.96),rgba(8,16,29,.98));border:1px solid rgba(79,117,160,.34);border-radius:8px;box-shadow:0 16px 42px rgba(0,0,0,.2)}
+    .cid-list-pane{display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden}.cid-pane-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px;border-bottom:1px solid rgba(82,120,166,.22)}.cid-pane-title{font-size:18px;font-weight:900}.cid-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .cid-blue-btn,.cid-gold-btn,.cid-soft-btn{border-radius:7px;border:1px solid transparent;padding:10px 12px;font-weight:800;cursor:pointer}.cid-blue-btn{background:#1769ff;color:white;border-color:#2f7cff}.cid-gold-btn{background:#d6b344;color:#06101d;border-color:#f0ca53}.cid-soft-btn{background:rgba(28,48,76,.72);color:#bfd8fb;border-color:rgba(83,125,175,.35)}
+    .cid-filter-zone{padding:12px 15px;display:grid;gap:10px;border-bottom:1px solid rgba(82,120,166,.18)}.cid-filter-zone input,.cid-filter-zone select{background:#07111f;border:1px solid rgba(80,122,170,.35);border-radius:7px;color:#dbeafe;padding:10px}.cid-tabs{display:flex;gap:6px;overflow:auto}.cid-tab{font-size:11px;border:0;background:transparent;color:#8ea8c8;padding:8px 10px;border-radius:6px;cursor:pointer}.cid-tab.active{background:rgba(23,105,255,.12);color:#6fb2ff;border-bottom:1px solid #2f83ff}
+    .cid-case-list{padding:10px;overflow:auto;display:grid;gap:8px;align-content:start}.cid-case-card{border:1px solid rgba(74,114,159,.26);background:rgba(7,16,30,.78);border-radius:7px;padding:12px;cursor:pointer;transition:.15s}.cid-case-card:hover,.cid-case-card.active{border-color:#2d86ff;background:linear-gradient(135deg,rgba(14,37,68,.96),rgba(7,17,31,.96));box-shadow:inset 3px 0 #2d86ff}.cid-card-top{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#7fa8d6}.cid-case-name{margin:8px 0 4px;font-size:14px;font-weight:900;color:#eef6ff}.cid-case-meta{display:flex;justify-content:space-between;gap:10px;color:#8ea8c8;font-size:11px}.cid-footer-pages{padding:12px 15px;border-top:1px solid rgba(82,120,166,.18);color:#8ea8c8;font-size:12px}
+    .cid-badge2{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:900;border:1px solid rgba(130,162,206,.22);background:rgba(255,255,255,.04);color:#bdd6f9}.cid-badge2.red{color:#ff6666;background:rgba(255,54,54,.12);border-color:rgba(255,74,74,.25)}.cid-badge2.orange{color:#ffb44f;background:rgba(255,144,48,.12);border-color:rgba(255,171,68,.25)}.cid-badge2.blue{color:#62a8ff;background:rgba(47,124,255,.12);border-color:rgba(75,145,255,.28)}.cid-badge2.green{color:#48e58b;background:rgba(36,210,109,.12);border-color:rgba(56,220,132,.28)}.cid-badge2.gold{color:#f2cd55;background:rgba(214,179,68,.13);border-color:rgba(214,179,68,.32)}
+    .cid-workspace{padding:16px;overflow:auto}.cid-return{border:0;background:transparent;color:#8ea8c8;cursor:pointer;margin-bottom:12px}.cid-case-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start;border-bottom:1px solid rgba(82,120,166,.2);padding-bottom:14px}.cid-case-id{font-size:14px;color:#91b4df}.cid-case-title{font-size:25px;font-weight:900;margin:6px 0}.cid-subline{display:flex;gap:16px;flex-wrap:wrap;color:#91a9c5;font-size:12px}.cid-summary-chips{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:8px}.cid-chip{border:1px solid rgba(76,112,154,.28);background:rgba(9,18,34,.65);border-radius:8px;padding:10px}.cid-chip span{display:block;color:#8aa2c0;font-size:11px}.cid-chip strong{display:block;margin-top:5px;color:#fff}
+    .cid-nav-tabs{display:flex;gap:8px;overflow:auto;border-bottom:1px solid rgba(82,120,166,.2);padding:12px 0}.cid-nav-tabs span{font-size:12px;color:#a9c2e2;padding:8px 10px;border-radius:7px}.cid-nav-tabs span.active{color:#65a7ff;border-bottom:2px solid #2d86ff;background:rgba(45,134,255,.08)}
+    .cid-detail-grid{display:grid;grid-template-columns:1.1fr 1fr .9fr;gap:14px;margin-top:14px}.cid-panel{padding:14px}.cid-panel h3{margin:0 0 12px;font-size:16px}.cid-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cid-field span{display:block;color:#7f96b3;font-size:11px;margin-bottom:4px}.cid-field strong{color:#edf6ff;font-size:13px}.cid-text{color:#c7d8ef;line-height:1.55;font-size:13px}.cid-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.cid-stat-box{border:1px solid rgba(80,122,170,.25);border-radius:7px;padding:12px;background:rgba(7,16,30,.62);text-align:center}.cid-stat-box b{display:block;font-size:22px;color:#fff}.cid-stat-box span{font-size:11px;color:#8ea8c8}.cid-timeline{display:grid;gap:10px}.cid-time{border-left:2px solid #2d86ff;padding-left:10px;color:#c7d8ef;font-size:13px}.cid-time small{display:block;color:#7f96b3;margin-bottom:2px}.cid-mini-table{width:100%;border-collapse:collapse}.cid-mini-table th,.cid-mini-table td{border-bottom:1px solid rgba(82,120,166,.18);padding:10px;text-align:left;font-size:12px}.cid-mini-table th{color:#8ca6c7;font-size:10px;text-transform:uppercase;letter-spacing:.12em}.cid-empty-panel{display:grid;place-items:center;min-height:400px;text-align:center;color:#8ea8c8}
+    @media(max-width:1200px){.cid-shell{grid-template-columns:1fr}.cid-detail-grid{grid-template-columns:1fr}.cid-topbar{grid-template-columns:1fr}.cid-summary-chips{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.cid-summary-chips,.cid-info-grid,.cid-stat-grid{grid-template-columns:1fr}.cid-case-head{grid-template-columns:1fr}}
+  </style>`;
+}
+
+function cidPriorityTone(value){
+  value = String(value || '').toLowerCase();
+  if (value.indexOf('crit') !== -1 || value.indexOf('haute') !== -1) return 'red';
+  if (value.indexOf('norm') !== -1) return 'gold';
+  if (value.indexOf('faible') !== -1) return 'green';
+  return 'blue';
+}
+
+function cidStatusTone(value){
+  value = String(value || '').toLowerCase();
+  if (value.indexOf('ouvert') !== -1 || value.indexOf('cours') !== -1) return 'blue';
+  if (value.indexOf('attente') !== -1) return 'orange';
+  if (value.indexOf('ferme') !== -1 || value.indexOf('classe') !== -1) return 'green';
+  if (value.indexOf('cold') !== -1 || value.indexOf('suspend') !== -1) return 'red';
+  return 'gold';
+}
+
+function cidPersonTypeCounts(c){
+  var out = {Suspects:0, Victimes:0, Temoins:0, Informateurs:0, Enqueteurs:0};
+  (c.personnes || []).forEach(function(p){
+    var t = String(p.type || '').toLowerCase();
+    if (t.indexOf('suspect') !== -1) out.Suspects++;
+    else if (t.indexOf('victime') !== -1) out.Victimes++;
+    else if (t.indexOf('temoin') !== -1) out.Temoins++;
+    else if (t.indexOf('informateur') !== -1) out.Informateurs++;
+    else if (t.indexOf('enqueteur') !== -1 || t.indexOf('agent') !== -1) out.Enqueteurs++;
+  });
+  return out;
+}
+
+function cidCaseWorkspace(c){
+  if (!c) {
+    return '<section class="cid-workspace cid-empty-panel"><div><div class="cid-brand-icon" style="margin:0 auto 12px">CID</div><h2>Aucun dossier selectionne</h2><p>Creer ou selectionner un dossier pour ouvrir le poste de travail.</p></div></section>';
+  }
+  var pc = cidPersonTypeCounts(c);
+  var proofs = c.preuves || [];
+  var people = c.personnes || [];
+  var journal = c.journal || [];
+  return `
+    <section class="cid-workspace">
+      <button class="cid-return" onclick="navigate('cid')">← Retour aux dossiers</button>
+      <div class="cid-case-head">
+        <div>
+          <div class="cid-case-id">${esc(c.numero || 'CID')}</div>
+          <h1 class="cid-case-title">${esc(c.titre || 'Dossier sans titre')}</h1>
+          <div class="cid-subline">
+            <span>Ouvert le ${esc(c.date_ouverture || '-')}</span>
+            <span>Derniere modif. ${esc(c.updated_at || '-')}</span>
+            <span>Par ${esc(c.responsable || 'CID')}</span>
+          </div>
+        </div>
+        <div class="cid-actions">
+          <button class="cid-soft-btn" onclick="cidAddLog('${c.id}')">Note</button>
+          <button class="cid-blue-btn" onclick="cidAddPerson('${c.id}')">Personne</button>
+          <button class="cid-gold-btn" onclick="cidAddProof('${c.id}')">Preuve</button>
+        </div>
+      </div>
+      <div class="cid-summary-chips" style="margin-top:14px">
+        <div class="cid-chip"><span>Statut</span><strong><span class="cid-badge2 ${cidStatusTone(c.statut)}">${esc(c.statut || '-')}</span></strong></div>
+        <div class="cid-chip"><span>Priorite</span><strong><span class="cid-badge2 ${cidPriorityTone(c.priorite)}">${esc(c.priorite || '-')}</span></strong></div>
+        <div class="cid-chip"><span>Classification</span><strong>${esc(c.classification || '-')}</strong></div>
+        <div class="cid-chip"><span>Confidentialite</span><strong>${esc(c.confidentialite || '-')}</strong></div>
+      </div>
+      <div class="cid-nav-tabs"><span class="active">Apercu</span><span>Personnes ${people.length}</span><span>Preuves ${proofs.length}</span><span>Chronologie</span><span>Notes</span><span>Carte</span><span>Journal</span></div>
+      <div class="cid-detail-grid">
+        <div class="cid-panel">
+          <h3>Informations generales</h3>
+          <div class="cid-info-grid">
+            <div class="cid-field"><span>Type de dossier</span><strong>${esc(c.classification || '-')}</strong></div>
+            <div class="cid-field"><span>Nature des faits</span><strong>${esc(c.nature || '-')}</strong></div>
+            <div class="cid-field"><span>Lieu des faits</span><strong>${esc(c.lieu || '-')}</strong></div>
+            <div class="cid-field"><span>Date des faits</span><strong>${esc(c.date_faits || '-')}</strong></div>
+            <div class="cid-field"><span>Cree par</span><strong>${esc(c.responsable || '-')}</strong></div>
+            <div class="cid-field"><span>Suspects</span><strong>${c.suspects || pc.Suspects}</strong></div>
+          </div>
+        </div>
+        <div class="cid-panel">
+          <h3>Resume du dossier</h3>
+          <p class="cid-text">${esc(c.resume || c.description || 'Aucun resume renseigne.')}</p>
+          <button class="cid-soft-btn" onclick="renderCIDCase('${c.id}')">Modifier</button>
+        </div>
+        <div class="cid-panel">
+          <h3>Acces au dossier</h3>
+          <div class="cid-field"><span>Niveau requis</span><strong>${esc(c.confidentialite || 'CID uniquement')}</strong></div>
+          <div class="cid-field" style="margin-top:12px"><span>Membres affectes</span><strong>${esc(c.membres || c.responsable || '-')}</strong></div>
+        </div>
+      </div>
+      <div class="cid-detail-grid" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="cid-panel">
+          <h3>Personnes</h3>
+          <div class="cid-stat-grid">
+            <div class="cid-stat-box"><b>${pc.Suspects}</b><span>Suspects</span></div>
+            <div class="cid-stat-box"><b>${pc.Victimes}</b><span>Victimes</span></div>
+            <div class="cid-stat-box"><b>${pc.Temoins}</b><span>Temoins</span></div>
+            <div class="cid-stat-box"><b>${pc.Informateurs + pc.Enqueteurs}</b><span>Autres</span></div>
+          </div>
+          <table class="cid-mini-table" style="margin-top:12px"><tbody>${people.slice(0,4).map(function(p){return '<tr><td>'+esc(p.nom)+'</td><td><span class="cid-badge2 blue">'+esc(p.type)+'</span></td></tr>';}).join('') || '<tr><td>Aucune personne.</td></tr>'}</tbody></table>
+        </div>
+        <div class="cid-panel">
+          <h3>Chronologie recente</h3>
+          <div class="cid-timeline">${journal.slice(0,5).map(function(j){return '<div class="cid-time"><small>'+esc(j.date || '-')+'</small>'+esc(j.texte || '')+'</div>';}).join('') || '<div class="cid-time">Aucun historique.</div>'}</div>
+        </div>
+        <div class="cid-panel">
+          <h3>Preuves recentes</h3>
+          <table class="cid-mini-table"><thead><tr><th>Scelle</th><th>Type</th><th>Etat</th></tr></thead><tbody>${proofs.slice(0,5).map(function(e){return '<tr><td>'+esc(e.scelle || '-')+'</td><td>'+esc(e.type || '-')+'</td><td><span class="cid-badge2 gold">'+esc(e.etat || '-')+'</span></td></tr>';}).join('') || '<tr><td colspan="3">Aucune preuve.</td></tr>'}</tbody></table>
+        </div>
+      </div>
+      <section class="cid-panel" style="margin-top:14px">
+        <h3>Description complete</h3>
+        <p class="cid-text">${esc(c.description || 'Aucune description complete.')}</p>
+      </section>
+    </section>`;
+}
+
+function renderCID3(){
+  if (!canAccessCID()) {
+    setContent('<div class="empty-state"><div class="empty-icon">CID</div><div class="empty-title">Acces restreint</div><div class="empty-sub">Role CID requis.</div></div>');
+    return;
+  }
+  var list = cidLoad();
+  var q = (S.pd && S.pd.q) || '';
+  var filter = (S.pd && S.pd.filter) || 'Toutes';
+  var visible = list.filter(function(c){
+    var ok = filter === 'Toutes' || c.statut === filter;
+    var hay = [c.numero, c.titre, c.statut, c.priorite, c.classification, c.responsable, c.resume].join(' ').toLowerCase();
+    return ok && hay.indexOf(q.toLowerCase()) !== -1;
+  }).sort(function(a,b){ return String(b.updated_at || '').localeCompare(String(a.updated_at || '')); });
+  var activeId = (S.pd && S.pd.id) || (visible[0] && visible[0].id);
+  var active = activeId ? cidGet(activeId) : null;
+  var openCount = list.filter(function(c){ return c.statut === 'Ouvert'; }).length;
+  var waitCount = list.filter(function(c){ return c.statut === 'En attente'; }).length;
+  var closedCount = list.filter(function(c){ return /ferme|classe/i.test(c.statut || ''); }).length;
+  setContent(`
+    <div class="cid-mdt">
+      ${cidCss2()}
+      <section class="cid-topbar">
+        <div class="cid-brand"><div class="cid-brand-icon">CID</div><div><div class="cid-brand-title">CID</div><div class="cid-brand-sub">Criminal Investigation Division</div></div></div>
+        <div class="cid-global-search"><input id="cidSearchInput" placeholder="Rechercher un dossier, une personne, une preuve..." value="${esc(q)}"><span class="cid-key">⌘ K</span></div>
+        <div class="cid-session"><span class="cid-pill">Connecte a Discord <i class="cid-dot"></i></span><span class="cid-pill">Role requis: @CID <b class="cid-dot"></b></span></div>
+      </section>
+      <div class="cid-shell">
+        <aside class="cid-list-pane">
+          <div class="cid-pane-head"><div class="cid-pane-title">Dossiers d'enquete</div><button class="cid-blue-btn" onclick="cidOpenCreate()">+ Nouveau dossier</button></div>
+          <div class="cid-filter-zone">
+            <input id="cidSideSearch" placeholder="Rechercher..." value="${esc(q)}">
+            <select id="cidFilterSelect"><option>Toutes</option>${cidOptions(CID_STATUTS, filter)}</select>
+            <div class="cid-tabs"><button class="cid-tab ${filter==='Toutes'?'active':''}" onclick="navigate('cid',{filter:'Toutes',q:'${esc(q)}'})">Tous ${list.length}</button><button class="cid-tab" onclick="navigate('cid',{filter:'Ouvert',q:'${esc(q)}'})">Ouverts ${openCount}</button><button class="cid-tab" onclick="navigate('cid',{filter:'En attente',q:'${esc(q)}'})">En cours ${waitCount}</button><button class="cid-tab">Fermes ${closedCount}</button></div>
+          </div>
+          <div class="cid-case-list">
+            ${visible.length ? visible.map(function(c){
+              return "<article class=\"cid-case-card " + (active && active.id === c.id ? "active" : "") + "\" onclick='navigate(\"cid\",{id:" + JSON.stringify(c.id) + "})'><div class=\"cid-card-top\"><span>" + esc(c.numero || "CID") + "</span><span class=\"cid-badge2 " + cidPriorityTone(c.priorite) + "\">" + esc(c.priorite || "Normale") + "</span></div><div class=\"cid-case-name\">" + esc(c.titre || "Dossier sans titre") + "</div><div class=\"cid-case-meta\"><span>" + esc(c.responsable || "CID") + "</span><span>" + esc(c.updated_at || "-") + "</span></div></article>";
+            }).join('') : '<div class="cid-empty-panel" style="min-height:220px">Aucun dossier.</div>'}
+          </div>
+          <div class="cid-footer-pages">1-${visible.length} sur ${list.length} dossiers</div>
+        </aside>
+        ${cidCaseWorkspace(active)}
+      </div>
+    </div>
+  `);
+  var search = document.getElementById('cidSearchInput');
+  var sideSearch = document.getElementById('cidSideSearch');
+  var select = document.getElementById('cidFilterSelect');
+  function goSearch(value){ navigate('cid', {q: value, filter: select ? select.value : filter}); }
+  if (search) search.addEventListener('change', function(){ goSearch(this.value); });
+  if (sideSearch) sideSearch.addEventListener('change', function(){ goSearch(this.value); });
+  if (select) select.addEventListener('change', function(){ navigate('cid', {filter: this.value, q: sideSearch ? sideSearch.value : q}); });
 }
 
 function renderCartes() {
