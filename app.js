@@ -6245,6 +6245,112 @@ async function renderCID3(){
   if (select) select.addEventListener('change', function(){ navigate('cid', {filter: this.value, q: sideSearch ? sideSearch.value : q}); });
 }
 
+function cidPreviewAttachment(file){
+  if (!file || !file.data) return toast('Aucun fichier a afficher.');
+  var body = '<div style="text-align:center">';
+  if (String(file.type || '').indexOf('image/') === 0) {
+    body += '<img src="' + file.data + '" style="max-width:100%;max-height:72vh;border-radius:8px;border:1px solid rgba(80,122,170,.35)">';
+  } else if (String(file.type || '').indexOf('video/') === 0) {
+    body += '<video controls src="' + file.data + '" style="max-width:100%;max-height:72vh;border-radius:8px"></video>';
+  } else if (String(file.type || '').indexOf('audio/') === 0) {
+    body += '<audio controls src="' + file.data + '" style="width:100%"></audio>';
+  } else {
+    body += '<a class="cid-blue-btn" download="' + esc(file.name || 'preuve') + '" href="' + file.data + '">Telecharger le fichier</a>';
+  }
+  body += '</div>';
+  openModal({eyebrow:'CID - Piece jointe', title:file.name || 'Apercu', size:'xl', body:body, footer:'<button class="btn" onclick="closeModal()">Fermer</button>'});
+}
+
+function cidAttachmentHtml(file, label, onclick){
+  if (!file || !file.data) return '<span>-</span>';
+  var name = esc(label || file.name || 'Fichier');
+  if (String(file.type || '').indexOf('image/') === 0) {
+    return '<button type="button" onclick="' + onclick + '" style="border:0;background:transparent;padding:0;cursor:pointer"><img src="' + file.data + '" alt="' + name + '" class="cid-preview-img"></button>';
+  }
+  return '<button type="button" class="cid-soft-btn" onclick="' + onclick + '">' + name + '</button>';
+}
+
+function cidAddLog(id){
+  openModal({
+    eyebrow: 'CID - Note',
+    title: 'Ajouter une note',
+    size: 'lg',
+    body: `
+      <div class="cid-page">${cidCss()}
+        <section class="cid-card">
+          <form id="cidLogForm" onsubmit="event.preventDefault();cidSaveLogModal('${id}')">
+            <textarea name="texte" rows="5" placeholder="Note, action, observation..." required></textarea>
+          </form>
+        </section>
+      </div>`,
+    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSaveLogModal(\'' + id + '\')">Ajouter</button>'
+  });
+}
+
+function cidSaveLogModal(id){
+  var c = cidGet(id), f = document.getElementById('cidLogForm');
+  if (!c || !f) return;
+  var texte = new FormData(f).get('texte');
+  if (!texte) return toast('Note requise.');
+  c.journal = c.journal || [];
+  c.journal.unshift({date: cidNow(), texte: texte});
+  cidUpsert(c);
+  closeModal();
+  navigate('cid', {id:id});
+}
+
+function cidCaseWorkspace(c){
+  if (!c) return '<section class="cid-workspace cid-empty-panel"><div><div class="cid-brand-icon" style="margin:0 auto 12px">CID</div><h2>Aucun dossier selectionne</h2><p>Creer ou selectionner un dossier pour ouvrir le poste de travail.</p></div></section>';
+  var proofs = c.preuves || [];
+  var people = c.personnes || [];
+  var journal = c.journal || [];
+  return `
+    <section class="cid-workspace">
+      <button class="cid-return" onclick="navigate('cid')">Retour aux dossiers</button>
+      <div class="cid-case-head">
+        <div>
+          <div class="cid-case-id">${esc(c.numero || 'CID')}</div>
+          <h1 class="cid-case-title">${esc(c.titre || 'Dossier sans titre')}</h1>
+          <div class="cid-subline"><span>Ouvert le ${esc(c.date_ouverture || '-')}</span><span>Derniere modif. ${esc(c.updated_at || '-')}</span><span>Par ${esc(c.responsable || 'CID')}</span></div>
+        </div>
+        <div class="cid-actions">
+          <button class="cid-soft-btn" onclick="cidOpenEditCase('${c.id}')">Modifier</button>
+          <button class="cid-soft-btn" onclick="cidAddLog('${c.id}')">Note</button>
+          <button class="cid-blue-btn" onclick="cidAddPerson('${c.id}')">Personne</button>
+          <button class="cid-gold-btn" onclick="cidAddProof('${c.id}')">Preuve</button>
+          <button class="cid-soft-btn" onclick="cidArchive('${c.id}')">Archiver</button>
+          <button class="cid-red-btn" onclick="cidDelete('${c.id}')">Supprimer</button>
+        </div>
+      </div>
+      <div class="cid-summary-chips">
+        <div class="cid-chip"><span>Statut</span><strong><span class="cid-badge2 ${cidStatusTone(c.statut)}">${esc(c.statut || '-')}</span></strong></div>
+        <div class="cid-chip"><span>Priorite</span><strong><span class="cid-badge2 ${cidPriorityTone(c.priorite)}">${esc(c.priorite || '-')}</span></strong></div>
+        <div class="cid-chip"><span>Classification</span><strong>${esc(c.classification || '-')}</strong></div>
+        <div class="cid-chip"><span>Confidentialite</span><strong>${esc(c.confidentialite || '-')}</strong></div>
+      </div>
+      <div class="cid-detail-grid" style="grid-template-columns:1fr 1fr">
+        <div class="cid-panel">
+          <h3>Personnes</h3>
+          <table class="cid-mini-table"><tbody>${people.length ? people.map(function(p){return "<tr style=\"cursor:pointer\" onclick='navigate(\"cid\",{id:" + JSON.stringify(c.id) + ",person:" + JSON.stringify(p.id) + "})'><td><strong>"+esc(p.nom)+"</strong></td><td><span class=\"cid-badge2 blue\">"+esc(p.type || "-")+"</span></td><td>"+esc(p.tel || "-")+"</td></tr>";}).join('') : '<tr><td>Aucune personne.</td></tr>'}</tbody></table>
+        </div>
+        <div class="cid-panel">
+          <h3>Preuves</h3>
+          <table class="cid-mini-table"><thead><tr><th>Apercu</th><th>Scelle</th><th>Type</th><th>Infos</th></tr></thead><tbody>${proofs.length ? proofs.map(function(e){var click="cidEvidencePreview("+JSON.stringify(c.id)+","+JSON.stringify(e.id)+")";return '<tr><td>'+cidAttachmentHtml(e.attachment, e.type, click)+'</td><td>'+esc(e.scelle || '-')+'</td><td><span class="cid-badge2 gold">'+esc(e.type || '-')+'</span></td><td>'+esc(cidProofDetailsText(c,e) || '-')+'</td></tr>';}).join('') : '<tr><td colspan="4">Aucune preuve.</td></tr>'}</tbody></table>
+        </div>
+      </div>
+      <div class="cid-detail-grid" style="grid-template-columns:1fr 1fr">
+        <section class="cid-panel">
+          <h3>Resume / description</h3>
+          <p class="cid-text">${esc(c.resume || c.description || 'Aucun resume renseigne.')}</p>
+        </section>
+        <section class="cid-panel">
+          <h3>Notes / journal</h3>
+          <div class="cid-mini-list">${journal.length ? journal.map(function(j){return '<div class="cid-mini"><strong>'+esc(j.date || '-')+'</strong><br>'+esc(j.texte || '')+'</div>';}).join('') : '<div class="cid-mini">Aucune note.</div>'}</div>
+        </section>
+      </div>
+    </section>`;
+}
+
 function renderCartes() {
   setContent(
     '<div style="display:flex;flex-direction:column;height:calc(100vh - 60px);margin:-24px">' +
