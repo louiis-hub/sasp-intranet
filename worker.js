@@ -1415,7 +1415,7 @@ async function autoClockout6h(env) {
     method: 'POST',
     headers: { 'Authorization': `Bot ${env.DISCORD_BOT_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      content: `<@&1500975725153620033>`,
+      allowed_mentions: { parse: [] },
       embeds: [{
         title: '\u23f1\ufe0f Fin de service automatique \u2014 6h d\u00e9pass\u00e9es',
         description: lines,
