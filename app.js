@@ -5869,6 +5869,382 @@ async function renderCID3(){
   if (select) select.addEventListener('change', function(){ navigate('cid', {filter: this.value, q: sideSearch ? sideSearch.value : q}); });
 }
 
+function cidCss2(){
+  return `<style>
+    .cid-mdt{display:grid;gap:14px;color:#dbeafe;font-size:13px}.cid-mdt *{box-sizing:border-box}
+    .cid-topbar,.cid-list-pane,.cid-workspace,.cid-panel{background:linear-gradient(145deg,rgba(11,24,43,.96),rgba(8,16,29,.98));border:1px solid rgba(79,117,160,.34);border-radius:8px;box-shadow:0 16px 42px rgba(0,0,0,.2)}
+    .cid-topbar{display:grid;grid-template-columns:1fr minmax(280px,520px) auto;gap:14px;align-items:center;padding:12px 14px}.cid-brand{display:flex;align-items:center;gap:12px}.cid-brand-icon{width:34px;height:34px;border:1px solid rgba(75,140,255,.32);border-radius:8px;display:grid;place-items:center;background:rgba(15,30,52,.85);color:#7db4ff;font-weight:800}.cid-brand-title{font-size:17px;font-weight:800}.cid-brand-sub{font-size:11px;color:#8ea8c8}
+    .cid-global-search{position:relative}.cid-global-search input{width:100%;background:#07111f;border:1px solid rgba(80,122,170,.35);border-radius:7px;color:#dbeafe;padding:11px 42px 11px 34px}.cid-global-search:before{content:'?';position:absolute;left:13px;top:9px;color:#7fa8d6}.cid-key{position:absolute;right:8px;top:8px;border:1px solid rgba(126,162,208,.28);border-radius:5px;padding:3px 8px;color:#93a9c4;font-size:10px;background:rgba(255,255,255,.04)}
+    .cid-session{display:flex;gap:8px;align-items:center;justify-content:flex-end}.cid-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(78,117,161,.35);border-radius:7px;background:rgba(9,18,34,.82);padding:8px 10px;color:#c9dcf5;font-size:11px}.cid-dot{width:7px;height:7px;border-radius:50%;background:#20df78}
+    .cid-shell{display:grid;grid-template-columns:330px minmax(0,1fr);gap:14px;min-height:690px}.cid-list-pane{display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden}.cid-pane-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border-bottom:1px solid rgba(82,120,166,.22)}.cid-pane-title{font-size:16px;font-weight:800}
+    .cid-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.cid-blue-btn,.cid-gold-btn,.cid-soft-btn,.cid-red-btn{border-radius:6px;padding:7px 10px;font-size:11px;letter-spacing:.04em;font-weight:700;cursor:pointer;background:rgba(7,16,30,.72);line-height:1}.cid-blue-btn{color:#8fbaff;border:1px solid rgba(75,145,255,.42)}.cid-gold-btn{color:#f2cd55;border:1px solid rgba(214,179,68,.5)}.cid-soft-btn{color:#bfd8fb;border:1px solid rgba(83,125,175,.35)}.cid-red-btn{color:#ff7676;border:1px solid rgba(255,90,90,.42)}
+    .cid-filter-zone{padding:12px 14px;display:grid;gap:9px;border-bottom:1px solid rgba(82,120,166,.18)}.cid-filter-zone input,.cid-filter-zone select,.cid-panel input,.cid-panel select,.cid-panel textarea,.cid-card input,.cid-card select,.cid-card textarea{width:100%;background:#07111f;border:1px solid rgba(80,122,170,.42);border-radius:7px;color:#dbeafe;padding:10px;outline:none}.cid-panel textarea,.cid-card textarea{resize:vertical;min-height:96px}.cid-panel input[type=file],.cid-card input[type=file]{padding:8px;color:#9fbce0}.cid-panel input[type=file]::file-selector-button,.cid-card input[type=file]::file-selector-button{background:#10223b;color:#dbeafe;border:1px solid rgba(80,122,170,.42);border-radius:6px;padding:6px 9px;margin-right:10px}
+    .cid-tabs{display:flex;gap:6px;overflow:auto}.cid-tab{font-size:11px;border:0;background:transparent;color:#8ea8c8;padding:7px 9px;border-radius:6px;cursor:pointer}.cid-tab.active{background:rgba(23,105,255,.12);color:#6fb2ff}
+    .cid-case-list{padding:10px;overflow:auto;display:grid;gap:8px;align-content:start}.cid-case-card{border:1px solid rgba(74,114,159,.26);background:rgba(7,16,30,.78);border-radius:7px;padding:11px;cursor:pointer;transition:.15s}.cid-case-card:hover,.cid-case-card.active{border-color:#2d86ff;background:linear-gradient(135deg,rgba(14,37,68,.96),rgba(7,17,31,.96));box-shadow:inset 3px 0 #2d86ff}.cid-card-top,.cid-case-meta{display:flex;justify-content:space-between;gap:8px;color:#8ea8c8;font-size:11px}.cid-case-name{margin:7px 0 4px;font-size:13px;font-weight:800;color:#eef6ff}.cid-footer-pages{padding:12px 14px;border-top:1px solid rgba(82,120,166,.18);color:#8ea8c8;font-size:12px}
+    .cid-badge2{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:700;border:1px solid rgba(130,162,206,.22);background:rgba(255,255,255,.04);color:#bdd6f9}.cid-badge2.red{color:#ff6666;background:rgba(255,54,54,.12);border-color:rgba(255,74,74,.25)}.cid-badge2.orange{color:#ffb44f;background:rgba(255,144,48,.12);border-color:rgba(255,171,68,.25)}.cid-badge2.blue{color:#62a8ff;background:rgba(47,124,255,.12);border-color:rgba(75,145,255,.28)}.cid-badge2.green{color:#48e58b;background:rgba(36,210,109,.12);border-color:rgba(56,220,132,.28)}.cid-badge2.gold{color:#f2cd55;background:rgba(214,179,68,.13);border-color:rgba(214,179,68,.32)}
+    .cid-workspace{padding:14px;overflow:auto}.cid-return{border:0;background:transparent;color:#8ea8c8;cursor:pointer;margin-bottom:12px;font-size:12px}.cid-case-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:start;border-bottom:1px solid rgba(82,120,166,.2);padding-bottom:13px}.cid-case-id{font-size:12px;color:#91b4df}.cid-case-title{font-size:21px;font-weight:800;margin:5px 0}.cid-subline{display:flex;gap:12px;flex-wrap:wrap;color:#91a9c5;font-size:12px}.cid-summary-chips{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:8px;margin-top:12px}.cid-chip{border:1px solid rgba(76,112,154,.28);background:rgba(9,18,34,.65);border-radius:8px;padding:9px}.cid-chip span{display:block;color:#8aa2c0;font-size:10px}.cid-chip strong{display:block;margin-top:4px;color:#fff;font-size:12px}
+    .cid-detail-grid{display:grid;grid-template-columns:1.1fr 1fr .9fr;gap:12px;margin-top:12px}.cid-panel{padding:13px}.cid-panel h3{margin:0 0 10px;font-size:14px;font-weight:800}.cid-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.cid-field span{display:block;color:#7f96b3;font-size:10px;margin-bottom:3px}.cid-field strong{color:#edf6ff;font-size:12px}.cid-text{color:#c7d8ef;line-height:1.5;font-size:12px}.cid-mini-list{display:grid;gap:8px}.cid-mini{border:1px solid rgba(80,122,170,.24);border-radius:7px;background:rgba(7,16,30,.62);padding:10px}.cid-mini-table{width:100%;border-collapse:collapse}.cid-mini-table th,.cid-mini-table td{border-bottom:1px solid rgba(82,120,166,.18);padding:9px;text-align:left;font-size:12px}.cid-mini-table th{color:#8ca6c7;font-size:10px;text-transform:uppercase;letter-spacing:.12em}.cid-empty-panel{display:grid;place-items:center;min-height:400px;text-align:center;color:#8ea8c8}.cid-preview-img{width:76px;height:52px;object-fit:cover;border-radius:6px;border:1px solid rgba(80,122,170,.35);cursor:pointer}.cid-hidden{display:none!important}
+    @media(max-width:1200px){.cid-shell{grid-template-columns:1fr}.cid-detail-grid{grid-template-columns:1fr}.cid-topbar{grid-template-columns:1fr}.cid-summary-chips{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.cid-summary-chips,.cid-info-grid{grid-template-columns:1fr}.cid-case-head{grid-template-columns:1fr}}
+  </style>`;
+}
+
+function cidOpenEditCase(id){
+  var c = cidGet(id);
+  if (!c) return;
+  openModal({
+    eyebrow: 'CID - Dossier',
+    title: 'Modifier le dossier',
+    size: 'xl',
+    body: `
+      <div class="cid-page">${cidCss()}
+        <section class="cid-card">
+          <form id="cidCaseEditForm" onsubmit="event.preventDefault();cidSaveCaseModal('${id}')">
+            <div class="cid-grid">
+              <input name="titre" value="${esc(c.titre || '')}" placeholder="Titre du dossier" required>
+              <select name="statut">${cidOptions(CID_STATUTS, c.statut || 'Ouvert')}</select>
+              <select name="priorite">${cidOptions(CID_PRIORITES, c.priorite || 'Normale')}</select>
+              <select name="classification">${cidOptions(CID_CLASSIFICATIONS, c.classification || 'Autre')}</select>
+            </div>
+            <textarea name="resume" rows="3" placeholder="Resume rapide" style="margin-top:10px">${esc(c.resume || '')}</textarea>
+            <textarea name="description" rows="6" placeholder="Description complete" style="margin-top:10px">${esc(c.description || '')}</textarea>
+          </form>
+        </section>
+      </div>`,
+    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSaveCaseModal(\'' + id + '\')">Sauvegarder</button>'
+  });
+}
+
+function cidSaveCaseModal(id){
+  var c = cidGet(id), f = document.getElementById('cidCaseEditForm');
+  if (!c || !f) return;
+  var fd = new FormData(f);
+  cidUpsert(Object.assign({}, c, {
+    titre: fd.get('titre') || c.titre,
+    statut: fd.get('statut') || c.statut,
+    priorite: fd.get('priorite') || c.priorite,
+    classification: fd.get('classification') || c.classification,
+    resume: fd.get('resume') || '',
+    description: fd.get('description') || ''
+  }));
+  closeModal();
+  navigate('cid', {id:id});
+}
+
+function cidProofTypeChange(){
+  var type = (document.getElementById('cidProofType') || {}).value || '';
+  ['Arme','Drogue','Vehicule'].forEach(function(k){
+    var box = document.getElementById('cidProof' + k);
+    if (box) box.classList.toggle('cid-hidden', type !== k);
+  });
+}
+
+function cidSuspectOptions(c){
+  var suspects = (c.personnes || []).filter(function(p){ return /suspect/i.test(p.type || ''); });
+  return '<option value="">Non attribue</option>' + suspects.map(function(p){ return '<option value="' + esc(p.id) + '">' + esc(p.nom || 'Suspect') + '</option>'; }).join('');
+}
+
+async function cidAddProof(id){
+  var c = cidGet(id);
+  if (!c) return;
+  var suspects = cidSuspectOptions(c);
+  openModal({
+    eyebrow: 'CID - Preuve',
+    title: 'Ajouter une saisie / preuve',
+    size: 'lg',
+    body: `
+      <div class="cid-page">${cidCss()}
+        <section class="cid-card">
+          <form id="cidProofForm" onsubmit="event.preventDefault();cidSaveProofModal('${id}')">
+            <div class="cid-grid">
+              <select name="type" id="cidProofType" onchange="cidProofTypeChange()">${cidOptions(['Photo','Video','Audio','Document','Arme','Drogue','Vehicule','Objet','Telephone','ADN','Temoignage','Autre'], 'Photo')}</select>
+              <input name="fichier" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt">
+            </div>
+            <div id="cidProofArme" class="cid-grid cid-hidden" style="margin-top:10px">
+              <input name="type_arme" placeholder="Type d'arme">
+              <input name="numero_serie" placeholder="Numero de serie">
+              <select name="suspect_arme">${suspects}</select>
+            </div>
+            <div id="cidProofDrogue" class="cid-grid cid-hidden" style="margin-top:10px">
+              <input name="type_drogue" placeholder="Type de drogue">
+              <input name="quantite_drogue" placeholder="Quantite">
+              <select name="suspect_drogue">${suspects}</select>
+            </div>
+            <div id="cidProofVehicule" class="cid-grid cid-hidden" style="margin-top:10px">
+              <input name="modele_vehicule" placeholder="Modele du vehicule">
+              <input name="plaque_vehicule" placeholder="Plaque">
+              <select name="suspect_vehicule">${suspects}</select>
+            </div>
+            <textarea name="description" rows="4" placeholder="Description / contexte de la saisie" style="margin-top:10px"></textarea>
+          </form>
+        </section>
+      </div>`,
+    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSaveProofModal(\'' + id + '\')">Ajouter</button>'
+  });
+  cidProofTypeChange();
+}
+
+async function cidSaveProofModal(id){
+  var c = cidGet(id), f = document.getElementById('cidProofForm');
+  if (!c || !f) return;
+  var fd = new FormData(f);
+  var type = fd.get('type') || 'Autre';
+  var file = f.querySelector('input[type="file"]');
+  var attachment = null;
+  try {
+    attachment = await cidReadAttachment(file && file.files && file.files[0]);
+  } catch(e) {
+    return toast(e.message);
+  }
+  var details = {};
+  if (type === 'Arme') details = {type_arme:fd.get('type_arme') || '', numero_serie:fd.get('numero_serie') || '', suspect_id:fd.get('suspect_arme') || ''};
+  if (type === 'Drogue') details = {type_drogue:fd.get('type_drogue') || '', quantite:fd.get('quantite_drogue') || '', suspect_id:fd.get('suspect_drogue') || ''};
+  if (type === 'Vehicule') details = {modele:fd.get('modele_vehicule') || '', plaque:fd.get('plaque_vehicule') || '', suspect_id:fd.get('suspect_vehicule') || ''};
+  c.preuves = c.preuves || [];
+  var seal = 'SC-' + new Date().getFullYear() + '-' + String(c.preuves.length + 1).padStart(4, '0');
+  c.preuves.push({
+    id: 'e_' + Date.now(),
+    scelle: seal,
+    codebarres: seal.replace(/\D/g, '') + Date.now().toString().slice(-4),
+    type: type,
+    description: fd.get('description') || '',
+    details: details,
+    date: cidNow(),
+    etat: 'Inventorie',
+    attachment: attachment,
+    chaine: [{date: cidNow(), texte: 'Ajout au dossier'}]
+  });
+  c.journal = c.journal || [];
+  c.journal.unshift({date: cidNow(), texte: 'Preuve ajoutee : ' + seal});
+  cidUpsert(c);
+  closeModal();
+  navigate('cid', {id: id});
+}
+
+function cidPreviewAttachment(file){
+  if (!file || !file.data) return;
+  var body = '<div style="text-align:center">';
+  if (String(file.type || '').indexOf('image/') === 0) {
+    body += '<img src="' + file.data + '" style="max-width:100%;max-height:70vh;border-radius:8px;border:1px solid rgba(80,122,170,.35)">';
+  } else if (String(file.type || '').indexOf('video/') === 0) {
+    body += '<video controls src="' + file.data + '" style="max-width:100%;max-height:70vh;border-radius:8px"></video>';
+  } else if (String(file.type || '').indexOf('audio/') === 0) {
+    body += '<audio controls src="' + file.data + '" style="width:100%"></audio>';
+  } else {
+    body += '<a class="cid-blue-btn" download="' + esc(file.name || 'preuve') + '" href="' + file.data + '">Telecharger le fichier</a>';
+  }
+  body += '</div>';
+  openModal({eyebrow:'CID - Piece jointe', title:file.name || 'Apercu', size:'xl', body:body, footer:'<button class="btn" onclick="closeModal()">Fermer</button>'});
+}
+
+function cidEvidencePreview(id, eid){
+  var c = cidGet(id);
+  var e = c && (c.preuves || []).find(function(x){ return x.id === eid; });
+  if (e) cidPreviewAttachment(e.attachment);
+}
+
+function cidPersonFilePreview(id, pid, fid){
+  var c = cidGet(id);
+  var p = c && (c.personnes || []).find(function(x){ return x.id === pid; });
+  var f = p && (p.fichiers || []).find(function(x){ return x.id === fid; });
+  if (f) cidPreviewAttachment(f.attachment);
+}
+
+function cidAttachmentHtml(file, label, onclick){
+  if (!file || !file.data) return '<span>-</span>';
+  var name = esc(label || file.name || 'Fichier');
+  if (String(file.type || '').indexOf('image/') === 0) return '<img onclick="' + onclick + '" src="' + file.data + '" alt="' + name + '" class="cid-preview-img">';
+  return '<button class="cid-soft-btn" onclick="' + onclick + '">' + name + '</button>';
+}
+
+function cidAddPerson(id){
+  var c = cidGet(id);
+  if (!c) return;
+  cidGetCidAgents().then(function(investigators){
+    var investigatorOptions = investigators.length
+      ? investigators.map(function(a){
+          var label = String(a.matricule || '--').padStart(2, '0') + ' - ' + (a.prenom || '') + ' ' + (a.nom || '') + ' - ' + (a.grade || 'CID');
+          return '<option value="' + esc(label.trim()) + '">' + esc(label.trim()) + '</option>';
+        }).join('')
+      : '<option value="">Aucun agent CID trouve - saisie manuelle</option>';
+    openModal({
+      eyebrow: 'CID - Personne liee',
+      title: 'Ajouter une personne',
+      size: 'lg',
+      body: `
+        <div class="cid-page">${cidCss()}
+          <section class="cid-card">
+            <form id="cidPersonForm" onsubmit="event.preventDefault();cidSavePersonModal('${id}')">
+              <div class="cid-grid">
+                <input name="nom" id="cidPersonName" placeholder="Nom / prenom" required>
+                <select name="type" id="cidPersonType" onchange="cidToggleInvestigatorPicker()">${cidOptions(['Citoyen','Suspect','Victime','Temoin','Informateur','Agent infiltre','Enqueteur'], 'Suspect')}</select>
+                <input name="tel" placeholder="Numero de telephone">
+                <select id="cidInvestigatorSelect" style="display:none" onchange="cidPickInvestigator(this.value)">${investigatorOptions}</select>
+              </div>
+              <textarea name="commentaires" rows="4" placeholder="Commentaires CID" style="margin-top:10px"></textarea>
+            </form>
+          </section>
+        </div>`,
+      footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSavePersonModal(\'' + id + '\')">Ajouter</button>'
+    });
+  });
+}
+
+function cidSavePersonModal(id){
+  var c = cidGet(id), f = document.getElementById('cidPersonForm');
+  if (!c || !f) return;
+  var fd = new FormData(f);
+  var nom = fd.get('nom');
+  if (!nom) return toast('Nom requis.');
+  c.personnes = c.personnes || [];
+  var person = {id:'p_' + Date.now(), nom:nom, type:fd.get('type') || 'Citoyen', tel:fd.get('tel') || '', commentaires:fd.get('commentaires') || '', fichiers:[]};
+  c.personnes.push(person);
+  c.suspects = c.personnes.filter(function(p){ return /suspect/i.test(p.type); }).length;
+  c.journal = c.journal || [];
+  c.journal.unshift({date: cidNow(), texte: 'Personne ajoutee : ' + nom});
+  cidUpsert(c);
+  closeModal();
+  navigate('cid', {id:id, person:person.id});
+}
+
+function cidPersonWorkspace(c, pid){
+  var p = c && (c.personnes || []).find(function(x){ return x.id === pid; });
+  if (!c || !p) return cidCaseWorkspace(c);
+  var files = p.fichiers || [];
+  return `
+    <section class="cid-workspace">
+      <button class="cid-return" onclick="navigate('cid',{id:'${c.id}'})">Retour au dossier</button>
+      <div class="cid-case-head">
+        <div><div class="cid-case-id">${esc(c.numero || 'CID')} - Fiche personne</div><h1 class="cid-case-title">${esc(p.nom || 'Personne')}</h1><div class="cid-subline"><span>${esc(p.type || '-')}</span><span>${esc(p.tel || '-')}</span></div></div>
+        <div class="cid-actions"><button class="cid-gold-btn" onclick="cidOpenPersonFile('${c.id}','${p.id}')">Ajouter fichier</button><button class="cid-red-btn" onclick="cidDeletePerson('${c.id}','${p.id}')">Supprimer</button></div>
+      </div>
+      <div class="cid-detail-grid" style="grid-template-columns:1fr 1fr">
+        <section class="cid-panel">
+          <h3>Identite</h3>
+          <form id="cidPersonProfileForm" onsubmit="event.preventDefault();cidSavePersonProfile('${c.id}','${p.id}')">
+            <div class="cid-info-grid">
+              <input name="nom" value="${esc(p.nom || '')}" placeholder="Nom / prenom">
+              <select name="type">${cidOptions(['Citoyen','Suspect','Victime','Temoin','Informateur','Agent infiltre','Enqueteur'], p.type || 'Citoyen')}</select>
+              <input name="tel" value="${esc(p.tel || '')}" placeholder="Telephone">
+            </div>
+            <textarea name="commentaires" rows="7" style="margin-top:10px" placeholder="Notes, habitudes, signalement, liens...">${esc(p.commentaires || '')}</textarea>
+            <button class="cid-blue-btn" style="margin-top:10px">Sauvegarder</button>
+          </form>
+        </section>
+        <section class="cid-panel">
+          <h3>Photos / fichiers</h3>
+          <div class="cid-mini-list">${files.length ? files.map(function(f){
+            var click = "cidPersonFilePreview(" + JSON.stringify(c.id) + "," + JSON.stringify(p.id) + "," + JSON.stringify(f.id) + ")";
+            return '<div class="cid-mini" style="display:flex;gap:10px;align-items:center">' + cidAttachmentHtml(f.attachment, f.type, click) + '<div><strong>'+esc(f.type || 'Fichier')+'</strong><br><small>'+esc(f.date || '-')+'</small><br>'+esc(f.note || '')+'</div></div>';
+          }).join('') : '<div class="cid-mini">Aucun fichier sur cette fiche.</div>'}</div>
+        </section>
+      </div>
+    </section>`;
+}
+
+function cidSavePersonProfile(id, pid){
+  var c = cidGet(id), f = document.getElementById('cidPersonProfileForm');
+  var p = c && (c.personnes || []).find(function(x){ return x.id === pid; });
+  if (!c || !p || !f) return;
+  var fd = new FormData(f);
+  p.nom = fd.get('nom') || p.nom;
+  p.type = fd.get('type') || p.type;
+  p.tel = fd.get('tel') || '';
+  p.commentaires = fd.get('commentaires') || '';
+  c.suspects = (c.personnes || []).filter(function(x){ return /suspect/i.test(x.type); }).length;
+  cidUpsert(c);
+  toast('Fiche personne sauvegardee.');
+  navigate('cid', {id:id, person:pid});
+}
+
+function cidProofDetailsText(c, e){
+  var d = e.details || {};
+  if (e.type === 'Arme') return [d.type_arme, d.numero_serie ? 'Serie ' + d.numero_serie : '', cidPersonNameById(c, d.suspect_id)].filter(Boolean).join(' - ');
+  if (e.type === 'Drogue') return [d.type_drogue, d.quantite, cidPersonNameById(c, d.suspect_id)].filter(Boolean).join(' - ');
+  if (e.type === 'Vehicule') return [d.modele, d.plaque ? 'Plaque ' + d.plaque : '', cidPersonNameById(c, d.suspect_id)].filter(Boolean).join(' - ');
+  return e.description || '';
+}
+
+function cidPersonNameById(c, pid){
+  var p = c && (c.personnes || []).find(function(x){ return x.id === pid; });
+  return p ? p.nom : '';
+}
+
+function cidCaseWorkspace(c){
+  if (!c) return '<section class="cid-workspace cid-empty-panel"><div><div class="cid-brand-icon" style="margin:0 auto 12px">CID</div><h2>Aucun dossier selectionne</h2><p>Creer ou selectionner un dossier pour ouvrir le poste de travail.</p></div></section>';
+  var proofs = c.preuves || [];
+  var people = c.personnes || [];
+  return `
+    <section class="cid-workspace">
+      <button class="cid-return" onclick="navigate('cid')">Retour aux dossiers</button>
+      <div class="cid-case-head">
+        <div><div class="cid-case-id">${esc(c.numero || 'CID')}</div><h1 class="cid-case-title">${esc(c.titre || 'Dossier sans titre')}</h1><div class="cid-subline"><span>Ouvert le ${esc(c.date_ouverture || '-')}</span><span>Derniere modif. ${esc(c.updated_at || '-')}</span><span>Par ${esc(c.responsable || 'CID')}</span></div></div>
+        <div class="cid-actions"><button class="cid-soft-btn" onclick="cidOpenEditCase('${c.id}')">Modifier</button><button class="cid-soft-btn" onclick="cidAddLog('${c.id}')">Note</button><button class="cid-blue-btn" onclick="cidAddPerson('${c.id}')">Personne</button><button class="cid-gold-btn" onclick="cidAddProof('${c.id}')">Preuve</button><button class="cid-soft-btn" onclick="cidArchive('${c.id}')">Archiver</button><button class="cid-red-btn" onclick="cidDelete('${c.id}')">Supprimer</button></div>
+      </div>
+      <div class="cid-summary-chips">
+        <div class="cid-chip"><span>Statut</span><strong><span class="cid-badge2 ${cidStatusTone(c.statut)}">${esc(c.statut || '-')}</span></strong></div>
+        <div class="cid-chip"><span>Priorite</span><strong><span class="cid-badge2 ${cidPriorityTone(c.priorite)}">${esc(c.priorite || '-')}</span></strong></div>
+        <div class="cid-chip"><span>Classification</span><strong>${esc(c.classification || '-')}</strong></div>
+        <div class="cid-chip"><span>Confidentialite</span><strong>${esc(c.confidentialite || '-')}</strong></div>
+      </div>
+      <div class="cid-detail-grid" style="grid-template-columns:1fr 1fr">
+        <div class="cid-panel"><h3>Personnes</h3><table class="cid-mini-table"><tbody>${people.length ? people.map(function(p){return "<tr style=\"cursor:pointer\" onclick='navigate(\"cid\",{id:" + JSON.stringify(c.id) + ",person:" + JSON.stringify(p.id) + "})'><td><strong>"+esc(p.nom)+"</strong></td><td><span class=\"cid-badge2 blue\">"+esc(p.type)+"</span></td><td>"+esc(p.tel || "-")+"</td></tr>";}).join('') : '<tr><td>Aucune personne.</td></tr>'}</tbody></table></div>
+        <div class="cid-panel"><h3>Preuves</h3><table class="cid-mini-table"><thead><tr><th>Apercu</th><th>Scelle</th><th>Type</th><th>Infos</th></tr></thead><tbody>${proofs.length ? proofs.map(function(e){var click="cidEvidencePreview("+JSON.stringify(c.id)+","+JSON.stringify(e.id)+")";return '<tr><td>'+cidAttachmentHtml(e.attachment, e.type, click)+'</td><td>'+esc(e.scelle || '-')+'</td><td><span class="cid-badge2 gold">'+esc(e.type || '-')+'</span></td><td>'+esc(cidProofDetailsText(c,e) || '-')+'</td></tr>';}).join('') : '<tr><td colspan="4">Aucune preuve.</td></tr>'}</tbody></table></div>
+      </div>
+      <section class="cid-panel" style="margin-top:12px"><h3>Resume</h3><p class="cid-text">${esc(c.resume || c.description || 'Aucun resume renseigne.')}</p></section>
+    </section>`;
+}
+
+async function renderCID3(){
+  if (!canAccessCID()) {
+    setContent('<div class="empty-state"><div class="empty-icon">CID</div><div class="empty-title">Acces restreint</div><div class="empty-sub">Role CID requis.</div></div>');
+    return;
+  }
+  var list = cidLoad();
+  var q = (S.pd && S.pd.q) || '';
+  var filter = (S.pd && S.pd.filter) || 'Toutes';
+  var visible = list.filter(function(c){
+    var ok = filter === 'Toutes' || c.statut === filter;
+    var peopleHay = (c.personnes || []).map(function(p){ return [p.nom,p.type,p.tel].join(' '); }).join(' ');
+    var proofsHay = (c.preuves || []).map(function(p){ return [p.scelle,p.type,p.description,cidProofDetailsText(c,p)].join(' '); }).join(' ');
+    var hay = [c.numero, c.titre, c.statut, c.priorite, c.classification, c.responsable, c.resume, peopleHay, proofsHay].join(' ').toLowerCase();
+    return ok && hay.indexOf(q.toLowerCase()) !== -1;
+  }).sort(function(a,b){ return String(b.updated_at || '').localeCompare(String(a.updated_at || '')); });
+  var activeId = (S.pd && S.pd.id) || (visible[0] && visible[0].id);
+  var active = activeId ? cidGet(activeId) : null;
+  var openCount = list.filter(function(c){ return c.statut === 'Ouvert'; }).length;
+  var waitCount = list.filter(function(c){ return c.statut === 'En attente'; }).length;
+  var closedCount = list.filter(function(c){ return /ferme|classe/i.test(c.statut || ''); }).length;
+  setContent(`
+    <div class="cid-mdt">
+      ${cidCss2()}
+      <section class="cid-topbar">
+        <div class="cid-brand"><div class="cid-brand-icon">CID</div><div><div class="cid-brand-title">CID</div><div class="cid-brand-sub">Criminal Investigation Division</div></div></div>
+        <div class="cid-global-search"><input id="cidSearchInput" placeholder="Rechercher un dossier, une personne, une preuve..." value="${esc(q)}"><span class="cid-key">CTRL K</span></div>
+        <div class="cid-session"><span class="cid-pill">Connecte Discord <i class="cid-dot"></i></span><span class="cid-pill">Acces CID <b class="cid-dot"></b></span></div>
+      </section>
+      <div class="cid-shell">
+        <aside class="cid-list-pane">
+          <div class="cid-pane-head"><div class="cid-pane-title">Dossiers</div><button class="cid-blue-btn" onclick="cidOpenCreate()">Nouveau</button></div>
+          <div class="cid-filter-zone">
+            <input id="cidSideSearch" placeholder="Rechercher..." value="${esc(q)}">
+            <select id="cidFilterSelect"><option>Toutes</option>${cidOptions(CID_STATUTS, filter)}</select>
+            <div class="cid-tabs"><button class="cid-tab ${filter==='Toutes'?'active':''}" onclick="navigate('cid',{filter:'Toutes',q:'${esc(q)}'})">Tous ${list.length}</button><button class="cid-tab" onclick="navigate('cid',{filter:'Ouvert',q:'${esc(q)}'})">Ouverts ${openCount}</button><button class="cid-tab" onclick="navigate('cid',{filter:'En attente',q:'${esc(q)}'})">Attente ${waitCount}</button><button class="cid-tab" onclick="navigate('cid',{filter:'Classe',q:'${esc(q)}'})">Archives ${closedCount}</button></div>
+          </div>
+          <div class="cid-case-list">${visible.length ? visible.map(function(c){return "<article class=\"cid-case-card " + (active && active.id === c.id ? "active" : "") + "\" onclick='navigate(\"cid\",{id:" + JSON.stringify(c.id) + "})'><div class=\"cid-card-top\"><span>" + esc(c.numero || "CID") + "</span><span class=\"cid-badge2 " + cidPriorityTone(c.priorite) + "\">" + esc(c.priorite || "Normale") + "</span></div><div class=\"cid-case-name\">" + esc(c.titre || "Dossier sans titre") + "</div><div class=\"cid-case-meta\"><span>" + esc(c.responsable || "CID") + "</span><span>" + esc(c.updated_at || "-") + "</span></div></article>";}).join('') : '<div class="cid-empty-panel" style="min-height:220px">Aucun dossier.</div>'}</div>
+          <div class="cid-footer-pages">1-${visible.length} sur ${list.length} dossiers</div>
+        </aside>
+        ${(S.pd && S.pd.person) ? cidPersonWorkspace(active, S.pd.person) : cidCaseWorkspace(active)}
+      </div>
+    </div>`);
+  var search = document.getElementById('cidSearchInput');
+  var sideSearch = document.getElementById('cidSideSearch');
+  var select = document.getElementById('cidFilterSelect');
+  function goSearch(value){ navigate('cid', {q: value, filter: select ? select.value : filter}); }
+  if (search) search.addEventListener('change', function(){ goSearch(this.value); });
+  if (sideSearch) sideSearch.addEventListener('change', function(){ goSearch(this.value); });
+  if (select) select.addEventListener('change', function(){ navigate('cid', {filter: this.value, q: sideSearch ? sideSearch.value : q}); });
+}
+
 function renderCartes() {
   setContent(
     '<div style="display:flex;flex-direction:column;height:calc(100vh - 60px);margin:-24px">' +
