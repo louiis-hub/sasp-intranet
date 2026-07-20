@@ -450,22 +450,29 @@ const ZONE_STATUS = {
   suspect: {label:'Suspect', color:'#f59e0b', fill:'#d97706'},
   danger: {label:'Danger', color:'#ef4444', fill:'#dc2626'}
 };
+function makeZoneGrid(prefix, labelPrefix, xMin, xMax, yMin, yMax, rows, cols) {
+  const zones = [];
+  const xStep = (xMax - xMin) / rows;
+  const yStep = (yMax - yMin) / cols;
+  let n = 1;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      zones.push({
+        id:`${prefix}${n}`,
+        label:`${labelPrefix} ${n}`,
+        bounds:[[xMin + r*xStep, yMin + c*yStep], [xMin + (r+1)*xStep, yMin + (c+1)*yStep]]
+      });
+      n++;
+    }
+  }
+  return zones;
+}
+
 const MAP_ZONES = [
-  {id:'paleto', label:'Paleto Bay', bounds:[[4800,-1900],[7000,700]]},
-  {id:'chiliad', label:'Mont Chiliad', bounds:[[4000,-1800],[6500,2300]]},
-  {id:'grapeseed', label:'Grapeseed', bounds:[[3600,2300],[5400,4300]]},
-  {id:'sandy', label:'Sandy Shores', bounds:[[2300,900],[4100,3000]]},
-  {id:'stab', label:'Stab City', bounds:[[2500,-1700],[3900,-300]]},
-  {id:'zancudo', label:'Zancudo', bounds:[[1500,-3600],[3300,-1700]]},
-  {id:'harmony', label:'Harmony / Route 68', bounds:[[900,-900],[2600,1100]]},
-  {id:'vinewood', label:'Vinewood', bounds:[[250,-500],[1700,1300]]},
-  {id:'mirror', label:'Mirror Park', bounds:[[-750,650],[650,2000]]},
-  {id:'delperro', label:'Del Perro / Vespucci', bounds:[[-1300,-2500],[350,-700]]},
-  {id:'centre', label:'Centre Ville LS', bounds:[[-1200,-850],[350,700]]},
-  {id:'estls', label:'Est LS', bounds:[[-1700,650],[-100,2300]]},
-  {id:'sudls', label:'Sud LS', bounds:[[-2600,-800],[-1200,1000]]},
-  {id:'ports', label:'Port / Industriel', bounds:[[-3400,700],[-1900,2800]]},
-  {id:'aeroport', label:'Aeroport', bounds:[[-3500,-2500],[-1850,-650]]}
+  ...makeZoneGrid('nord-', 'Nord', 4300, 7000, -2200, 4300, 3, 4),
+  ...makeZoneGrid('blaine-', 'Blaine', 700, 4300, -3600, 4300, 4, 5),
+  ...makeZoneGrid('ls-', 'LS', -2100, 700, -2700, 2500, 4, 5),
+  ...makeZoneGrid('sud-', 'Sud LS', -3600, -2100, -2700, 2800, 2, 4)
 ];
 
 function createSatLayer() {
