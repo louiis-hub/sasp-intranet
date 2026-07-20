@@ -5936,6 +5936,9 @@ function cidProofTypeChange(){
     var box = document.getElementById('cidProof' + k);
     if (box) box.classList.toggle('cid-hidden', type !== k);
   });
+  var fileWrap = document.getElementById('cidProofFileWrap');
+  var needsFile = ['Photo','Document','ADN','Douille','Empreinte'].indexOf(type) !== -1;
+  if (fileWrap) fileWrap.classList.toggle('cid-hidden', !needsFile);
 }
 
 function cidSuspectOptions(c){
@@ -5956,8 +5959,8 @@ async function cidAddProof(id){
         <section class="cid-card">
           <form id="cidProofForm" onsubmit="event.preventDefault();cidSaveProofModal('${id}')">
             <div class="cid-grid">
-              <select name="type" id="cidProofType" onchange="cidProofTypeChange()">${cidOptions(['Photo','Video','Audio','Document','Arme','Drogue','Vehicule','Objet','Telephone','ADN','Temoignage','Autre'], 'Photo')}</select>
-              <input name="fichier" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt">
+              <select name="type" id="cidProofType" onchange="cidProofTypeChange()">${cidOptions(['Photo','Document','ADN','Douille','Empreinte','Arme','Drogue','Vehicule','Objet','Telephone','Temoignage','Autre'], 'Photo')}</select>
+              <div id="cidProofFileWrap"><input name="fichier" type="file" accept="image/*,.pdf,.doc,.docx,.txt"></div>
             </div>
             <div id="cidProofArme" class="cid-grid cid-hidden" style="margin-top:10px">
               <input name="type_arme" placeholder="Type d'arme">
