@@ -1539,6 +1539,23 @@ export default {
       }
     }
 
+    if (url.pathname === "/admin/test-pointeuse-dm" && request.method === "GET") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const userId = url.searchParams.get("user_id");
+      if (!userId) return json({ ok: false, error: "user_id requis" }, 400);
+      const result = await sendUserDM(env, userId, {
+        embeds: [{
+          title: "\u23f1\ufe0f Test notification pointeuse",
+          description: "Test MP SASP : si tu vois ce message, la notification priv\u00e9e d'auto-d\u00e9connexion apr\u00e8s 6h fonctionne.",
+          color: 0xe67e22,
+          footer: { text: "SASP \u00b7 Pointeuse" },
+          timestamp: new Date().toISOString()
+        }]
+      });
+      return json(result, result.ok ? 200 : 500);
+    }
+
     // Sync divisions intranet â†’ Discord
     if (url.pathname === "/admin/enterprise-invite-url" && request.method === "GET") {
       const appId = env.DISCORD_APPLICATION_ID;
