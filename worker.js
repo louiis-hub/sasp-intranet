@@ -57,6 +57,30 @@ async function discordFetch(url, init = {}) {
   return fetch(url, next);
 }
 
+async function sendUserDM(env, userId, payload) {
+  if (!userId) return { ok: false, error: "missing_user_id" };
+  const dmRes = await discordFetch(`${DISCORD_API}/users/@me/channels`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ recipient_id: String(userId) })
+  });
+  if (!dmRes.ok) return { ok: false, error: `dm_channel_${dmRes.status}`, details: await dmRes.text() };
+  const channel = await dmRes.json();
+  const msgRes = await discordFetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(Object.assign({ allowed_mentions: { parse: [] } }, payload))
+  });
+  if (!msgRes.ok) return { ok: false, error: `dm_message_${msgRes.status}`, details: await msgRes.text() };
+  return { ok: true };
+}
+
 const AUTO_REACTION_CHANNEL_ID = "1500994818543849723";
 const AUTO_REACTION_EMOJI = "%E2%9C%85";
 
@@ -1385,7 +1409,7 @@ async function createServiceHousingLiaison(env, interaction, gamme) {
 // â”€â”€ Auto clock-out agents en service depuis +6h â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function autoClockout6h(env) {
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-  const data = await sb(env, "GET", `/pointages?clock_out=is.null&select=id,agent_id,clock_in,agents(nom,prenom,matricule)&order=clock_in.asc`);
+  const data = await sb(env, "GET", `/pointages?clock_out=is.null&select=id,agent_id,clock_in,agents(nom,prenom,matricule,discord_id)&order=clock_in.asc`);
   const active = data || [];
   const recentAgentIds = new Set(active.filter(p => String(p.clock_in || "") >= sixHoursAgo).map(p => p.agent_id));
   const expired = active.filter(p => String(p.clock_in || "") < sixHoursAgo);
@@ -1406,6 +1430,25 @@ async function autoClockout6h(env) {
   const now = new Date().toISOString();
   for (const p of realExpired) {
     await closeActivePointagesForAgent(env, p.agent_id, "sud");
+    const a = p.agents || {};
+    const displayName = `${a.prenom || ""} ${a.nom || ""}`.trim() || "Agent SASP";
+    try {
+      await sendUserDM(env, a.discord_id, {
+        embeds: [{
+          title: "\u23f1\ufe0f Fin de service automatique",
+          description: `Bonjour **${displayName}**, ton service a \u00e9t\u00e9 termin\u00e9 automatiquement car tu as d\u00e9pass\u00e9 les **6 heures** sur la pointeuse.\n\nPense \u00e0 bien quitter ton service manuellement la prochaine fois.`,
+          color: 0xe67e22,
+          fields: [
+            { name: "Matricule", value: String(a.matricule || "\u2014"), inline: true },
+            { name: "D\u00e9connexion", value: "Automatique 6h", inline: true }
+          ],
+          footer: { text: "SASP \u00b7 Pointeuse" },
+          timestamp: now
+        }]
+      });
+    } catch (err) {
+      console.warn("autoClockout6h dm failed", a.discord_id, err && err.message);
+    }
   }
   const lines = realExpired.map(p => {
     const a = p.agents || {};
