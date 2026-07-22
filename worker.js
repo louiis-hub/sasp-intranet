@@ -2788,17 +2788,28 @@ export default {
       });
       const msgs = await msgsRes.json();
       const stickies = Array.isArray(msgs) ? msgs.filter(isSubventionStickyMessage) : [];
-      for (const sticky of stickies) {
+      const keep = stickies[0] || null;
+      for (const sticky of stickies.slice(1)) {
         await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages/${sticky.id}`, {
           method: "DELETE",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
         });
       }
-      return discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages`, {
-        method: "POST",
-        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify(STICKY_SUBVENTION_EMBED)
+      const message = keep || await (async () => {
+        const res = await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify(STICKY_SUBVENTION_EMBED)
+        });
+        if (!res.ok) return { ok: false, status: res.status, body: await res.text().catch(() => "") };
+        return await res.json();
+      })();
+      if (!message?.id) return { ok: false, error: "message_subvention_introuvable", message };
+      const pinRes = await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/pins/${message.id}`, {
+        method: "PUT",
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
+      return { ok: pinRes.ok || pinRes.status === 204, status: pinRes.status, id: message.id };
     }
     if (url.pathname === "/admin/send-sticky-proc" && request.method === "GET") {
       const targets = [
@@ -2881,9 +2892,7 @@ export default {
       }
     }
     if (url.pathname === "/admin/send-sticky-subvention" && request.method === "GET") {
-      const res = await refreshSubventionSticky();
-      const data = await res.json();
-      return json({ ok: res.ok, data });
+      return json(await refreshSubventionSticky());
     }
     if (url.pathname === "/admin/bot-invite" && request.method === "GET") {
       const appId = env.DISCORD_APPLICATION_ID;
@@ -3394,7 +3403,6 @@ export default {
           const err = await res.text();
           return json({ type: 4, data: { content: `âŒ Erreur crÃ©ation subvention (${res.status}): ${err}`, flags: 64 } });
         }
-        try { await refreshSubventionSticky(); } catch {}
         return json({ type: 4, data: { content: `âœ… Demande de subvention envoyÃ©e pour **${agentName}**.`, flags: 64 } });
       }
 
