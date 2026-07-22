@@ -3079,6 +3079,112 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/debug-commands" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        const data = await res.json();
+        if (!res.ok) return json({ ok: false, data }, res.status);
+        const names = (url.searchParams.get("names") || "proc,subvention").split(",").map(s => s.trim()).filter(Boolean);
+        return json({
+          ok: true,
+          guild_id: guildId,
+          total: data.length,
+          commands: data
+            .filter(command => names.includes(command.name))
+            .map(command => ({
+              id: command.id,
+              application_id: command.application_id,
+              name: command.name,
+              description: command.description,
+              type: command.type,
+              version: command.version,
+              default_member_permissions: command.default_member_permissions ?? null,
+              dm_permission: command.dm_permission ?? null,
+              contexts: command.contexts ?? null,
+              integration_types: command.integration_types ?? null,
+              options: command.options || []
+            }))
+        });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+    if (url.pathname === "/admin/debug-channel-command-perms" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const roleIds = (url.searchParams.get("role_ids") || guildId).split(",").map(s => s.trim()).filter(Boolean);
+        const USE_APPLICATION_COMMANDS = 2147483648n;
+        const patchableTypes = new Set([0, 4, 5, 15, 16]);
+        const channelsRes = await discordFetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        const channels = await channelsRes.json();
+        if (!channelsRes.ok) return json({ ok: false, step: "channels", data: channels }, channelsRes.status);
+        const summary = {};
+        for (const roleId of roleIds) summary[roleId] = { allow: 0, deny: 0, missing: 0, denied_channels: [] };
+        for (const channel of channels.filter(ch => patchableTypes.has(ch.type))) {
+          for (const roleId of roleIds) {
+            const overwrite = (channel.permission_overwrites || []).find(o => String(o.id) === String(roleId) && Number(o.type) === 0);
+            if (!overwrite) {
+              summary[roleId].missing++;
+              continue;
+            }
+            const allow = BigInt(overwrite.allow || "0");
+            const deny = BigInt(overwrite.deny || "0");
+            if ((allow & USE_APPLICATION_COMMANDS) === USE_APPLICATION_COMMANDS) summary[roleId].allow++;
+            if ((deny & USE_APPLICATION_COMMANDS) === USE_APPLICATION_COMMANDS) {
+              summary[roleId].deny++;
+              summary[roleId].denied_channels.push({ id: channel.id, name: channel.name, type: channel.type });
+            }
+          }
+        }
+        return json({ ok: true, guild_id: guildId, roles: summary });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+    if (url.pathname === "/admin/allow-role-slash-commands" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const roleIds = (url.searchParams.get("role_ids") || "").split(",").map(s => s.trim()).filter(Boolean);
+        if (!roleIds.length) return json({ ok: false, error: "role_ids manquant" }, 400);
+        const USE_APPLICATION_COMMANDS = 2147483648n;
+        const rolesRes = await discordFetch(`${DISCORD_API}/guilds/${guildId}/roles`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        const roles = await rolesRes.json();
+        if (!rolesRes.ok) return json({ ok: false, step: "roles", data: roles }, rolesRes.status);
+        const byId = new Map(roles.map(role => [String(role.id), role]));
+        const results = [];
+        for (const roleId of roleIds) {
+          const role = byId.get(String(roleId));
+          if (!role) {
+            results.push({ role_id: roleId, ok: false, error: "role_introuvable" });
+            continue;
+          }
+          const current = BigInt(role.permissions || "0");
+          const next = current | USE_APPLICATION_COMMANDS;
+          if (current === next) {
+            results.push({ role_id: roleId, name: role.name, ok: true, unchanged: true, permissions: next.toString() });
+            continue;
+          }
+          const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/roles/${roleId}`, {
+            method: "PATCH",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ permissions: next.toString() })
+          });
+          results.push({ role_id: roleId, name: role.name, ok: res.ok, status: res.status, permissions: next.toString(), body: res.ok ? null : await res.text() });
+        }
+        return json({ ok: results.every(r => r.ok), guild_id: guildId, results });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/allow-slash-commands-everywhere" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
