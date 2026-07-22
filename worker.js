@@ -2776,13 +2776,19 @@ export default {
       };
     }
     const STICKY_SUBVENTION_EMBED = { embeds: [{ title: "ðŸ’¸ RÃ¨gles subvention", color: 0xc9a84c, description: "Pour faire une demande de subvention, utilisez la commande `/subvention` dans ce salon.\n\n**RÃ¨gles actuelles :**\nâ€¢ La subvention est fixÃ©e Ã  **10 000 $ par voiture** pour le moment.\nâ€¢ Il est interdit de faire des **performances** avec cette subvention.\nâ€¢ Il est interdit d'acheter une **nouvelle voiture** avec cette subvention.", footer: { text: "SASP â€¢ Subvention" } }] };
+    function isSubventionStickyMessage(message) {
+      const embed = message?.embeds?.[0];
+      const title = String(embed?.title || "").toLowerCase();
+      const description = String(embed?.description || "").toLowerCase();
+      return title.includes("subvention") && description.includes("/subvention");
+    }
     async function refreshSubventionSticky() {
-      const msgsRes = await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages?limit=20`, {
+      const msgsRes = await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages?limit=100`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
       const msgs = await msgsRes.json();
-      const sticky = Array.isArray(msgs) && msgs.find(m => m.embeds?.[0]?.title === "ðŸ’¸ RÃ¨gles subvention");
-      if (sticky) {
+      const stickies = Array.isArray(msgs) ? msgs.filter(isSubventionStickyMessage) : [];
+      for (const sticky of stickies) {
         await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages/${sticky.id}`, {
           method: "DELETE",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
