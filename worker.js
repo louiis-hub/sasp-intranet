@@ -3043,6 +3043,22 @@ export default {
         const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const reset = url.searchParams.get("reset") === "1";
+        const resetDeleted = [];
+        if (reset) {
+          const listRes = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          const commands = await listRes.json();
+          if (!listRes.ok) return json({ ok: false, step: "list", data: commands }, listRes.status);
+          for (const command of commands.filter(c => c.name === "subvention")) {
+            const delRes = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands/${command.id}`, {
+              method: "DELETE",
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+            });
+            resetDeleted.push({ id: command.id, ok: delRes.status === 204, status: delRes.status });
+          }
+        }
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
@@ -3121,7 +3137,7 @@ export default {
           })
         });
         const data = await res.json();
-        return json({ ok: res.ok, data });
+        return json({ ok: res.ok, reset, resetDeleted, data });
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
