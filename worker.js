@@ -3070,7 +3070,7 @@ export default {
           })
         });
         const data = await res.json();
-        return json({ ok: res.ok, data });
+        return json({ ok: res.ok, reset, resetDeleted, data });
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
@@ -3137,7 +3137,7 @@ export default {
           })
         });
         const data = await res.json();
-        return json({ ok: res.ok, reset, resetDeleted, data });
+        return json({ ok: res.ok, data });
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
