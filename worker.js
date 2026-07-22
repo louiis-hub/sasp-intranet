@@ -3046,7 +3046,12 @@ export default {
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ name: "subvention", description: "DÃ©poser une demande de subvention agent" })
+          body: JSON.stringify({
+            name: "subvention",
+            description: "DÃ©poser une demande de subvention agent",
+            default_member_permissions: null,
+            dm_permission: false
+          })
         });
         const data = await res.json();
         return json({ ok: res.ok, data });
