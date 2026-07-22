@@ -2775,7 +2775,37 @@ export default {
         results
       };
     }
-    const STICKY_SUBVENTION_EMBED = { embeds: [{ title: "ðŸ’¸ RÃ¨gles subvention", color: 0xc9a84c, description: "Pour faire une demande de subvention, utilisez la commande `/subvention` dans ce salon.\n\n**RÃ¨gles actuelles :**\nâ€¢ La subvention est fixÃ©e Ã  **10 000 $ par voiture** pour le moment.\nâ€¢ Il est interdit de faire des **performances** avec cette subvention.\nâ€¢ Il est interdit d'acheter une **nouvelle voiture** avec cette subvention.", footer: { text: "SASP â€¢ Subvention" } }] };
+    const STICKY_SUBVENTION_EMBED = {
+      embeds: [{
+        title: "ðŸ’¸ RÃ¨gles subvention",
+        color: 0xc9a84c,
+        description: "Pour faire une demande de subvention, utilisez la commande `/subvention` ou le bouton ci-dessous.\n\n**RÃ¨gles actuelles :**\nâ€¢ La subvention est fixÃ©e Ã  **10 000 $ par voiture** pour le moment.\nâ€¢ Il est interdit de faire des **performances** avec cette subvention.\nâ€¢ Il est interdit d'acheter une **nouvelle voiture** avec cette subvention.",
+        footer: { text: "SASP â€¢ Subvention" }
+      }],
+      components: [{
+        type: 1,
+        components: [{
+          type: 2,
+          custom_id: "subvention_open_modal",
+          label: "Faire une demande",
+          style: 3,
+          emoji: { name: "ðŸ’¸" }
+        }]
+      }]
+    };
+    function subventionModalResponse() {
+      return {
+        type: 9,
+        data: {
+          custom_id: "subvention_modal",
+          title: "Demande de subvention",
+          components: [
+            { type: 1, components: [{ type: 4, custom_id: "sub_raison", label: "Raison de la subvention", style: 2, required: true, placeholder: "Expliquez la raison de la demandeâ€¦", min_length: 5, max_length: 1000 }] },
+            { type: 1, components: [{ type: 4, custom_id: "sub_somme", label: "Somme demandee", style: 1, required: true, placeholder: "Ex : 10000", min_length: 2, max_length: 20 }] }
+          ]
+        }
+      };
+    }
     function isSubventionStickyMessage(message) {
       const embed = message?.embeds?.[0];
       const title = String(embed?.title || "").toLowerCase();
@@ -2795,7 +2825,15 @@ export default {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
         });
       }
-      const message = keep || await (async () => {
+      const message = keep ? await (async () => {
+        const res = await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages/${keep.id}`, {
+          method: "PATCH",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify(STICKY_SUBVENTION_EMBED)
+        });
+        if (!res.ok) return { ok: false, status: res.status, body: await res.text().catch(() => "") };
+        return await res.json();
+      })() : await (async () => {
         const res = await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
@@ -3110,6 +3148,28 @@ export default {
               options: command.options || []
             }))
         });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+    if (url.pathname === "/admin/debug-command-permissions" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        const name = url.searchParams.get("name") || "subvention";
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const listRes = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        const commands = await listRes.json();
+        if (!listRes.ok) return json({ ok: false, step: "list", data: commands }, listRes.status);
+        const command = commands.find(c => c.name === name);
+        if (!command) return json({ ok: false, error: "commande_introuvable", name, commands: commands.map(c => c.name) }, 404);
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands/${command.id}/permissions`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, guild_id: guildId, command: { id: command.id, name: command.name }, status: res.status, data }, res.ok ? 200 : res.status);
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
@@ -3534,17 +3594,11 @@ export default {
 
       // Slash command /subvention
       if (interaction.type === 2 && interaction.data.name === "subvention") {
-        return json({
-          type: 9,
-          data: {
-            custom_id: "subvention_modal",
-            title: "Demande de subvention",
-            components: [
-              { type: 1, components: [{ type: 4, custom_id: "sub_raison", label: "Raison de la subvention", style: 2, required: true, placeholder: "Expliquez la raison de la demandeâ€¦", min_length: 5, max_length: 1000 }] },
-              { type: 1, components: [{ type: 4, custom_id: "sub_somme", label: "Somme", style: 1, required: true, placeholder: "Ex : 25 000 $", min_length: 1, max_length: 30 }] }
-            ]
-          }
-        });
+        return json(subventionModalResponse());
+      }
+
+      if (interaction.type === 3 && interaction.data.custom_id === "subvention_open_modal") {
+        return json(subventionModalResponse());
       }
 
       // Modal submit /subvention
