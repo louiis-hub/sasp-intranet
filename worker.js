@@ -3079,6 +3079,42 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/allow-slash-commands-everywhere" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const targetRoleId = url.searchParams.get("role_id") || guildId;
+        const dryRun = url.searchParams.get("dry") === "1";
+        const start = Math.max(0, Number(url.searchParams.get("start") || 0));
+        const limit = Math.max(1, Math.min(40, Number(url.searchParams.get("limit") || 25)));
+        const USE_APPLICATION_COMMANDS = 2147483648n;
+        const patchableTypes = new Set([0, 4, 5, 15, 16]);
+        const channelsRes = await discordFetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        const channels = await channelsRes.json();
+        if (!channelsRes.ok) return json({ ok: false, step: "channels", data: channels }, channelsRes.status);
+        const results = [];
+        const patchable = channels.filter(ch => patchableTypes.has(ch.type));
+        for (const channel of patchable.slice(start, start + limit)) {
+          const overwrite = (channel.permission_overwrites || []).find(o => String(o.id) === String(targetRoleId) && Number(o.type) === 0);
+          const allow = (overwrite ? BigInt(overwrite.allow || "0") : 0n) | USE_APPLICATION_COMMANDS;
+          const deny = (overwrite ? BigInt(overwrite.deny || "0") : 0n) & ~USE_APPLICATION_COMMANDS;
+          if (dryRun) {
+            results.push({ id: channel.id, name: channel.name, type: channel.type, dry: true, allow: allow.toString(), deny: deny.toString() });
+            continue;
+          }
+          const res = await discordFetch(`${DISCORD_API}/channels/${channel.id}/permissions/${targetRoleId}`, {
+            method: "PUT",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ type: 0, allow: allow.toString(), deny: deny.toString() })
+          });
+          results.push({ id: channel.id, name: channel.name, type: channel.type, ok: res.ok, status: res.status, body: res.ok ? null : await res.text() });
+        }
+        return json({ ok: results.every(r => r.dry || r.ok), guild_id: guildId, role_id: targetRoleId, start, limit, total: patchable.length, next_start: start + limit < patchable.length ? start + limit : null, count: results.length, results });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/install-message-command" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
