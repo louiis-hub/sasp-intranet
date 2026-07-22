@@ -3351,9 +3351,6 @@ export default {
 
       // Slash command /subvention
       if (interaction.type === 2 && interaction.data.name === "subvention") {
-        if (interaction.channel_id !== SUBVENTION_CHANNEL) {
-          return json({ type: 4, data: { content: `âŒ Utilise cette commande dans <#${SUBVENTION_CHANNEL}>.`, flags: 64 } });
-        }
         return json({
           type: 9,
           data: {
