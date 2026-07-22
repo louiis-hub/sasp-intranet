@@ -3185,6 +3185,52 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/clear-slash-command-denies" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const dryRun = url.searchParams.get("dry") === "1";
+        const start = Math.max(0, Number(url.searchParams.get("start") || 0));
+        const limit = Math.max(1, Math.min(30, Number(url.searchParams.get("limit") || 20)));
+        const USE_APPLICATION_COMMANDS = 2147483648n;
+        const patchableTypes = new Set([0, 4, 5, 15, 16]);
+        const channelsRes = await discordFetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        const channels = await channelsRes.json();
+        if (!channelsRes.ok) return json({ ok: false, step: "channels", data: channels }, channelsRes.status);
+        const patchable = channels.filter(ch => patchableTypes.has(ch.type));
+        const changes = [];
+        for (const channel of patchable.slice(start, start + limit)) {
+          for (const overwrite of channel.permission_overwrites || []) {
+            const deny = BigInt(overwrite.deny || "0");
+            if ((deny & USE_APPLICATION_COMMANDS) !== USE_APPLICATION_COMMANDS) continue;
+            const allow = BigInt(overwrite.allow || "0");
+            const nextDeny = deny & ~USE_APPLICATION_COMMANDS;
+            if (dryRun) {
+              changes.push({ channel_id: channel.id, channel_name: channel.name, overwrite_id: overwrite.id, type: overwrite.type, dry: true });
+              continue;
+            }
+            const res = await discordFetch(`${DISCORD_API}/channels/${channel.id}/permissions/${overwrite.id}`, {
+              method: "PUT",
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ type: Number(overwrite.type), allow: allow.toString(), deny: nextDeny.toString() })
+            });
+            changes.push({ channel_id: channel.id, channel_name: channel.name, overwrite_id: overwrite.id, type: overwrite.type, ok: res.ok, status: res.status, body: res.ok ? null : await res.text() });
+          }
+        }
+        return json({
+          ok: changes.every(change => change.dry || change.ok),
+          guild_id: guildId,
+          start,
+          limit,
+          total: patchable.length,
+          next_start: start + limit < patchable.length ? start + limit : null,
+          changes
+        });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/allow-slash-commands-everywhere" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
