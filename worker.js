@@ -1174,6 +1174,11 @@ async function getAgentByMatricule(env, matricule, siteKey = "sud") {
   return data && data.length > 0 ? data[0] : null;
 }
 
+async function getAgentById(env, agentId, siteKey = "sud") {
+  const data = await sbForSite(env, "GET", `/agents?id=eq.${agentId}&select=id,nom,prenom,matricule,discord_id&limit=1`, null, siteKey);
+  return data && data.length > 0 ? data[0] : null;
+}
+
 async function getActivePointage(env, agentId, siteKey = "sud") {
   const data = await sbForSite(env, "GET", `/pointages?agent_id=eq.${agentId}&clock_out=is.null&order=clock_in.desc&limit=1`, null, siteKey);
   return data && data.length > 0 ? data[0] : null;
@@ -1186,6 +1191,44 @@ async function closeActivePointagesForAgent(env, agentId, siteKey = "sud") {
   if (!active.length) return { count: 0, clock_out: now };
   await sbForSite(env, "PATCH", `/pointages?agent_id=eq.${agentId}&clock_out=is.null`, { clock_out: now }, siteKey);
   return { count: active.length, clock_out: now };
+}
+
+function sameAgentIdentity(pointage, agent) {
+  const a = pointage?.agents || {};
+  const agentDiscord = String(agent?.discord_id || "").trim();
+  const rowDiscord = String(a.discord_id || "").trim();
+  const agentMatricule = String(agent?.matricule || "").trim();
+  const rowMatricule = String(a.matricule || "").trim();
+  const agentName = `${agent?.prenom || ""} ${agent?.nom || ""}`.trim().toLowerCase();
+  const rowName = `${a.prenom || ""} ${a.nom || ""}`.trim().toLowerCase();
+
+  return String(pointage?.agent_id || "") === String(agent?.id || "")
+    || (agentDiscord && rowDiscord && agentDiscord === rowDiscord)
+    || (agentMatricule && rowMatricule && agentMatricule === rowMatricule)
+    || (agentName && rowName && agentName === rowName);
+}
+
+async function getActivePointagesForAgentIdentity(env, agent, siteKey = "sud") {
+  if (!agent) return [];
+  const data = await sbForSite(env, "GET", `/pointages?clock_out=is.null&select=id,agent_id,clock_in,agents(id,nom,prenom,matricule,discord_id)&order=clock_in.asc`, null, siteKey);
+  return (Array.isArray(data) ? data : []).filter(p => sameAgentIdentity(p, agent));
+}
+
+async function closeActivePointagesForAgentIdentity(env, agent, siteKey = "sud") {
+  const now = new Date().toISOString();
+  const active = await getActivePointagesForAgentIdentity(env, agent, siteKey);
+  if (!active.length) return { count: 0, clock_out: now };
+  for (const p of active) {
+    await sbForSite(env, "PATCH", `/pointages?id=eq.${p.id}`, { clock_out: now }, siteKey);
+  }
+  return { count: active.length, clock_out: now };
+}
+
+async function refreshPointeuseMessage(env, channelId, messageId, siteKey = "sud") {
+  if (!channelId || !messageId) return { ok: false, count: 0 };
+  const allActive = await getAllActivePointages(env, siteKey);
+  await editMessage(env, channelId, messageId, buildPointeuseMessage(allActive));
+  return { ok: true, count: uniqueActivePointages(allActive).length };
 }
 
 async function getAllActivePointages(env, siteKey = "sud") {
@@ -4515,7 +4558,12 @@ export default {
           const agentId = interaction.data.values[0];
           const siteKey = siteKeyFromGuildId(interaction.guild_id);
 
-          await closeActivePointagesForAgent(env, agentId, siteKey);
+          const agent = await getAgentById(env, agentId, siteKey).catch(() => null);
+          if (agent) {
+            await closeActivePointagesForAgentIdentity(env, agent, siteKey);
+          } else {
+            await closeActivePointagesForAgent(env, agentId, siteKey);
+          }
 
           const allActive = await getAllActivePointages(env, siteKey);
           await editMessage(env, channelId, messageId, buildPointeuseMessage(allActive));
@@ -4577,17 +4625,18 @@ export default {
         }
 
         if (customId === "prise_service") {
-          const existing = await getActivePointage(env, agent.id, pointeuseSiteKey);
-          if (existing) {
+          const existing = await getActivePointagesForAgentIdentity(env, agent, pointeuseSiteKey);
+          if (existing.length) {
             return json({ type: 4, data: { content: `âš ï¸ Tu es dÃ©jÃ  en service, ${agent.prenom} !`, flags: 64 } });
           }
           await sbForSite(env, "POST", "/pointages", { agent_id: agent.id, clock_in: new Date().toISOString() }, pointeuseSiteKey);
         } else {
-          const active = await getActivePointage(env, agent.id, pointeuseSiteKey);
-          if (!active) {
+          const active = await getActivePointagesForAgentIdentity(env, agent, pointeuseSiteKey);
+          if (!active.length) {
+            ctx.waitUntil(refreshPointeuseMessage(env, interaction.channel_id, interaction.message?.id, pointeuseSiteKey));
             return json({ type: 4, data: { content: `âš ï¸ Tu n'es pas en service, ${agent.prenom} !`, flags: 64 } });
           }
-          await closeActivePointagesForAgent(env, agent.id, pointeuseSiteKey);
+          await closeActivePointagesForAgentIdentity(env, agent, pointeuseSiteKey);
         }
 
         const allActive = await getAllActivePointages(env, pointeuseSiteKey);
