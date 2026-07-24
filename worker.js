@@ -166,6 +166,22 @@ const NORD_GRADE_ROLES = {
   'Cadet':               '1517967074482323629'
 };
 
+const GRADE_SALAIRE = {
+  'Commandant':          1050,
+  'Capitaine':           900,
+  'Lieutenant II':       825,
+  'Lieutenant I':        750,
+  'Sergeant II':         675,
+  'Sergeant I':          600,
+  'Senior Lead Officer': 450,
+  'Senior Lead Trooper': 450,
+  'Trooper III':         375,
+  'Trooper II':          300,
+  'Trooper I':           225,
+  'Rookie':              150,
+  'Cadet':               150
+};
+
 function roleConfigForGuild(guildId) {
   if (String(guildId || "") === NORD_SITE_GUILD_ID) {
     return {
@@ -1229,6 +1245,55 @@ async function refreshPointeuseMessage(env, channelId, messageId, siteKey = "sud
   const allActive = await getAllActivePointages(env, siteKey);
   await editMessage(env, channelId, messageId, buildPointeuseMessage(allActive));
   return { ok: true, count: uniqueActivePointages(allActive).length };
+}
+
+function startOfCurrentWeekUtc(now = new Date()) {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() - day + 1);
+  return d;
+}
+
+function formatDurationFromMs(ms) {
+  const totalMinutes = Math.max(0, Math.round(ms / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h${String(minutes).padStart(2, "0")}`;
+}
+
+function formatMoney(value) {
+  return `${Math.round(Number(value) || 0).toLocaleString("fr-FR")} $`;
+}
+
+async function getWeeklyServiceSummary(env, agent, siteKey = "sud", now = new Date()) {
+  const weekStart = startOfCurrentWeekUtc(now);
+  const rows = await sbForSite(
+    env,
+    "GET",
+    `/pointages?agent_id=eq.${agent.id}&select=id,clock_in,clock_out&order=clock_in.asc`,
+    null,
+    siteKey
+  );
+  const sessions = (Array.isArray(rows) ? rows : []).map(p => {
+    const start = new Date(p.clock_in);
+    const end = p.clock_out ? new Date(p.clock_out) : now;
+    const clippedStart = start < weekStart ? weekStart : start;
+    const clippedEnd = end > now ? now : end;
+    const durationMs = Math.max(0, clippedEnd - clippedStart);
+    return { ...p, start, end, durationMs };
+  }).filter(p => p.durationMs > 0 && p.end >= weekStart);
+
+  const totalMs = sessions.reduce((sum, p) => sum + p.durationMs, 0);
+  const hourlyRate = GRADE_SALAIRE[agent.grade] || 0;
+  const totalHours = totalMs / 3600000;
+  return {
+    weekStart,
+    sessions,
+    totalMs,
+    totalHours,
+    hourlyRate,
+    pay: totalHours * hourlyRate
+  };
 }
 
 async function getAllActivePointages(env, siteKey = "sud") {
@@ -3160,6 +3225,38 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/install-heures-command" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const reset = url.searchParams.get("reset") === "1";
+        const resetDeleted = [];
+        if (reset) {
+          const listRes = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          const commands = await listRes.json();
+          if (!listRes.ok) return json({ ok: false, step: "list", data: commands }, listRes.status);
+          for (const command of commands.filter(c => c.name === "heures")) {
+            const delRes = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands/${command.id}`, {
+              method: "DELETE",
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+            });
+            resetDeleted.push({ id: command.id, ok: delRes.status === 204, status: delRes.status });
+          }
+        }
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "heures", description: "Voir mes heures de service et ma paie de la semaine" })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, reset, resetDeleted, data });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/debug-commands" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
@@ -3638,6 +3735,53 @@ export default {
       // Slash command /subvention
       if (interaction.type === 2 && interaction.data.name === "subvention") {
         return json(subventionModalResponse());
+      }
+
+      // Slash command /heures
+      if (interaction.type === 2 && interaction.data.name === "heures") {
+        const siteKey = siteKeyFromGuildId(interaction.guild_id);
+        let agent;
+        try {
+          agent = await getAgentForPointeuseInteraction(env, interaction, siteKey);
+        } catch (e) {
+          return json({ type: 4, data: { content: `❌ Erreur agent : ${e.message}`, flags: 64 } });
+        }
+        if (!agent) {
+          return json({ type: 4, data: { content: "❌ Ton Discord ID n'est lié à aucun agent. Configure-le dans ton profil sur l'intranet ou vérifie ton pseudo Discord.", flags: 64 } });
+        }
+
+        const summary = await getWeeklyServiceSummary(env, agent, siteKey);
+        const weekStartUnix = Math.floor(summary.weekStart.getTime() / 1000);
+        const nowUnix = Math.floor(Date.now() / 1000);
+        const active = await getActivePointagesForAgentIdentity(env, agent, siteKey);
+        const sessionLines = summary.sessions.slice(-5).map(p => {
+          const start = Math.floor(new Date(p.clock_in).getTime() / 1000);
+          const end = p.clock_out ? Math.floor(new Date(p.clock_out).getTime() / 1000) : null;
+          return `• <t:${start}:f> → ${end ? `<t:${end}:t>` : "en cours"} · **${formatDurationFromMs(p.durationMs)}**`;
+        }).join("\n") || "Aucun service enregistré cette semaine.";
+
+        return json({
+          type: 4,
+          data: {
+            flags: 64,
+            embeds: [{
+              title: "🕒 Mes heures de service",
+              description: `Bilan personnel de **${agent.prenom} ${agent.nom}** (${agent.matricule || "—"})`,
+              color: 0xd6b342,
+              fields: [
+                { name: "Semaine", value: `<t:${weekStartUnix}:D> → <t:${nowUnix}:f>`, inline: false },
+                { name: "Grade", value: agent.grade || "Non renseigné", inline: true },
+                { name: "Tarif horaire", value: summary.hourlyRate ? formatMoney(summary.hourlyRate) : "Non configuré", inline: true },
+                { name: "Statut", value: active.length ? "En service actuellement" : "Hors service", inline: true },
+                { name: "Total heures", value: `**${formatDurationFromMs(summary.totalMs)}**`, inline: true },
+                { name: "Paie estimée", value: `**${formatMoney(summary.pay)}**`, inline: true },
+                { name: "Services récents", value: sessionLines.slice(0, 1024), inline: false }
+              ],
+              footer: { text: `${siteKey === "nord" ? "SASP Nord" : "SASP Sud"} · Pointeuse` },
+              timestamp: new Date().toISOString()
+            }]
+          }
+        });
       }
 
       if (interaction.type === 3 && interaction.data.custom_id === "subvention_open_modal") {
