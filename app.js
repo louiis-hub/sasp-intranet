@@ -263,11 +263,24 @@ var PAGE_TITLES = {
 
 // ── Boot ───────────────────────────────────────────────────────────
 (async function boot() {
+  var isOAuthReturn = /[?&](code|error|error_description)=/.test(window.location.search || '');
   try {
-    var { data: { session } } = await DB.getSession();
+    var redirectSession = await DB.finishOAuthRedirect();
+    var session = redirectSession || (await DB.getSession()).data.session;
     if (session) { await afterLogin(session.user, session); }
-    else { showLogin(); }
-  } catch(e) { showLogin(); }
+    else {
+      showLogin();
+      if (isOAuthReturn) {
+        var loginErr = document.getElementById('loginErr');
+        if (loginErr) { loginErr.textContent = 'Session Discord non recuperee. Recharge la page puis reessaie la connexion.'; loginErr.classList.add('show'); }
+      }
+    }
+  } catch(e) {
+    console.error('[auth] boot failed:', e);
+    showLogin();
+    var errEl = document.getElementById('loginErr');
+    if (errEl) { errEl.textContent = 'Erreur retour Discord: ' + (e.message || e); errEl.classList.add('show'); }
+  }
   DB.onAuthChange(async function(event, session) {
     if (event === 'SIGNED_IN' && session && !S.user) { await afterLogin(session.user, session); }
     if (event === 'SIGNED_OUT') { S.user = null; S.role = 'agent'; showLogin(); }
