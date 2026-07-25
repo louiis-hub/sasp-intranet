@@ -17,6 +17,43 @@
 // ── State ──────────────────────────────────────────────────────────
 var S = { user: null, appUser: null, role: 'agent', page: 'dashboard', pd: {}, discordRoles: [], discordUserId: null };
 
+function isAuthDisabled() {
+  return typeof AUTH_DISABLED !== 'undefined' && AUTH_DISABLED === true;
+}
+
+function makeOpenAccessUser() {
+  var discordId = (typeof AUTH_BYPASS_DISCORD_ID !== 'undefined' && AUTH_BYPASS_DISCORD_ID) ? AUTH_BYPASS_DISCORD_ID : '';
+  return {
+    id: discordId || 'open-access',
+    email: 'acces-libre@sasp.local',
+    user_metadata: {
+      full_name: 'Acces libre',
+      name: 'Acces libre',
+      user_name: 'Acces libre',
+      provider_id: discordId
+    },
+    identities: discordId ? [{ provider: 'discord', id: discordId, identity_data: { sub: discordId } }] : []
+  };
+}
+
+async function startOpenAccess() {
+  var role = (typeof AUTH_BYPASS_ROLE !== 'undefined' && AUTH_BYPASS_ROLE) ? AUTH_BYPASS_ROLE : 'admin';
+  var anonSession = await DB.ensureAnonymousSession();
+  if (!anonSession) throw new Error('Active Anonymous sign-ins dans Supabase pour charger les donnees sans Discord.');
+  S.user = makeOpenAccessUser();
+  if (anonSession && anonSession.user && anonSession.user.id) S.user.id = anonSession.user.id;
+  S.appUser = { user_id: S.user.id, nom: 'libre', prenom: 'Acces', app_role: role };
+  S.role = role;
+  S.discordRoles = [];
+  S.discordUserId = (typeof AUTH_BYPASS_DISCORD_ID !== 'undefined' && AUTH_BYPASS_DISCORD_ID) ? AUTH_BYPASS_DISCORD_ID : null;
+  S.serverNick = 'Acces libre';
+  _grades = await DB.getGrades();
+  _units = await DB.getUnits();
+  await loadWikiSections();
+  showApp();
+  await navigate('dashboard');
+}
+
 // ── Salaires par grade ($/h) ─────────────────────────────────────────
 var GRADE_SALAIRE = {
   'Commandant':          1050,
@@ -263,6 +300,17 @@ var PAGE_TITLES = {
 
 // ── Boot ───────────────────────────────────────────────────────────
 (async function boot() {
+  if (isAuthDisabled()) {
+    try {
+      await startOpenAccess();
+    } catch(e) {
+      console.error('[auth] open access failed:', e);
+      showLogin();
+      var openErr = document.getElementById('loginErr');
+      if (openErr) { openErr.textContent = 'Erreur acces libre: ' + (e.message || e); openErr.classList.add('show'); }
+    }
+    return;
+  }
   var isOAuthReturn = /[?&](code|error|error_description)=/.test(window.location.search || '');
   try {
     var redirectSession = await DB.finishOAuthRedirect();
@@ -395,6 +443,10 @@ async function loadWikiSections() {
 }
 
 async function doLogout() {
+  if (isAuthDisabled()) {
+    await startOpenAccess();
+    return;
+  }
   await DB.logout();
   S.user = null; S.appUser = null; S.role = 'agent'; S.discordRoles = []; S.discordUserId = null;
   showLogin();

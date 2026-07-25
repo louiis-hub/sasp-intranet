@@ -33,6 +33,14 @@ var DB = {
   },
   async logout() { return getDb().auth.signOut(); },
   async getSession() { return getDb().auth.getSession(); },
+  async ensureAnonymousSession() {
+    var current = await getDb().auth.getSession();
+    if (current && current.data && current.data.session) return current.data.session;
+    if (!getDb().auth.signInAnonymously) return null;
+    var anon = await getDb().auth.signInAnonymously();
+    if (anon.error) throw anon.error;
+    return anon.data && anon.data.session ? anon.data.session : null;
+  },
   async finishOAuthRedirect() {
     var params = new URLSearchParams(window.location.search || '');
     var error = params.get('error_description') || params.get('error');
