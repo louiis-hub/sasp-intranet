@@ -1,14 +1,28 @@
 // ── Supabase client ───────────────────────────────────────────────
 var _sb = null;
 function getDb() {
-  if (!_sb) _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  if (!_sb) _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+    auth: {
+      detectSessionInUrl: false,
+      flowType: 'pkce'
+    }
+  });
   return _sb;
+}
+
+function clearOAuthCodeVerifiers() {
+  try {
+    Object.keys(localStorage).forEach(function(key) {
+      if (key.indexOf('code-verifier') !== -1) localStorage.removeItem(key);
+    });
+  } catch(e) {}
 }
 
 var DB = {
 
   // ── Auth ──────────────────────────────────────────────────────
   async loginWithDiscord() {
+    clearOAuthCodeVerifiers();
     return getDb().auth.signInWithOAuth({
       provider: 'discord',
       options: {
@@ -26,16 +40,15 @@ var DB = {
     var code = params.get('code');
     if (!code) return null;
     var cleanUrl = window.location.origin + window.location.pathname;
-    for (var i = 0; i < 12; i++) {
-      var current = await getDb().auth.getSession();
-      if (current.data && current.data.session) {
-        window.history.replaceState({}, document.title, cleanUrl);
-        return current.data.session;
-      }
-      await new Promise(function(resolve) { setTimeout(resolve, 500); });
+    try {
+      var exchanged = await getDb().auth.exchangeCodeForSession(code);
+      window.history.replaceState({}, document.title, cleanUrl);
+      if (exchanged.error) throw exchanged.error;
+      return exchanged.data && exchanged.data.session ? exchanged.data.session : null;
+    } catch(e) {
+      window.history.replaceState({}, document.title, cleanUrl);
+      throw e;
     }
-    window.history.replaceState({}, document.title, cleanUrl);
-    return null;
   },
   onAuthChange(cb) { return getDb().auth.onAuthStateChange(cb); },
 
