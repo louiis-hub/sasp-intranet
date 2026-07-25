@@ -81,15 +81,6 @@ var DB = {
     data.updated_at = new Date().toISOString();
     return getDb().from('agents').update(data).eq('id', id);
   },
-  async getReferents() {
-    var { data } = await getDb().from('agents')
-      .select('id, nom, prenom, matricule, grade, referent_id, referent:referent_id(id, nom, prenom, matricule, grade)')
-      .neq('statut', 'Archivé').order('matricule');
-    return data || [];
-  },
-  async setReferent(agentId, referentId) {
-    return getDb().from('agents').update({ referent_id: referentId || null, updated_at: new Date().toISOString() }).eq('id', agentId);
-  },
 
   // ── Grades ───────────────────────────────────────────────────
   async getGrades() {
@@ -154,7 +145,9 @@ var DB = {
   async addAgentArme(data) { return getDb().from('agent_armes').insert(data).select().single(); },
   async deleteAgentArme(id) { return getDb().from('agent_armes').delete().eq('id', id); },
   async deleteAgent(id) {
+    await getDb().from('agents').update({ formateur_id: null, referent_id: null }).eq('id', id);
     await getDb().from('agents').update({ formateur_id: null }).eq('formateur_id', id);
+    await getDb().from('agents').update({ referent_id: null }).eq('referent_id', id);
     return getDb().from('agents').delete().eq('id', id);
   },
 

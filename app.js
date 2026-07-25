@@ -233,7 +233,6 @@ var NAV = [
   { group: 'RESSOURCES HUMAINES' },
   { id: 'recap',    icon: '📋', label: 'Récap agents', staffOnly: true },
   { id: 'completude', icon: '🗂️', label: 'Complétude fiches', staffOnly: true },
-  { id: 'referents',  icon: '🤝', label: 'Référents',          staffOnly: true },
   { id: 'agents',   icon: '👮', label: 'Agents' },
   { id: 'grades',   icon: '🎖️', label: 'Grades' },
   { id: 'units',     icon: '🚔', label: 'Divisions' },
@@ -256,7 +255,7 @@ var PAGE_TITLES = {
   grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', 'pointeuse-historique':'Historique pointages', mdt:'Guide MDT', vehicles:'Véhicules', cartes:'Cartes',
   faq:'FAQ',
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
-  archives:'Archives', ceremonie:'Prépa Cérémonie', completude:'Complétude fiches', referents:'Référents',
+  archives:'Archives', ceremonie:'Prépa Cérémonie', completude:'Complétude fiches',
   'global-settings':'Réglages globaux',
   'service-logements':'Logements de service',
   cid:'CID', ftf:'FTF', 'ftf-dossier':'Dossier FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
@@ -412,7 +411,7 @@ function buildNav() {
   var isFtfOnly = S.role === 'ftf';
   var isCidOnly = S.role === 'cid';
   var VISITEUR_NAV = ['dashboard', 'pointeuse', 'faq', 'cartes'];
-  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'archives', 'recap', 'ceremonie', 'completude', 'referents'];
+  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'archives', 'recap', 'ceremonie', 'completude'];
   var html = '';
   NAV.forEach(function(item) {
     if (item.ftfOnly && !canAccessFTF()) return;
@@ -543,7 +542,6 @@ async function navigate(page, pd) {
       ceremonie:      renderCeremonie,
       archives:       renderArchives,
       completude:     renderCompletude,
-      referents:      renderReferents,
       'global-settings': renderGlobalSettings,
       'service-logements': renderServiceLogements,
       ftf:            renderFTF,
@@ -669,20 +667,10 @@ function statusBadge(s) {
   var map = { 'En service':'badge-green','En congé':'badge-blue','Suspendu':'badge-orange','Licencié':'badge-red','Retraité':'badge-gray','Démission':'badge-gray','Archivé':'badge-red' };
   return '<span class="badge ' + (map[s]||'badge-gray') + '">' + esc(s) + '</span>';
 }
-function isReferent(grade) {
-  if (!grade || !_grades.length) return false;
-  var offII = _grades.find(function(g){ return g.nom === 'Trooper II'; });
-  if (!offII) return false;
-  var g = _grades.find(function(g){ return g.nom === grade; });
-  return g ? (g.ordre||0) >= (offII.ordre||0) : false;
-}
 function gradeBadge(g) {
   g = gradeLabel(g);
   var pastille = (g === 'Rookie' || g === 'Trooper I') ? ' <span title="En formation" style="font-size:1.4em;vertical-align:middle">🎓</span>' : '';
   return '<span class="badge badge-gold">' + esc(g) + pastille + '</span>';
-}
-function referentBadge() {
-  return '<span class="badge" style="background:rgba(46,204,113,.14);color:#2ecc71;border:1px solid rgba(46,204,113,.3);font-size:.68rem">📌 Référent</span>';
 }
 function unitBadge(u) {
   return '<span class="badge badge-blue">' + esc(u) + '</span>';
@@ -1923,7 +1911,7 @@ async function renderAgents() {
     return '<tr onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})">' +
       '<td class="mono text-gold">' + esc(a.matricule) + '</td>' +
       '<td style="font-weight:600;color:var(--t0)">' + esc(a.prenom) + ' ' + esc(a.nom) + '</td>' +
-      '<td>' + gradeBadge(a.grade) + (isReferent(a.grade) ? referentBadge() : '') + '</td>' +
+      '<td>' + gradeBadge(a.grade) + '</td>' +
       '<td>' + (unites||'<span class="text-muted">—</span>') + '</td>' +
       '<td><span class="badge badge-gold" style="font-size:.65rem">PPA ' + ppas + '/3</span></td>' +
       '<td>' + statusBadge(a.statut) + '</td>' +
@@ -1984,9 +1972,7 @@ function agentFilter(key, val) { _agentFilters[key] = val; renderAgents(); }
 async function openAgentModal(id) {
   if (!canWrite()) return;
   _grades = await DB.getGrades();
-  var ag = id ? await DB.getAgent(id) : null;
-  var formateurs = await DB.getFormateurs();
-  var v = ag || {};
+  var ag = id ? await DB.getAgent(id) : null;  var v = ag || {};
 
   var currentGradeKey = gradeKey(v.grade);
   var gradeInList = _grades.some(function(g){ return gradeKey(g.nom) === currentGradeKey; });
@@ -1999,12 +1985,6 @@ async function openAgentModal(id) {
     var chk = (v.unites||[]).includes(u.code) ? ' checked' : '';
     return '<label class="form-check"><input type="checkbox" name="unite" value="' + esc(u.code) + '"' + chk + '><span class="form-check-lbl">' + esc(u.code) + ' — ' + esc(u.nom) + '</span></label>';
   }).join('');
-
-  var formateurOpts = '<option value="">— Aucun formateur assigné —</option>' +
-    formateurs.filter(function(f){ return f.id !== id; }).map(function(f){
-      return '<option value="' + f.id + '"' + (v.formateur_id === f.id ? ' selected' : '') + '>' +
-        esc(f.matricule + ' — ' + f.prenom + ' ' + f.nom) + '</option>';
-    }).join('');
 
   openModal({
     eyebrow: id ? 'MODIFIER UN AGENT' : 'NOUVEL AGENT',
@@ -2033,15 +2013,6 @@ async function openAgentModal(id) {
       '</div>' +
       '<div class="form-group"><label class="form-label">Unités</label>' +
         '<div class="flex flex-wrap gap-12">' + uniteChecks + '</div>' +
-      '</div>' +
-      '<div class="form-group"><label class="form-label">Formateur assigné</label>' +
-        '<select class="form-control" id="agFormateur">' + formateurOpts + '</select>' +
-      '</div>' +
-      '<div class="form-group">' +
-        '<label class="form-check" style="align-items:flex-start">' +
-          '<input type="checkbox" id="agIsFormateur"' + (v.is_formateur ? ' checked' : '') + ' style="margin-top:3px">' +
-          '<span class="form-check-lbl">🎓 Agent formateur — apparaît dans la liste des formateurs assignables</span>' +
-        '</label>' +
       '</div>' +
       fld('Discord ID', 'text', 'agDiscordId', v.discord_id||'', 'Ex: 123456789012345678') +
       '<div class="form-group"><label class="form-label">Notes</label><textarea class="form-control" id="agNotes" rows="2">' + esc(v.notes||'') + '</textarea></div>',
@@ -2095,10 +2066,7 @@ async function saveAgent(id) {
     date_promotion: document.getElementById('agPromo').value || null,
     unites: unites,
     iban: document.getElementById('agIban').value.trim() || null,
-    notes: document.getElementById('agNotes').value.trim() || null,
-    is_formateur: document.getElementById('agIsFormateur').checked,
-    formateur_id: document.getElementById('agFormateur').value || null,
-    discord_id: document.getElementById('agDiscordId').value.trim() || null
+    notes: document.getElementById('agNotes').value.trim() || null,    discord_id: document.getElementById('agDiscordId').value.trim() || null
   };
 
   try {
@@ -2121,9 +2089,7 @@ async function saveAgent(id) {
         var removed = (old.unites||[]).filter(function(u){ return !(data.unites||[]).includes(u); });
         if (added.length)   diffLines.push('+Division : ' + added.join(', '));
         if (removed.length) diffLines.push('−Division : ' + removed.join(', '));
-      }
-      if (!!old.is_formateur !== !!data.is_formateur) diffLines.push('Formateur : ' + (old.is_formateur?'Oui':'Non') + ' → ' + (data.is_formateur?'Oui':'Non'));
-      if ((old.iban||'') !== (data.iban||'')) diffLines.push('IBAN : ' + (old.iban||'—') + ' → ' + (data.iban||'—'));
+      }      if ((old.iban||'') !== (data.iban||'')) diffLines.push('IBAN : ' + (old.iban||'—') + ' → ' + (data.iban||'—'));
       if ((old.notes||'').trim() !== (data.notes||'').trim()) diffLines.push('Notes : modifiées');
       if ((old.date_recrutement||'') !== (data.date_recrutement||'')) diffLines.push('Date recrutement : ' + (old.date_recrutement||'—') + ' → ' + (data.date_recrutement||'—'));
       ['blame1','blame2','blame3'].forEach(function(k,i){
@@ -2171,9 +2137,7 @@ async function renderAgentProfile() {
   var [ag, armes] = await Promise.all([
     DB.getAgent(id),
     DB.getAgentArmes(id)
-  ]);
-  var formateur = ag && ag.formateur_id ? await DB.getAgent(ag.formateur_id) : null;
-  if (!ag) { navigate('agents'); return; }
+  ]);  if (!ag) { navigate('agents'); return; }
 
   var unites = (ag.unites||[]).map(unitBadge).join(' ');
   var ppas = [
@@ -2206,7 +2170,7 @@ async function renderAgentProfile() {
       '<div style="flex:1">' +
         '<h1 class="profile-name">' + esc(ag.prenom) + ' ' + esc(ag.nom) + '</h1>' +
         '<div class="profile-mat">' + esc(ag.matricule) + '</div>' +
-        '<div class="profile-meta">' + gradeBadge(ag.grade) + (isReferent(ag.grade) ? referentBadge() : '') + statusBadge(ag.statut) + unites + '</div>' +
+        '<div class="profile-meta">' + gradeBadge(ag.grade) + statusBadge(ag.statut) + unites + '</div>' +
       '</div>' +
       (ag.statut === 'Archivé' ?
         '<div class="profile-actions"><span class="badge badge-red" style="font-size:.8rem;padding:6px 14px">🗃️ Archivé — lecture seule</span></div>' :
@@ -2214,7 +2178,7 @@ async function renderAgentProfile() {
           '<div class="profile-actions">' +
             '<button class="btn btn-outline btn-sm" onclick="openAgentModal(\'' + id + '\')">✏️ Modifier</button>' +
             '<button class="btn btn-ghost btn-sm" onclick="syncDiscordToAgent(\'' + id + '\')" title="Sync divisions depuis Discord">🔄 Sync Discord</button>' +
-            (isAdmin() ? '<button class="btn btn-ghost btn-sm" style="color:var(--t3)" onclick="archiveAgent(\'' + id + '\')">🗃️ Archiver</button>' : '') +
+            (isAdmin() ? '<button class="btn btn-danger btn-sm" onclick="deleteAgentDirect(\'' + id + '\')">Supprimer</button>' : '') +
           '</div>' : '') +
     '</div>' +
 
@@ -2222,14 +2186,12 @@ async function renderAgentProfile() {
       '<div style="display:contents">' +
 
         '<div class="card">' +
-          '<div class="card-head"><div class="card-icon">👤</div><div><div class="card-title">Informations' + (ag.is_formateur ? ' <span class="badge badge-blue" style="font-size:.65rem;margin-left:6px">🎓 Formateur</span>' : '') + '</div></div></div>' +
+          '<div class="card-head"><div class="card-icon">👤</div><div><div class="card-title">Informations' + '</div></div></div>' +
           infoRow('Date de naissance', fmt(ag.date_naissance)) +
           infoRow('Téléphone', fmtTel(ag.telephone)) +
           infoRow('Date de recrutement', fmt(ag.date_recrutement)) +
           infoRow('Dernière promotion', fmt(ag.date_promotion)) +
-          (ag.iban ? infoRow('IBAN', ag.iban) : '') +
-          (formateur ? infoRow('Formateur', '<span onclick="navigate(\'agent-profile\',{id:\'' + formateur.id + '\'})" style="color:var(--blue);cursor:pointer">🎓 ' + esc(formateur.prenom + ' ' + formateur.nom) + ' (' + esc(formateur.matricule) + ')</span>') : '') +
-        '</div>' +
+          (ag.iban ? infoRow('IBAN', ag.iban) : '') +        '</div>' +
 
         '<div class="card">' +
           '<div class="flex-between mb-10">' +
@@ -3095,173 +3057,12 @@ async function createVehiclePage() {
 }
 
 // ══ COMPLÉTUDE FICHES ═══════════════════════════════════════════════
-async function renderReferents() {
-  setContent('<p class="muted">Chargement…</p>');
-  var agents = await DB.getAgents({});
-  var referentsData = await DB.getReferents();
-
-  var byId = {};
-  referentsData.forEach(function(a) { byId[a.id] = a; });
-
-  var REFERENT_GRADES = ['Trooper II', 'Trooper III', 'Senior Lead Trooper'];
-  var eligibles = agents.filter(function(a) { return REFERENT_GRADES.indexOf(a.grade) !== -1; });
-
-  function refLabel(a) {
-    return a.referent
-      ? ('(' + a.referent.matricule + ') ' + a.referent.prenom + ' ' + a.referent.nom)
-      : '— Aucun —';
-  }
-
-  function buildDropdown(agentId, currentLabel) {
-    var opts = eligibles.map(function(e) {
-      var label = '(' + e.matricule + ') ' + e.prenom + ' ' + e.nom;
-      return '<div class="rdd-opt" data-val="' + e.id + '" onclick="pickRef(\'' + agentId + '\',\'' + e.id + '\',\'' + label.replace(/'/g,"&#39;") + '\')">'
-        + '<span class="badge" style="margin-right:6px;font-size:.7rem">' + e.matricule + '</span>' + e.prenom + ' ' + e.nom
-        + '</div>';
-    }).join('');
-    return '<div class="rdd" id="rdd-' + agentId + '">'
-      + '<div class="rdd-trigger" onclick="toggleRdd(\'' + agentId + '\')">'
-      + '<span class="rdd-val" id="rdd-val-' + agentId + '">' + currentLabel + '</span>'
-      + '<span style="color:var(--t3);margin-left:auto;font-size:.7rem">▾</span></div>'
-      + '<div class="rdd-panel" id="rdd-panel-' + agentId + '" style="display:none">'
-      + '<input class="rdd-search" placeholder="Rechercher…" oninput="filterRdd(\'' + agentId + '\',this.value)">'
-      + '<div class="rdd-opt rdd-none" onclick="pickRef(\'' + agentId + '\',\'\',\'— Aucun —\')">— Aucun —</div>'
-      + '<div id="rdd-list-' + agentId + '">' + opts + '</div>'
-      + '</div></div>';
-  }
-
-  var rookies   = referentsData.filter(function(a) { return a.grade === 'Rookie'; });
-  var troopers1 = referentsData.filter(function(a) { return a.grade === 'Trooper I'; });
-
-  function makeCard(a) {
-    var refDisplay = a.referent
-      ? ('(' + a.referent.matricule + ') ' + a.referent.prenom + ' ' + a.referent.nom)
-      : '<span style="color:var(--t3)">Non assigné</span>';
-    var cell = canWrite() ? buildDropdown(a.id, refLabel(a)) : refDisplay;
-    return '<div class="ref-card">'
-      + '<div class="ref-card-left">'
-      + '<span class="badge ref-mat">' + a.matricule + '</span>'
-      + '<span class="ref-name">' + a.prenom + ' ' + a.nom + '</span>'
-      + '</div>'
-      + '<div class="ref-card-right">' + cell + '</div>'
-      + '</div>';
-  }
-
-  function makeSection(label, count, cards) {
-    return '<div class="ref-section-header"><span class="ref-section-label">' + label + '</span><span class="ref-section-count">' + count + '</span></div>'
-      + '<div class="ref-cards">' + cards + '</div>';
-  }
-
-  var groupMap = {};
-  referentsData.filter(function(a){ return a.grade === 'Rookie' || a.grade === 'Trooper I'; }).forEach(function(a) {
-    var key = a.referent_id || '__aucun__';
-    if (!groupMap[key]) groupMap[key] = [];
-    groupMap[key].push(a);
-  });
-
-  var groupHtml = '';
-  Object.keys(groupMap).sort(function(a,b){ return a === '__aucun__' ? 1 : b === '__aucun__' ? -1 : 0; }).forEach(function(key) {
-    var ra = key !== '__aucun__' && byId[key] ? byId[key] : null;
-    var header = ra
-      ? ('<span class="badge" style="margin-right:6px">' + ra.matricule + '</span><strong>' + ra.prenom + ' ' + ra.nom + '</strong>')
-      : '<span style="color:var(--t3)">Sans référent</span>';
-    var referes = groupMap[key].map(function(a) {
-      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border0)">'
-        + '<span class="badge">' + a.matricule + '</span>'
-        + '<span style="font-size:.85rem">' + a.grade + ' ' + a.prenom + ' ' + a.nom + '</span>'
-        + '</div>';
-    }).join('');
-    groupHtml += '<div class="card" style="margin-bottom:10px;padding:14px 16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border1)">' + header + '</div>' + referes + '</div>';
-  });
-
-  var css = '<style>'
-    + '.ref-section-header{display:flex;align-items:center;gap:10px;margin:20px 0 8px}'
-    + '.ref-section-label{font-family:"Rajdhani",sans-serif;font-size:.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}'
-    + '.ref-section-count{background:var(--goldGlow);border:1px solid var(--goldBorder);color:var(--gold);font-size:.7rem;font-weight:700;padding:1px 8px;border-radius:20px}'
-    + '.ref-cards{display:flex;flex-direction:column;gap:6px}'
-    + '.ref-card{display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--bgCard);border:1px solid var(--border1);border-radius:var(--rMd);padding:10px 14px;transition:border-color .2s}'
-    + '.ref-card:hover{border-color:var(--border2)}'
-    + '.ref-card-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0}'
-    + '.ref-mat{font-size:.75rem;flex-shrink:0}'
-    + '.ref-name{font-size:.88rem;color:var(--t1);font-weight:500}'
-    + '.ref-card-right{flex-shrink:0}'
-    + '.rdd{position:relative;min-width:200px;max-width:240px}'
-    + '.rdd-trigger{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bgBody);border:1px solid var(--border1);border-radius:var(--rMd);cursor:pointer;font-size:.82rem;color:var(--t1);transition:border-color .2s}'
-    + '.rdd-trigger:hover{border-color:var(--goldBorder)}'
-    + '.rdd-val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}'
-    + '.rdd-panel{position:absolute;top:calc(100% + 4px);right:0;left:auto;min-width:240px;background:var(--bgCard);border:1px solid var(--border1);border-radius:var(--rMd);z-index:99;box-shadow:0 8px 24px rgba(0,0,0,.5);overflow:hidden}'
-    + '.rdd-search{width:100%;padding:8px 10px;background:var(--bgBody);border:none;border-bottom:1px solid var(--border1);color:var(--t1);font-size:.82rem;outline:none;box-sizing:border-box}'
-    + '.rdd-opt{padding:8px 12px;font-size:.82rem;color:var(--t1);cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:6px}'
-    + '.rdd-opt:hover{background:var(--goldGlow)}'
-    + '.rdd-none{color:var(--t3)}'
-    + '</style>';
-
-  setContent(
-    css
-    + '<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">'
-    + '<button class="btn btn-ghost btn-sm ref-tab-btn active" onclick="switchRefTab(\'assign\')">🎓 Assignation</button>'
-    + '<button class="btn btn-ghost btn-sm ref-tab-btn" onclick="switchRefTab(\'group\')">👥 Par référent</button>'
-    + (canWrite() ? '<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="postReferentsDiscord(this)">📤 Envoyer sur Discord</button>' : '')
-    + '</div>'
-    + '<div id="ref-tab-assign">'
-    + makeSection('Rookie', rookies.length, rookies.map(makeCard).join(''))
-    + makeSection('Trooper I', troopers1.length, troopers1.map(makeCard).join(''))
-    + '</div>'
-    + '<div id="ref-tab-group" style="display:none">' + groupHtml + '</div>'
-  );
-
-  document.addEventListener('click', function closeRdd(e) {
-    if (!e.target.closest('.rdd')) document.querySelectorAll('.rdd-panel').forEach(function(p){ p.style.display='none'; });
-  }, { once: false, capture: false });
-}
-
-window.toggleRdd = function(id) {
-  var p = document.getElementById('rdd-panel-' + id);
-  var open = p.style.display !== 'none';
-  document.querySelectorAll('.rdd-panel').forEach(function(x){ x.style.display='none'; });
-  if (!open) { p.style.display=''; p.querySelector('.rdd-search').focus(); }
-};
-window.filterRdd = function(id, q) {
-  var list = document.getElementById('rdd-list-' + id);
-  q = q.toLowerCase();
-  list.querySelectorAll('.rdd-opt').forEach(function(o){ o.style.display = o.textContent.toLowerCase().includes(q) ? '' : 'none'; });
-};
-window.pickRef = async function(agentId, refId, label) {
-  document.getElementById('rdd-val-' + agentId).textContent = label;
-  document.getElementById('rdd-panel-' + agentId).style.display = 'none';
-  await DB.setReferent(agentId, refId || null);
-};
-
-window.switchRefTab = function(tab) {
-  document.getElementById('ref-tab-assign').style.display = tab === 'assign' ? '' : 'none';
-  document.getElementById('ref-tab-group').style.display = tab === 'group' ? '' : 'none';
-  document.querySelectorAll('.ref-tab-btn').forEach(function(b) { b.classList.toggle('active', b.textContent.includes(tab === 'assign' ? 'Assignation' : 'référent')); });
-};
-
-window.setReferent = async function(agentId, referentId) {
-  await DB.setReferent(agentId, referentId || null);
-};
-
 window.postCompletudDiscord = async function(btn) {
   var orig = btn.textContent;
   btn.disabled = true;
   btn.textContent = '⏳ Envoi…';
   try {
     var res = await fetch(WORKER_BASE + '/admin/post-completude');
-    var data = await res.json();
-    btn.textContent = data.ok ? '✅ Envoyé !' : '❌ Erreur';
-  } catch(e) {
-    btn.textContent = '❌ Erreur';
-  }
-  setTimeout(function() { btn.textContent = orig; btn.disabled = false; }, 2500);
-};
-
-window.postReferentsDiscord = async function(btn) {
-  var orig = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = '⏳ Envoi…';
-  try {
-    var res = await fetch(WORKER_BASE + '/admin/post-referents');
     var data = await res.json();
     btn.textContent = data.ok ? '✅ Envoyé !' : '❌ Erreur';
   } catch(e) {
@@ -3613,20 +3414,24 @@ async function pickMatricule(mat) {
   if (el) el.value = mat;
 }
 
-async function archiveAgent(id) {
-  if (!confirm('Archiver cet agent ? Sa fiche passera en lecture seule et disparaîtra de la liste des agents.')) return;
-  var r = await DB.updateAgent(id, { statut: 'Archivé' });
-  if (r.error) { toast(r.error.message, 'error'); return; }
-  toast('Agent archivé.', 'info');
+async function deleteAgentDirect(id) {
   var agent = await DB.getAgent(id);
-  if (agent) sendLog('📦 Agent archivé', 0xe67e22, [
-    { name: 'Agent', value: agent.prenom + ' ' + agent.nom + ' · ' + agent.matricule, inline: true },
+  if (!agent) { toast('Fiche agent introuvable.', 'error'); return; }
+  if (!confirm('Supprimer definitivement la fiche de ' + agent.prenom + ' ' + agent.nom + ' ?\n\nCette action est irreversible.')) return;
+  var r = await DB.deleteAgent(id);
+  if (r.error) { toast(r.error.message, 'error'); return; }
+  toast('Fiche agent supprimee.', 'info');
+  sendLog('Agent supprime', 0xe74c3c, [
+    { name: 'Agent', value: agent.prenom + ' ' + agent.nom + ' - ' + agent.matricule, inline: true },
     { name: 'Par', value: _whoAmI(), inline: true }
   ]);
   refreshAgentList();
-  navigate('archives');
+  navigate('agents');
 }
 
+async function archiveAgent(id) {
+  return deleteAgentDirect(id);
+}
 // ══ WIKI GÉNÉRIQUE ══════════════════════════════════════════════════
 async function renderWikiSection(slug, cfg) {
   _wikiSlug = slug;
@@ -5041,7 +4846,7 @@ function cidOpenCreate(){
     title: 'Creation dossier',
     size: 'xl',
     body: `
-      <div class="cid-page">${cidCss()}
+      <div class="cid-page">${cidCss2()}
         <section class="cid-card">
           <form id="cidCreateForm" onsubmit="event.preventDefault();cidCreateFromForm()">
             <div class="cid-grid">
@@ -5058,7 +4863,7 @@ function cidOpenCreate(){
           </form>
         </section>
       </div>`,
-    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidCreateFromForm()">Creer le dossier</button>'
+    footer: '<button class="cid-soft-btn" onclick="closeModal()">Annuler</button><button class="cid-gold-btn" onclick="cidCreateFromForm()">Creer le dossier</button>'
   });
 }
 
@@ -5070,7 +4875,7 @@ function cidAddPerson(id){
     title: 'Ajouter une personne',
     size: 'lg',
     body: `
-      <div class="cid-page">${cidCss()}
+      <div class="cid-page">${cidCss2()}
         <section class="cid-card">
           <form id="cidPersonForm" onsubmit="event.preventDefault();cidSavePersonModal('${id}')">
             <div class="cid-grid">
@@ -5120,7 +4925,7 @@ function cidAddProof(id){
     title: 'Ajouter une preuve',
     size: 'lg',
     body: `
-      <div class="cid-page">${cidCss()}
+      <div class="cid-page">${cidCss2()}
         <section class="cid-card">
           <form id="cidProofForm" onsubmit="event.preventDefault();cidSaveProofModal('${id}')">
             <div class="cid-grid">
@@ -5134,7 +4939,7 @@ function cidAddProof(id){
           </form>
         </section>
       </div>`,
-    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSaveProofModal(\'' + id + '\')">Ajouter</button>'
+    footer: '<button class="cid-soft-btn" onclick="closeModal()">Annuler</button><button class="cid-gold-btn" onclick="cidSaveProofModal(\'' + id + '\')">Ajouter</button>'
   });
 }
 
@@ -5172,7 +4977,7 @@ function cidAddLog(id){
     title: 'Ajouter une note',
     size: 'lg',
     body: `
-      <div class="cid-page">${cidCss()}
+      <div class="cid-page">${cidCss2()}
         <section class="cid-card">
           <form id="cidLogForm" onsubmit="event.preventDefault();cidSaveLogModal('${id}')">
             <textarea name="texte" rows="5" placeholder="Note, action, instruction ou observation" required></textarea>
@@ -5314,7 +5119,7 @@ function cidCaseWorkspace(c){
   var pc = cidPersonTypeCounts(c);
   var proofs = c.preuves || [];
   var people = c.personnes || [];
-  var journal = c.journal || [];
+  var notes = (c.journal || []).filter(cidIsUserNote);
   return `
     <section class="cid-workspace">
       <button class="cid-return" onclick="navigate('cid')">← Retour aux dossiers</button>
@@ -5499,7 +5304,7 @@ async function cidAddPerson(id){
     title: 'Ajouter une personne',
     size: 'lg',
     body: `
-      <div class="cid-page">${cidCss()}
+      <div class="cid-page">${cidCss2()}
         <section class="cid-card">
           <form id="cidPersonForm" onsubmit="event.preventDefault();cidSavePersonModal('${id}')">
             <div class="cid-grid">
@@ -5566,7 +5371,7 @@ async function cidAddProof(id){
     title: 'Ajouter une preuve',
     size: 'lg',
     body: `
-      <div class="cid-page">${cidCss()}
+      <div class="cid-page">${cidCss2()}
         <section class="cid-card">
           <form id="cidProofForm" onsubmit="event.preventDefault();cidSaveProofModal('${id}')">
             <div class="cid-grid">
@@ -5580,7 +5385,7 @@ async function cidAddProof(id){
           </form>
         </section>
       </div>`,
-    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSaveProofModal(\'' + id + '\')">Ajouter</button>'
+    footer: '<button class="cid-soft-btn" onclick="closeModal()">Annuler</button><button class="cid-gold-btn" onclick="cidSaveProofModal(\'' + id + '\')">Ajouter</button>'
   });
 }
 
@@ -5624,7 +5429,7 @@ function cidOpenPersonFile(id, pid){
     title: 'Ajouter un fichier',
     size: 'lg',
     body: `
-      <div class="cid-page">${cidCss()}
+      <div class="cid-page">${cidCss2()}
         <section class="cid-card">
           <form id="cidPersonFileForm" onsubmit="event.preventDefault();cidSavePersonFile('${id}','${pid}')">
             <div class="cid-grid">
@@ -5635,7 +5440,7 @@ function cidOpenPersonFile(id, pid){
           </form>
         </section>
       </div>`,
-    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSavePersonFile(\'' + id + '\',\'' + pid + '\')">Ajouter</button>'
+    footer: '<button class="cid-soft-btn" onclick="closeModal()">Annuler</button><button class="cid-gold-btn" onclick="cidSavePersonFile(\'' + id + '\',\'' + pid + '\')">Ajouter</button>'
   });
 }
 
@@ -5871,14 +5676,15 @@ async function renderCID3(){
 
 function cidCss2(){
   return `<style>
-    .cid-mdt{display:grid;gap:14px;color:#dbeafe;font-size:13px}.cid-mdt *{box-sizing:border-box}
+    .cid-mdt,.cid-page{display:grid;gap:14px;color:#dbeafe;font-size:13px}.cid-mdt *,.cid-page *{box-sizing:border-box}.cid-card{background:linear-gradient(145deg,rgba(11,24,43,.96),rgba(8,16,29,.98));border:1px solid rgba(79,117,160,.34);border-radius:8px;padding:14px;box-shadow:0 16px 42px rgba(0,0,0,.2)}
     .cid-topbar,.cid-list-pane,.cid-workspace,.cid-panel{background:linear-gradient(145deg,rgba(11,24,43,.96),rgba(8,16,29,.98));border:1px solid rgba(79,117,160,.34);border-radius:8px;box-shadow:0 16px 42px rgba(0,0,0,.2)}
     .cid-topbar{display:grid;grid-template-columns:1fr minmax(280px,520px) auto;gap:14px;align-items:center;padding:12px 14px}.cid-brand{display:flex;align-items:center;gap:12px}.cid-brand-icon{width:34px;height:34px;border:1px solid rgba(75,140,255,.32);border-radius:8px;display:grid;place-items:center;background:rgba(15,30,52,.85);color:#7db4ff;font-weight:800}.cid-brand-title{font-size:17px;font-weight:800}.cid-brand-sub{font-size:11px;color:#8ea8c8}
     .cid-global-search{position:relative}.cid-global-search input{width:100%;background:#07111f;border:1px solid rgba(80,122,170,.35);border-radius:7px;color:#dbeafe;padding:11px 42px 11px 34px}.cid-global-search:before{content:'?';position:absolute;left:13px;top:9px;color:#7fa8d6}.cid-key{position:absolute;right:8px;top:8px;border:1px solid rgba(126,162,208,.28);border-radius:5px;padding:3px 8px;color:#93a9c4;font-size:10px;background:rgba(255,255,255,.04)}
     .cid-session{display:flex;gap:8px;align-items:center;justify-content:flex-end}.cid-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(78,117,161,.35);border-radius:7px;background:rgba(9,18,34,.82);padding:8px 10px;color:#c9dcf5;font-size:11px}.cid-dot{width:7px;height:7px;border-radius:50%;background:#20df78}
     .cid-shell{display:grid;grid-template-columns:330px minmax(0,1fr);gap:14px;min-height:690px}.cid-list-pane{display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden}.cid-pane-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border-bottom:1px solid rgba(82,120,166,.22)}.cid-pane-title{font-size:16px;font-weight:800}
-    .cid-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.cid-blue-btn,.cid-gold-btn,.cid-soft-btn,.cid-red-btn{border-radius:6px;padding:7px 10px;font-size:11px;letter-spacing:.04em;font-weight:700;cursor:pointer;background:rgba(7,16,30,.72);line-height:1}.cid-blue-btn{color:#8fbaff;border:1px solid rgba(75,145,255,.42)}.cid-gold-btn{color:#f2cd55;border:1px solid rgba(214,179,68,.5)}.cid-soft-btn{color:#bfd8fb;border:1px solid rgba(83,125,175,.35)}.cid-red-btn{color:#ff7676;border:1px solid rgba(255,90,90,.42)}
-    .cid-filter-zone{padding:12px 14px;display:grid;gap:9px;border-bottom:1px solid rgba(82,120,166,.18)}.cid-filter-zone input,.cid-filter-zone select,.cid-panel input,.cid-panel select,.cid-panel textarea,.cid-card input,.cid-card select,.cid-card textarea{width:100%;background:#07111f;border:1px solid rgba(80,122,170,.42);border-radius:7px;color:#dbeafe;padding:10px;outline:none}.cid-panel textarea,.cid-card textarea{resize:vertical;min-height:96px}.cid-panel input[type=file],.cid-card input[type=file]{padding:8px;color:#9fbce0}.cid-panel input[type=file]::file-selector-button,.cid-card input[type=file]::file-selector-button{background:#10223b;color:#dbeafe;border:1px solid rgba(80,122,170,.42);border-radius:6px;padding:6px 9px;margin-right:10px}
+    .cid-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.cid-blue-btn,.cid-gold-btn,.cid-soft-btn,.cid-red-btn{border-radius:6px;padding:7px 10px;font-size:11px;letter-spacing:.02em;font-weight:600;cursor:pointer;background:rgba(7,16,30,.72);line-height:1.1}.cid-blue-btn{color:#8fbaff;border:1px solid rgba(75,145,255,.42)}.cid-gold-btn{color:#f2cd55;border:1px solid rgba(214,179,68,.5)}.cid-soft-btn{color:#bfd8fb;border:1px solid rgba(83,125,175,.35)}.cid-red-btn{color:#ff7676;border:1px solid rgba(255,90,90,.42)}
+    .cid-filter-zone{padding:12px 14px;display:grid;gap:9px;border-bottom:1px solid rgba(82,120,166,.18)}.cid-filter-zone input,.cid-filter-zone select,.cid-panel input,.cid-panel select,.cid-panel textarea,.cid-card input,.cid-card select,.cid-card textarea{width:100%;background:#07111f;border:1px solid rgba(80,122,170,.42);border-radius:7px;color:#dbeafe;padding:10px;outline:none;color-scheme:dark}.cid-panel textarea,.cid-card textarea{resize:vertical;min-height:96px}.cid-panel input[type=file],.cid-card input[type=file]{padding:8px;color:#9fbce0}.cid-panel input[type=file]::file-selector-button,.cid-card input[type=file]::file-selector-button{background:#10223b;color:#dbeafe;border:1px solid rgba(80,122,170,.42);border-radius:6px;padding:6px 9px;margin-right:10px}
+    .cid-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.cid-grid input,.cid-grid select{min-width:0}
     .cid-tabs{display:flex;gap:6px;overflow:auto}.cid-tab{font-size:11px;border:0;background:transparent;color:#8ea8c8;padding:7px 9px;border-radius:6px;cursor:pointer}.cid-tab.active{background:rgba(23,105,255,.12);color:#6fb2ff}
     .cid-case-list{padding:10px;overflow:auto;display:grid;gap:8px;align-content:start}.cid-case-card{border:1px solid rgba(74,114,159,.26);background:rgba(7,16,30,.78);border-radius:7px;padding:11px;cursor:pointer;transition:.15s}.cid-case-card:hover,.cid-case-card.active{border-color:#2d86ff;background:linear-gradient(135deg,rgba(14,37,68,.96),rgba(7,17,31,.96));box-shadow:inset 3px 0 #2d86ff}.cid-card-top,.cid-case-meta{display:flex;justify-content:space-between;gap:8px;color:#8ea8c8;font-size:11px}.cid-case-name{margin:7px 0 4px;font-size:13px;font-weight:800;color:#eef6ff}.cid-footer-pages{padding:12px 14px;border-top:1px solid rgba(82,120,166,.18);color:#8ea8c8;font-size:12px}
     .cid-badge2{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:700;border:1px solid rgba(130,162,206,.22);background:rgba(255,255,255,.04);color:#bdd6f9}.cid-badge2.red{color:#ff6666;background:rgba(255,54,54,.12);border-color:rgba(255,74,74,.25)}.cid-badge2.orange{color:#ffb44f;background:rgba(255,144,48,.12);border-color:rgba(255,171,68,.25)}.cid-badge2.blue{color:#62a8ff;background:rgba(47,124,255,.12);border-color:rgba(75,145,255,.28)}.cid-badge2.green{color:#48e58b;background:rgba(36,210,109,.12);border-color:rgba(56,220,132,.28)}.cid-badge2.gold{color:#f2cd55;background:rgba(214,179,68,.13);border-color:rgba(214,179,68,.32)}
@@ -5896,7 +5702,7 @@ function cidOpenEditCase(id){
     title: 'Modifier le dossier',
     size: 'xl',
     body: `
-      <div class="cid-page">${cidCss()}
+      <div class="cid-page">${cidCss2()}
         <section class="cid-card">
           <form id="cidCaseEditForm" onsubmit="event.preventDefault();cidSaveCaseModal('${id}')">
             <div class="cid-grid">
@@ -5910,7 +5716,7 @@ function cidOpenEditCase(id){
           </form>
         </section>
       </div>`,
-    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSaveCaseModal(\'' + id + '\')">Sauvegarder</button>'
+    footer: '<button class="cid-soft-btn" onclick="closeModal()">Annuler</button><button class="cid-gold-btn" onclick="cidSaveCaseModal(\'' + id + '\')">Sauvegarder</button>'
   });
 }
 
@@ -5955,7 +5761,7 @@ async function cidAddProof(id){
     title: 'Ajouter une saisie / preuve',
     size: 'lg',
     body: `
-      <div class="cid-page">${cidCss()}
+      <div class="cid-page">${cidCss2()}
         <section class="cid-card">
           <form id="cidProofForm" onsubmit="event.preventDefault();cidSaveProofModal('${id}')">
             <div class="cid-grid">
@@ -5981,7 +5787,7 @@ async function cidAddProof(id){
           </form>
         </section>
       </div>`,
-    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSaveProofModal(\'' + id + '\')">Ajouter</button>'
+    footer: '<button class="cid-soft-btn" onclick="closeModal()">Annuler</button><button class="cid-gold-btn" onclick="cidSaveProofModal(\'' + id + '\')">Ajouter</button>'
   });
   cidProofTypeChange();
 }
@@ -6036,7 +5842,7 @@ function cidPreviewAttachment(file){
     body += '<a class="cid-blue-btn" download="' + esc(file.name || 'preuve') + '" href="' + file.data + '">Telecharger le fichier</a>';
   }
   body += '</div>';
-  openModal({eyebrow:'CID - Piece jointe', title:file.name || 'Apercu', size:'xl', body:body, footer:'<button class="btn" onclick="closeModal()">Fermer</button>'});
+  openModal({eyebrow:'CID - Piece jointe', title:file.name || 'Apercu', size:'xl', body:body, footer:'<button class="cid-soft-btn" onclick="closeModal()">Fermer</button>'});
 }
 
 function cidEvidencePreview(id, eid){
@@ -6074,7 +5880,7 @@ function cidAddPerson(id){
       title: 'Ajouter une personne',
       size: 'lg',
       body: `
-        <div class="cid-page">${cidCss()}
+        <div class="cid-page">${cidCss2()}
           <section class="cid-card">
             <form id="cidPersonForm" onsubmit="event.preventDefault();cidSavePersonModal('${id}')">
               <div class="cid-grid">
@@ -6087,7 +5893,7 @@ function cidAddPerson(id){
             </form>
           </section>
         </div>`,
-      footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSavePersonModal(\'' + id + '\')">Ajouter</button>'
+      footer: '<button class="cid-soft-btn" onclick="closeModal()">Annuler</button><button class="cid-gold-btn" onclick="cidSavePersonModal(\'' + id + '\')">Ajouter</button>'
     });
   });
 }
@@ -6261,7 +6067,7 @@ function cidPreviewAttachment(file){
     body += '<a class="cid-blue-btn" download="' + esc(file.name || 'preuve') + '" href="' + file.data + '">Telecharger le fichier</a>';
   }
   body += '</div>';
-  openModal({eyebrow:'CID - Piece jointe', title:file.name || 'Apercu', size:'xl', body:body, footer:'<button class="btn" onclick="closeModal()">Fermer</button>'});
+  openModal({eyebrow:'CID - Piece jointe', title:file.name || 'Apercu', size:'xl', body:body, footer:'<button class="cid-soft-btn" onclick="closeModal()">Fermer</button>'});
 }
 
 function cidAttachmentHtml(file, label, onclick){
@@ -6273,20 +6079,26 @@ function cidAttachmentHtml(file, label, onclick){
   return '<button type="button" class="cid-soft-btn" onclick="' + onclick + '">' + name + '</button>';
 }
 
+function cidIsUserNote(j){
+  var text = String((j && j.texte) || '');
+  if (j && j.type === 'note') return true;
+  return !/^(Preuve ajoutee|Personne ajoutee|Fichier ajoute|Fiche personne modifiee|Dossier cree)/i.test(text);
+}
+
 function cidAddLog(id){
   openModal({
     eyebrow: 'CID - Note',
     title: 'Ajouter une note',
     size: 'lg',
     body: `
-      <div class="cid-page">${cidCss()}
+      <div class="cid-page">${cidCss2()}
         <section class="cid-card">
           <form id="cidLogForm" onsubmit="event.preventDefault();cidSaveLogModal('${id}')">
             <textarea name="texte" rows="5" placeholder="Note, action, observation..." required></textarea>
           </form>
         </section>
       </div>`,
-    footer: '<button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="cidSaveLogModal(\'' + id + '\')">Ajouter</button>'
+    footer: '<button class="cid-soft-btn" onclick="closeModal()">Annuler</button><button class="cid-gold-btn" onclick="cidSaveLogModal(\'' + id + '\')">Ajouter</button>'
   });
 }
 
@@ -6296,7 +6108,7 @@ function cidSaveLogModal(id){
   var texte = new FormData(f).get('texte');
   if (!texte) return toast('Note requise.');
   c.journal = c.journal || [];
-  c.journal.unshift({date: cidNow(), texte: texte});
+  c.journal.unshift({date: cidNow(), texte: texte, type: 'note'});
   cidUpsert(c);
   closeModal();
   navigate('cid', {id:id});
@@ -6306,7 +6118,7 @@ function cidCaseWorkspace(c){
   if (!c) return '<section class="cid-workspace cid-empty-panel"><div><div class="cid-brand-icon" style="margin:0 auto 12px">CID</div><h2>Aucun dossier selectionne</h2><p>Creer ou selectionner un dossier pour ouvrir le poste de travail.</p></div></section>';
   var proofs = c.preuves || [];
   var people = c.personnes || [];
-  var journal = c.journal || [];
+  var notes = (c.journal || []).filter(cidIsUserNote);
   return `
     <section class="cid-workspace">
       <button class="cid-return" onclick="navigate('cid')">Retour aux dossiers</button>
@@ -6347,8 +6159,8 @@ function cidCaseWorkspace(c){
           <p class="cid-text">${esc(c.resume || c.description || 'Aucun resume renseigne.')}</p>
         </section>
         <section class="cid-panel">
-          <h3>Notes / journal</h3>
-          <div class="cid-mini-list">${journal.length ? journal.map(function(j){return '<div class="cid-mini"><strong>'+esc(j.date || '-')+'</strong><br>'+esc(j.texte || '')+'</div>';}).join('') : '<div class="cid-mini">Aucune note.</div>'}</div>
+          <h3>Notes</h3>
+          <div class="cid-mini-list">${notes.length ? notes.map(function(j){return '<div class="cid-mini"><strong>'+esc(j.date || '-')+'</strong><br>'+esc(j.texte || '')+'</div>';}).join('') : '<div class="cid-mini">Aucune note.</div>'}</div>
         </section>
       </div>
     </section>`;
