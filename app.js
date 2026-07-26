@@ -708,6 +708,13 @@ function esc(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function jsStr(s) {
+  return String(s == null ? '' : s)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\r/g, '')
+    .replace(/\n/g, '\\n');
+}
 function canonicalGradeName(name) {
   return name === 'Senior Lead Officer' ? 'Senior Lead Trooper' : name;
 }
@@ -6240,12 +6247,43 @@ function renderCartes() {
 }
 
 // ══ HISTORIQUE POINTAGES ══════════════════════════════════════════
+var _pointeusePaiements = {};
+var _pointeusePaiementsMissing = false;
+
+function pointeusePaiementKey(semaineKey, agentId) {
+  return String(semaineKey || '') + '::' + String(agentId || '');
+}
+
+function isMissingPointeusePaiementsTable(err) {
+  var msg = String((err && (err.message || err.details || err.hint)) || err || '');
+  return /pointeuse_paiements|schema cache|does not exist|not find the table|relation .* does not exist/i.test(msg);
+}
+
+function currentPointeusePaidActor() {
+  if (S.appUser && (S.appUser.prenom || S.appUser.nom)) return ((S.appUser.prenom || '') + ' ' + (S.appUser.nom || '')).trim();
+  if (S.serverNick) return S.serverNick;
+  if (S.user && S.user.user_metadata) {
+    return S.user.user_metadata.full_name || S.user.user_metadata.name || S.user.user_metadata.user_name || 'Utilisateur SASP';
+  }
+  return 'Utilisateur SASP';
+}
+
 async function renderPointeuseHistorique() {
   if (!canWrite()) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div></div>');
     return;
   }
   var [all, actives, rosterAgents] = await Promise.all([DB.getAllPointages(), DB.getActivePointages(), DB.getAgents({})]);
+  _pointeusePaiements = {};
+  _pointeusePaiementsMissing = false;
+  try {
+    (await DB.getPointeusePaiements()).forEach(function(p) {
+      _pointeusePaiements[pointeusePaiementKey(p.semaine_key, p.agent_id)] = p;
+    });
+  } catch(e) {
+    _pointeusePaiementsMissing = isMissingPointeusePaiementsTable(e);
+    if (!_pointeusePaiementsMissing) throw e;
+  }
   var activeAgentIds = new Set(actives.map(function(p){ return p.agent_id; }));
   rosterAgents = visibleRosterAgents(rosterAgents || []).sort(function(a, b) {
     return parseInt(a.matricule || 999) - parseInt(b.matricule || 999);
@@ -6343,8 +6381,14 @@ async function renderPointeuseHistorique() {
       var primeKey = 'prime_' + key + '_' + agentKey;
       var prime = parseMoneyInput(localStorage.getItem(primeKey));
       var totalAgent = sal + prime;
-      var paidKey = 'paid_' + key + '_' + (a.id || a.matricule || (a.prenom + a.nom));
-      var isPaid = localStorage.getItem(paidKey) === '1';
+      var paidAgentId = a.id || a.matricule || ((a.prenom || '') + (a.nom || ''));
+      var paidKey = pointeusePaiementKey(key, paidAgentId);
+      var paidRow = _pointeusePaiements[paidKey];
+      var legacyPaidKey = 'paid_' + key + '_' + (a.id || a.matricule || (a.prenom + a.nom));
+      var isPaid = paidRow ? !!paidRow.paye : (_pointeusePaiementsMissing && localStorage.getItem(legacyPaidKey) === '1');
+      var paidTitle = paidRow && paidRow.checked_by
+        ? ' title="Derniere modification: ' + esc(paidRow.checked_by) + (paidRow.checked_at ? ' - ' + fmtClock(paidRow.checked_at) : '') + '"'
+        : '';
       var enService = a.id && activeAgentIds.has(a.id);
       var dot = '<span title="' + (enService ? 'En service' : 'Hors service') + '" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + (enService ? '#2ecc71' : '#e74c3c') + ';box-shadow:0 0 ' + (enService ? '6px #2ecc71' : '0px') + '"></span>';
       var sessionsHtml = (entry.sessions || []).slice(0, 4).map(function(p) {
@@ -6364,7 +6408,7 @@ async function renderPointeuseHistorique() {
         '<td style="text-align:center;color:var(--gold);font-weight:700">' + fmtMoney(sal) + '</td>' +
         '<td style="text-align:center"><input type="number" min="0" step="1" value="' + prime + '" onchange="setPrimeHisto(\'' + primeKey + '\',this.value)" style="width:92px;background:var(--bg2);color:var(--t0);border:1px solid var(--border0);border-radius:6px;padding:5px 7px;text-align:right"></td>' +
         '<td style="text-align:center;color:var(--green,#2ecc71);font-weight:700">' + fmtMoney(totalAgent) + '</td>' +
-        '<td style="text-align:center"><input type="checkbox"' + (isPaid ? ' checked' : '') + ' onchange="togglePaidHisto(\'' + paidKey + '\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--green,#2ecc71)"></td>' +
+        '<td style="text-align:center"><input type="checkbox"' + (isPaid ? ' checked' : '') + paidTitle + ' onchange="togglePaidHisto(\'' + jsStr(key) + '\',\'' + jsStr(paidAgentId) + '\',\'' + jsStr(label) + '\',\'' + jsStr(a.matricule || '') + '\',\'' + jsStr(((a.prenom || '') + ' ' + (a.nom || '')).trim()) + '\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--green,#2ecc71)"></td>' +
       '</tr>';
     }).join('');
 
@@ -6405,11 +6449,41 @@ async function renderPointeuseHistorique() {
   );
 }
 
-function togglePaidHisto(key, cb) {
-  if (cb.checked) localStorage.setItem(key, '1');
-  else localStorage.removeItem(key);
+async function togglePaidHisto(semaineKey, agentId, semaineLabel, agentMatricule, agentNom, cb) {
+  var checked = !!cb.checked;
   var row = cb.closest('tr');
-  if (row) row.style.opacity = cb.checked ? '.5' : '';
+  var previousOpacity = row ? row.style.opacity : '';
+  if (row) row.style.opacity = checked ? '.5' : '';
+  cb.disabled = true;
+  try {
+    if (_pointeusePaiementsMissing) {
+      var legacyKey = 'paid_' + semaineKey + '_' + agentId;
+      if (checked) localStorage.setItem(legacyKey, '1');
+      else localStorage.removeItem(legacyKey);
+      toast('Table paiements manquante: coche locale uniquement.', 'error');
+      return;
+    }
+    var payload = {
+      semaine_key: semaineKey,
+      semaine_label: semaineLabel,
+      agent_id: agentId,
+      agent_matricule: agentMatricule,
+      agent_nom: agentNom,
+      paye: checked,
+      checked_by: currentPointeusePaidActor(),
+      checked_at: new Date().toISOString()
+    };
+    var res = await DB.setPointeusePaiement(payload);
+    if (res.error) throw res.error;
+    _pointeusePaiements[pointeusePaiementKey(semaineKey, agentId)] = res.data || payload;
+    toast(checked ? 'Paiement marque paye.' : 'Paiement remis non paye.', checked ? 'success' : 'info');
+  } catch(e) {
+    cb.checked = !checked;
+    if (row) row.style.opacity = previousOpacity;
+    toast('Erreur paiement: ' + (e.message || e), 'error');
+  } finally {
+    cb.disabled = false;
+  }
 }
 
 function copyIban(iban) {

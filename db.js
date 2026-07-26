@@ -276,6 +276,18 @@ var DB = {
       .order('clock_in', { ascending: false });
     return data || [];
   },
+  async getPointeusePaiements() {
+    var { data, error } = await getDb().from('pointeuse_paiements').select('*');
+    if (error) throw error;
+    return data || [];
+  },
+  async setPointeusePaiement(data) {
+    data.updated_at = new Date().toISOString();
+    return getDb().from('pointeuse_paiements')
+      .upsert(data, { onConflict: 'semaine_key,agent_id' })
+      .select()
+      .single();
+  },
   async getCeremonieVotes() {
     var { data } = await getDb().from('ceremonie_votes').select('*').order('created_at', { ascending: true });
     return data || [];
