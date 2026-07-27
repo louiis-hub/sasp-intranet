@@ -2577,7 +2577,7 @@ async function openAddArmeModal(agentId) {
   if (!canWrite()) return;
   var ag = await DB.getAgent(agentId);
   if (!ag) return;
-  var ppas = [{ level:0, label:'Sans PPA (Taser)' }];
+  var ppas = [{ level:0, label:'Sans PPA (Taser / Been Bag)' }];
   if (ag.ppa1) ppas.push({ level:1, label:'PPA 1' });
   if (ag.ppa2) ppas.push({ level:2, label:'PPA 2' });
   if (ag.ppa3) ppas.push({ level:3, label:'PPA 3' });
@@ -2588,9 +2588,9 @@ async function openAddArmeModal(agentId) {
     body:
       '<div class="form-group"><label class="form-label">Arme rapide</label>' +
         '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
-          ['Taser','Glock','MP5','Fusil à pompe','Fusil carabine'].map(function(w){
-            var isTaser = w === 'Taser';
-            return '<button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById(\'armeNom\').value=\'' + w + '\';' + (isTaser ? 'document.getElementById(\'armeNiveau\').value=\'0\'' : '') + '">' + w + '</button>';
+          ['Taser','Been Bag','Glock','MP5','Fusil à pompe','Fusil carabine'].map(function(w){
+            var isNoPpa = w === 'Taser' || w === 'Been Bag';
+            return '<button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById(\'armeNom\').value=\'' + w + '\';' + (isNoPpa ? 'document.getElementById(\'armeNiveau\').value=\'0\'' : '') + '">' + w + '</button>';
           }).join('') +
         '</div>' +
       '</div>' +
