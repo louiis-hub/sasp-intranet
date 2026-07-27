@@ -56,6 +56,7 @@ async function startOpenAccess() {
 
 // ── Salaires par grade ($/h) ─────────────────────────────────────────
 var GRADE_SALAIRE = {
+  'Chief':               1200,
   'Commandant':          1050,
   'Capitaine':           900,
   'Lieutenant II':       825,
@@ -2046,7 +2047,7 @@ async function openAgentModal(id) {
   _grades = await DB.getGrades();
   var ag = id ? await DB.getAgent(id) : null;  var v = ag || {};
 
-  var currentGradeKey = gradeKey(v.grade);
+  var currentGradeKey = gradeKey(id ? v.grade : (v.grade || 'Rookie'));
   var gradeInList = _grades.some(function(g){ return gradeKey(g.nom) === currentGradeKey; });
   var gradeOpts = (v.grade && !gradeInList ? '<option value="' + esc(v.grade) + '" selected>' + esc(gradeLabel(v.grade)) + '</option>' : '') +
     _grades.map(function(g){

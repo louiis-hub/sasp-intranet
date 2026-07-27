@@ -14,6 +14,7 @@ var AUTH_DISABLED    = true;
 var AUTH_BYPASS_ROLE = 'admin';
 var AUTH_BYPASS_DISCORD_ID = '';
 var ROLE_AGENT_IDS  = [
+  '1519451362235256922', // Chief
   '1500983026987962388', // Commandant
   '1500975725153620036', // Capitaine
   '1500983449287131266', // Lieutenant II

@@ -129,6 +129,7 @@ const PPA_ROLES = {
   'ppa3b': '1519680711823593582'
 };
 const GRADE_ROLES = {
+  'Chief':               '1519451362235256922',
   'Commandant':          '1500983026987962388',
   'Capitaine':           '1500975725153620036',
   'Lieutenant II':       '1500983449287131266',
@@ -167,6 +168,7 @@ const NORD_GRADE_ROLES = {
 };
 
 const GRADE_SALAIRE = {
+  'Chief':               1200,
   'Commandant':          1050,
   'Capitaine':           900,
   'Lieutenant II':       825,
