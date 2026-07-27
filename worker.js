@@ -271,9 +271,10 @@ const ADMIN_ROLE_IDS = [
   '1504451288065118248', // Ã‰tat Major
   '1504452141518032956'  // Supervisor Team
 ];
-const FTF_ROLE_ID = "1524117754725007422";
-const FTF_NOTIFICATION_CHANNEL_ID = "1524118534077153330";
-const FTF_CONVOCATION_CHANNEL_ID = "1524118534077153330";
+const FTF_ROLE_ID = "1528370846908026951";
+const FTF_NOTIFICATION_CHANNEL_ID = "1531372214434267297";
+const FTF_CONVOCATION_CHANNEL_ID = "1531372214434267297";
+const FTF_LOG_CHANNEL_ID = "1531372712314929265";
 const SERVICE_HOUSING_PANEL_CHANNEL_ID = "1518674483060281454";
 const SERVICE_HOUSING_CATEGORY_ID = "1501323835562000384";
 
@@ -1359,6 +1360,28 @@ async function editMessage(env, channelId, messageId, payload) {
   });
 }
 
+async function sendFtfLog(env, title, description, color = 0xc9a84c) {
+  if (!FTF_LOG_CHANNEL_ID || !env.DISCORD_BOT_TOKEN) return;
+  try {
+    await discordFetch(`${DISCORD_API}/channels/${FTF_LOG_CHANNEL_ID}/messages`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        embeds: [{
+          title,
+          description,
+          color,
+          footer: { text: "SASP - FTF logs" },
+          timestamp: new Date().toISOString()
+        }]
+      })
+    });
+  } catch (_) {}
+}
+
 async function deleteRecentChannelMessages(env, channelId, count) {
   const limit = Math.max(1, Math.min(Number(count) || 1, 100));
   const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages?limit=${limit}`, {
@@ -1823,6 +1846,7 @@ export default {
           })
         });
         if (!res.ok) return json({ ok: false, error: await res.text() }, res.status);
+        await sendFtfLog(env, "Notification FTF envoyee", `Dossier ${dossierId || "sans id"} - ${suspect} - ${nextStep}`, isDeadline ? 0xe74c3c : 0xc9a84c);
         return json({ ok: true });
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
@@ -1896,6 +1920,7 @@ export default {
         const msg = await res.json();
         const att = msg.attachments?.[0];
         if (!att) return json({ ok: false, error: "Aucune pièce jointe retournée" }, 500);
+        await sendFtfLog(env, "Photo FTF uploadee", `Dossier ${dossierId} - ${att.filename || "fichier"}`);
         return json({ ok: true, url: att.url, filename: att.filename });
       } catch(e) {
         return json({ ok: false, error: e.message }, 500);
@@ -1936,6 +1961,7 @@ export default {
         });
         if (!res.ok) return json({ ok: false, error: await res.text() }, res.status);
         const posted = await res.json();
+        await sendFtfLog(env, "Convocation FTF envoyee", `${suspect} - ${date || "date non precisee"} ${heure || ""} - salon ${channelId}`);
         return json({ ok: true, message_id: posted.id, channel_id: channelId });
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
