@@ -18,6 +18,21 @@ function clearOAuthCodeVerifiers() {
   } catch(e) {}
 }
 
+var REQUIRED_GRADES = [
+  { id: '__required_chief__', nom: 'Chief', abrev: 'CHF', ordre: 999, _runtimeOnly: true }
+];
+
+function withRequiredGrades(grades) {
+  var list = (grades || []).slice();
+  REQUIRED_GRADES.forEach(function(required) {
+    var exists = list.some(function(g) {
+      return String(g.nom || '').trim().toLowerCase() === required.nom.toLowerCase();
+    });
+    if (!exists) list.unshift(Object.assign({}, required));
+  });
+  return list.sort(function(a, b) { return (b.ordre || 0) - (a.ordre || 0); });
+}
+
 var DB = {
 
   // ── Auth ──────────────────────────────────────────────────────
@@ -123,7 +138,7 @@ var DB = {
   // ── Grades ───────────────────────────────────────────────────
   async getGrades() {
     var { data } = await getDb().from('grades').select('*').order('ordre', { ascending: false });
-    return data || [];
+    return withRequiredGrades(data || []);
   },
   async createGrade(data) { return getDb().from('grades').insert(data); },
   async updateGrade(id, data) { return getDb().from('grades').update(data).eq('id', id); },
