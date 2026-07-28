@@ -3873,7 +3873,7 @@ export default {
           { name: "ðŸ“¨ DemandÃ© par", value: `<@${userId}>`, inline: true },
           { name: "ðŸ”Ž Source identitÃ©", value: sourceLabel, inline: true }
         ];
-        if (identity.iban) fields.push({ name: "ðŸ¦ IBAN", value: String(identity.iban).slice(0, 1024), inline: false });
+        if (identity.iban) fields.push({ name: "IBAN", value: String(identity.iban).slice(0, 1024), inline: false });
         fields.push({ name: "ðŸ“‹ Raison", value: raison.slice(0, 1024), inline: false });
         const res = await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages`, {
           method: "POST",
@@ -3882,7 +3882,7 @@ export default {
             content: "<@&1500975725153620033>",
             embeds: [{
               title: "ðŸ’¸ Demande de subvention",
-              color: 0xc9a84c,
+              color: 0x3498db,
               fields,
               footer: { text: "SASP â€¢ Subvention" },
               timestamp: now.toISOString()
