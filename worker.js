@@ -1128,7 +1128,7 @@ async function upsertFtfDossier(env, dossier) {
 }
 
 async function getAgentByDiscordId(env, discordId, siteKey = "sud") {
-  const data = await sbForSite(env, "GET", `/agents?discord_id=eq.${discordId}&select=id,nom,prenom,matricule,discord_id,grade&limit=1`, null, siteKey);
+  const data = await sbForSite(env, "GET", `/agents?discord_id=eq.${discordId}&select=id,nom,prenom,matricule,discord_id,grade,iban&limit=1`, null, siteKey);
   return data && data.length > 0 ? data[0] : null;
 }
 
@@ -1158,14 +1158,20 @@ async function getAgentIdentityForInteraction(env, interaction) {
   const userId = interaction.member?.user?.id || interaction.user?.id;
   try {
     const agent = await getAgentByDiscordId(env, userId);
-    if (agent) return { nom: agent.nom || "", prenom: agent.prenom || "", matricule: agent.matricule || "", source: "fiche" };
+    if (agent) return { nom: agent.nom || "", prenom: agent.prenom || "", matricule: agent.matricule || "", iban: agent.iban || "", source: "fiche" };
   } catch {}
   const member = interaction.member || {};
   const user = member.user || interaction.user || {};
   const displayName = member.nick || user.global_name || user.username || "";
   const parsed = parseAgentIdentityFromDiscordName(displayName);
-  if (parsed) return { ...parsed, source: "discord" };
-  return { nom: "", prenom: displayName || `<@${userId}>`, matricule: "", source: "discord" };
+  if (parsed?.matricule) {
+    try {
+      const agent = await getAgentByMatricule(env, parsed.matricule);
+      if (agent) return { nom: agent.nom || parsed.nom || "", prenom: agent.prenom || parsed.prenom || "", matricule: agent.matricule || parsed.matricule || "", iban: agent.iban || "", source: "fiche" };
+    } catch {}
+  }
+  if (parsed) return { ...parsed, iban: "", source: "discord" };
+  return { nom: "", prenom: displayName || `<@${userId}>`, matricule: "", iban: "", source: "discord" };
 }
 
 async function getAgentForPointeuseInteraction(env, interaction, siteKey = "sud") {
@@ -1189,7 +1195,7 @@ async function getAgentForPointeuseInteraction(env, interaction, siteKey = "sud"
 }
 
 async function getAgentByMatricule(env, matricule, siteKey = "sud") {
-  const data = await sbForSite(env, "GET", `/agents?matricule=eq.${matricule}&select=id,nom,prenom,matricule,discord_id&limit=1`, null, siteKey);
+  const data = await sbForSite(env, "GET", `/agents?matricule=eq.${matricule}&select=id,nom,prenom,matricule,discord_id,iban&limit=1`, null, siteKey);
   return data && data.length > 0 ? data[0] : null;
 }
 
@@ -3812,6 +3818,42 @@ export default {
         });
       }
 
+      if (interaction.type === 3 && interaction.data.custom_id?.startsWith("subvention_decision|")) {
+        const member = interaction.member || {};
+        if (!hasStaffRole(member)) {
+          return json({ type: 4, data: { content: "Tu n'as pas l'autorisation de valider ou refuser une subvention.", flags: 64 } });
+        }
+        const [, decision] = interaction.data.custom_id.split("|");
+        const accepted = decision === "accept";
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        const originalEmbed = interaction.message?.embeds?.[0] || {};
+        const fields = (originalEmbed.fields || []).filter(field => !String(field.name || "").toLowerCase().includes("decision"));
+        fields.push({
+          name: "Decision",
+          value: `${accepted ? "✅ Acceptee" : "❌ Refusee"} par <@${userId}>`,
+          inline: false
+        });
+        const components = (interaction.message?.components || []).map(row => ({
+          ...row,
+          components: (row.components || []).map(component => ({ ...component, disabled: true }))
+        }));
+        return json({
+          type: 7,
+          data: {
+            content: interaction.message?.content || "",
+            embeds: [{
+              ...originalEmbed,
+              title: `${accepted ? "✅" : "❌"} Demande de subvention`,
+              color: accepted ? 0x2ecc71 : 0xe74c3c,
+              fields,
+              timestamp: new Date().toISOString()
+            }],
+            components,
+            allowed_mentions: { users: [userId], roles: ["1500975725153620033"] }
+          }
+        });
+      }
+
       if (interaction.type === 3 && interaction.data.custom_id === "subvention_open_modal") {
         return json(subventionModalResponse());
       }
@@ -3824,9 +3866,15 @@ export default {
         const userId = interaction.member?.user?.id || interaction.user?.id;
         const identity = await getAgentIdentityForInteraction(env, interaction);
         const agentName = `${identity.prenom || ""} ${identity.nom || ""}`.trim() || `<@${userId}>`;
-        const matricule = identity.matricule || "â€”";
         const sourceLabel = identity.source === "fiche" ? "fiche intranet" : "pseudo Discord";
         const now = new Date();
+        const fields = [
+          { name: "ðŸ’° Somme", value: somme, inline: true },
+          { name: "ðŸ“¨ DemandÃ© par", value: `<@${userId}>`, inline: true },
+          { name: "ðŸ”Ž Source identitÃ©", value: sourceLabel, inline: true }
+        ];
+        if (identity.iban) fields.push({ name: "ðŸ¦ IBAN", value: String(identity.iban).slice(0, 1024), inline: false });
+        fields.push({ name: "ðŸ“‹ Raison", value: raison.slice(0, 1024), inline: false });
         const res = await discordFetch(`${DISCORD_API}/channels/${SUBVENTION_CHANNEL}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
@@ -3835,16 +3883,16 @@ export default {
             embeds: [{
               title: "ðŸ’¸ Demande de subvention",
               color: 0xc9a84c,
-              fields: [
-                { name: "ðŸ‘¤ Agent", value: agentName, inline: true },
-                { name: "ðŸ†” Matricule", value: matricule, inline: true },
-                { name: "ðŸ’° Somme", value: somme, inline: true },
-                { name: "ðŸ“‹ Raison", value: raison.slice(0, 1024), inline: false },
-                { name: "ðŸ“¨ DemandÃ© par", value: `<@${userId}>`, inline: true },
-                { name: "ðŸ”Ž Source identitÃ©", value: sourceLabel, inline: true }
-              ],
+              fields,
               footer: { text: "SASP â€¢ Subvention" },
               timestamp: now.toISOString()
+            }],
+            components: [{
+              type: 1,
+              components: [
+                { type: 2, style: 3, label: "Accepter", emoji: { name: "âœ…" }, custom_id: `subvention_decision|accept|${userId}` },
+                { type: 2, style: 4, label: "Refuser", emoji: { name: "âŒ" }, custom_id: `subvention_decision|refuse|${userId}` }
+              ]
             }]
           })
         });
