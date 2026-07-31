@@ -145,7 +145,16 @@ async function sendCeremonieReminder(env, options = {}) {
   if (!res.ok) {
     return { ok: false, status: res.status, body: await res.text().catch(() => "") };
   }
-  return { ok: true, channel_id: channelId };
+  const message = await res.json().catch(() => null);
+  if (message?.id) {
+    for (const emoji of ["%E2%9C%85", "%E2%9D%8C"]) {
+      await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${message.id}/reactions/${emoji}/@me`, {
+        method: "PUT",
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+      });
+    }
+  }
+  return { ok: true, channel_id: channelId, message_id: message?.id || null };
 }
 
 async function reactToChannelMessages(env, channelId = AUTO_REACTION_CHANNEL_ID, limit = 20) {
