@@ -100,13 +100,13 @@ function getParisClock(date = new Date()) {
   return out;
 }
 
-async function sendCeremonieReminder(env) {
+async function sendCeremonieReminder(env, options = {}) {
   const clock = getParisClock();
-  if (clock.weekday !== "Sun" || clock.hour !== "12" || clock.minute !== "03") {
+  if (!options.force && (clock.weekday !== "Sun" || clock.hour !== "12" || clock.minute !== "03")) {
     return { ok: true, skipped: true, reason: "outside_paris_schedule", clock };
   }
 
-  const channelId = env.CEREMONIE_CHANNEL_ID || env.CEREMONY_CHANNEL_ID;
+  const channelId = options.channelId || env.CEREMONIE_CHANNEL_ID || env.CEREMONY_CHANNEL_ID;
   if (!channelId) return { ok: false, skipped: true, reason: "missing_ceremonie_channel_id" };
 
   const content = [
@@ -5113,6 +5113,17 @@ export default {
         const channelId = url.searchParams.get("channel_id") || AUTO_REACTION_CHANNEL_ID;
         const limit = Number(url.searchParams.get("limit") || 20);
         return json(await reactToChannelMessages(env, channelId, limit));
+      } catch(e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/send-ceremonie-reminder" && request.method === "GET") {
+      try {
+        return json(await sendCeremonieReminder(env, {
+          force: url.searchParams.get("force") === "1",
+          channelId: url.searchParams.get("channel_id")
+        }));
       } catch(e) {
         return json({ ok: false, error: e.message }, 500);
       }
