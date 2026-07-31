@@ -83,6 +83,70 @@ async function sendUserDM(env, userId, payload) {
 
 const AUTO_REACTION_CHANNEL_ID = "1500994818543849723";
 const AUTO_REACTION_EMOJI = "%E2%9C%85";
+const CEREMONIE_REMINDER_PLAN_URL = "https://louiis-hub.github.io/sasp-intranet/assets/ceremonie-salle.png";
+
+function getParisClock(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Paris",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(date);
+  const out = {};
+  for (const part of parts) {
+    if (part.type !== "literal") out[part.type] = part.value;
+  }
+  return out;
+}
+
+async function sendCeremonieReminder(env) {
+  const clock = getParisClock();
+  if (clock.weekday !== "Sun" || clock.hour !== "12" || clock.minute !== "03") {
+    return { ok: true, skipped: true, reason: "outside_paris_schedule", clock };
+  }
+
+  const channelId = env.CEREMONIE_CHANNEL_ID || env.CEREMONY_CHANNEL_ID;
+  if (!channelId) return { ok: false, skipped: true, reason: "missing_ceremonie_channel_id" };
+
+  const content = [
+    "Mes respects, <@&1501250580058870104>",
+    "",
+    "**Cérémonie 21h00 - Salle de cérémonie**",
+    "",
+    "Vous pourrez retrouver les tenues de cérémonie en cliquant [ici](https://docs.google.com/spreadsheets/d/1-aR8sDaFU77PGchtUrkJyCaLJV8kOVki3702WJ_K58Q/edit?usp=sharing).",
+    "",
+    "Vous trouverez également le plan de la salle de cérémonie ci-dessous.",
+    "",
+    "**Aucune arme de service autorisée dans la salle, laissez-les dans vos casiers personnels.**",
+    "",
+    "*Toute absence doit être justifiée, toute absence injustifiée pourra être passible de sanctions disciplinaires.*",
+    "",
+    "Best regards,",
+    "",
+    "<:SASP:1505194044031242381> [99] Capitaine",
+    "San Andreas State Police",
+    "",
+    CEREMONIE_REMINDER_PLAN_URL
+  ].join("\n");
+
+  const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      content,
+      allowed_mentions: { roles: ["1501250580058870104"] }
+    })
+  });
+
+  if (!res.ok) {
+    return { ok: false, status: res.status, body: await res.text().catch(() => "") };
+  }
+  return { ok: true, channel_id: channelId };
+}
 
 async function reactToChannelMessages(env, channelId = AUTO_REACTION_CHANNEL_ID, limit = 20) {
   const messagesRes = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages?limit=${Math.max(1, Math.min(Number(limit) || 50, 100))}`, {
@@ -5059,7 +5123,9 @@ export default {
 
   // â”€â”€ Cron â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async scheduled(event, env, ctx) {
-    if (event.cron === '0 18 * * SUN') {
+    if (event.cron === '3 10 * * SUN' || event.cron === '3 11 * * SUN') {
+      ctx.waitUntil(sendCeremonieReminder(env));
+    } else if (event.cron === '0 18 * * SUN') {
       ctx.waitUntil(autoClockoutAll(env));
     } else {
       ctx.waitUntil(autoClockout6h(env));

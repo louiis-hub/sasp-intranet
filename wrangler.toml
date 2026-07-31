@@ -7,4 +7,4 @@ POINTEUSE_CHANNEL_ID = "1519525957390827711"
 POINTEUSE_MESSAGE_ID = "1527982879722836029"
 
 [triggers]
-crons = ["0 18 * * SUN", "*/15 * * * *"]
+crons = ["3 10 * * SUN", "3 11 * * SUN", "0 18 * * SUN", "*/15 * * * *"]
