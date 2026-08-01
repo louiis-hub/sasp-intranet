@@ -1573,6 +1573,9 @@ async function createServiceHousingLiaison(env, interaction, gamme) {
 
   const isHigh = gamme === "haut";
   const label = isHigh ? "haut de gamme" : "bas de gamme";
+  const housingImageUrl = isHigh
+    ? "https://louiis-hub.github.io/sasp-intranet/assets/service-housing-luxury-3.png"
+    : "https://louiis-hub.github.io/sasp-intranet/assets/service-housing-safe-house.png";
   const channelName = `location-${isHigh ? "haut" : "bas"}-${userId.slice(-4)}`;
   const staffRoles = Array.from(new Set([...ADMIN_ROLE_IDS, ...STAFF_ROLE_IDS]));
   const permissionOverwrites = [
@@ -1616,6 +1619,7 @@ async function createServiceHousingLiaison(env, interaction, gamme) {
           { name: "Loyer", value: isHigh ? "3500 $ / semaine" : "2500 $ / semaine", inline: true },
           { name: "Suivi", value: "Merci de confirmer la disponibilite, le logement attribue et la date de debut.", inline: false }
         ],
+        image: { url: housingImageUrl },
         footer: { text: "SASP - Logements de service" },
         timestamp: new Date().toISOString()
       }],
