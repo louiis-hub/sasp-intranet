@@ -1606,7 +1606,25 @@ async function createServiceHousingLiaison(env, interaction, gamme) {
     method: "POST",
     headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      content: `<@${userId}> souhaite louer un logement ${label}.`,
+      content: `<@${userId}>`,
+      embeds: [{
+        title: "Demande de logement de service",
+        description: `<@${userId}> souhaite louer un logement **${label}**.`,
+        color: isHigh ? 0xc9a84c : 0x3498db,
+        fields: [
+          { name: "Type", value: isHigh ? "Haut de gamme" : "Bas de gamme", inline: true },
+          { name: "Loyer", value: isHigh ? "3500 $ / semaine" : "2500 $ / semaine", inline: true },
+          { name: "Suivi", value: "Merci de confirmer la disponibilite, le logement attribue et la date de debut.", inline: false }
+        ],
+        footer: { text: "SASP - Logements de service" },
+        timestamp: new Date().toISOString()
+      }],
+      components: [{
+        type: 1,
+        components: [
+          { type: 2, style: 4, label: "Fermer la liaison", custom_id: `service_housing_close|${userId}` }
+        ]
+      }],
       allowed_mentions: { users: [userId], parse: [] }
     })
   });
@@ -3715,29 +3733,29 @@ export default {
         if (!hasStaffRole(member)) {
           return json({ type: 4, data: { content: "Tu n'as pas les permissions pour utiliser cette commande.", flags: 64 } });
         }
-        if (interaction.channel_id !== SERVICE_HOUSING_PANEL_CHANNEL_ID) {
-          return json({ type: 4, data: { content: `Utilise cette commande dans <#${SERVICE_HOUSING_PANEL_CHANNEL_ID}>.`, flags: 64 } });
-        }
 
         const res = await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             embeds: [{
-              title: "Location logements de service",
-              description: "Selectionne le type de logement souhaite. Une liaison privee sera ouverte avec l'administration.",
+              title: "🏠 Location logements de service",
+              description: [
+                "Sélectionnez le type de logement souhaité.",
+                "Une liaison privée sera ouverte automatiquement avec l'administration."
+              ].join("\n"),
               color: 0xc9a84c,
               fields: [
-                { name: "Bas de gamme", value: "2500 $ / semaine", inline: true },
-                { name: "Haut de gamme", value: "3500 $ / semaine", inline: true }
+                { name: "🏡 Bas de gamme", value: "**2500 $ / semaine**\nLogement simple, attribution rapide.", inline: true },
+                { name: "🏘️ Haut de gamme", value: "**3500 $ / semaine**\nLogement premium, selon disponibilité.", inline: true }
               ],
               footer: { text: "SASP - Logements de service" }
             }],
             components: [{
               type: 1,
               components: [
-                { type: 2, style: 2, label: "Location bas de gamme", custom_id: "service_housing_location|bas" },
-                { type: 2, style: 1, label: "Location haut de gamme", custom_id: "service_housing_location|haut" }
+                { type: 2, style: 2, label: "Bas de gamme", emoji: { name: "🏡" }, custom_id: "service_housing_location|bas" },
+                { type: 2, style: 1, label: "Haut de gamme", emoji: { name: "🏘️" }, custom_id: "service_housing_location|haut" }
               ]
             }]
           })
@@ -3758,6 +3776,23 @@ export default {
         } catch (e) {
           return json({ type: 4, data: { content: `Erreur location : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
         }
+      }
+
+      if (interaction.type === 3 && interaction.data.custom_id?.startsWith("service_housing_close|")) {
+        const requesterId = interaction.data.custom_id.split("|")[1];
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        const member = interaction.member || {};
+        if (userId !== requesterId && !hasStaffRole(member)) {
+          return json({ type: 4, data: { content: "Tu n'as pas l'autorisation de fermer cette liaison.", flags: 64 } });
+        }
+        ctx.waitUntil((async () => {
+          await new Promise(resolve => setTimeout(resolve, 1200));
+          await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+        })());
+        return json({ type: 4, data: { content: "Liaison fermee. Le salon va etre supprime.", flags: 64 } });
       }
 
       // Slash command /clear
