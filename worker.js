@@ -1617,6 +1617,9 @@ async function createServiceHousingLiaison(env, interaction, gamme) {
         fields: [
           { name: "Type", value: isHigh ? "Haut de gamme" : "Bas de gamme", inline: true },
           { name: "Loyer", value: isHigh ? "3500 $ / semaine" : "2500 $ / semaine", inline: true },
+          { name: "Délai de traitement", value: "Réponse sous **24 à 48 heures** selon les disponibilités.", inline: false },
+          { name: "Conditions", value: "La demande peut être refusée si l'agent est **suspendu**, **inactif** ou **déjà logé**.", inline: false },
+          { name: "Paiement", value: "Tout impayé peut entraîner le **retrait du logement de service**.", inline: false },
           { name: "Suivi", value: "Merci de confirmer la disponibilite, le logement attribue et la date de debut.", inline: false }
         ],
         image: { url: housingImageUrl },
