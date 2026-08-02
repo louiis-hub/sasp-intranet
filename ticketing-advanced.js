@@ -212,20 +212,25 @@
 
   window.ticketingOpenOptionModal = function(id) {
     var o = options.find(function(x) { return x.id === id; }) || {};
-    showModal('<div class="modal show"><div class="modal-content" style="max-width:920px"><div class="modal-head"><div><div class="tt2-kicker">Ticket option</div><h2>' + (o.id ? 'Modifier option' : 'Ajouter option') + '</h2></div><button onclick="closeModal()">×</button></div><div class="tt2-grid">' +
-      field('Label', 'ttOptLabel', o.label, 'Criminal Investigation Division') +
-      field('Emoji', 'ttOptEmoji', o.emoji || '🎫', '🎫') +
-      field('Cle interne', 'ttOptKey', o.key, 'cid') +
-      field('Categorie Discord', 'ttOptCategory', o.category_id, 'ID categorie') +
-      field('Roles support', 'ttOptSupportRoles', idsToText(o.support_role_ids), 'IDs separes par virgule') +
-      field('Roles a ping', 'ttOptMentionRoles', idsToText(o.mention_role_ids), 'IDs separes par virgule') +
-      field('Format nom salon', 'ttOptChannelFormat', o.channel_name_format || 'ticket-{option}-{user}', 'ticket-{option}-{user}') +
-      field('Position', 'ttOptPosition', o.position || 0, '0') +
-      area('Description', 'ttOptDescription', o.description, 'Ouvrir une liaison privee avec ce service.', true) +
-      area('Message de bienvenue', 'ttOptWelcome', o.welcome_message, 'Expliquez votre demande ici...', true) +
-      '</div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Annuler</button><button class="btn btn-primary" onclick="ticketingSaveOption(\'' + a(o.id || '') + '\')">Sauvegarder</button></div></div></div>');
+    openModal({
+      eyebrow: 'Ticket option',
+      title: o.id ? 'Modifier option' : 'Ajouter option',
+      size: 'lg',
+      body: '<div class="tt2-grid">' +
+        field('Label', 'ttOptLabel', o.label, 'Criminal Investigation Division') +
+        field('Emoji', 'ttOptEmoji', o.emoji || '🎫', '🎫') +
+        field('Cle interne', 'ttOptKey', o.key, 'cid') +
+        field('Categorie Discord', 'ttOptCategory', o.category_id, 'ID categorie') +
+        field('Roles support', 'ttOptSupportRoles', idsToText(o.support_role_ids), 'IDs separes par virgule') +
+        field('Roles a ping', 'ttOptMentionRoles', idsToText(o.mention_role_ids), 'IDs separes par virgule') +
+        field('Format nom salon', 'ttOptChannelFormat', o.channel_name_format || 'ticket-{option}-{user}', 'ticket-{option}-{user}') +
+        field('Position', 'ttOptPosition', o.position || 0, '0') +
+        area('Description', 'ttOptDescription', o.description, 'Ouvrir une liaison privee avec ce service.', true) +
+        area('Message de bienvenue', 'ttOptWelcome', o.welcome_message, 'Expliquez votre demande ici...', true) +
+      '</div>',
+      footer: '<button class="tt2-btn" onclick="closeModal()">Annuler</button><button class="tt2-btn primary" onclick="ticketingSaveOption(\'' + a(o.id || '') + '\')">Sauvegarder</button>'
+    });
   };
-
   window.ticketingSaveOption = async function(id) {
     var p = selectedPanel();
     if (!p) return;

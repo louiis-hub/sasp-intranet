@@ -4167,7 +4167,7 @@ function ticketingDefaultConfig() {
       '',
       'Sélectionnez un service dans le menu pour ouvrir une liaison privée.'
     ].join('\n'),
-    image_url: 'https://louiis-hub.github.io/sasp-intranet/assets/sasp-sud-watermark.png',
+    image_url: 'https://louiis-hub.github.io/sasp-intranet/assets/ticket-panel-sasp.png',
     footer: 'SASP - Ticketing sans surcharge'
   };
 }

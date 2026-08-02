@@ -353,17 +353,17 @@ const SERVICE_HOUSING_PANEL_CHANNEL_ID = "1518674483060281454";
 const SERVICE_HOUSING_CATEGORY_ID = "1501323835562000384";
 const TICKET_DEFAULT_PANEL_CHANNEL_ID = "1521575058500489478";
 const TICKET_DEFAULT_CATEGORY_ID = "1501323835562000384";
-const TICKET_PANEL_IMAGE_URL = "https://louiis-hub.github.io/sasp-intranet/assets/sasp-sud-watermark.png";
+const TICKET_PANEL_IMAGE_URL = "https://louiis-hub.github.io/sasp-intranet/assets/ticket-panel-sasp.png";
 const TICKET_OPTIONS = [
-  { key: "etat-major", emoji: "\ud83d\udc51", label: "Etat-Major", roleId: "1504451288065118248" },
-  { key: "police-academy", emoji: "\ud83c\udf93", label: "Police Academy", roleId: "1518631987462668358" },
-  { key: "cnu", emoji: "\ud83e\udd1d", label: "Crisis Negotiation Unit", roleId: "1519495084276715663" },
-  { key: "traffic-unit", emoji: "\ud83d\udea6", label: "Traffic Unit", roleId: "1514523508980584528" },
-  { key: "cid", emoji: "\ud83d\udd75\ufe0f", label: "Criminal Investigation Division", roleId: "1518631634524569641" },
-  { key: "swat", emoji: "\u2694\ufe0f", label: "Special Weapons And Tactics", roleId: "1504454935645786222" },
-  { key: "ftf", emoji: "\ud83c\udfaf", label: "Fugitive Task Force", roleId: FTF_ROLE_ID },
-  { key: "syndicat", emoji: "\ud83e\udd1d", label: "Syndicat", roleId: "1519496665499959418" },
-  { key: "affaires-internes", emoji: "\ud83d\udd12", label: "Affaires Internes", roleId: "", unavailable: true, description: "Pas disponible" }
+  { key: "etat-major", emoji: "\ud83d\udc51", label: "Etat-Major", roleId: "1504451288065118248", categoryId: "1501323835562000384" },
+  { key: "police-academy", emoji: "\ud83c\udf93", label: "Police Academy", roleId: "1518631987462668358", categoryId: "1518633398753562794" },
+  { key: "cnu", emoji: "\ud83e\udd1d", label: "Crisis Negotiation Unit", roleId: "1519495084276715663", categoryId: "1519498275974025226" },
+  { key: "traffic-unit", emoji: "\ud83d\udea6", label: "Traffic Unit", roleId: "1514523508980584528", categoryId: "1519498407503466616" },
+  { key: "cid", emoji: "\ud83d\udd75\ufe0f", label: "Criminal Investigation Division", roleId: "1518631634524569641", categoryId: "1528370627185082482" },
+  { key: "swat", emoji: "\u2694\ufe0f", label: "Special Weapons And Tactics", roleId: "1504454935645786222", categoryId: "1528370732323704833" },
+  { key: "ftf", emoji: "\ud83c\udfaf", label: "Fugitive Task Force", roleId: FTF_ROLE_ID, categoryId: "1528371149095043204" },
+  { key: "syndicat", emoji: "\ud83e\udd1d", label: "Syndicat", roleId: "1519496665499959418", categoryId: "1528371218422562836" },
+  { key: "affaires-internes", emoji: "\ud83d\udd12", label: "Affaires Internes", roleId: "", categoryId: "1528371395174727751", unavailable: true, description: "Pas disponible" }
 ];
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -4380,7 +4380,7 @@ export default {
         };
         const panelOptions = TICKET_OPTIONS.map(option => ({
           ...option,
-          categoryId: categoryByKey[option.key] || categoryId
+          categoryId: categoryByKey[option.key] || option.categoryId || categoryId
         }));
         try {
           await sendTicketPanel(env, targetChannelId, { category_id: categoryId, options: panelOptions });
