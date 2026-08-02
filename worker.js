@@ -1699,7 +1699,7 @@ function normalizeTicketOptions(options) {
       label: String(o.label || `Ticket ${i + 1}`).slice(0, 80),
       roleId: String(o.roleId || o.role_id || "").replace(/\D/g, ""),
       categoryId: String(o.categoryId || o.category_id || "").replace(/\D/g, ""),
-      description: String(o.description || (o.unavailable ? "Pas disponible" : "Ouvrir une liaison privee")).slice(0, 100),
+      description: String(o.description || (o.unavailable ? "Pas disponible" : "Ouvrir une liaison privée")).slice(0, 100),
       unavailable: !!o.unavailable
     }));
 }
@@ -1711,11 +1711,11 @@ function buildTicketPanelPayload(config = {}) {
     embeds: [{
       title: config.title || "\ud83c\udfab Contact Division / Unite",
       description: config.description || [
-        "Vous trouverez ci-dessous les contacts des unites / divisions.",
+        "Vous trouverez ci-dessous les contacts des unités / divisions.",
         "",
         ...options.map(o => `- ${o.emoji} **${o.label}**${o.unavailable ? " *(Pas disponible)*" : ""}`),
         "",
-        "Selectionnez une entree dans le menu pour ouvrir une liaison privee."
+        "Sélectionnez une entrée dans le menu pour ouvrir une liaison privée."
       ].join("\n"),
       color: Number(config.color || 0x2ecc71),
       image: config.image_url || config.imageUrl ? { url: config.image_url || config.imageUrl } : { url: TICKET_PANEL_IMAGE_URL },
@@ -1811,9 +1811,9 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
       embeds: [{
         title: `${option.emoji} Ticket ${option.label}`,
         description: [
-          `Un membre de **${option.label}** reviendra vers vous dans les plus brefs delais.`,
+          `Un membre de **${option.label}** reviendra vers vous dans les plus brefs délais.`,
           "",
-          "Expliquez clairement votre demande, ajoutez les captures ou documents utiles, puis attendez une reponse du service concerne."
+          "Expliquez clairement votre demande, ajoutez les captures ou documents utiles, puis attendez une réponse du service concerné."
         ].join("\n"),
         color: 0x2ecc71,
         fields: [
