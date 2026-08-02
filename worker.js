@@ -1678,6 +1678,7 @@ function normalizeTicketOptions(options) {
       emoji: String(o.emoji || "\ud83c\udfab").slice(0, 8),
       label: String(o.label || `Ticket ${i + 1}`).slice(0, 80),
       roleId: String(o.roleId || o.role_id || "").replace(/\D/g, ""),
+      categoryId: String(o.categoryId || o.category_id || "").replace(/\D/g, ""),
       description: String(o.description || (o.unavailable ? "Pas disponible" : "Ouvrir une liaison privee")).slice(0, 100),
       unavailable: !!o.unavailable
     }));
@@ -1710,7 +1711,7 @@ function buildTicketPanelPayload(config = {}) {
         max_values: 1,
         options: options.map(o => ({
           label: o.label,
-          value: o.key,
+          value: `${o.key}|${o.categoryId || categoryId}`.slice(0, 100),
           description: o.description,
           emoji: { name: o.emoji }
         }))
@@ -1759,13 +1760,14 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
   if (option.roleId) permissionOverwrites.push({ id: option.roleId, type: 0, allow: STAFF });
 
   const channelName = `ticket-${option.key}-${userId.slice(-4)}`.slice(0, 95);
+  const targetCategoryId = option.categoryId || categoryId || TICKET_DEFAULT_CATEGORY_ID;
   const createRes = await discordFetch(`${DISCORD_API}/guilds/${interaction.guild_id}/channels`, {
     method: "POST",
     headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       name: channelName,
       type: 0,
-      parent_id: categoryId || TICKET_DEFAULT_CATEGORY_ID,
+      parent_id: targetCategoryId,
       topic: `Ticket ${option.label} - demandeur ${userId}`,
       permission_overwrites: permissionOverwrites
     })
@@ -3876,7 +3878,21 @@ export default {
               {
                 type: 3,
                 name: "categorie",
-                description: "ID de la categorie ou creer les tickets",
+                description: "Categorie par defaut si une division n'a pas sa categorie",
+                required: false
+              },
+              { type: 3, name: "cat_etat_major", description: "Categorie tickets Etat-Major", required: false },
+              { type: 3, name: "cat_academy", description: "Categorie tickets Police Academy", required: false },
+              { type: 3, name: "cat_cnu", description: "Categorie tickets CNU", required: false },
+              { type: 3, name: "cat_tu", description: "Categorie tickets Traffic Unit", required: false },
+              { type: 3, name: "cat_cid", description: "Categorie tickets CID", required: false },
+              { type: 3, name: "cat_swat", description: "Categorie tickets SWAT", required: false },
+              { type: 3, name: "cat_ftf", description: "Categorie tickets FTF", required: false },
+              { type: 3, name: "cat_syndicat", description: "Categorie tickets Syndicat", required: false },
+              {
+                type: 3,
+                name: "cat_ai",
+                description: "Categorie tickets Affaires Internes",
                 required: false
               }
             ]
@@ -3997,10 +4013,26 @@ export default {
           return json({ type: 4, data: { content: "Tu n'as pas les permissions pour utiliser cette commande.", flags: 64 } });
         }
         const options = interaction.data.options || [];
+        const optionValue = (name) => String(options.find(o => o.name === name)?.value || "").replace(/\D/g, "");
         const targetChannelId = String(options.find(o => o.name === "salon")?.value || interaction.channel_id).replace(/\D/g, "");
-        const categoryId = String(options.find(o => o.name === "categorie")?.value || TICKET_DEFAULT_CATEGORY_ID).replace(/\D/g, "");
+        const categoryId = optionValue("categorie") || TICKET_DEFAULT_CATEGORY_ID;
+        const categoryByKey = {
+          "etat-major": optionValue("cat_etat_major"),
+          "police-academy": optionValue("cat_academy"),
+          cnu: optionValue("cat_cnu"),
+          "traffic-unit": optionValue("cat_tu"),
+          cid: optionValue("cat_cid"),
+          swat: optionValue("cat_swat"),
+          ftf: optionValue("cat_ftf"),
+          syndicat: optionValue("cat_syndicat"),
+          "affaires-internes": optionValue("cat_ai")
+        };
+        const panelOptions = TICKET_OPTIONS.map(option => ({
+          ...option,
+          categoryId: categoryByKey[option.key] || categoryId
+        }));
         try {
-          await sendTicketPanel(env, targetChannelId, { category_id: categoryId });
+          await sendTicketPanel(env, targetChannelId, { category_id: categoryId, options: panelOptions });
           return json({ type: 4, data: { content: `Panneau tickets envoye dans <#${targetChannelId}>.`, flags: 64 } });
         } catch (e) {
           return json({ type: 4, data: { content: `Erreur panneau tickets : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
@@ -4010,9 +4042,9 @@ export default {
       // Select menu tickets
       if (interaction.type === 3 && interaction.data.custom_id?.startsWith("ticket_open_select|")) {
         const categoryId = String(interaction.data.custom_id.split("|")[1] || TICKET_DEFAULT_CATEGORY_ID).replace(/\D/g, "");
-        const selectedKey = interaction.data.values?.[0];
+        const [selectedKey, selectedCategoryId] = String(interaction.data.values?.[0] || "").split("|");
         try {
-          const result = await createTicketChannel(env, interaction, categoryId, selectedKey);
+          const result = await createTicketChannel(env, interaction, selectedCategoryId || categoryId, selectedKey);
           if (result.unavailable) {
             return json({ type: 4, data: { content: `${result.label} n'est pas disponible pour le moment.`, flags: 64 } });
           }
