@@ -1669,6 +1669,25 @@ function ticketSafeName(value) {
     .slice(0, 42) || "ticket";
 }
 
+const TICKET_VIEW_PERM = "1024";
+const TICKET_BASE_PERMS = String(1024n | 2048n | 65536n | 32768n | 16384n);
+
+function hasTicketAdminRole(member, roleId = "") {
+  return hasStaffRole(member) || (!!roleId && memberHasAnyRole(member, [roleId]));
+}
+
+async function setTicketRequesterVisibility(env, channelId, requesterId, visible) {
+  const body = visible
+    ? { type: 1, allow: TICKET_BASE_PERMS, deny: "0" }
+    : { type: 1, allow: "0", deny: TICKET_VIEW_PERM };
+  const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/permissions/${requesterId}`, {
+    method: "PUT",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(`Modification permissions ticket impossible (${res.status}) ${await res.text().catch(() => "")}`);
+}
+
 function normalizeTicketOptions(options) {
   const src = Array.isArray(options) && options.length ? options : TICKET_OPTIONS;
   return src
@@ -1807,7 +1826,7 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
       }],
       components: [{
         type: 1,
-        components: [{ type: 2, style: 4, label: "Fermer le ticket", emoji: { name: "\ud83d\udd12" }, custom_id: `ticket_close|${userId}` }]
+        components: [{ type: 2, style: 4, label: "Fermer le ticket", emoji: { name: "\ud83d\udd12" }, custom_id: `ticket_close|${userId}|${option.roleId || ""}`.slice(0, 100) }]
       }],
       allowed_mentions: { users: [userId], roles: option.roleId ? [option.roleId] : [], parse: [] }
     })
@@ -4460,10 +4479,46 @@ export default {
       }
 
       if (interaction.type === 3 && interaction.data.custom_id?.startsWith("ticket_close|")) {
+        const [, requesterId, roleId = ""] = interaction.data.custom_id.split("|");
         const userId = interaction.member?.user?.id || interaction.user?.id;
-        const member = interaction.member || {};
-        if (!hasStaffRole(member)) {
-          return json({ type: 4, data: { content: "Tu n'as pas l'autorisation de fermer ce ticket.", flags: 64 } });
+        if (userId !== requesterId && !hasTicketAdminRole(interaction.member || {}, roleId)) {
+          return json({ type: 4, data: { content: "Tu n'as pas l'autorisation de demander la fermeture de ce ticket.", flags: 64 } });
+        }
+        ctx.waitUntil((async () => {
+          await setTicketRequesterVisibility(env, interaction.channel_id, requesterId, false);
+        })());
+        const roleLine = roleId ? `<@&${roleId}>` : "@staff";
+        return json({
+          type: 4,
+          data: {
+            content: roleLine,
+            embeds: [{
+              title: "🔒 Demande de fermeture",
+              description: [
+                `<@${requesterId}> ne voit plus ce ticket.`,
+                "",
+                "Un responsable du ticket doit confirmer la fermeture ou réouvrir le salon."
+              ].join("\n"),
+              color: 0xe67e22,
+              footer: { text: TICKET_FOOTER_TEXT },
+              timestamp: new Date().toISOString()
+            }],
+            components: [{
+              type: 1,
+              components: [
+                { type: 2, style: 4, label: "Confirmer fermeture", emoji: { name: "✅" }, custom_id: `ticket_confirm_close|${requesterId}|${roleId}`.slice(0, 100) },
+                { type: 2, style: 3, label: "Réouvrir le ticket", emoji: { name: "🔓" }, custom_id: `ticket_reopen|${requesterId}|${roleId}`.slice(0, 100) }
+              ]
+            }],
+            allowed_mentions: { users: [requesterId], roles: roleId ? [roleId] : [], parse: [] }
+          }
+        });
+      }
+
+      if (interaction.type === 3 && interaction.data.custom_id?.startsWith("ticket_confirm_close|")) {
+        const [, requesterId, roleId = ""] = interaction.data.custom_id.split("|");
+        if (!hasTicketAdminRole(interaction.member || {}, roleId)) {
+          return json({ type: 4, data: { content: "Action reservee aux responsables du ticket.", flags: 64 } });
         }
         ctx.waitUntil((async () => {
           await new Promise(resolve => setTimeout(resolve, 1200));
@@ -4472,7 +4527,34 @@ export default {
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
           });
         })());
-        return json({ type: 4, data: { content: "Ticket ferme. Le salon va etre supprime.", flags: 64 } });
+        return json({ type: 4, data: { content: "Fermeture confirmee. Le salon va etre supprime." } });
+      }
+
+      if (interaction.type === 3 && interaction.data.custom_id?.startsWith("ticket_reopen|")) {
+        const [, requesterId, roleId = ""] = interaction.data.custom_id.split("|");
+        if (!hasTicketAdminRole(interaction.member || {}, roleId)) {
+          return json({ type: 4, data: { content: "Action reservee aux responsables du ticket.", flags: 64 } });
+        }
+        try {
+          await setTicketRequesterVisibility(env, interaction.channel_id, requesterId, true);
+          return json({
+            type: 7,
+            data: {
+              content: `<@${requesterId}>`,
+              embeds: [{
+                title: "🔓 Ticket réouvert",
+                description: `<@${requesterId}> a de nouveau acces au ticket.`,
+                color: 0x2ecc71,
+                footer: { text: TICKET_FOOTER_TEXT },
+                timestamp: new Date().toISOString()
+              }],
+              components: [],
+              allowed_mentions: { users: [requesterId], parse: [] }
+            }
+          });
+        } catch (e) {
+          return json({ type: 4, data: { content: `Erreur reouverture : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
+        }
       }
 
       // Boutons location logements
