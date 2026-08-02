@@ -6577,6 +6577,47 @@ function getPointeuseCorrectionMinutes(semaineKey, agentId) {
   return 0;
 }
 
+function copyPointeuseCorrectionsSql() {
+  var sql = [
+    'create extension if not exists pgcrypto;',
+    '',
+    'create table if not exists public.pointeuse_corrections (',
+    '  id uuid primary key default gen_random_uuid(),',
+    '  semaine_key text not null,',
+    '  semaine_label text,',
+    '  agent_id text not null,',
+    '  agent_matricule text,',
+    '  agent_nom text,',
+    '  minutes_retires integer not null default 0,',
+    '  updated_by text,',
+    '  created_at timestamptz not null default now(),',
+    '  updated_at timestamptz not null default now(),',
+    '  constraint pointeuse_corrections_unique unique (semaine_key, agent_id)',
+    ');',
+    '',
+    'alter table public.pointeuse_corrections enable row level security;',
+    '',
+    'drop policy if exists pointeuse_corrections_auth_all on public.pointeuse_corrections;',
+    'create policy pointeuse_corrections_auth_all',
+    'on public.pointeuse_corrections',
+    'for all',
+    'to authenticated',
+    'using (true)',
+    'with check (true);',
+    '',
+    'drop policy if exists pointeuse_corrections_anon_all on public.pointeuse_corrections;',
+    'create policy pointeuse_corrections_anon_all',
+    'on public.pointeuse_corrections',
+    'for all',
+    'to anon',
+    'using (true)',
+    'with check (true);',
+    '',
+    "notify pgrst, 'reload schema';"
+  ].join('\n');
+  fallbackCopyText(sql, function() { toast('SQL corrections copie.', 'success'); });
+}
+
 function correctedPointeuseSeconds(semaineKey, agentId, seconds) {
   return Math.max(0, Math.floor(seconds || 0) - (getPointeuseCorrectionMinutes(semaineKey, agentId) * 60));
 }
@@ -6774,7 +6815,7 @@ async function renderPointeuseHistorique() {
   }).join('');
 
   var correctionsWarning = _pointeuseCorrectionsMissing
-    ? '<div class="card" style="border-color:rgba(239,68,68,.45);margin-bottom:12px;padding:12px"><strong style="color:var(--red,#ff5b5b)">Table corrections manquante.</strong><p class="text-muted" style="margin:6px 0 0">Les retraits d heures seront locaux tant que la table Supabase <code>pointeuse_corrections</code> n existe pas.</p></div>'
+    ? '<div class="card" style="border-color:rgba(239,68,68,.45);margin-bottom:12px;padding:12px"><div class="flex-between" style="gap:12px;align-items:flex-start"><div><strong style="color:var(--red,#ff5b5b)">Table corrections manquante.</strong><p class="text-muted" style="margin:6px 0 0">Les retraits d heures seront locaux tant que la table Supabase <code>pointeuse_corrections</code> n existe pas. Si tu l as deja creee, execute le SQL complet puis recharge la page.</p></div><button class="btn btn-primary btn-sm" onclick="copyPointeuseCorrectionsSql()">Copier SQL</button></div></div>'
     : '';
   setContent(
     '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Historique pointages</h1>' +
