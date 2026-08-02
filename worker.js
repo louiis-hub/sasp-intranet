@@ -1764,7 +1764,7 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
   const rpName = `${identity.prenom || ""} ${identity.nom || ""}`.trim()
     || ticketDisplayName(interaction)
     || userId.slice(-4);
-  const channelName = ticketSafeName(`ticket-${option.key}-${rpName}`).slice(0, 95);
+  const channelName = ticketSafeName(rpName).slice(0, 95);
   const targetCategoryId = option.categoryId || categoryId || TICKET_DEFAULT_CATEGORY_ID;
   const createRes = await discordFetch(`${DISCORD_API}/guilds/${interaction.guild_id}/channels`, {
     method: "POST",
@@ -4453,7 +4453,7 @@ export default {
           if (result.unavailable) {
             return json({ type: 4, data: { content: `${result.label} n'est pas disponible pour le moment.`, flags: 64 } });
           }
-          return json({ type: 7, data: buildTicketPanelMessage({ category_id: categoryId }) });
+          return json({ type: 7, data: buildTicketPanelPayload({ category_id: categoryId }) });
         } catch (e) {
           return json({ type: 4, data: { content: `Erreur ticket : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
         }
