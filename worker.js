@@ -354,8 +354,9 @@ const SERVICE_HOUSING_CATEGORY_ID = "1501323835562000384";
 const TICKET_DEFAULT_PANEL_CHANNEL_ID = "1521575058500489478";
 const TICKET_DEFAULT_CATEGORY_ID = "1501323835562000384";
 const TICKET_PANEL_IMAGE_URL = "https://louiis-hub.github.io/sasp-intranet/assets/ticket-panel-sasp.png";
+const TICKET_FOOTER_TEXT = "SASP - San Andreas State Trooper";
 const TICKET_OPTIONS = [
-  { key: "etat-major", emoji: "\ud83d\udc51", label: "Etat-Major", roleId: "1504451288065118248", categoryId: "1501323835562000384" },
+  { key: "etat-major", emoji: "\ud83d\udc51", label: "Etat-Major", roleId: "1500975725153620033", categoryId: "1501323835562000384" },
   { key: "police-academy", emoji: "\ud83c\udf93", label: "Police Academy", roleId: "1518631987462668358", categoryId: "1518633398753562794" },
   { key: "cnu", emoji: "\ud83e\udd1d", label: "Crisis Negotiation Unit", roleId: "1519495084276715663", categoryId: "1519498275974025226" },
   { key: "traffic-unit", emoji: "\ud83d\udea6", label: "Traffic Unit", roleId: "1514523508980584528", categoryId: "1519498407503466616" },
@@ -1699,7 +1700,7 @@ function buildTicketPanelPayload(config = {}) {
       ].join("\n"),
       color: Number(config.color || 0x2ecc71),
       image: config.image_url || config.imageUrl ? { url: config.image_url || config.imageUrl } : { url: TICKET_PANEL_IMAGE_URL },
-      footer: { text: config.footer || "SASP - Ticketing sans surcharge" }
+      footer: { text: config.footer || TICKET_FOOTER_TEXT }
     }],
     components: [{
       type: 1,
@@ -1759,7 +1760,11 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
   ];
   if (option.roleId) permissionOverwrites.push({ id: option.roleId, type: 0, allow: STAFF });
 
-  const channelName = `ticket-${option.key}-${userId.slice(-4)}`.slice(0, 95);
+  const identity = await getAgentIdentityForInteraction(env, interaction);
+  const rpName = `${identity.prenom || ""} ${identity.nom || ""}`.trim()
+    || ticketDisplayName(interaction)
+    || userId.slice(-4);
+  const channelName = ticketSafeName(`ticket-${option.key}-${rpName}`).slice(0, 95);
   const targetCategoryId = option.categoryId || categoryId || TICKET_DEFAULT_CATEGORY_ID;
   const createRes = await discordFetch(`${DISCORD_API}/guilds/${interaction.guild_id}/channels`, {
     method: "POST",
@@ -1797,7 +1802,7 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
           { name: "Service", value: `${option.emoji} ${option.label}`, inline: true },
           { name: "Statut", value: "Ouvert", inline: true }
         ],
-        footer: { text: "SASP - Ticketing sans surcharge" },
+        footer: { text: TICKET_FOOTER_TEXT },
         timestamp: new Date().toISOString()
       }],
       components: [{
@@ -4448,17 +4453,16 @@ export default {
           if (result.unavailable) {
             return json({ type: 4, data: { content: `${result.label} n'est pas disponible pour le moment.`, flags: 64 } });
           }
-          return json({ type: 4, data: { content: `Ticket ouvert : <#${result.channel_id}>.`, flags: 64 } });
+          return json({ type: 7, data: buildTicketPanelMessage({ category_id: categoryId }) });
         } catch (e) {
           return json({ type: 4, data: { content: `Erreur ticket : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
         }
       }
 
       if (interaction.type === 3 && interaction.data.custom_id?.startsWith("ticket_close|")) {
-        const requesterId = interaction.data.custom_id.split("|")[1];
         const userId = interaction.member?.user?.id || interaction.user?.id;
         const member = interaction.member || {};
-        if (userId !== requesterId && !hasStaffRole(member)) {
+        if (!hasStaffRole(member)) {
           return json({ type: 4, data: { content: "Tu n'as pas l'autorisation de fermer ce ticket.", flags: 64 } });
         }
         ctx.waitUntil((async () => {
