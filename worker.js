@@ -1742,9 +1742,7 @@ function buildAcademyTicketPanelConfig(config = {}) {
       "",
       "\u26a0\ufe0f Merci de n'ouvrir qu'un seul ticket par demande afin de faciliter son traitement.",
       "",
-      "• Le San Andreas State Police vous remercie de votre confiance.",
-      "",
-      "<:SASP:1505194044031242381> \ud83d\udee1\ufe0f **San Andreas State Police • SASP**"
+      "• Le San Andreas State Police vous remercie de votre confiance."
     ].join("\n")
   };
 }
