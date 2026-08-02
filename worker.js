@@ -1814,6 +1814,343 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
   return { channel_id: channel.id, label: option.label };
 }
 
+function ticketIdList(value) {
+  if (Array.isArray(value)) return value.map(v => String(v || "").replace(/\D/g, "")).filter(Boolean);
+  if (typeof value === "string") return value.split(/[\s,;]+/).map(v => v.replace(/\D/g, "")).filter(Boolean);
+  return [];
+}
+
+function ticketFirstRow(data) {
+  return Array.isArray(data) ? data[0] : data;
+}
+
+function ticketChunks(list, size) {
+  const out = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
+}
+
+function ticketDiscordOption(option) {
+  return {
+    label: String(option.label || option.key || "Ticket").slice(0, 100),
+    value: String(option.id).slice(0, 100),
+    description: String(option.description || "Ouvrir un ticket").slice(0, 100),
+    emoji: option.emoji ? { name: String(option.emoji).slice(0, 12) } : undefined
+  };
+}
+
+function ticketDiscordButton(panel, option) {
+  return {
+    type: 2,
+    style: Number(option.button_style || 2),
+    label: String(option.label || option.key || "Ticket").slice(0, 80),
+    emoji: option.emoji ? { name: String(option.emoji).slice(0, 12) } : undefined,
+    custom_id: `ticket_open_button_db|${panel.id}|${option.id}`.slice(0, 100),
+    disabled: option.enabled === false
+  };
+}
+
+function ticketPanelEmbed(panel, options) {
+  const description = panel.description || [
+    "Selectionnez le service ou la division a contacter.",
+    "Un salon prive sera ouvert automatiquement avec les personnes autorisees.",
+    "",
+    ...options.map(o => `${o.emoji || "🎫"} **${o.label}**${o.description ? ` - ${o.description}` : ""}`)
+  ].join("\n");
+  const embed = {
+    title: panel.title || "🎫 Centre de tickets",
+    description: String(description).slice(0, 4096),
+    color: Number(panel.color || 0xd4af37),
+    footer: { text: panel.footer || "SASP - Ticketing" },
+    timestamp: new Date().toISOString()
+  };
+  if (panel.image_url) embed.image = { url: panel.image_url };
+  if (panel.thumbnail_url) embed.thumbnail = { url: panel.thumbnail_url };
+  if (panel.author_name) embed.author = { name: panel.author_name, icon_url: panel.author_icon_url || undefined };
+  return embed;
+}
+
+function buildTicketPanelPayloadFromDb(panel, options) {
+  const activeOptions = options.filter(o => o.enabled !== false).slice(0, 25);
+  const components = [];
+  if (panel.component_type === "buttons") {
+    for (const chunk of ticketChunks(activeOptions, 5)) {
+      components.push({ type: 1, components: chunk.map(o => ticketDiscordButton(panel, o)) });
+    }
+  } else {
+    components.push({
+      type: 1,
+      components: [{
+        type: 3,
+        custom_id: `ticket_open_db|${panel.id}`.slice(0, 100),
+        placeholder: panel.placeholder || "Fais un choix",
+        min_values: 1,
+        max_values: 1,
+        options: activeOptions.map(ticketDiscordOption)
+      }]
+    });
+  }
+  return {
+    content: panel.content || undefined,
+    embeds: [ticketPanelEmbed(panel, activeOptions)],
+    components,
+    allowed_mentions: { parse: [] }
+  };
+}
+
+async function getTicketPanelDb(env, panelId, guildId) {
+  const siteKey = siteKeyFromGuildId(guildId);
+  const panelRows = await sbForSite(env, "GET", `/ticket_panels?id=eq.${encodeURIComponent(panelId)}&guild_id=eq.${String(guildId).replace(/\D/g, "")}&select=*&limit=1`, null, siteKey);
+  const panel = ticketFirstRow(panelRows);
+  if (!panel) throw new Error("Panel ticket introuvable.");
+  if (panel.enabled === false) throw new Error("Ce panel ticket est desactive.");
+  const optionRows = await sbForSite(env, "GET", `/ticket_options?panel_id=eq.${encodeURIComponent(panel.id)}&select=*&order=position.asc`, null, siteKey);
+  return { panel, options: optionRows || [], siteKey };
+}
+
+async function publishTicketPanelFromDb(env, panelId, guildId) {
+  const { panel, options, siteKey } = await getTicketPanelDb(env, panelId, guildId);
+  const channelId = String(panel.channel_id || TICKET_DEFAULT_PANEL_CHANNEL_ID).replace(/\D/g, "");
+  if (!channelId) throw new Error("Salon du panel manquant.");
+  const payload = buildTicketPanelPayloadFromDb(panel, options);
+  let message = null;
+  if (panel.message_id) {
+    const patch = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${panel.message_id}`, {
+      method: "PATCH",
+      headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (patch.ok) message = await patch.json();
+  }
+  if (!message) {
+    const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+      method: "POST",
+      headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(`Envoi panneau impossible (${res.status}) ${await res.text().catch(() => "")}`);
+    message = await res.json();
+  }
+  await sbForSite(env, "PATCH", `/ticket_panels?id=eq.${encodeURIComponent(panel.id)}`, {
+    message_id: message.id,
+    updated_at: new Date().toISOString()
+  }, siteKey);
+  return { panel_id: panel.id, channel_id: channelId, message_id: message.id };
+}
+
+function ticketDisplayName(interaction) {
+  const user = interaction.member?.user || interaction.user || {};
+  return user.global_name || user.username || user.id || "utilisateur";
+}
+
+function ticketFormatChannelName(format, panel, option, interaction, number) {
+  const userId = interaction.member?.user?.id || interaction.user?.id || "";
+  const username = ticketDisplayName(interaction);
+  const date = new Date().toISOString().slice(0, 10);
+  return ticketSafeName(String(format || "ticket-{number}-{option}")
+    .replaceAll("{number}", String(number || "0001").padStart(4, "0"))
+    .replaceAll("{username}", username)
+    .replaceAll("{displayName}", username)
+    .replaceAll("{user}", username)
+    .replaceAll("{userId}", userId)
+    .replaceAll("{option}", option.key || option.label || "ticket")
+    .replaceAll("{panel}", panel.name || "panel")
+    .replaceAll("{date}", date)).slice(0, 95);
+}
+
+function ticketPermissionOverwrites(interaction, option) {
+  const VIEW = 1024n;
+  const SEND = 2048n;
+  const READ_HISTORY = 65536n;
+  const ATTACH = 32768n;
+  const EMBED = 16384n;
+  const MANAGE_CHANNELS = 16n;
+  const BASE = String(VIEW | SEND | READ_HISTORY | ATTACH | EMBED);
+  const STAFF = String(VIEW | SEND | READ_HISTORY | ATTACH | EMBED | MANAGE_CHANNELS);
+  const userId = interaction.member?.user?.id || interaction.user?.id;
+  const staffRoles = Array.from(new Set([
+    ...ADMIN_ROLE_IDS,
+    ...STAFF_ROLE_IDS,
+    ...ticketIdList(option.support_role_ids),
+    ...ticketIdList(option.manager_role_ids)
+  ]));
+  return [
+    { id: interaction.guild_id, type: 0, deny: String(VIEW) },
+    { id: userId, type: 1, allow: BASE },
+    ...staffRoles.map(roleId => ({ id: roleId, type: 0, allow: STAFF }))
+  ];
+}
+
+function memberHasAnyRole(member, roles) {
+  const memberRoles = member?.roles || [];
+  return ticketIdList(roles).some(roleId => memberRoles.includes(roleId));
+}
+
+async function getTicketManageContext(env, siteKey, ticketId, member) {
+  if (hasStaffRole(member)) return { allowed: true, ticket: null };
+  if (!ticketId || String(ticketId).startsWith("channel-")) return { allowed: false, ticket: null };
+  const rows = await sbForSite(env, "GET", `/ticket_tickets?id=eq.${encodeURIComponent(ticketId)}&select=id,requester_id,option_id,panel_id,channel_id,status&limit=1`, null, siteKey).catch(() => []);
+  const ticket = Array.isArray(rows) ? rows[0] : null;
+  if (!ticket?.option_id) return { allowed: false, ticket };
+  const options = await sbForSite(env, "GET", `/ticket_options?id=eq.${encodeURIComponent(ticket.option_id)}&select=support_role_ids,manager_role_ids&limit=1`, null, siteKey).catch(() => []);
+  const option = Array.isArray(options) ? options[0] : null;
+  const allowedRoles = [
+    ...ticketIdList(option?.support_role_ids),
+    ...ticketIdList(option?.manager_role_ids)
+  ];
+  return { allowed: memberHasAnyRole(member, allowedRoles), ticket };
+}
+
+async function insertTicketLogDb(env, siteKey, ticketId, guildId, action, executorId, metadata = {}) {
+  try {
+    await sbForSite(env, "POST", "/ticket_logs", {
+      ticket_id: ticketId || null,
+      guild_id: guildId,
+      action,
+      actor_id: executorId || null,
+      details: metadata
+    }, siteKey);
+  } catch (e) {
+    console.warn("ticket log db failed", e && e.message);
+  }
+}
+
+async function sendTicketLogDiscord(env, channelId, title, description, color = 0xd4af37) {
+  if (!channelId) return;
+  try {
+    await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+      method: "POST",
+      headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        embeds: [{ title, description, color, timestamp: new Date().toISOString(), footer: { text: "SASP - Ticketing logs" } }],
+        allowed_mentions: { parse: [] }
+      })
+    });
+  } catch (e) {
+    console.warn("ticket log discord failed", e && e.message);
+  }
+}
+
+async function createTicketChannelFromDb(env, interaction, panelId, optionId) {
+  const userId = interaction.member?.user?.id || interaction.user?.id;
+  if (!userId) throw new Error("Utilisateur introuvable.");
+  const { panel, options, siteKey } = await getTicketPanelDb(env, panelId, interaction.guild_id);
+  const option = options.find(o => String(o.id) === String(optionId));
+  if (!option) throw new Error("Option ticket introuvable.");
+  if (option.enabled === false) throw new Error("Cette option n'est pas disponible.");
+  if (memberHasAnyRole(interaction.member, option.blocked_role_ids)) throw new Error("Tu n'as pas acces a cette option.");
+  const required = ticketIdList(option.required_role_ids);
+  if (required.length && !memberHasAnyRole(interaction.member, required)) throw new Error("Tu n'as pas le role requis pour cette option.");
+
+  const existing = await sbForSite(env, "GET", `/ticket_tickets?guild_id=eq.${interaction.guild_id}&requester_id=eq.${userId}&option_id=eq.${encodeURIComponent(option.id)}&status=in.(open,claimed)&select=id,channel_id,status&limit=5`, null, siteKey);
+  const maxOpen = Number(option.max_tickets_per_user || panel.max_tickets_per_user || 1);
+  if (Array.isArray(existing) && existing.length >= maxOpen) {
+    return { limited: true, channel_id: existing[0]?.channel_id };
+  }
+
+  const countRows = await sbForSite(env, "GET", `/ticket_tickets?guild_id=eq.${interaction.guild_id}&select=id`, null, siteKey).catch(() => []);
+  const ticketNumber = (Array.isArray(countRows) ? countRows.length : 0) + 1;
+  const categoryId = String(option.category_id || panel.default_category_id || TICKET_DEFAULT_CATEGORY_ID).replace(/\D/g, "");
+  const channelName = ticketFormatChannelName(option.channel_name_format, panel, option, interaction, ticketNumber);
+  const createRes = await discordFetch(`${DISCORD_API}/guilds/${interaction.guild_id}/channels`, {
+    method: "POST",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: channelName,
+      type: 0,
+      parent_id: categoryId || undefined,
+      topic: `Ticket ${ticketNumber} - ${option.label} - demandeur ${userId}`,
+      permission_overwrites: ticketPermissionOverwrites(interaction, option)
+    })
+  });
+  if (!createRes.ok) throw new Error(`Creation ticket impossible (${createRes.status}) ${await createRes.text().catch(() => "")}`);
+  const channel = await createRes.json();
+
+  const insertRows = await sbForSite(env, "POST", "/ticket_tickets", {
+    guild_id: interaction.guild_id,
+    panel_id: panel.id,
+    option_id: option.id,
+    channel_id: channel.id,
+    ticket_number: ticketNumber,
+    requester_id: userId,
+    requester_name: ticketDisplayName(interaction),
+    status: "open",
+    opened_at: new Date().toISOString()
+  }, siteKey).catch(() => null);
+  const ticket = ticketFirstRow(insertRows) || { id: `channel-${channel.id}` };
+  const mentionRoles = ticketIdList(option.mention_role_ids);
+  const roleLine = mentionRoles.map(id => `<@&${id}>`).join(" ");
+  const welcome = option.welcome_message || "Expliquez clairement votre demande, ajoutez les captures ou documents utiles, puis attendez une reponse du service concerne.";
+  await discordFetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      content: [`Bonjour <@${userId}>`, roleLine].filter(Boolean).join("\n"),
+      embeds: [{
+        title: `${option.emoji || "🎫"} Ticket ${option.label || "SASP"}`,
+        description: welcome,
+        color: Number(option.welcome_color || panel.color || 0xd4af37),
+        fields: [
+          { name: "Demandeur", value: `<@${userId}>`, inline: true },
+          { name: "Panel", value: panel.name || "Tickets", inline: true },
+          { name: "Numero", value: `#${String(ticketNumber).padStart(4, "0")}`, inline: true }
+        ],
+        footer: { text: panel.footer || "SASP - Ticketing" },
+        timestamp: new Date().toISOString()
+      }],
+      components: [{
+        type: 1,
+        components: [
+          { type: 2, style: 3, label: "Prendre en charge", emoji: { name: "✅" }, custom_id: `ticket_claim_db|${ticket.id}`.slice(0, 100) },
+          { type: 2, style: 4, label: "Fermer", emoji: { name: "🔒" }, custom_id: `ticket_close_db|${ticket.id}|${userId}`.slice(0, 100) }
+        ]
+      }],
+      allowed_mentions: { users: [userId], roles: mentionRoles, parse: [] }
+    })
+  });
+  await insertTicketLogDb(env, siteKey, ticket.id, interaction.guild_id, "opened", userId, { channel_id: channel.id, option: option.label });
+  await sendTicketLogDiscord(env, option.log_channel_id || panel.log_channel_id, "Ticket ouvert", `<@${userId}> a ouvert <#${channel.id}> pour **${option.label}**.`, 0x2ecc71);
+  return { channel_id: channel.id, ticket_id: ticket.id, label: option.label };
+}
+
+async function claimTicketDb(env, interaction, ticketId) {
+  const siteKey = siteKeyFromGuildId(interaction.guild_id);
+  const member = interaction.member || {};
+  const manageContext = await getTicketManageContext(env, siteKey, ticketId, member);
+  if (!manageContext.allowed) throw new Error("Action reservee au staff du ticket.");
+  const userId = member.user?.id || interaction.user?.id;
+  if (!String(ticketId).startsWith("channel-")) {
+    await sbForSite(env, "PATCH", `/ticket_tickets?id=eq.${encodeURIComponent(ticketId)}`, {
+      status: "claimed",
+      claimed_by: userId,
+      claimed_at: new Date().toISOString()
+    }, siteKey);
+  }
+  await insertTicketLogDb(env, siteKey, ticketId, interaction.guild_id, "claimed", userId, { channel_id: interaction.channel_id });
+}
+
+async function closeTicketDb(env, interaction, ticketId, requesterId) {
+  const siteKey = siteKeyFromGuildId(interaction.guild_id);
+  const member = interaction.member || {};
+  const userId = interaction.member?.user?.id || interaction.user?.id;
+  const manageContext = await getTicketManageContext(env, siteKey, ticketId, member);
+  const requester = manageContext.ticket?.requester_id || requesterId;
+  if (userId !== requester && !manageContext.allowed) throw new Error("Tu n'as pas l'autorisation de fermer ce ticket.");
+  if (!String(ticketId).startsWith("channel-")) {
+    await sbForSite(env, "PATCH", `/ticket_tickets?id=eq.${encodeURIComponent(ticketId)}`, {
+      status: "closed",
+      closed_by: userId,
+      closed_at: new Date().toISOString()
+    }, siteKey).catch(() => null);
+  }
+  await insertTicketLogDb(env, siteKey, ticketId, interaction.guild_id, "closed", userId, { channel_id: interaction.channel_id });
+  await new Promise(resolve => setTimeout(resolve, 1200));
+  await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}`, {
+    method: "DELETE",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+  });
+}
+
 // â”€â”€ Auto clock-out agents en service depuis +6h â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function autoClockout6h(env) {
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
@@ -3917,6 +4254,20 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/tickets/publish-panel" && request.method === "POST") {
+      try {
+        const token = request.headers.get("x-log-token");
+        if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+        const body = await request.json().catch(() => ({}));
+        const panelId = String(body.panel_id || body.panelId || "").trim();
+        const guildId = String(body.guild_id || body.guildId || env.DISCORD_GUILD_ID || "1500975724750704661").replace(/\D/g, "");
+        if (!panelId) return json({ ok: false, error: "panel_id manquant" }, 400);
+        const result = await publishTicketPanelFromDb(env, panelId, guildId);
+        return json({ ok: true, ...result });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/install-sync-command" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || "1382167184607940658";
@@ -4036,6 +4387,55 @@ export default {
           return json({ type: 4, data: { content: `Panneau tickets envoye dans <#${targetChannelId}>.`, flags: 64 } });
         } catch (e) {
           return json({ type: 4, data: { content: `Erreur panneau tickets : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
+        }
+      }
+
+      // Tickets avances geres depuis le site
+      if (interaction.type === 3 && interaction.data.custom_id?.startsWith("ticket_open_db|")) {
+        const panelId = interaction.data.custom_id.split("|")[1];
+        const optionId = String(interaction.data.values?.[0] || "");
+        try {
+          const result = await createTicketChannelFromDb(env, interaction, panelId, optionId);
+          if (result.limited) {
+            return json({ type: 4, data: { content: `Tu as deja un ticket ouvert : <#${result.channel_id}>.`, flags: 64 } });
+          }
+          return json({ type: 4, data: { content: `Ticket ouvert : <#${result.channel_id}>.`, flags: 64 } });
+        } catch (e) {
+          return json({ type: 4, data: { content: `Erreur ticket : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
+        }
+      }
+
+      if (interaction.type === 3 && interaction.data.custom_id?.startsWith("ticket_open_button_db|")) {
+        const [, panelId, optionId] = interaction.data.custom_id.split("|");
+        try {
+          const result = await createTicketChannelFromDb(env, interaction, panelId, optionId);
+          if (result.limited) {
+            return json({ type: 4, data: { content: `Tu as deja un ticket ouvert : <#${result.channel_id}>.`, flags: 64 } });
+          }
+          return json({ type: 4, data: { content: `Ticket ouvert : <#${result.channel_id}>.`, flags: 64 } });
+        } catch (e) {
+          return json({ type: 4, data: { content: `Erreur ticket : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
+        }
+      }
+
+      if (interaction.type === 3 && interaction.data.custom_id?.startsWith("ticket_claim_db|")) {
+        const ticketId = interaction.data.custom_id.split("|")[1];
+        try {
+          await claimTicketDb(env, interaction, ticketId);
+          const userId = interaction.member?.user?.id || interaction.user?.id;
+          return json({ type: 4, data: { content: `Ticket pris en charge par <@${userId}>.` } });
+        } catch (e) {
+          return json({ type: 4, data: { content: `Erreur prise en charge : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
+        }
+      }
+
+      if (interaction.type === 3 && interaction.data.custom_id?.startsWith("ticket_close_db|")) {
+        const [, ticketId, requesterId] = interaction.data.custom_id.split("|");
+        try {
+          await closeTicketDb(env, interaction, ticketId, requesterId);
+          return json({ type: 4, data: { content: "Ticket ferme." } });
+        } catch (e) {
+          return json({ type: 4, data: { content: `Erreur fermeture : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
         }
       }
 
