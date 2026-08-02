@@ -1667,11 +1667,36 @@ async function createServiceHousingLiaison(env, interaction, gamme) {
 function ticketSafeName(value) {
   return String(value || "")
     .normalize("NFD")
+    .replace(/[øØ]/g, "o")
+    .replace(/[æÆ]/g, "ae")
+    .replace(/[œŒ]/g, "oe")
+    .replace(/[ß]/g, "ss")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 42) || "ticket";
+}
+
+function ticketRequesterRawName(interaction) {
+  const member = interaction.member || {};
+  const user = member.user || interaction.user || {};
+  return member.nick || user.global_name || user.username || user.id || "demandeur";
+}
+
+function ticketBuildChannelName(prefix, rawName, interaction, userId) {
+  const safePrefix = prefix ? ticketSafeName(prefix) : "";
+  const fallbackRaw = ticketRequesterRawName(interaction);
+  let safeName = ticketSafeName(rawName || fallbackRaw);
+  if (!safeName || safeName === "ticket") safeName = ticketSafeName(fallbackRaw);
+  if (!safeName || safeName === "ticket") safeName = String(userId || "").slice(-4) || "demandeur";
+
+  const candidate = safePrefix ? `${safePrefix}-${safeName}` : safeName;
+  const finalName = ticketSafeName(candidate);
+  if (safePrefix && finalName === safePrefix) {
+    return `${safePrefix}-${String(userId || "").slice(-4) || "demandeur"}`.slice(0, 95);
+  }
+  return finalName.slice(0, 95);
 }
 
 const TICKET_VIEW_PERM = "1024";
@@ -1829,7 +1854,7 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
   const rpName = `${identity.prenom || ""} ${identity.nom || ""}`.trim()
     || ticketDisplayName(interaction)
     || userId.slice(-4);
-  const channelName = ticketSafeName(option.channelPrefix ? `${option.channelPrefix}-${rpName}` : rpName).slice(0, 95);
+  const channelName = ticketBuildChannelName(option.channelPrefix, rpName, interaction, userId);
   const targetCategoryId = option.categoryId || categoryId || TICKET_DEFAULT_CATEGORY_ID;
   const createRes = await discordFetch(`${DISCORD_API}/guilds/${interaction.guild_id}/channels`, {
     method: "POST",
