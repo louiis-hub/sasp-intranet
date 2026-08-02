@@ -354,8 +354,8 @@ const SERVICE_HOUSING_CATEGORY_ID = "1501323835562000384";
 const TICKET_DEFAULT_PANEL_CHANNEL_ID = "1521575058500489478";
 const TICKET_DEFAULT_CATEGORY_ID = "1501323835562000384";
 const TICKET_PANEL_IMAGE_URL = "https://louiis-hub.github.io/sasp-intranet/assets/ticket-panel-sasp.png";
+const TICKET_PANEL_LOGO_URL = "https://louiis-hub.github.io/sasp-intranet/assets/sasp-sud-logo-def.png";
 const TICKET_FOOTER_TEXT = "SASP - San Andreas State Trooper";
-const SASP_EMOJI = "<:SASP:1505194044031242381>";
 const TICKET_OPTIONS = [
   { key: "etat-major", emoji: "\ud83d\udc51", label: "Etat-Major", roleId: "1500975725153620033", categoryId: "1501323835562000384" },
   { key: "police-academy", emoji: "\ud83c\udf93", label: "Police Academy", roleId: "1518631987462668358", categoryId: "1518633398753562794" },
@@ -1710,7 +1710,10 @@ function buildTicketPanelPayload(config = {}) {
   const options = normalizeTicketOptions(config.options);
   return {
     embeds: [{
-      title: config.title || `${SASP_EMOJI} Contact Division / Unité`,
+      author: {
+        name: config.title || "Contact Division / Unité",
+        icon_url: config.logo_url || config.logoUrl || TICKET_PANEL_LOGO_URL
+      },
       description: config.description || [
         "Vous trouverez ci-dessous les contacts des unités / divisions.",
         "",

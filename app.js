@@ -4151,7 +4151,7 @@ function ticketingDefaultConfig() {
   return {
     channel_id: '1521575058500489478',
     category_id: '1501323835562000384',
-    title: '🎫 Contact Division / Unité',
+    title: 'Contact Division / Unité',
     description: [
       'Vous trouverez ci-dessous les contacts des unités / divisions :',
       '',
@@ -4168,6 +4168,7 @@ function ticketingDefaultConfig() {
       'Sélectionnez un service dans le menu pour ouvrir une liaison privée.'
     ].join('\n'),
     image_url: 'https://louiis-hub.github.io/sasp-intranet/assets/ticket-panel-sasp.png',
+    logo_url: 'https://louiis-hub.github.io/sasp-intranet/assets/sasp-sud-logo-def.png',
     footer: 'SASP - San Andreas State Trooper'
   };
 }
@@ -4189,6 +4190,7 @@ function ticketingReadConfig() {
     title: (document.getElementById('ticketTitle') || {}).value || '',
     description: (document.getElementById('ticketDescription') || {}).value || '',
     image_url: (document.getElementById('ticketImageUrl') || {}).value || '',
+    logo_url: 'https://louiis-hub.github.io/sasp-intranet/assets/sasp-sud-logo-def.png',
     footer: (document.getElementById('ticketFooter') || {}).value || ''
   };
 }
