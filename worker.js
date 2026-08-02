@@ -4989,7 +4989,7 @@ export default {
         const candidaturePayload = {
           content: `<@${userId}>`,
           embeds: [{
-            title: "🎓 Candidature Police Academy",
+            title: "🎓 Recrutement SASP",
             description: [
               `Candidature envoy\u00e9e par **${displayName}**.`,
               "",
