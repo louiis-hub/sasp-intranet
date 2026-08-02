@@ -350,6 +350,20 @@ const FTF_CONVOCATION_CHANNEL_ID = "1531372214434267297";
 const FTF_LOG_CHANNEL_ID = "1531372712314929265";
 const SERVICE_HOUSING_PANEL_CHANNEL_ID = "1518674483060281454";
 const SERVICE_HOUSING_CATEGORY_ID = "1501323835562000384";
+const TICKET_DEFAULT_PANEL_CHANNEL_ID = "1521575058500489478";
+const TICKET_DEFAULT_CATEGORY_ID = "1501323835562000384";
+const TICKET_PANEL_IMAGE_URL = "https://louiis-hub.github.io/sasp-intranet/assets/sasp-sud-watermark.png";
+const TICKET_OPTIONS = [
+  { key: "etat-major", emoji: "\ud83d\udc51", label: "Etat-Major", roleId: "1504451288065118248" },
+  { key: "police-academy", emoji: "\ud83c\udf93", label: "Police Academy", roleId: "1518631987462668358" },
+  { key: "cnu", emoji: "\ud83e\udd1d", label: "Crisis Negotiation Unit", roleId: "1519495084276715663" },
+  { key: "traffic-unit", emoji: "\ud83d\udea6", label: "Traffic Unit", roleId: "1514523508980584528" },
+  { key: "cid", emoji: "\ud83d\udd75\ufe0f", label: "Criminal Investigation Division", roleId: "1518631634524569641" },
+  { key: "swat", emoji: "\u2694\ufe0f", label: "Special Weapons And Tactics", roleId: "1504454935645786222" },
+  { key: "ftf", emoji: "\ud83c\udfaf", label: "Fugitive Task Force", roleId: FTF_ROLE_ID },
+  { key: "syndicat", emoji: "\ud83e\udd1d", label: "Syndicat", roleId: "1519496665499959418" },
+  { key: "affaires-internes", emoji: "\ud83d\udd12", label: "Affaires Internes", roleId: "", unavailable: true, description: "Pas disponible" }
+];
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ENTERPRISE_GUILD_ID = "1523759012623941746";
@@ -1641,6 +1655,160 @@ async function createServiceHousingLiaison(env, interaction, gamme) {
   }
 
   return { channel_id: channel.id, label };
+}
+
+function ticketSafeName(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 42) || "ticket";
+}
+
+function normalizeTicketOptions(options) {
+  const src = Array.isArray(options) && options.length ? options : TICKET_OPTIONS;
+  return src
+    .filter(o => o && o.label)
+    .slice(0, 25)
+    .map((o, i) => ({
+      key: ticketSafeName(o.key || o.label || `ticket-${i + 1}`),
+      emoji: String(o.emoji || "\ud83c\udfab").slice(0, 8),
+      label: String(o.label || `Ticket ${i + 1}`).slice(0, 80),
+      roleId: String(o.roleId || o.role_id || "").replace(/\D/g, ""),
+      description: String(o.description || (o.unavailable ? "Pas disponible" : "Ouvrir une liaison privee")).slice(0, 100),
+      unavailable: !!o.unavailable
+    }));
+}
+
+function buildTicketPanelPayload(config = {}) {
+  const categoryId = String(config.category_id || config.categoryId || TICKET_DEFAULT_CATEGORY_ID).replace(/\D/g, "");
+  const options = normalizeTicketOptions(config.options);
+  return {
+    embeds: [{
+      title: config.title || "\ud83c\udfab Contact Division / Unite",
+      description: config.description || [
+        "Vous trouverez ci-dessous les contacts des unites / divisions.",
+        "",
+        ...options.map(o => `- ${o.emoji} **${o.label}**${o.unavailable ? " *(Pas disponible)*" : ""}`),
+        "",
+        "Selectionnez une entree dans le menu pour ouvrir une liaison privee."
+      ].join("\n"),
+      color: Number(config.color || 0x2ecc71),
+      image: config.image_url || config.imageUrl ? { url: config.image_url || config.imageUrl } : { url: TICKET_PANEL_IMAGE_URL },
+      footer: { text: config.footer || "SASP - Ticketing sans surcharge" }
+    }],
+    components: [{
+      type: 1,
+      components: [{
+        type: 3,
+        custom_id: `ticket_open_select|${categoryId}`,
+        placeholder: config.placeholder || "Fais un choix",
+        min_values: 1,
+        max_values: 1,
+        options: options.map(o => ({
+          label: o.label,
+          value: o.key,
+          description: o.description,
+          emoji: { name: o.emoji }
+        }))
+      }]
+    }]
+  };
+}
+
+async function sendTicketPanel(env, channelId, config = {}) {
+  const payload = buildTicketPanelPayload(config);
+  const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Envoi panneau ticket impossible (${res.status}) ${err}`);
+  }
+  return res.json();
+}
+
+async function createTicketChannel(env, interaction, categoryId, selectedKey) {
+  const options = normalizeTicketOptions();
+  const option = options.find(o => o.key === selectedKey);
+  if (!option) throw new Error("Choix ticket introuvable.");
+  if (option.unavailable) return { unavailable: true, label: option.label };
+
+  const VIEW = 1024n;
+  const SEND = 2048n;
+  const READ_HISTORY = 65536n;
+  const ATTACH = 32768n;
+  const EMBED = 16384n;
+  const MANAGE_CHANNELS = 16n;
+  const BASE = String(VIEW | SEND | READ_HISTORY | ATTACH | EMBED);
+  const STAFF = String(VIEW | SEND | READ_HISTORY | ATTACH | EMBED | MANAGE_CHANNELS);
+  const userId = interaction.member?.user?.id || interaction.user?.id;
+  if (!userId) throw new Error("Utilisateur introuvable.");
+
+  const staffRoles = Array.from(new Set([...ADMIN_ROLE_IDS, ...STAFF_ROLE_IDS]));
+  const permissionOverwrites = [
+    { id: interaction.guild_id, type: 0, deny: String(VIEW) },
+    { id: userId, type: 1, allow: BASE },
+    ...staffRoles.map(roleId => ({ id: roleId, type: 0, allow: STAFF }))
+  ];
+  if (option.roleId) permissionOverwrites.push({ id: option.roleId, type: 0, allow: STAFF });
+
+  const channelName = `ticket-${option.key}-${userId.slice(-4)}`.slice(0, 95);
+  const createRes = await discordFetch(`${DISCORD_API}/guilds/${interaction.guild_id}/channels`, {
+    method: "POST",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: channelName,
+      type: 0,
+      parent_id: categoryId || TICKET_DEFAULT_CATEGORY_ID,
+      topic: `Ticket ${option.label} - demandeur ${userId}`,
+      permission_overwrites: permissionOverwrites
+    })
+  });
+  if (!createRes.ok) {
+    const err = await createRes.text().catch(() => "");
+    throw new Error(`Creation ticket impossible (${createRes.status}) ${err}`);
+  }
+  const channel = await createRes.json();
+
+  const roleLine = option.roleId ? `\n<@&${option.roleId}>` : "";
+  const msgRes = await discordFetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      content: `Bonjour <@${userId}>,${roleLine}`,
+      embeds: [{
+        title: `${option.emoji} Ticket ${option.label}`,
+        description: [
+          `Un membre de **${option.label}** reviendra vers vous dans les plus brefs delais.`,
+          "",
+          "Expliquez clairement votre demande, ajoutez les captures ou documents utiles, puis attendez une reponse du service concerne."
+        ].join("\n"),
+        color: 0x2ecc71,
+        fields: [
+          { name: "Demandeur", value: `<@${userId}>`, inline: true },
+          { name: "Service", value: `${option.emoji} ${option.label}`, inline: true },
+          { name: "Statut", value: "Ouvert", inline: true }
+        ],
+        footer: { text: "SASP - Ticketing sans surcharge" },
+        timestamp: new Date().toISOString()
+      }],
+      components: [{
+        type: 1,
+        components: [{ type: 2, style: 4, label: "Fermer le ticket", emoji: { name: "\ud83d\udd12" }, custom_id: `ticket_close|${userId}` }]
+      }],
+      allowed_mentions: { users: [userId], roles: option.roleId ? [option.roleId] : [], parse: [] }
+    })
+  });
+  if (!msgRes.ok) {
+    const err = await msgRes.text().catch(() => "");
+    throw new Error(`Message ticket impossible (${msgRes.status}) ${err}`);
+  }
+  return { channel_id: channel.id, label: option.label };
 }
 
 // â”€â”€ Auto clock-out agents en service depuis +6h â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -3685,6 +3853,53 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/install-ticket-command" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "ticket-panel",
+            description: "Poster un panneau de tickets SASP",
+            options: [
+              {
+                type: 7,
+                name: "salon",
+                description: "Salon ou envoyer le panneau",
+                required: false,
+                channel_types: [0, 5]
+              },
+              {
+                type: 3,
+                name: "categorie",
+                description: "ID de la categorie ou creer les tickets",
+                required: false
+              }
+            ]
+          })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, data });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+    if (url.pathname === "/admin/send-ticket-panel" && request.method === "POST") {
+      try {
+        const token = request.headers.get("x-log-token");
+        if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+        const body = await request.json().catch(() => ({}));
+        const channelId = String(body.channel_id || body.channelId || TICKET_DEFAULT_PANEL_CHANNEL_ID).replace(/\D/g, "");
+        if (!channelId) return json({ ok: false, error: "channel_id manquant" }, 400);
+        const message = await sendTicketPanel(env, channelId, body);
+        return json({ ok: true, channel_id: channelId, message_id: message.id });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/install-sync-command" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || "1382167184607940658";
@@ -3772,6 +3987,55 @@ export default {
           return json({ type: 4, data: { content: `Erreur panneau location (${res.status}) : ${err.slice(0, 500)}`, flags: 64 } });
         }
         return json({ type: 4, data: { content: "Panneau location envoye.", flags: 64 } });
+      }
+
+      // Slash command /ticket-panel
+      if (interaction.type === 2 && interaction.data.name === "ticket-panel") {
+        const member = interaction.member || {};
+        if (!hasStaffRole(member)) {
+          return json({ type: 4, data: { content: "Tu n'as pas les permissions pour utiliser cette commande.", flags: 64 } });
+        }
+        const options = interaction.data.options || [];
+        const targetChannelId = String(options.find(o => o.name === "salon")?.value || interaction.channel_id).replace(/\D/g, "");
+        const categoryId = String(options.find(o => o.name === "categorie")?.value || TICKET_DEFAULT_CATEGORY_ID).replace(/\D/g, "");
+        try {
+          await sendTicketPanel(env, targetChannelId, { category_id: categoryId });
+          return json({ type: 4, data: { content: `Panneau tickets envoye dans <#${targetChannelId}>.`, flags: 64 } });
+        } catch (e) {
+          return json({ type: 4, data: { content: `Erreur panneau tickets : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
+        }
+      }
+
+      // Select menu tickets
+      if (interaction.type === 3 && interaction.data.custom_id?.startsWith("ticket_open_select|")) {
+        const categoryId = String(interaction.data.custom_id.split("|")[1] || TICKET_DEFAULT_CATEGORY_ID).replace(/\D/g, "");
+        const selectedKey = interaction.data.values?.[0];
+        try {
+          const result = await createTicketChannel(env, interaction, categoryId, selectedKey);
+          if (result.unavailable) {
+            return json({ type: 4, data: { content: `${result.label} n'est pas disponible pour le moment.`, flags: 64 } });
+          }
+          return json({ type: 4, data: { content: `Ticket ouvert : <#${result.channel_id}>.`, flags: 64 } });
+        } catch (e) {
+          return json({ type: 4, data: { content: `Erreur ticket : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
+        }
+      }
+
+      if (interaction.type === 3 && interaction.data.custom_id?.startsWith("ticket_close|")) {
+        const requesterId = interaction.data.custom_id.split("|")[1];
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        const member = interaction.member || {};
+        if (userId !== requesterId && !hasStaffRole(member)) {
+          return json({ type: 4, data: { content: "Tu n'as pas l'autorisation de fermer ce ticket.", flags: 64 } });
+        }
+        ctx.waitUntil((async () => {
+          await new Promise(resolve => setTimeout(resolve, 1200));
+          await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+        })());
+        return json({ type: 4, data: { content: "Ticket ferme. Le salon va etre supprime.", flags: 64 } });
       }
 
       // Boutons location logements

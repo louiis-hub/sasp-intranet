@@ -284,6 +284,7 @@ var NAV = [
   { id: 'archives',        icon: '🗃️', label: 'Archives',          staffOnly: true },
   { id: 'stats',           icon: '📈', label: 'Statistiques',       staffOnly: true },
   { id: 'service-logements', icon: '🏠', label: 'Logements service', adminOnly: true },
+  { id: 'ticketing', icon: '🎫', label: 'Tickets Discord', adminOnly: true },
 ];
 
 var REMOVED_PAGES = ['cid', 'ceremonie'];
@@ -296,6 +297,7 @@ var PAGE_TITLES = {
   archives:'Archives', ceremonie:'Prépa Cérémonie', completude:'Complétude fiches',
   'global-settings':'Réglages globaux',
   'service-logements':'Logements de service',
+  ticketing:'Tickets Discord',
   cid:'CID', ftf:'FTF', 'ftf-dossier':'Dossier FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
 };
 
@@ -553,7 +555,7 @@ async function navigate(page, pd) {
     setContent('<div class="empty-state"><div class="empty-icon">CID</div><div class="empty-title">Acces CID restreint</div><div class="empty-sub">Cette page est reservee aux utilisateurs avec le role Discord CID.</div></div>');
     return;
   }
-  if (page === 'service-logements' && !isAdmin()) {
+  if ((page === 'service-logements' || page === 'ticketing') && !isAdmin()) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès réservé aux administrateurs</div><div class="empty-sub">La gestion des logements de service est réservée au Command Staff.</div></div>');
     return;
   }
@@ -608,6 +610,7 @@ async function navigate(page, pd) {
       completude:     renderCompletude,
       'global-settings': renderGlobalSettings,
       'service-logements': renderServiceLogements,
+      ticketing: renderTicketing,
       ftf:            renderFTF,
       'ftf-dossier':  renderFtfDossierPage,
       stats:          renderStats,
@@ -707,6 +710,8 @@ function esc(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function escapeHtml(s) { return esc(s); }
+function escapeAttr(s) { return esc(s); }
 function jsStr(s) {
   return String(s == null ? '' : s)
     .replace(/\\/g, '\\\\')
@@ -4142,6 +4147,140 @@ async function releaseServiceLogement(id) {
 }
 
 // ══ GLOBAL SETTINGS ═══════════════════════════════════════════════
+function ticketingDefaultConfig() {
+  return {
+    channel_id: '1521575058500489478',
+    category_id: '1501323835562000384',
+    title: '🎫 Contact Division / Unité',
+    description: [
+      'Vous trouverez ci-dessous les contacts des unités / divisions :',
+      '',
+      '• 👑 État-Major',
+      '• 🎓 Police Academy',
+      '• 🤝 Crisis Negotiation Unit',
+      '• 🚦 Traffic Unit',
+      '• 🕵️ Criminal Investigation Division',
+      '• ⚔️ Special Weapons And Tactics',
+      '• 🎯 Fugitive Task Force',
+      '• 🤝 Syndicat',
+      '• 🔒 Affaires Internes *(Pas disponible)*',
+      '',
+      'Sélectionnez un service dans le menu pour ouvrir une liaison privée.'
+    ].join('\n'),
+    image_url: 'https://louiis-hub.github.io/sasp-intranet/assets/sasp-sud-watermark.png',
+    footer: 'SASP - Ticketing sans surcharge'
+  };
+}
+
+function ticketingLoadConfig() {
+  var base = ticketingDefaultConfig();
+  try {
+    var saved = JSON.parse(localStorage.getItem('sasp_ticketing_config') || '{}');
+    return Object.assign(base, saved || {});
+  } catch(e) {
+    return base;
+  }
+}
+
+function ticketingReadConfig() {
+  return {
+    channel_id: (document.getElementById('ticketChannelId') || {}).value || '',
+    category_id: (document.getElementById('ticketCategoryId') || {}).value || '',
+    title: (document.getElementById('ticketTitle') || {}).value || '',
+    description: (document.getElementById('ticketDescription') || {}).value || '',
+    image_url: (document.getElementById('ticketImageUrl') || {}).value || '',
+    footer: (document.getElementById('ticketFooter') || {}).value || ''
+  };
+}
+
+function ticketingSaveConfig() {
+  var cfg = ticketingReadConfig();
+  localStorage.setItem('sasp_ticketing_config', JSON.stringify(cfg));
+  toast('Configuration ticket enregistrée sur ce navigateur.', 'success');
+  renderTicketingPreview();
+}
+
+function renderTicketingPreview() {
+  var cfg = ticketingReadConfig();
+  var preview = document.getElementById('ticketPanelPreview');
+  if (!preview) return;
+  preview.innerHTML =
+    '<div class="card" style="border-left:4px solid #2ecc71;max-width:620px">' +
+      '<h3 style="margin-bottom:10px">' + escapeHtml(cfg.title || 'Contact Division / Unité') + '</h3>' +
+      '<div style="white-space:pre-line;color:var(--text-muted);line-height:1.55">' + escapeHtml(cfg.description || '') + '</div>' +
+      (cfg.image_url ? '<img src="' + escapeAttr(cfg.image_url) + '" alt="" style="width:100%;max-height:260px;object-fit:cover;border-radius:8px;margin-top:14px;border:1px solid var(--border)">' : '') +
+      '<div class="muted" style="margin-top:12px">' + escapeHtml(cfg.footer || 'SASP - Ticketing') + '</div>' +
+      '<div style="margin-top:14px"><button class="btn btn-secondary" disabled>Fais un choix</button></div>' +
+    '</div>';
+}
+
+async function renderTicketing() {
+  if (!isAdmin()) { toast('Accès réservé aux administrateurs.','error'); return; }
+  var cfg = ticketingLoadConfig();
+  setContent(
+    '<div class="page-head">' +
+      '<div><div class="eyebrow">Discord</div><h1>Tickets Discord</h1><p class="muted">Panneau type Ticket Tool : choix de service, liaison privée et fermeture du ticket.</p></div>' +
+      '<div class="actions-row"><button class="btn btn-secondary" onclick="installTicketCommand()">Installer /ticket-panel</button><button class="btn btn-primary" onclick="sendTicketPanelFromSite()">Envoyer le panneau</button></div>' +
+    '</div>' +
+    '<div class="grid-2">' +
+      '<div class="card">' +
+        '<h3>Configuration</h3>' +
+        '<div class="form-grid">' +
+          '<label>Salon du panneau<input id="ticketChannelId" class="form-control" value="' + escapeAttr(cfg.channel_id) + '" placeholder="ID salon Discord"></label>' +
+          '<label>Catégorie des tickets<input id="ticketCategoryId" class="form-control" value="' + escapeAttr(cfg.category_id) + '" placeholder="ID catégorie Discord"></label>' +
+          '<label>Titre<input id="ticketTitle" class="form-control" value="' + escapeAttr(cfg.title) + '"></label>' +
+          '<label>Image URL<input id="ticketImageUrl" class="form-control" value="' + escapeAttr(cfg.image_url) + '"></label>' +
+        '</div>' +
+        '<label>Description<textarea id="ticketDescription" class="form-control" rows="12" oninput="renderTicketingPreview()">' + escapeHtml(cfg.description) + '</textarea></label>' +
+        '<label>Footer<input id="ticketFooter" class="form-control" value="' + escapeAttr(cfg.footer) + '"></label>' +
+        '<div class="actions-row" style="margin-top:14px"><button class="btn btn-secondary" onclick="ticketingSaveConfig()">Sauvegarder</button><button class="btn btn-danger" onclick="ticketingResetConfig()">Réinitialiser</button></div>' +
+      '</div>' +
+      '<div class="card">' +
+        '<h3>Aperçu</h3>' +
+        '<div id="ticketPanelPreview"></div>' +
+        '<div class="info-box" style="margin-top:16px">Quand un utilisateur choisit une division, le bot crée un salon privé visible par lui, les admins, le staff et le rôle de la division sélectionnée.</div>' +
+      '</div>' +
+    '</div>'
+  );
+  renderTicketingPreview();
+}
+
+function ticketingResetConfig() {
+  localStorage.removeItem('sasp_ticketing_config');
+  toast('Configuration ticket réinitialisée.', 'info');
+  renderTicketing();
+}
+
+async function installTicketCommand() {
+  try {
+    toast('Installation de /ticket-panel...', 'info');
+    var r = await fetch(WORKER_BASE + '/admin/install-ticket-command');
+    var data = await r.json().catch(function(){ return {}; });
+    if (!r.ok || data.ok === false) throw new Error(data.error || 'Installation impossible');
+    toast('/ticket-panel installé.', 'success');
+  } catch(e) {
+    toast(e.message || String(e), 'error');
+  }
+}
+
+async function sendTicketPanelFromSite() {
+  try {
+    var cfg = ticketingReadConfig();
+    localStorage.setItem('sasp_ticketing_config', JSON.stringify(cfg));
+    toast('Envoi du panneau tickets...', 'info');
+    var r = await fetch(WORKER_BASE + '/admin/send-ticket-panel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+      body: JSON.stringify(cfg)
+    });
+    var data = await r.json().catch(function(){ return {}; });
+    if (!r.ok || data.ok === false) throw new Error(data.error || 'Envoi impossible');
+    toast('Panneau tickets envoyé.', 'success');
+  } catch(e) {
+    toast(e.message || String(e), 'error');
+  }
+}
+
 async function renderGlobalSettings() {
   if (!isAdmin()) { toast('Accès réservé aux administrateurs.','error'); return; }
   var appUsers = await DB.getAppUsers();
