@@ -3649,6 +3649,56 @@ export default {
         }
       };
     }
+    function candidatureModalResponse(customId = "candidature_modal") {
+      return {
+        type: 9,
+        data: {
+          custom_id: customId,
+          title: "Candidature Police Academy",
+          components: [
+            {
+              type: 1,
+              components: [{
+                type: 4,
+                custom_id: "cand_telephone",
+                label: "Numéro de téléphone",
+                style: 1,
+                required: true,
+                placeholder: "Ex : 555-1234",
+                min_length: 7,
+                max_length: 30
+              }]
+            },
+            {
+              type: 1,
+              components: [{
+                type: 4,
+                custom_id: "cand_disponibilite",
+                label: "Disponibilité",
+                style: 2,
+                required: true,
+                placeholder: "Ex : soirs, week-end, vacances, horaires...",
+                min_length: 3,
+                max_length: 1000
+              }]
+            },
+            {
+              type: 1,
+              components: [{
+                type: 4,
+                custom_id: "cand_experience",
+                label: "Expérience passée",
+                style: 2,
+                required: true,
+                placeholder: "Experience RP / police / secourisme / conduite / autre...",
+                min_length: 3,
+                max_length: 1500
+              }]
+            }
+          ]
+        }
+      };
+    }
     function isSubventionStickyMessage(message) {
       const embed = message?.embeds?.[0];
       const title = String(embed?.title || "").toLowerCase();
@@ -4579,6 +4629,9 @@ export default {
           if (result.unavailable) {
             return json({ type: 4, data: { content: `${result.label} n'est pas disponible pour le moment.`, flags: 64 } });
           }
+          if (selectedKey === "police-academy-rc" && result.channel_id) {
+            return json(candidatureModalResponse(`candidature_modal|${result.channel_id}`.slice(0, 100)));
+          }
           const panelConfig = panelKey === "academy"
             ? buildAcademyTicketPanelConfig({ category_id: categoryId })
             : { category_id: categoryId };
@@ -4781,54 +4834,7 @@ export default {
 
       // Slash command /candidature
       if (interaction.type === 2 && interaction.data.name === "candidature") {
-        return json({
-          type: 9,
-          data: {
-            custom_id: "candidature_modal",
-            title: "Candidature Police Academy",
-            components: [
-              {
-                type: 1,
-                components: [{
-                  type: 4,
-                  custom_id: "cand_telephone",
-                  label: "Num\u00e9ro de t\u00e9l\u00e9phone",
-                  style: 1,
-                  required: true,
-                  placeholder: "Ex : 555-1234",
-                  min_length: 7,
-                  max_length: 30
-                }]
-              },
-              {
-                type: 1,
-                components: [{
-                  type: 4,
-                  custom_id: "cand_disponibilite",
-                  label: "Disponibilit\u00e9",
-                  style: 2,
-                  required: true,
-                  placeholder: "Ex : soirs, week-end, vacances, horaires...",
-                  min_length: 3,
-                  max_length: 1000
-                }]
-              },
-              {
-                type: 1,
-                components: [{
-                  type: 4,
-                  custom_id: "cand_experience",
-                  label: "Exp\u00e9rience pass\u00e9e",
-                  style: 2,
-                  required: true,
-                  placeholder: "Experience RP / police / secourisme / conduite / autre...",
-                  min_length: 3,
-                  max_length: 1500
-                }]
-              }
-            ]
-          }
-        });
+        return json(candidatureModalResponse());
       }
 
       // Slash command /heures
@@ -4964,7 +4970,9 @@ export default {
       }
 
       // Modal submit /candidature
-      if (interaction.type === 5 && interaction.data.custom_id === "candidature_modal") {
+      if (interaction.type === 5 && interaction.data.custom_id?.startsWith("candidature_modal")) {
+        const [, targetChannelIdRaw = ""] = interaction.data.custom_id.split("|");
+        const targetChannelId = String(targetChannelIdRaw || "").replace(/\D/g, "");
         const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
         const telephone = getValue("cand_telephone").trim();
         const disponibilite = getValue("cand_disponibilite").trim();
@@ -4978,31 +4986,49 @@ export default {
           || interaction.member?.user?.username
           || "Candidat";
 
-        return json({
-          type: 4,
-          data: {
-            content: `<@${userId}>`,
-            embeds: [{
-              title: "🎓 Candidature Police Academy",
-              description: [
-                `Candidature envoy\u00e9e par **${displayName}**.`,
-                "",
-                "📎 Merci d'envoyer \u00e0 la suite dans ce salon :",
-                "• une **carte d'identit\u00e9**",
-                "• un **permis**"
-              ].join("\n"),
-              color: 0x0b2f4a,
-              fields: [
-                { name: "📞 Num\u00e9ro de t\u00e9l\u00e9phone", value: telephone.slice(0, 1024) || "Non renseign\u00e9", inline: false },
-                { name: "🕒 Disponibilit\u00e9", value: disponibilite.slice(0, 1024) || "Non renseign\u00e9e", inline: false },
-                { name: "📋 Exp\u00e9rience pass\u00e9e", value: experience.slice(0, 1024) || "Non renseign\u00e9e", inline: false }
-              ],
-              footer: { text: "SASP - Police Academy" },
-              timestamp: new Date().toISOString()
-            }],
-            allowed_mentions: { users: [userId], parse: [] }
+        const candidaturePayload = {
+          content: `<@${userId}>`,
+          embeds: [{
+            title: "🎓 Candidature Police Academy",
+            description: [
+              `Candidature envoy\u00e9e par **${displayName}**.`,
+              "",
+              "📎 Merci d'envoyer \u00e0 la suite dans ce salon :",
+              "• une **carte d'identit\u00e9**",
+              "• un **permis**"
+            ].join("\n"),
+            color: 0x0b2f4a,
+            fields: [
+              { name: "📞 Num\u00e9ro de t\u00e9l\u00e9phone", value: telephone.slice(0, 1024) || "Non renseign\u00e9", inline: false },
+              { name: "🕒 Disponibilit\u00e9", value: disponibilite.slice(0, 1024) || "Non renseign\u00e9e", inline: false },
+              { name: "📋 Exp\u00e9rience pass\u00e9e", value: experience.slice(0, 1024) || "Non renseign\u00e9e", inline: false }
+            ],
+            footer: { text: "SASP - Police Academy" },
+            timestamp: new Date().toISOString()
+          }],
+          allowed_mentions: { users: [userId], parse: [] }
+        };
+
+        if (targetChannelId) {
+          const res = await discordFetch(`${DISCORD_API}/channels/${targetChannelId}/messages`, {
+            method: "POST",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify(candidaturePayload)
+          });
+          if (!res.ok) {
+            const err = await res.text();
+            return json({ type: 4, data: { content: `Erreur candidature (${res.status}) : ${err.slice(0, 1200)}`, flags: 64 } });
           }
-        });
+          return json({
+            type: 4,
+            data: {
+              content: `✅ Candidature envoy\u00e9e dans <#${targetChannelId}>. Pense \u00e0 ajouter ta carte d'identit\u00e9 et ton permis dans le ticket.`,
+              flags: 64
+            }
+          });
+        }
+
+        return json({ type: 4, data: candidaturePayload });
       }
 
       if (interaction.type === 5 && interaction.data.custom_id.startsWith("ftf_convocation_modal|")) {
