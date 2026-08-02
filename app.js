@@ -4740,9 +4740,14 @@ async function renderPointeuse() {
     var btnHtml = actif
       ? '<button class="btn btn-danger btn-sm" onclick="doClockOut(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')">⏹ Sortie</button>' + forceBtn
       : '<button class="btn btn-primary btn-sm" onclick="doClockIn(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')">▶ Entrée</button>';
+    var telephone = fmtTel(a.telephone) || '';
+    var telephoneCell = telephone
+      ? '<div style="display:flex;align-items:center;gap:6px;white-space:nowrap"><code style="font-family:monospace;font-size:.8rem;color:var(--t2)">' + esc(telephone) + '</code><button class="btn btn-ghost btn-sm" title="Copier le telephone" onclick="event.stopPropagation();copyTelephone(\'' + jsStr(telephone) + '\')">Copier</button></div>'
+      : '<span style="font-family:monospace;font-size:.8rem;color:var(--t3)">-</span>';
     return '<tr>' +
       '<td>' + gradeBadge(a.grade) + '</td>' +
       '<td><strong>' + esc(a.prenom + ' ' + a.nom) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule) + '</small></td>' +
+      '<td>' + telephoneCell + '</td>' +
       '<td>' + statusHtml + '</td>' +
       '<td>' + priseHtml + '</td>' +
       '<td>' + finHtml + '</td>' +
@@ -4829,8 +4834,8 @@ async function renderPointeuse() {
     '</div>' +
     '<div class="card">' +
       '<div class="table-wrap"><table>' +
-        '<thead><tr><th>GRADE</th><th>AGENT</th><th>STATUT</th><th>PRISE SERVICE</th><th>FIN SERVICE</th><th>ACTION</th></tr></thead>' +
-        '<tbody>' + (rows || '<tr><td colspan="6" style="text-align:center;color:var(--t3)">Aucun agent</td></tr>') + '</tbody>' +
+        '<thead><tr><th>GRADE</th><th>AGENT</th><th>TELEPHONE</th><th>STATUT</th><th>PRISE SERVICE</th><th>FIN SERVICE</th><th>ACTION</th></tr></thead>' +
+        '<tbody>' + (rows || '<tr><td colspan="7" style="text-align:center;color:var(--t3)">Aucun agent</td></tr>') + '</tbody>' +
       '</table></div>' +
     '</div>' +
     rapportHtml
@@ -6774,9 +6779,14 @@ async function renderPointeuseHistorique() {
       var ibanCell = iban
         ? '<div style="display:flex;align-items:center;gap:6px;white-space:nowrap"><code style="font-family:monospace;font-size:.8rem;color:var(--t2)">' + esc(iban) + '</code><button class="btn btn-ghost btn-sm" title="Copier l IBAN" onclick="event.stopPropagation();copyIban(\'' + esc(String(iban).replace(/\\/g, '\\\\').replace(/'/g, "\\'")) + '\')">Copier</button></div>'
         : '<span style="font-family:monospace;font-size:.8rem;color:var(--t3)">—</span>';
+      var telephone = fmtTel(a.telephone) || '';
+      var telephoneCell = telephone
+        ? '<div style="display:flex;align-items:center;gap:6px;white-space:nowrap"><code style="font-family:monospace;font-size:.8rem;color:var(--t2)">' + esc(telephone) + '</code><button class="btn btn-ghost btn-sm" title="Copier le telephone" onclick="event.stopPropagation();copyTelephone(\'' + jsStr(telephone) + '\')">Copier</button></div>'
+        : '<span style="font-family:monospace;font-size:.8rem;color:var(--t3)">-</span>';
       return '<tr style="' + (isPaid ? 'opacity:.5' : '') + '">' +
         '<td style="white-space:nowrap">' + dot + ' <strong>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule || '') + '</small></td>' +
         '<td>' + ibanCell + '</td>' +
+        '<td>' + telephoneCell + '</td>' +
         '<td>' + (sessionsHtml || '<span style="color:var(--t3)">—</span>') + '</td>' +
         '<td style="text-align:center"><strong>' + fmtSec(sec) + '</strong>' + (entry.ongoing ? ' <span style="color:var(--gold);font-size:.75rem">+en cours</span>' : '') + (correctionMinutes ? '<br><small style="color:var(--red,#ff5b5b)">brut ' + fmtSec(rawSec) + ' - retrait ' + fmtMinutesDuration(correctionMinutes) + '</small>' : '') + '</td>' +
         '<td style="text-align:center;color:var(--gold);font-weight:700">' + fmtMoney(sal) + '</td>' +
@@ -6809,7 +6819,7 @@ async function renderPointeuseHistorique() {
           '<div>' + missingHtml + '</div>' +
         '</div>' +
         '<div class="table-wrap"><table>' +
-          '<thead><tr><th>AGENT</th><th>IBAN</th><th>PRISE - FIN</th><th style="text-align:center">DUREE</th><th style="text-align:center">SALAIRE</th><th style="text-align:center">RETRAIT</th><th style="text-align:center">PRIME</th><th style="text-align:center">TOTAL</th><th style="text-align:center">PAYE</th></tr></thead>' +
+          '<thead><tr><th>AGENT</th><th>IBAN</th><th>TELEPHONE</th><th>PRISE - FIN</th><th style="text-align:center">DUREE</th><th style="text-align:center">SALAIRE</th><th style="text-align:center">RETRAIT</th><th style="text-align:center">PRIME</th><th style="text-align:center">TOTAL</th><th style="text-align:center">PAYE</th></tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table></div>' +
       '</div>' +
@@ -6911,13 +6921,24 @@ function copyIban(iban) {
   if (!iban) { toast('Aucun IBAN a copier.', 'info'); return; }
   function done() { toast('IBAN copie.', 'success'); }
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(iban).then(done).catch(function(){ fallbackCopyText(iban, done); });
+    navigator.clipboard.writeText(iban).then(done).catch(function(){ fallbackCopyText(iban, done, 'Copie impossible, selectionne l IBAN manuellement.'); });
   } else {
-    fallbackCopyText(iban, done);
+    fallbackCopyText(iban, done, 'Copie impossible, selectionne l IBAN manuellement.');
   }
 }
 
-function fallbackCopyText(text, onDone) {
+function copyTelephone(telephone) {
+  telephone = String(telephone || '').trim();
+  if (!telephone) { toast('Aucun telephone a copier.', 'info'); return; }
+  function done() { toast('Telephone copie.', 'success'); }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(telephone).then(done).catch(function(){ fallbackCopyText(telephone, done, 'Copie impossible, selectionne le telephone manuellement.'); });
+  } else {
+    fallbackCopyText(telephone, done, 'Copie impossible, selectionne le telephone manuellement.');
+  }
+}
+
+function fallbackCopyText(text, onDone, errorMessage) {
   var ta = document.createElement('textarea');
   ta.value = text;
   ta.setAttribute('readonly', '');
@@ -6929,7 +6950,7 @@ function fallbackCopyText(text, onDone) {
     document.execCommand('copy');
     if (onDone) onDone();
   } catch(e) {
-    toast('Copie impossible, selectionne l IBAN manuellement.', 'error');
+    toast(errorMessage || 'Copie impossible, selectionne le texte manuellement.', 'error');
   }
   document.body.removeChild(ta);
 }

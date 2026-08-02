@@ -287,7 +287,7 @@ var DB = {
   },
   async getAllPointages() {
     var { data } = await getDb().from('pointages')
-      .select('*, agents(id, nom, prenom, matricule, grade, iban)')
+      .select('*, agents(id, nom, prenom, matricule, grade, iban, telephone)')
       .order('clock_in', { ascending: false });
     return data || [];
   },
