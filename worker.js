@@ -1709,7 +1709,7 @@ function buildTicketPanelPayload(config = {}) {
   const options = normalizeTicketOptions(config.options);
   return {
     embeds: [{
-      title: config.title || "\ud83c\udfab Contact Division / Unite",
+      title: config.title || "\ud83c\udfab Contact Division / Unité",
       description: config.description || [
         "Vous trouverez ci-dessous les contacts des unités / divisions.",
         "",
