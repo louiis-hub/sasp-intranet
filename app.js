@@ -278,15 +278,15 @@ var NAV = [
   { id: 'cartes',   icon: '🗺️', label: 'Cartes' },
   { divider: true },
   { id: 'ftf',      icon: '🎯', label: 'Fugitive Task Force', ftfOnly: true },
-  { id: 'cid',      icon: 'CID', label: 'Criminal Investigation Division', cidOnly: true },
   // wiki sections injected dynamically by loadWikiSections()
   { divider: true, staffOnly: true, _wikiEnd: true },
   { group: 'ADMINISTRATION', staffOnly: true },
   { id: 'archives',        icon: '🗃️', label: 'Archives',          staffOnly: true },
   { id: 'stats',           icon: '📈', label: 'Statistiques',       staffOnly: true },
   { id: 'service-logements', icon: '🏠', label: 'Logements service', adminOnly: true },
-  { id: 'ceremonie',       icon: '🎖️', label: 'Prépa Cérémonie',    ceremonyOnly: true },
 ];
+
+var REMOVED_PAGES = ['cid', 'ceremonie'];
 
 var PAGE_TITLES = {
   dashboard:'Tableau de bord', agents:'Agents', 'agent-profile':'Fiche agent',
@@ -475,7 +475,6 @@ function buildNav() {
   var isCeremony = S.role === 'admin' || S.role === 'rh';
   var isVisiteur = S.role === 'visiteur';
   var isFtfOnly = S.role === 'ftf';
-  var isCidOnly = S.role === 'cid';
   var VISITEUR_NAV = ['dashboard', 'pointeuse', 'faq', 'cartes'];
   var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'archives', 'recap', 'ceremonie', 'completude'];
   var html = '';
@@ -483,7 +482,6 @@ function buildNav() {
     if (item.ftfOnly && !canAccessFTF()) return;
     if (item.cidOnly && !canAccessCID()) return;
     if (isFtfOnly && item.id && item.id !== 'ftf') return;
-    if (isCidOnly && item.id && item.id !== 'cid') return;
     if (item.adminOnly && !isAdmin()) return;
     if (item.staffOnly && !isStaff) return;
     if (item.ceremonyOnly && !isCeremony) return;
@@ -533,6 +531,10 @@ function toggleSidebar() {
 
 // ── Router ─────────────────────────────────────────────────────────
 async function navigate(page, pd) {
+  if (REMOVED_PAGES.indexOf(page) !== -1) {
+    page = 'dashboard';
+    pd = {};
+  }
   S.page = page;
   S.pd = pd || {};
   updateUserUI();
@@ -561,10 +563,6 @@ async function navigate(page, pd) {
   }
   if (S.role === 'ftf' && page !== 'ftf') {
     await navigate('ftf');
-    return;
-  }
-  if (S.role === 'cid' && page !== 'cid') {
-    await navigate('cid');
     return;
   }
   if ((S.role === 'agent' || S.role === 'academy' || S.role === 'visiteur') && page === 'ceremonie') {
