@@ -4216,7 +4216,7 @@ function ticketingAdminCss() {
     '.tt-section{background:#1e293b;border:1px solid rgba(255,255,255,.04);border-radius:9px;padding:12px;margin-bottom:10px;box-shadow:0 14px 34px rgba(0,0,0,.22)}' +
     '.tt-section-title{font-size:.9rem;font-weight:900;color:#fff;margin:0 0 12px}' +
     '.tt-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}' +
-    '.tt-tile{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;min-height:64px;background:#3a4b65;border:1px solid rgba(255,255,255,.05);border-radius:6px;padding:14px 14px 12px 16px;color:#fff;transition:.16s transform,.16s background,.16s border-color;cursor:default}' +
+    '.tt-tile{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;min-height:64px;width:100%;text-align:left;background:#3a4b65;border:1px solid rgba(255,255,255,.05);border-radius:6px;padding:14px 14px 12px 16px;color:#fff;transition:.16s transform,.16s background,.16s border-color;cursor:pointer;font:inherit}' +
     '.tt-tile:hover{transform:translateY(-1px);background:#435671;border-color:rgba(58,205,241,.28)}' +
     '.tt-tile strong{display:block;font-size:.96rem;line-height:1.1}' +
     '.tt-tile span{display:block;margin-top:6px;color:#aeb9c8;font-size:.72rem;line-height:1.2}' +
@@ -4234,17 +4234,67 @@ function ticketingAdminCss() {
     '.tt-preview-footer{display:flex;gap:8px;align-items:center;margin-top:12px;color:#dfe6f3;font-size:.8rem}' +
     '.tt-select-preview{margin-top:12px;background:#303238;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:12px;color:#d8dde8;display:flex;justify-content:space-between}' +
     '.tt-hint{background:rgba(14,20,32,.75);border:1px solid rgba(58,205,241,.18);border-radius:8px;color:#9fb5d0;padding:12px;margin-top:12px;font-size:.82rem;line-height:1.45}' +
+    '.tt-detail{background:linear-gradient(180deg,rgba(12,20,33,.98),rgba(10,15,24,.98));border:1px solid rgba(58,205,241,.18);border-radius:8px;padding:14px;margin-top:12px}' +
+    '.tt-detail .eyebrow{color:#3acdf1;margin-bottom:8px}' +
+    '.tt-detail h4{margin:0 0 8px;color:#fff;font-size:1rem}' +
+    '.tt-detail p{margin:0;color:#b6c6d9;font-size:.84rem;line-height:1.5}' +
+    '.tt-detail button{margin-top:12px}' +
     '@media(max-width:1050px){.tt-shell{grid-template-columns:1fr}.tt-side{position:static}.tt-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}' +
     '@media(max-width:680px){.tt-grid,.tt-config{grid-template-columns:1fr}.tt-actions{justify-content:flex-start}.ticket-admin{padding:0 4px}}' +
   '</style>';
 }
 
-function ticketingOptionTile(title, subtitle, premium) {
-  return '<div class="tt-tile"><div><strong>' + escapeHtml(title) + (premium ? '<span class="tt-diamond">◇</span>' : '') + '</strong><span>' + escapeHtml(subtitle) + '</span></div><div class="tt-chevron">›</div></div>';
+function ticketingOptionTile(key, title, subtitle, premium) {
+  return '<button type="button" class="tt-tile" onclick="ticketingOpenOption(\'' + escapeAttr(key) + '\')"><div><strong>' + escapeHtml(title) + (premium ? '<span class="tt-diamond">◇</span>' : '') + '</strong><span>' + escapeHtml(subtitle) + '</span></div><div class="tt-chevron">›</div></button>';
 }
 
 function ticketingSection(title, tiles) {
   return '<section class="tt-section"><h3 class="tt-section-title">' + escapeHtml(title) + '</h3><div class="tt-grid">' + tiles.join('') + '</div></section>';
+}
+
+function ticketingOpenOption(key) {
+  var options = {
+    general: ['General', 'Renomme le panneau et sauvegarde la configuration locale avant envoi.', 'ticketTitle'],
+    category: ['Category', 'Définit la catégorie Discord où les salons privés de tickets seront créés.', 'ticketCategoryId'],
+    ticket: ['Ticket', 'Définit le salon où le panneau public sera envoyé.', 'ticketChannelId'],
+    moderator: ['Moderator', 'Le staff autorisé est géré par les rôles déjà configurés côté bot.'],
+    permissions: ['Permissions', 'Chaque ticket est privé : utilisateur, admins, staff et rôle de division sélectionné.'],
+    buttons: ['Buttons', 'Le bouton de fermeture est ajouté automatiquement dans chaque liaison privée.'],
+    messages: ['Messages', 'Modifie le texte affiché dans le panneau Discord.', 'ticketDescription'],
+    escalate: ['Escalate', 'Escalade non utilisée pour le moment : les tickets vont directement au staff concerné.'],
+    panel: ['Panel', 'Configure le visuel principal du panneau : titre, description, image et footer.', 'ticketDescription'],
+    command: ['Command Style', 'Le slash /ticket-panel reste disponible pour envoyer rapidement le panneau depuis Discord.'],
+    dropdown: ['DropDown Style', 'Le menu déroulant Discord liste les divisions et ouvre la liaison privée au choix.'],
+    thread: ['Thread Style', 'Le système actuel crée des salons privés, pas des threads.'],
+    forms: ['Forms', 'Les formulaires avancés ne sont pas actifs : le ticket démarre via sélection de division.'],
+    transcript: ['Transcript', 'Les transcripts ne sont pas encore enregistrés automatiquement.'],
+    logging: ['Logging', 'Les actions importantes passent par les logs Discord existants quand le worker les déclenche.'],
+    automation: ['Automation', 'Automatisation active : création du salon, permissions et fermeture via bouton.'],
+    limits: ['Limits', 'Aucune limite utilisateur configurée pour le moment.'],
+    claiming: ['Claiming', 'Pas de système de claim : tout le staff autorisé peut répondre.'],
+    integrations: ['Integrations', 'Intégration actuelle : Discord + worker SASP Intranet.']
+  };
+  var item = options[key] || options.panel;
+  var panel = document.getElementById('ticketOptionDetails');
+  if (panel) {
+    panel.innerHTML =
+      '<div class="tt-detail">' +
+        '<div class="eyebrow">Option sélectionnée</div>' +
+        '<h4>' + escapeHtml(item[0]) + '</h4>' +
+        '<p>' + escapeHtml(item[1]) + '</p>' +
+        (item[2] ? '<button class="btn btn-secondary btn-sm" onclick="ticketingFocusField(\'' + escapeAttr(item[2]) + '\')">Ouvrir le réglage</button>' : '') +
+      '</div>';
+  }
+  if (item[2]) ticketingFocusField(item[2]);
+}
+
+function ticketingFocusField(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(function(){
+    try { el.focus(); if (el.select) el.select(); } catch(e) {}
+  }, 180);
 }
 
 function renderTicketingPreview() {
@@ -4281,14 +4331,14 @@ async function renderTicketing() {
       '<div class="tt-shell">' +
         '<main>' +
           ticketingSection('General Ticket Options', [
-            ticketingOptionTile('General', 'Support team and other general items'),
-            ticketingOptionTile('Category', 'Category options for closed/opened tickets.'),
-            ticketingOptionTile('Ticket', 'General ticket options'),
-            ticketingOptionTile('Moderator', 'Moderator message options'),
-            ticketingOptionTile('Permissions', 'Permission options'),
-            ticketingOptionTile('Buttons', 'Quick access list of all buttons'),
-            ticketingOptionTile('Messages', 'Quick access list of all messages'),
-            ticketingOptionTile('Escalate', 'Escalation options')
+            ticketingOptionTile('general', 'General', 'Titre et sauvegarde du panneau'),
+            ticketingOptionTile('category', 'Category', 'Catégorie des tickets ouverts'),
+            ticketingOptionTile('ticket', 'Ticket', 'Salon où envoyer le panneau'),
+            ticketingOptionTile('moderator', 'Moderator', 'Rôles staff et modération'),
+            ticketingOptionTile('permissions', 'Permissions', 'Accès privés automatiques'),
+            ticketingOptionTile('buttons', 'Buttons', 'Boutons de fermeture'),
+            ticketingOptionTile('messages', 'Messages', 'Texte envoyé sur Discord'),
+            ticketingOptionTile('escalate', 'Escalate', 'Infos escalade')
           ]) +
           '<section class="tt-section"><h3 class="tt-section-title">Panel Settings</h3>' +
             '<div class="tt-config">' +
@@ -4299,24 +4349,25 @@ async function renderTicketing() {
               '<label class="tt-wide">Message du panneau<textarea id="ticketDescription" class="form-control" rows="10" oninput="renderTicketingPreview()">' + escapeHtml(cfg.description) + '</textarea></label>' +
             '</div>' +
             '<div class="tt-grid" style="margin-top:10px">' +
-              ticketingOptionTile('Panel', 'Options for the message used to create tickets') +
-              ticketingOptionTile('Command Style', 'Options for creating tickets using commands.') +
-              ticketingOptionTile('DropDown Style', 'Options for creating tickets using select menu.') +
-              ticketingOptionTile('Thread Style', 'Thread style tickets, instead of channels.', true) +
-              ticketingOptionTile('Forms', 'Form options') +
+              ticketingOptionTile('panel', 'Panel', 'Message utilisé pour créer les tickets') +
+              ticketingOptionTile('command', 'Command Style', 'Envoi via slash command') +
+              ticketingOptionTile('dropdown', 'DropDown Style', 'Création via menu déroulant') +
+              ticketingOptionTile('thread', 'Thread Style', 'Mode salons privés', true) +
+              ticketingOptionTile('forms', 'Forms', 'Formulaires avancés') +
             '</div>' +
           '</section>' +
           ticketingSection('Advanced Settings', [
-            ticketingOptionTile('Transcript', 'Options for saving your transcripts'),
-            ticketingOptionTile('Logging', 'Options for server logging'),
-            ticketingOptionTile('Automation', 'Automation options', true),
-            ticketingOptionTile('Limits', 'Limits and scheduling'),
-            ticketingOptionTile('Claiming', 'Claiming options', true),
-            ticketingOptionTile('Integrations', 'External bot integrations', true)
+            ticketingOptionTile('transcript', 'Transcript', 'Sauvegarde des tickets'),
+            ticketingOptionTile('logging', 'Logging', 'Logs serveur'),
+            ticketingOptionTile('automation', 'Automation', 'Création et fermeture auto', true),
+            ticketingOptionTile('limits', 'Limits', 'Limites et cooldowns'),
+            ticketingOptionTile('claiming', 'Claiming', 'Prise en charge staff', true),
+            ticketingOptionTile('integrations', 'Integrations', 'Bot Discord et worker', true)
           ]) +
         '</main>' +
         '<aside class="tt-side">' +
           '<section class="tt-section"><h3 class="tt-section-title">Live Preview</h3><div id="ticketPanelPreview"></div>' +
+            '<div id="ticketOptionDetails"></div>' +
             '<div class="tt-hint">Le panneau envoyé sur Discord garde la logique actuelle : choix de division, création d’une liaison privée, permissions automatiques et bouton de fermeture.</div>' +
           '</section>' +
         '</aside>' +
@@ -4324,6 +4375,7 @@ async function renderTicketing() {
     '</div>'
   );
   renderTicketingPreview();
+  ticketingOpenOption('panel');
 }
 
 function ticketingResetConfig() {
