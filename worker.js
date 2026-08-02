@@ -4208,6 +4208,41 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/install-candidature-command" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const reset = url.searchParams.get("reset") === "1";
+        const resetDeleted = [];
+        if (reset) {
+          const listRes = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          const commands = await listRes.json();
+          if (!listRes.ok) return json({ ok: false, step: "list", data: commands }, listRes.status);
+          for (const command of commands.filter(c => c.name === "candidature")) {
+            const delRes = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands/${command.id}`, {
+              method: "DELETE",
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+            });
+            resetDeleted.push({ id: command.id, ok: delRes.status === 204, status: delRes.status });
+          }
+        }
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "candidature",
+            description: "Remplir une candidature Police Academy"
+          })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, reset, resetDeleted, data });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/install-clear-command" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
@@ -4722,6 +4757,58 @@ export default {
         return json(subventionModalResponse());
       }
 
+      // Slash command /candidature
+      if (interaction.type === 2 && interaction.data.name === "candidature") {
+        return json({
+          type: 9,
+          data: {
+            custom_id: "candidature_modal",
+            title: "Candidature Police Academy",
+            components: [
+              {
+                type: 1,
+                components: [{
+                  type: 4,
+                  custom_id: "cand_telephone",
+                  label: "Num\u00e9ro de t\u00e9l\u00e9phone",
+                  style: 1,
+                  required: true,
+                  placeholder: "Ex : 555-1234",
+                  min_length: 7,
+                  max_length: 30
+                }]
+              },
+              {
+                type: 1,
+                components: [{
+                  type: 4,
+                  custom_id: "cand_disponibilite",
+                  label: "Disponibilit\u00e9",
+                  style: 2,
+                  required: true,
+                  placeholder: "Ex : soirs, week-end, vacances, horaires...",
+                  min_length: 3,
+                  max_length: 1000
+                }]
+              },
+              {
+                type: 1,
+                components: [{
+                  type: 4,
+                  custom_id: "cand_experience",
+                  label: "Exp\u00e9rience pass\u00e9e",
+                  style: 2,
+                  required: true,
+                  placeholder: "Experience RP / police / secourisme / conduite / autre...",
+                  min_length: 3,
+                  max_length: 1500
+                }]
+              }
+            ]
+          }
+        });
+      }
+
       // Slash command /heures
       if (interaction.type === 2 && interaction.data.name === "heures") {
         const siteKey = siteKeyFromGuildId(interaction.guild_id);
@@ -4852,6 +4939,48 @@ export default {
           return json({ type: 4, data: { content: `âŒ Erreur crÃ©ation subvention (${res.status}): ${err}`, flags: 64 } });
         }
         return json({ type: 4, data: { content: `âœ… Demande de subvention envoyÃ©e pour **${agentName}**.`, flags: 64 } });
+      }
+
+      // Modal submit /candidature
+      if (interaction.type === 5 && interaction.data.custom_id === "candidature_modal") {
+        const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
+        const telephone = getValue("cand_telephone").trim();
+        const disponibilite = getValue("cand_disponibilite").trim();
+        const experience = getValue("cand_experience").trim();
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        let identity = {};
+        try { identity = await getAgentIdentityForInteraction(env, interaction); } catch {}
+        const displayName = `${identity.prenom || ""} ${identity.nom || ""}`.trim()
+          || interaction.member?.nick
+          || interaction.member?.user?.global_name
+          || interaction.member?.user?.username
+          || "Candidat";
+
+        return json({
+          type: 4,
+          data: {
+            content: `<@${userId}>`,
+            embeds: [{
+              title: "🎓 Candidature Police Academy",
+              description: [
+                `Candidature envoy\u00e9e par **${displayName}**.`,
+                "",
+                "📎 Merci d'envoyer \u00e0 la suite dans ce salon :",
+                "• une **carte d'identit\u00e9**",
+                "• un **permis**"
+              ].join("\n"),
+              color: 0x0b2f4a,
+              fields: [
+                { name: "📞 Num\u00e9ro de t\u00e9l\u00e9phone", value: telephone.slice(0, 1024) || "Non renseign\u00e9", inline: false },
+                { name: "🕒 Disponibilit\u00e9", value: disponibilite.slice(0, 1024) || "Non renseign\u00e9e", inline: false },
+                { name: "📋 Exp\u00e9rience pass\u00e9e", value: experience.slice(0, 1024) || "Non renseign\u00e9e", inline: false }
+              ],
+              footer: { text: "SASP - Police Academy" },
+              timestamp: new Date().toISOString()
+            }],
+            allowed_mentions: { users: [userId], parse: [] }
+          }
+        });
       }
 
       if (interaction.type === 5 && interaction.data.custom_id.startsWith("ftf_convocation_modal|")) {
