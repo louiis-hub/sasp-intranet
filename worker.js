@@ -355,6 +355,7 @@ const TICKET_DEFAULT_PANEL_CHANNEL_ID = "1521575058500489478";
 const TICKET_DEFAULT_CATEGORY_ID = "1501323835562000384";
 const TICKET_PANEL_IMAGE_URL = "https://louiis-hub.github.io/sasp-intranet/assets/ticket-panel-sasp.png";
 const TICKET_PANEL_LOGO_URL = "https://louiis-hub.github.io/sasp-intranet/assets/sasp-sud-logo-def.png";
+const TICKET_PANEL_ACCENT_COLOR = 0x0b2f4a;
 const TICKET_FOOTER_TEXT = "SASP - San Andreas State Trooper";
 const TICKET_OPTIONS = [
   { key: "etat-major", emoji: "\ud83d\udc51", label: "Etat-Major", roleId: "1500975725153620033", categoryId: "1501323835562000384" },
@@ -1721,7 +1722,7 @@ function buildTicketPanelPayload(config = {}) {
         "",
         "Sélectionnez une entrée dans le menu pour ouvrir une liaison privée."
       ].join("\n"),
-      color: Number(config.color || 0x0b2f4a),
+      color: TICKET_PANEL_ACCENT_COLOR,
       image: config.image_url || config.imageUrl ? { url: config.image_url || config.imageUrl } : { url: TICKET_PANEL_IMAGE_URL },
       footer: { text: config.footer || TICKET_FOOTER_TEXT }
     }],
