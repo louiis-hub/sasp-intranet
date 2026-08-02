@@ -125,7 +125,7 @@ async function sendCeremonieReminder(env, options = {}) {
     "",
     "Best regards,",
     "",
-    "<:SASP:1505194044031242381> [99] Capitaine",
+    "<:SASP:1505194044031242381> [99] Commandant",
     "San Andreas State Police",
     "",
     CEREMONIE_REMINDER_PLAN_URL
