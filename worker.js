@@ -83,6 +83,7 @@ async function sendUserDM(env, userId, payload) {
 
 const AUTO_REACTION_CHANNEL_ID = "1500994818543849723";
 const AUTO_REACTION_EMOJI = "%E2%9C%85";
+const CEREMONIE_REMINDER_CHANNEL_ID = "1500975725803606024";
 const CEREMONIE_REMINDER_PLAN_URL = "https://louiis-hub.github.io/sasp-intranet/assets/ceremonie-salle.png";
 
 function getParisClock(date = new Date()) {
@@ -106,7 +107,7 @@ async function sendCeremonieReminder(env, options = {}) {
     return { ok: true, skipped: true, reason: "outside_paris_schedule", clock };
   }
 
-  const channelId = options.channelId || env.CEREMONIE_CHANNEL_ID || env.CEREMONY_CHANNEL_ID;
+  const channelId = options.channelId || env.CEREMONIE_CHANNEL_ID || env.CEREMONY_CHANNEL_ID || CEREMONIE_REMINDER_CHANNEL_ID;
   if (!channelId) return { ok: false, skipped: true, reason: "missing_ceremonie_channel_id" };
 
   const content = [
