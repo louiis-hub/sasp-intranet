@@ -1721,7 +1721,7 @@ function buildTicketPanelPayload(config = {}) {
         "",
         "Sélectionnez une entrée dans le menu pour ouvrir une liaison privée."
       ].join("\n"),
-      color: Number(config.color || 0x2ecc71),
+      color: Number(config.color || 0x0b2f4a),
       image: config.image_url || config.imageUrl ? { url: config.image_url || config.imageUrl } : { url: TICKET_PANEL_IMAGE_URL },
       footer: { text: config.footer || TICKET_FOOTER_TEXT }
     }],
