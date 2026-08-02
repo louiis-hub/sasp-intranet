@@ -4200,17 +4200,64 @@ function ticketingSaveConfig() {
   renderTicketingPreview();
 }
 
+function ticketingAdminCss() {
+  return '<style>' +
+    '.ticket-admin{max-width:1280px;margin:0 auto;padding-bottom:30px}' +
+    '.ticket-admin *{box-sizing:border-box}' +
+    '.tt-topbar{border:1px solid rgba(58,205,241,.75);box-shadow:0 0 0 2px rgba(58,205,241,.08),0 18px 50px rgba(0,0,0,.28);background:linear-gradient(180deg,rgba(23,34,51,.96),rgba(16,24,38,.96));border-radius:10px;padding:12px;margin-bottom:14px}' +
+    '.tt-selector{display:grid;grid-template-columns:1fr 44px;gap:0;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#31425c}' +
+    '.tt-selector input{height:44px;border:0;background:#3b4d68;color:#dbeafe;padding:0 16px;font-size:.95rem;outline:none}' +
+    '.tt-selector button{border:0;background:#12c878;color:white;font-weight:900;font-size:1.2rem;cursor:pointer}' +
+    '.tt-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:7px;margin:10px 0 18px}' +
+    '.tt-action{border:0;border-radius:4px;color:#fff;padding:9px 16px;font-weight:700;font-size:.82rem;cursor:pointer;transition:.16s transform,.16s filter}' +
+    '.tt-action:hover{transform:translateY(-1px);filter:brightness(1.08)}' +
+    '.tt-gray{background:#75808a}.tt-green{background:#08b86f}.tt-cyan{background:#26bfe8}.tt-blue{background:#248ad9}.tt-red{background:#ff5353}' +
+    '.tt-shell{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;align-items:start}' +
+    '.tt-section{background:#1e293b;border:1px solid rgba(255,255,255,.04);border-radius:9px;padding:12px;margin-bottom:10px;box-shadow:0 14px 34px rgba(0,0,0,.22)}' +
+    '.tt-section-title{font-size:.9rem;font-weight:900;color:#fff;margin:0 0 12px}' +
+    '.tt-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}' +
+    '.tt-tile{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;min-height:64px;background:#3a4b65;border:1px solid rgba(255,255,255,.05);border-radius:6px;padding:14px 14px 12px 16px;color:#fff;transition:.16s transform,.16s background,.16s border-color;cursor:default}' +
+    '.tt-tile:hover{transform:translateY(-1px);background:#435671;border-color:rgba(58,205,241,.28)}' +
+    '.tt-tile strong{display:block;font-size:.96rem;line-height:1.1}' +
+    '.tt-tile span{display:block;margin-top:6px;color:#aeb9c8;font-size:.72rem;line-height:1.2}' +
+    '.tt-chevron{font-size:1.7rem;color:#fff;opacity:.95}' +
+    '.tt-diamond{color:#ff4d5d;margin-left:4px}' +
+    '.tt-config{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px}' +
+    '.tt-config label{font-size:.7rem;color:#9fb5d0;text-transform:uppercase;letter-spacing:.08em;font-weight:800}' +
+    '.tt-config .form-control,.tt-config textarea{margin-top:6px;background:#101827;border:1px solid rgba(72,103,143,.8);border-radius:6px;color:#eaf2ff}' +
+    '.tt-wide{grid-column:1/-1}' +
+    '.tt-side{position:sticky;top:82px}' +
+    '.tt-preview-card{background:#363940;border-left:4px solid #2dd36f;border-radius:5px;padding:14px;box-shadow:0 14px 36px rgba(0,0,0,.28)}' +
+    '.tt-preview-title{font-weight:900;color:#fff;margin-bottom:10px}' +
+    '.tt-preview-text{white-space:pre-line;color:#f0f3f8;font-size:.88rem;line-height:1.45}' +
+    '.tt-preview-img{width:100%;max-height:210px;object-fit:cover;border-radius:5px;margin-top:12px}' +
+    '.tt-preview-footer{display:flex;gap:8px;align-items:center;margin-top:12px;color:#dfe6f3;font-size:.8rem}' +
+    '.tt-select-preview{margin-top:12px;background:#303238;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:12px;color:#d8dde8;display:flex;justify-content:space-between}' +
+    '.tt-hint{background:rgba(14,20,32,.75);border:1px solid rgba(58,205,241,.18);border-radius:8px;color:#9fb5d0;padding:12px;margin-top:12px;font-size:.82rem;line-height:1.45}' +
+    '@media(max-width:1050px){.tt-shell{grid-template-columns:1fr}.tt-side{position:static}.tt-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}' +
+    '@media(max-width:680px){.tt-grid,.tt-config{grid-template-columns:1fr}.tt-actions{justify-content:flex-start}.ticket-admin{padding:0 4px}}' +
+  '</style>';
+}
+
+function ticketingOptionTile(title, subtitle, premium) {
+  return '<div class="tt-tile"><div><strong>' + escapeHtml(title) + (premium ? '<span class="tt-diamond">◇</span>' : '') + '</strong><span>' + escapeHtml(subtitle) + '</span></div><div class="tt-chevron">›</div></div>';
+}
+
+function ticketingSection(title, tiles) {
+  return '<section class="tt-section"><h3 class="tt-section-title">' + escapeHtml(title) + '</h3><div class="tt-grid">' + tiles.join('') + '</div></section>';
+}
+
 function renderTicketingPreview() {
   var cfg = ticketingReadConfig();
   var preview = document.getElementById('ticketPanelPreview');
   if (!preview) return;
   preview.innerHTML =
-    '<div class="card" style="border-left:4px solid #2ecc71;max-width:620px">' +
-      '<h3 style="margin-bottom:10px">' + escapeHtml(cfg.title || 'Contact Division / Unité') + '</h3>' +
-      '<div style="white-space:pre-line;color:var(--text-muted);line-height:1.55">' + escapeHtml(cfg.description || '') + '</div>' +
-      (cfg.image_url ? '<img src="' + escapeAttr(cfg.image_url) + '" alt="" style="width:100%;max-height:260px;object-fit:cover;border-radius:8px;margin-top:14px;border:1px solid var(--border)">' : '') +
-      '<div class="muted" style="margin-top:12px">' + escapeHtml(cfg.footer || 'SASP - Ticketing') + '</div>' +
-      '<div style="margin-top:14px"><button class="btn btn-secondary" disabled>Fais un choix</button></div>' +
+    '<div class="tt-preview-card">' +
+      '<div class="tt-preview-title">' + escapeHtml(cfg.title || 'Contact Division / Unité') + '</div>' +
+      '<div class="tt-preview-text">' + escapeHtml(cfg.description || '') + '</div>' +
+      (cfg.image_url ? '<img class="tt-preview-img" src="' + escapeAttr(cfg.image_url) + '" alt="">' : '') +
+      '<div class="tt-preview-footer"><span>🛡️</span><strong>' + escapeHtml(cfg.footer || 'SASP - Ticketing') + '</strong></div>' +
+      '<div class="tt-select-preview"><span>Fais un choix</span><span>⌄</span></div>' +
     '</div>';
 }
 
@@ -4218,27 +4265,61 @@ async function renderTicketing() {
   if (!isAdmin()) { toast('Accès réservé aux administrateurs.','error'); return; }
   var cfg = ticketingLoadConfig();
   setContent(
-    '<div class="page-head">' +
-      '<div><div class="eyebrow">Discord</div><h1>Tickets Discord</h1><p class="muted">Panneau type Ticket Tool : choix de service, liaison privée et fermeture du ticket.</p></div>' +
-      '<div class="actions-row"><button class="btn btn-secondary" onclick="installTicketCommand()">Installer /ticket-panel</button><button class="btn btn-primary" onclick="sendTicketPanelFromSite()">Envoyer le panneau</button></div>' +
-    '</div>' +
-    '<div class="grid-2">' +
-      '<div class="card">' +
-        '<h3>Configuration</h3>' +
-        '<div class="form-grid">' +
-          '<label>Salon du panneau<input id="ticketChannelId" class="form-control" value="' + escapeAttr(cfg.channel_id) + '" placeholder="ID salon Discord"></label>' +
-          '<label>Catégorie des tickets<input id="ticketCategoryId" class="form-control" value="' + escapeAttr(cfg.category_id) + '" placeholder="ID catégorie Discord"></label>' +
-          '<label>Titre<input id="ticketTitle" class="form-control" value="' + escapeAttr(cfg.title) + '"></label>' +
-          '<label>Image URL<input id="ticketImageUrl" class="form-control" value="' + escapeAttr(cfg.image_url) + '"></label>' +
-        '</div>' +
-        '<label>Description<textarea id="ticketDescription" class="form-control" rows="12" oninput="renderTicketingPreview()">' + escapeHtml(cfg.description) + '</textarea></label>' +
-        '<label>Footer<input id="ticketFooter" class="form-control" value="' + escapeAttr(cfg.footer) + '"></label>' +
-        '<div class="actions-row" style="margin-top:14px"><button class="btn btn-secondary" onclick="ticketingSaveConfig()">Sauvegarder</button><button class="btn btn-danger" onclick="ticketingResetConfig()">Réinitialiser</button></div>' +
+    ticketingAdminCss() +
+    '<div class="ticket-admin">' +
+      '<div class="tt-topbar">' +
+        '<div class="tt-selector"><input id="ticketTitle" value="' + escapeAttr(cfg.title) + '" oninput="renderTicketingPreview()" placeholder="1 | Ticket recrutement"><button onclick="ticketingSaveConfig()">+</button></div>' +
       '</div>' +
-      '<div class="card">' +
-        '<h3>Aperçu</h3>' +
-        '<div id="ticketPanelPreview"></div>' +
-        '<div class="info-box" style="margin-top:16px">Quand un utilisateur choisit une division, le bot crée un salon privé visible par lui, les admins, le staff et le rôle de la division sélectionnée.</div>' +
+      '<div class="tt-actions">' +
+        '<button class="tt-action tt-gray" onclick="toast(\'Clone réservé aux prochains panneaux multiples.\',\'info\')">Clone</button>' +
+        '<button class="tt-action tt-green" onclick="ticketingSaveConfig()">Rename</button>' +
+        '<button class="tt-action tt-cyan" onclick="sendTicketPanelFromSite()">Send</button>' +
+        '<button class="tt-action tt-gray" onclick="toast(\'Le compteur est géré automatiquement par Discord.\',\'info\')">Set Count</button>' +
+        '<button class="tt-action tt-blue" onclick="installTicketCommand()">Update</button>' +
+        '<button class="tt-action tt-red" onclick="ticketingResetConfig()">Delete</button>' +
+      '</div>' +
+      '<div class="tt-shell">' +
+        '<main>' +
+          ticketingSection('General Ticket Options', [
+            ticketingOptionTile('General', 'Support team and other general items'),
+            ticketingOptionTile('Category', 'Category options for closed/opened tickets.'),
+            ticketingOptionTile('Ticket', 'General ticket options'),
+            ticketingOptionTile('Moderator', 'Moderator message options'),
+            ticketingOptionTile('Permissions', 'Permission options'),
+            ticketingOptionTile('Buttons', 'Quick access list of all buttons'),
+            ticketingOptionTile('Messages', 'Quick access list of all messages'),
+            ticketingOptionTile('Escalate', 'Escalation options')
+          ]) +
+          '<section class="tt-section"><h3 class="tt-section-title">Panel Settings</h3>' +
+            '<div class="tt-config">' +
+              '<label>Salon du panneau<input id="ticketChannelId" class="form-control" value="' + escapeAttr(cfg.channel_id) + '" placeholder="ID salon Discord"></label>' +
+              '<label>Catégorie tickets<input id="ticketCategoryId" class="form-control" value="' + escapeAttr(cfg.category_id) + '" placeholder="ID catégorie Discord"></label>' +
+              '<label>Image URL<input id="ticketImageUrl" class="form-control" value="' + escapeAttr(cfg.image_url) + '" oninput="renderTicketingPreview()"></label>' +
+              '<label>Footer<input id="ticketFooter" class="form-control" value="' + escapeAttr(cfg.footer) + '" oninput="renderTicketingPreview()"></label>' +
+              '<label class="tt-wide">Message du panneau<textarea id="ticketDescription" class="form-control" rows="10" oninput="renderTicketingPreview()">' + escapeHtml(cfg.description) + '</textarea></label>' +
+            '</div>' +
+            '<div class="tt-grid" style="margin-top:10px">' +
+              ticketingOptionTile('Panel', 'Options for the message used to create tickets') +
+              ticketingOptionTile('Command Style', 'Options for creating tickets using commands.') +
+              ticketingOptionTile('DropDown Style', 'Options for creating tickets using select menu.') +
+              ticketingOptionTile('Thread Style', 'Thread style tickets, instead of channels.', true) +
+              ticketingOptionTile('Forms', 'Form options') +
+            '</div>' +
+          '</section>' +
+          ticketingSection('Advanced Settings', [
+            ticketingOptionTile('Transcript', 'Options for saving your transcripts'),
+            ticketingOptionTile('Logging', 'Options for server logging'),
+            ticketingOptionTile('Automation', 'Automation options', true),
+            ticketingOptionTile('Limits', 'Limits and scheduling'),
+            ticketingOptionTile('Claiming', 'Claiming options', true),
+            ticketingOptionTile('Integrations', 'External bot integrations', true)
+          ]) +
+        '</main>' +
+        '<aside class="tt-side">' +
+          '<section class="tt-section"><h3 class="tt-section-title">Live Preview</h3><div id="ticketPanelPreview"></div>' +
+            '<div class="tt-hint">Le panneau envoyé sur Discord garde la logique actuelle : choix de division, création d’une liaison privée, permissions automatiques et bouton de fermeture.</div>' +
+          '</section>' +
+        '</aside>' +
       '</div>' +
     '</div>'
   );
