@@ -368,6 +368,10 @@ const TICKET_OPTIONS = [
   { key: "syndicat", emoji: "\ud83e\udd1d", label: "Syndicat", roleId: "1519496665499959418", categoryId: "1528371218422562836" },
   { key: "affaires-internes", emoji: "\ud83d\udd12", label: "Affaires Internes", roleId: "", categoryId: "1528371395174727751", unavailable: true, description: "Pas disponible" }
 ];
+const TICKET_ACADEMY_PANEL_OPTIONS = [
+  { key: "etat-major", emoji: "\ud83c\udfdb\ufe0f", label: "Etat-Major", roleId: "1500975725153620033", categoryId: "1501323835562000384", description: "Demande officielle ou administrative" },
+  { key: "police-academy-rc", emoji: "\ud83c\udf93", label: "Police Academy", roleId: "1518631987462668358", categoryId: "1518633398753562794", channelPrefix: "rc", description: "Recrutement, formations ou candidatures" }
+];
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ENTERPRISE_GUILD_ID = "1523759012623941746";
@@ -1701,14 +1705,55 @@ function normalizeTicketOptions(options) {
       label: String(o.label || `Ticket ${i + 1}`).slice(0, 80),
       roleId: String(o.roleId || o.role_id || "").replace(/\D/g, ""),
       categoryId: String(o.categoryId || o.category_id || "").replace(/\D/g, ""),
+      channelPrefix: ticketSafeName(o.channelPrefix || o.channel_prefix || ""),
       description: String(o.description || (o.unavailable ? "Pas disponible" : "Ouvrir une liaison privée")).slice(0, 100),
       unavailable: !!o.unavailable
     }));
 }
 
+function findTicketOption(key) {
+  const options = normalizeTicketOptions([...TICKET_OPTIONS, ...TICKET_ACADEMY_PANEL_OPTIONS]);
+  return options.find(o => o.key === key);
+}
+
+function buildAcademyTicketPanelConfig(config = {}) {
+  return {
+    ...config,
+    panel_key: "academy",
+    title: "Contact SASP",
+    logo_url: TICKET_PANEL_LOGO_URL,
+    image_url: TICKET_PANEL_IMAGE_URL,
+    footer: TICKET_FOOTER_TEXT,
+    placeholder: "Fais un choix",
+    options: TICKET_ACADEMY_PANEL_OPTIONS,
+    description: [
+      "Bienvenue sur le centre de contact officiel du San Andreas State Police.",
+      "",
+      "Sélectionnez le service correspondant à votre demande.",
+      "",
+      "━━━━━━━━━━━━━━━━━━━━",
+      "",
+      "\ud83c\udfdb\ufe0f **Etat-Major**",
+      "*Pour toute demande officielle ou administrative concernant le Command Staff.*",
+      "",
+      "\ud83c\udf93 **Police Academy**",
+      "*Pour toute question relative au recrutement, aux formations ou aux candidatures.*",
+      "",
+      "━━━━━━━━━━━━━━━━━━━━",
+      "",
+      "\u26a0\ufe0f Merci de n'ouvrir qu'un seul ticket par demande afin de faciliter son traitement.",
+      "",
+      "• Le San Andreas State Police vous remercie de votre confiance.",
+      "",
+      "<:SASP:1505194044031242381> \ud83d\udee1\ufe0f **San Andreas State Police • SASP**"
+    ].join("\n")
+  };
+}
+
 function buildTicketPanelPayload(config = {}) {
   const categoryId = String(config.category_id || config.categoryId || TICKET_DEFAULT_CATEGORY_ID).replace(/\D/g, "");
   const options = normalizeTicketOptions(config.options);
+  const panelKey = ticketSafeName(config.panel_key || config.panelKey || "");
   return {
     embeds: [{
       author: {
@@ -1730,7 +1775,7 @@ function buildTicketPanelPayload(config = {}) {
       type: 1,
       components: [{
         type: 3,
-        custom_id: `ticket_open_select|${categoryId}`,
+        custom_id: `ticket_open_select|${categoryId}|${panelKey}`.slice(0, 100),
         placeholder: config.placeholder || "Fais un choix",
         min_values: 1,
         max_values: 1,
@@ -1760,8 +1805,7 @@ async function sendTicketPanel(env, channelId, config = {}) {
 }
 
 async function createTicketChannel(env, interaction, categoryId, selectedKey) {
-  const options = normalizeTicketOptions();
-  const option = options.find(o => o.key === selectedKey);
+  const option = findTicketOption(selectedKey);
   if (!option) throw new Error("Choix ticket introuvable.");
   if (option.unavailable) return { unavailable: true, label: option.label };
 
@@ -1788,7 +1832,7 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
   const rpName = `${identity.prenom || ""} ${identity.nom || ""}`.trim()
     || ticketDisplayName(interaction)
     || userId.slice(-4);
-  const channelName = ticketSafeName(rpName).slice(0, 95);
+  const channelName = ticketSafeName(option.channelPrefix ? `${option.channelPrefix}-${rpName}` : rpName).slice(0, 95);
   const targetCategoryId = option.categoryId || categoryId || TICKET_DEFAULT_CATEGORY_ID;
   const createRes = await discordFetch(`${DISCORD_API}/guilds/${interaction.guild_id}/channels`, {
     method: "POST",
@@ -4470,14 +4514,18 @@ export default {
 
       // Select menu tickets
       if (interaction.type === 3 && interaction.data.custom_id?.startsWith("ticket_open_select|")) {
-        const categoryId = String(interaction.data.custom_id.split("|")[1] || TICKET_DEFAULT_CATEGORY_ID).replace(/\D/g, "");
+        const [, rawCategoryId, panelKey = ""] = interaction.data.custom_id.split("|");
+        const categoryId = String(rawCategoryId || TICKET_DEFAULT_CATEGORY_ID).replace(/\D/g, "");
         const [selectedKey, selectedCategoryId] = String(interaction.data.values?.[0] || "").split("|");
         try {
           const result = await createTicketChannel(env, interaction, selectedCategoryId || categoryId, selectedKey);
           if (result.unavailable) {
             return json({ type: 4, data: { content: `${result.label} n'est pas disponible pour le moment.`, flags: 64 } });
           }
-          return json({ type: 7, data: buildTicketPanelPayload({ category_id: categoryId }) });
+          const panelConfig = panelKey === "academy"
+            ? buildAcademyTicketPanelConfig({ category_id: categoryId })
+            : { category_id: categoryId };
+          return json({ type: 7, data: buildTicketPanelPayload(panelConfig) });
         } catch (e) {
           return json({ type: 4, data: { content: `Erreur ticket : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
         }
