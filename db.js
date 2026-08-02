@@ -303,6 +303,24 @@ var DB = {
       .select()
       .single();
   },
+  async getPointeuseCorrections() {
+    var { data, error } = await getDb().from('pointeuse_corrections').select('*');
+    if (error) throw error;
+    return data || [];
+  },
+  async setPointeuseCorrection(data) {
+    data.updated_at = new Date().toISOString();
+    return getDb().from('pointeuse_corrections')
+      .upsert(data, { onConflict: 'semaine_key,agent_id' })
+      .select()
+      .single();
+  },
+  async deletePointeuseCorrection(semaineKey, agentId) {
+    return getDb().from('pointeuse_corrections')
+      .delete()
+      .eq('semaine_key', semaineKey)
+      .eq('agent_id', agentId);
+  },
   async getCeremonieVotes() {
     var { data } = await getDb().from('ceremonie_votes').select('*').order('created_at', { ascending: true });
     return data || [];

@@ -6520,14 +6520,25 @@ function renderCartes() {
 // ══ HISTORIQUE POINTAGES ══════════════════════════════════════════
 var _pointeusePaiements = {};
 var _pointeusePaiementsMissing = false;
+var _pointeuseCorrections = {};
+var _pointeuseCorrectionsMissing = false;
 
 function pointeusePaiementKey(semaineKey, agentId) {
+  return String(semaineKey || '') + '::' + String(agentId || '');
+}
+
+function pointeuseCorrectionKey(semaineKey, agentId) {
   return String(semaineKey || '') + '::' + String(agentId || '');
 }
 
 function isMissingPointeusePaiementsTable(err) {
   var msg = String((err && (err.message || err.details || err.hint)) || err || '');
   return /pointeuse_paiements|schema cache|does not exist|not find the table|relation .* does not exist/i.test(msg);
+}
+
+function isMissingPointeuseCorrectionsTable(err) {
+  var msg = String((err && (err.message || err.details || err.hint)) || err || '');
+  return /pointeuse_corrections|schema cache|does not exist|not find the table|relation .* does not exist/i.test(msg);
 }
 
 function currentPointeusePaidActor() {
@@ -6537,6 +6548,37 @@ function currentPointeusePaidActor() {
     return S.user.user_metadata.full_name || S.user.user_metadata.name || S.user.user_metadata.user_name || 'Utilisateur SASP';
   }
   return 'Utilisateur SASP';
+}
+
+function parseHoursInput(v) {
+  var n = parseFloat(String(v || '').replace(',', '.'));
+  if (!isFinite(n) || n < 0) return 0;
+  return n;
+}
+
+function fmtMinutesDuration(minutes) {
+  minutes = Math.max(0, parseInt(minutes || 0, 10));
+  var h = Math.floor(minutes / 60);
+  var m = minutes % 60;
+  return h + 'h' + (m < 10 ? '0' : '') + m;
+}
+
+function pointeuseAgentKey(a) {
+  a = a || {};
+  return a.id || a.matricule || ((a.prenom || '') + (a.nom || ''));
+}
+
+function getPointeuseCorrectionMinutes(semaineKey, agentId) {
+  var row = _pointeuseCorrections[pointeuseCorrectionKey(semaineKey, agentId)];
+  if (row) return Math.max(0, parseInt(row.minutes_retires || 0, 10));
+  if (_pointeuseCorrectionsMissing) {
+    return Math.max(0, parseInt(localStorage.getItem('corr_' + semaineKey + '_' + agentId) || '0', 10));
+  }
+  return 0;
+}
+
+function correctedPointeuseSeconds(semaineKey, agentId, seconds) {
+  return Math.max(0, Math.floor(seconds || 0) - (getPointeuseCorrectionMinutes(semaineKey, agentId) * 60));
 }
 
 async function renderPointeuseHistorique() {
@@ -6554,6 +6596,16 @@ async function renderPointeuseHistorique() {
   } catch(e) {
     _pointeusePaiementsMissing = isMissingPointeusePaiementsTable(e);
     if (!_pointeusePaiementsMissing) throw e;
+  }
+  _pointeuseCorrections = {};
+  _pointeuseCorrectionsMissing = false;
+  try {
+    (await DB.getPointeuseCorrections()).forEach(function(p) {
+      _pointeuseCorrections[pointeuseCorrectionKey(p.semaine_key, p.agent_id)] = p;
+    });
+  } catch(e) {
+    _pointeuseCorrectionsMissing = isMissingPointeuseCorrectionsTable(e);
+    if (!_pointeuseCorrectionsMissing) throw e;
   }
   var activeAgentIds = new Set(actives.map(function(p){ return p.agent_id; }));
   rosterAgents = visibleRosterAgents(rosterAgents || []).sort(function(a, b) {
@@ -6626,14 +6678,19 @@ async function renderPointeuseHistorique() {
       : '<span class="badge badge-green" style="font-size:.68rem">Tout le monde a pointe</span>';
     agentList.forEach(function(e) {
       var a = e.agent || {};
-      var agentKey = a.id || a.matricule || ((a.prenom || '') + (a.nom || ''));
+      var agentKey = pointeuseAgentKey(a);
+      var correctedSec = correctedPointeuseSeconds(key, agentKey, e.sec);
       var primeKey = 'prime_' + key + '_' + agentKey;
       var prime = parseMoneyInput(localStorage.getItem(primeKey));
-      totalSec += e.sec;
+      totalSec += correctedSec;
       totalPrimes += prime;
-      totalSalaire += calcSalaire(a.grade, e.sec) + prime;
+      totalSalaire += calcSalaire(a.grade, correctedSec) + prime;
     });
-    var topAgents = agentList.filter(function(e){ return e.sec > 0; }).slice().sort(function(a, b){ return b.sec - a.sec; }).slice(0, 3);
+    var topAgents = agentList.map(function(e) {
+      var a = e.agent || {};
+      var agentKey = pointeuseAgentKey(a);
+      return { agent: a, sec: correctedPointeuseSeconds(key, agentKey, e.sec) };
+    }).filter(function(e){ return e.sec > 0; }).sort(function(a, b){ return b.sec - a.sec; }).slice(0, 3);
     var topHtml = topAgents.length
       ? topAgents.map(function(e, i) {
           var a = e.agent || {};
@@ -6646,13 +6703,16 @@ async function renderPointeuseHistorique() {
 
     var rows = agentList.map(function(entry) {
       var a = entry.agent;
-      var sec = entry.sec;
+      var rawSec = entry.sec;
+      var agentKey = pointeuseAgentKey(a);
+      var correctionMinutes = getPointeuseCorrectionMinutes(key, agentKey);
+      var correctionHours = correctionMinutes ? String(Math.round((correctionMinutes / 60) * 100) / 100) : '';
+      var sec = correctedPointeuseSeconds(key, agentKey, rawSec);
       var sal = calcSalaire(a.grade, sec);
-      var agentKey = a.id || a.matricule || ((a.prenom || '') + (a.nom || ''));
       var primeKey = 'prime_' + key + '_' + agentKey;
       var prime = parseMoneyInput(localStorage.getItem(primeKey));
       var totalAgent = sal + prime;
-      var paidAgentId = a.id || a.matricule || ((a.prenom || '') + (a.nom || ''));
+      var paidAgentId = agentKey;
       var paidKey = pointeusePaiementKey(key, paidAgentId);
       var paidRow = _pointeusePaiements[paidKey];
       var legacyPaidKey = 'paid_' + key + '_' + (a.id || a.matricule || (a.prenom + a.nom));
@@ -6675,8 +6735,9 @@ async function renderPointeuseHistorique() {
         '<td style="white-space:nowrap">' + dot + ' <strong>' + esc((a.prenom || '') + ' ' + (a.nom || '')) + '</strong><br><small style="color:var(--t3)">' + esc(a.matricule || '') + '</small></td>' +
         '<td>' + ibanCell + '</td>' +
         '<td>' + (sessionsHtml || '<span style="color:var(--t3)">—</span>') + '</td>' +
-        '<td style="text-align:center"><strong>' + fmtSec(sec) + '</strong>' + (entry.ongoing ? ' <span style="color:var(--gold);font-size:.75rem">+en cours</span>' : '') + '</td>' +
+        '<td style="text-align:center"><strong>' + fmtSec(sec) + '</strong>' + (entry.ongoing ? ' <span style="color:var(--gold);font-size:.75rem">+en cours</span>' : '') + (correctionMinutes ? '<br><small style="color:var(--red,#ff5b5b)">brut ' + fmtSec(rawSec) + ' - retrait ' + fmtMinutesDuration(correctionMinutes) + '</small>' : '') + '</td>' +
         '<td style="text-align:center;color:var(--gold);font-weight:700">' + fmtMoney(sal) + '</td>' +
+        '<td style="text-align:center"><div style="display:flex;align-items:center;justify-content:center;gap:5px"><input type="number" min="0" step="0.25" value="' + esc(correctionHours) + '" onchange="setCorrectionHisto(\'' + jsStr(key) + '\',\'' + jsStr(agentKey) + '\',\'' + jsStr(label) + '\',\'' + jsStr(a.matricule || '') + '\',\'' + jsStr(((a.prenom || '') + ' ' + (a.nom || '')).trim()) + '\',this.value,this)" title="Heures a retirer du calcul" style="width:74px;background:var(--bg2);color:var(--t0);border:1px solid var(--border0);border-radius:6px;padding:5px 7px;text-align:right"><span style="font-size:.75rem;color:var(--t3)">h</span></div></td>' +
         '<td style="text-align:center"><input type="number" min="0" step="1" value="' + prime + '" onchange="setPrimeHisto(\'' + primeKey + '\',this.value)" style="width:92px;background:var(--bg2);color:var(--t0);border:1px solid var(--border0);border-radius:6px;padding:5px 7px;text-align:right"></td>' +
         '<td style="text-align:center;color:var(--green,#2ecc71);font-weight:700">' + fmtMoney(totalAgent) + '</td>' +
         '<td style="text-align:center"><input type="checkbox"' + (isPaid ? ' checked' : '') + paidTitle + ' onchange="togglePaidHisto(\'' + jsStr(key) + '\',\'' + jsStr(paidAgentId) + '\',\'' + jsStr(label) + '\',\'' + jsStr(a.matricule || '') + '\',\'' + jsStr(((a.prenom || '') + ' ' + (a.nom || '')).trim()) + '\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--green,#2ecc71)"></td>' +
@@ -6705,19 +6766,64 @@ async function renderPointeuseHistorique() {
           '<div>' + missingHtml + '</div>' +
         '</div>' +
         '<div class="table-wrap"><table>' +
-          '<thead><tr><th>AGENT</th><th>IBAN</th><th>PRISE - FIN</th><th style="text-align:center">DUREE</th><th style="text-align:center">SALAIRE</th><th style="text-align:center">PRIME</th><th style="text-align:center">TOTAL</th><th style="text-align:center">PAYE</th></tr></thead>' +
+          '<thead><tr><th>AGENT</th><th>IBAN</th><th>PRISE - FIN</th><th style="text-align:center">DUREE</th><th style="text-align:center">SALAIRE</th><th style="text-align:center">RETRAIT</th><th style="text-align:center">PRIME</th><th style="text-align:center">TOTAL</th><th style="text-align:center">PAYE</th></tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table></div>' +
       '</div>' +
     '</div>';
   }).join('');
 
+  var correctionsWarning = _pointeuseCorrectionsMissing
+    ? '<div class="card" style="border-color:rgba(239,68,68,.45);margin-bottom:12px;padding:12px"><strong style="color:var(--red,#ff5b5b)">Table corrections manquante.</strong><p class="text-muted" style="margin:6px 0 0">Les retraits d heures seront locaux tant que la table Supabase <code>pointeuse_corrections</code> n existe pas.</p></div>'
+    : '';
   setContent(
     '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Historique pointages</h1>' +
     '<p class="text-muted">' + weekKeys.length + ' semaine' + (weekKeys.length > 1 ? 's' : '') + ' enregistrée' + (weekKeys.length > 1 ? 's' : '') + '</p></div>' +
     '<button class="btn btn-ghost btn-sm" onclick="navigate(\'pointeuse\')">← Retour</button></div>' +
+    correctionsWarning +
     '<div>' + accordionHtml + '</div>'
   );
+}
+
+async function setCorrectionHisto(semaineKey, agentId, semaineLabel, agentMatricule, agentNom, value, input) {
+  var hours = parseHoursInput(value);
+  var minutes = Math.round(hours * 60);
+  if (input) input.disabled = true;
+  try {
+    if (_pointeuseCorrectionsMissing) {
+      var localKey = 'corr_' + semaineKey + '_' + agentId;
+      if (minutes) localStorage.setItem(localKey, String(minutes));
+      else localStorage.removeItem(localKey);
+      toast('Correction locale: table Supabase manquante.', 'error');
+      await renderPointeuseHistorique();
+      return;
+    }
+    if (minutes <= 0) {
+      var del = await DB.deletePointeuseCorrection(semaineKey, agentId);
+      if (del.error) throw del.error;
+      delete _pointeuseCorrections[pointeuseCorrectionKey(semaineKey, agentId)];
+      toast('Retrait d heures supprime.', 'info');
+    } else {
+      var payload = {
+        semaine_key: semaineKey,
+        semaine_label: semaineLabel,
+        agent_id: agentId,
+        agent_matricule: agentMatricule,
+        agent_nom: agentNom,
+        minutes_retires: minutes,
+        updated_by: currentPointeusePaidActor(),
+        updated_at: new Date().toISOString()
+      };
+      var res = await DB.setPointeuseCorrection(payload);
+      if (res.error) throw res.error;
+      _pointeuseCorrections[pointeuseCorrectionKey(semaineKey, agentId)] = res.data || payload;
+      toast('Retrait applique: -' + fmtMinutesDuration(minutes) + '.', 'success');
+    }
+    await renderPointeuseHistorique();
+  } catch(e) {
+    toast('Erreur retrait heures: ' + (e.message || e), 'error');
+    if (input) input.disabled = false;
+  }
 }
 
 async function togglePaidHisto(semaineKey, agentId, semaineLabel, agentMatricule, agentNom, cb) {
