@@ -336,7 +336,6 @@ const STAFF_ROLE_IDS = [
   '1500975725153620033', // Command Staff
   '1504451288065118248', // État Major
   '1504452141518032956', // Supervisor Team
-  '1518631987462668358', // Police Academy
   '1519171150884769873'  // Admin Division
 ];
 
