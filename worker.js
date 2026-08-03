@@ -371,6 +371,7 @@ const TICKET_ACADEMY_PANEL_OPTIONS = [
   { key: "etat-major", emoji: "\ud83c\udfdb\ufe0f", label: "Etat-Major", roleId: "1500975725153620033", categoryId: "1501323835562000384", description: "Demande officielle ou administrative" },
   { key: "police-academy-rc", emoji: "\ud83c\udf93", label: "Police Academy", roleId: "1518631987462668358", categoryId: "1518633398753562794", channelPrefix: "rc", description: "Recrutement, formations ou candidatures" }
 ];
+const TICKET_EM_SUPERVISOR_ROLE_ID = "1504452141518032956";
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ENTERPRISE_GUILD_ID = "1523759012623941746";
@@ -1878,6 +1879,18 @@ function buildTicketPanelPayload(config = {}) {
   };
 }
 
+async function resetTicketPanelMessage(env, interaction, panelConfig) {
+  const channelId = interaction.channel_id;
+  const messageId = interaction.message?.id;
+  if (!channelId || !messageId) return;
+  const payload = buildTicketPanelPayload(panelConfig);
+  await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
+    method: "PATCH",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  }).catch(() => {});
+}
+
 async function sendTicketPanel(env, channelId, config = {}) {
   const payload = buildTicketPanelPayload(config);
   const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
@@ -1939,7 +1952,11 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
   }
   const channel = await createRes.json();
 
-  const roleLine = option.roleId ? `\n<@&${option.roleId}>` : "";
+  const mentionRoleIds = [];
+  if (option.roleId) mentionRoleIds.push(option.roleId);
+  if (option.key === "etat-major") mentionRoleIds.push(TICKET_EM_SUPERVISOR_ROLE_ID);
+  const uniqueMentionRoleIds = Array.from(new Set(mentionRoleIds.filter(Boolean)));
+  const roleLine = uniqueMentionRoleIds.length ? `\n${uniqueMentionRoleIds.map(roleId => `<@&${roleId}>`).join(" ")}` : "";
   const msgRes = await discordFetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
     method: "POST",
     headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
@@ -1965,7 +1982,7 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
         type: 1,
         components: [{ type: 2, style: 4, label: "Fermer le ticket", emoji: { name: "\ud83d\udd12" }, custom_id: `ticket_close|${userId}|${option.roleId || ""}`.slice(0, 100) }]
       }],
-      allowed_mentions: { users: [userId], roles: option.roleId ? [option.roleId] : [], parse: [] }
+      allowed_mentions: { users: [userId], roles: uniqueMentionRoleIds, parse: [] }
     })
   });
   if (!msgRes.ok) {
@@ -3765,6 +3782,38 @@ export default {
         }
       };
     }
+    function cnuModalResponse(customId = "cnu_modal") {
+      return {
+        type: 9,
+        data: {
+          custom_id: customId,
+          title: "Formulaire CNU",
+          components: [
+            { type: 1, components: [{ type: 4, custom_id: "cnu_telephone", label: "Numéro de téléphone", style: 1, required: true, placeholder: "Ex : 555-1234", min_length: 7, max_length: 30 }] },
+            { type: 1, components: [{ type: 4, custom_id: "cnu_formations", label: "Formations CNU déjà suivies", style: 2, required: true, placeholder: "Si oui, précisez lesquelles. Sinon indiquez Non.", min_length: 2, max_length: 1000 }] },
+            { type: 1, components: [{ type: 4, custom_id: "cnu_poste", label: "Poste souhaité", style: 1, required: true, placeholder: "Lead Terrain, Négociateur ou les deux", min_length: 2, max_length: 80 }] },
+            { type: 1, components: [{ type: 4, custom_id: "cnu_experience", label: "Expérience en négociation de crise", style: 2, required: true, placeholder: "Décrivez brièvement vos expériences ou situations rencontrées.", min_length: 3, max_length: 1500 }] },
+            { type: 1, components: [{ type: 4, custom_id: "cnu_motivation", label: "Motivation pour rejoindre la CNU", style: 2, required: true, placeholder: "Expliquez vos motivations et ce que vous pouvez apporter à l'unité.", min_length: 3, max_length: 1500 }] }
+          ]
+        }
+      };
+    }
+    function swatModalResponse(customId = "swat_modal") {
+      return {
+        type: 9,
+        data: {
+          custom_id: customId,
+          title: "Formulaire SWAT",
+          components: [
+            { type: 1, components: [{ type: 4, custom_id: "swat_affectation", label: "Ancienne / actuelle affectation", style: 1, required: true, placeholder: "Indiquez votre affectation actuelle ou votre dernière affectation.", min_length: 2, max_length: 100 }] },
+            { type: 1, components: [{ type: 4, custom_id: "swat_experience_lo", label: "Expérience forces de l'ordre", style: 1, required: true, placeholder: "0-2 ans, 3-5 ans, 6-10 ans ou 10 ans et plus", min_length: 2, max_length: 80 }] },
+            { type: 1, components: [{ type: 4, custom_id: "swat_risque", label: "Interventions à haut risque", style: 2, required: true, placeholder: "Si oui, précisez lesquelles. Sinon indiquez Non.", min_length: 2, max_length: 1000 }] },
+            { type: 1, components: [{ type: 4, custom_id: "swat_unites", label: "Unités spécialisées", style: 2, required: true, placeholder: "Si oui, précisez laquelle et votre rôle. Sinon indiquez Non.", min_length: 2, max_length: 1000 }] },
+            { type: 1, components: [{ type: 4, custom_id: "swat_motivation", label: "Motivation et objectifs", style: 2, required: true, placeholder: "Pourquoi souhaitez-vous rejoindre cette unité et quels sont vos objectifs ?", min_length: 3, max_length: 1500 }] }
+          ]
+        }
+      };
+    }
     function isSubventionStickyMessage(message) {
       const embed = message?.embeds?.[0];
       const title = String(embed?.title || "").toLowerCase();
@@ -4775,12 +4824,21 @@ export default {
           if (result.unavailable) {
             return json({ type: 4, data: { content: `${result.label} n'est pas disponible pour le moment.`, flags: 64 } });
           }
-          if (selectedKey === "police-academy-rc" && result.channel_id) {
-            return json(candidatureModalResponse(`candidature_modal|${result.channel_id}`.slice(0, 100)));
-          }
           const panelConfig = panelKey === "academy"
             ? buildAcademyTicketPanelConfig({ category_id: categoryId })
             : { category_id: categoryId };
+          if (selectedKey === "police-academy-rc" && result.channel_id) {
+            ctx.waitUntil(resetTicketPanelMessage(env, interaction, panelConfig));
+            return json(candidatureModalResponse(`candidature_modal|${result.channel_id}`.slice(0, 100)));
+          }
+          if (selectedKey === "cnu" && result.channel_id) {
+            ctx.waitUntil(resetTicketPanelMessage(env, interaction, panelConfig));
+            return json(cnuModalResponse(`cnu_modal|${result.channel_id}`.slice(0, 100)));
+          }
+          if (selectedKey === "swat" && result.channel_id) {
+            ctx.waitUntil(resetTicketPanelMessage(env, interaction, panelConfig));
+            return json(swatModalResponse(`swat_modal|${result.channel_id}`.slice(0, 100)));
+          }
           return json({ type: 7, data: buildTicketPanelPayload(panelConfig) });
         } catch (e) {
           return json({ type: 4, data: { content: `Erreur ticket : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
@@ -5175,6 +5233,92 @@ export default {
         }
 
         return json({ type: 4, data: candidaturePayload });
+      }
+
+      // Modal submit / CNU
+      if (interaction.type === 5 && interaction.data.custom_id?.startsWith("cnu_modal")) {
+        const [, targetChannelIdRaw = ""] = interaction.data.custom_id.split("|");
+        const targetChannelId = String(targetChannelIdRaw || "").replace(/\D/g, "");
+        const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        let identity = {};
+        try { identity = await getAgentIdentityForInteraction(env, interaction); } catch {}
+        const displayName = `${identity.prenom || ""} ${identity.nom || ""}`.trim()
+          || interaction.member?.nick
+          || interaction.member?.user?.global_name
+          || interaction.member?.user?.username
+          || "Candidat";
+        const payload = {
+          content: `<@${userId}>`,
+          embeds: [{
+            title: "🤝 Candidature Crisis Negotiation Unit",
+            description: `Formulaire CNU envoyé par **${displayName}**.`,
+            color: 0x0b2f4a,
+            fields: [
+              { name: "📞 Numéro de téléphone", value: getValue("cnu_telephone").trim().slice(0, 1024) || "Non renseigné", inline: false },
+              { name: "🎓 Formations CNU déjà suivies", value: getValue("cnu_formations").trim().slice(0, 1024) || "Non renseigné", inline: false },
+              { name: "🎯 Poste souhaité", value: getValue("cnu_poste").trim().slice(0, 1024) || "Non renseigné", inline: false },
+              { name: "🧠 Expérience en négociation de crise", value: getValue("cnu_experience").trim().slice(0, 1024) || "Non renseigné", inline: false },
+              { name: "📝 Motivation", value: getValue("cnu_motivation").trim().slice(0, 1024) || "Non renseigné", inline: false }
+            ],
+            footer: { text: "SASP - Crisis Negotiation Unit" },
+            timestamp: new Date().toISOString()
+          }],
+          allowed_mentions: { users: [userId], parse: [] }
+        };
+        if (targetChannelId) {
+          const res = await discordFetch(`${DISCORD_API}/channels/${targetChannelId}/messages`, {
+            method: "POST",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) return json({ type: 4, data: { content: `Erreur formulaire CNU (${res.status}) : ${(await res.text()).slice(0, 1200)}`, flags: 64 } });
+          return json({ type: 4, data: { content: `✅ Formulaire CNU envoyé dans <#${targetChannelId}>.`, flags: 64 } });
+        }
+        return json({ type: 4, data: payload });
+      }
+
+      // Modal submit / SWAT
+      if (interaction.type === 5 && interaction.data.custom_id?.startsWith("swat_modal")) {
+        const [, targetChannelIdRaw = ""] = interaction.data.custom_id.split("|");
+        const targetChannelId = String(targetChannelIdRaw || "").replace(/\D/g, "");
+        const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        let identity = {};
+        try { identity = await getAgentIdentityForInteraction(env, interaction); } catch {}
+        const displayName = `${identity.prenom || ""} ${identity.nom || ""}`.trim()
+          || interaction.member?.nick
+          || interaction.member?.user?.global_name
+          || interaction.member?.user?.username
+          || "Candidat";
+        const payload = {
+          content: `<@${userId}>`,
+          embeds: [{
+            title: "⚔️ Candidature Special Weapons And Tactics",
+            description: `Formulaire SWAT envoyé par **${displayName}**.`,
+            color: 0x0b2f4a,
+            fields: [
+              { name: "🏷️ Ancienne / actuelle affectation", value: getValue("swat_affectation").trim().slice(0, 1024) || "Non renseigné", inline: false },
+              { name: "👮 Expérience dans les forces de l'ordre", value: getValue("swat_experience_lo").trim().slice(0, 1024) || "Non renseigné", inline: false },
+              { name: "🚨 Interventions à haut risque", value: getValue("swat_risque").trim().slice(0, 1024) || "Non renseigné", inline: false },
+              { name: "🛡️ Unités spécialisées", value: getValue("swat_unites").trim().slice(0, 1024) || "Non renseigné", inline: false },
+              { name: "📝 Motivation et objectifs", value: getValue("swat_motivation").trim().slice(0, 1024) || "Non renseigné", inline: false }
+            ],
+            footer: { text: "SASP - Special Weapons And Tactics" },
+            timestamp: new Date().toISOString()
+          }],
+          allowed_mentions: { users: [userId], parse: [] }
+        };
+        if (targetChannelId) {
+          const res = await discordFetch(`${DISCORD_API}/channels/${targetChannelId}/messages`, {
+            method: "POST",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) return json({ type: 4, data: { content: `Erreur formulaire SWAT (${res.status}) : ${(await res.text()).slice(0, 1200)}`, flags: 64 } });
+          return json({ type: 4, data: { content: `✅ Formulaire SWAT envoyé dans <#${targetChannelId}>.`, flags: 64 } });
+        }
+        return json({ type: 4, data: payload });
       }
 
       if (interaction.type === 5 && interaction.data.custom_id.startsWith("ftf_convocation_modal|")) {
