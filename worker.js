@@ -1718,6 +1718,72 @@ async function setTicketRequesterVisibility(env, channelId, requesterId, visible
   if (!res.ok) throw new Error(`Modification permissions ticket impossible (${res.status}) ${await res.text().catch(() => "")}`);
 }
 
+function commandOptionValue(interaction, name) {
+  return interaction?.data?.options?.find(option => option.name === name)?.value;
+}
+
+function isTicketChannelInfo(channel) {
+  const name = String(channel?.name || "");
+  const topic = String(channel?.topic || "");
+  return (
+    /\bdemandeur\s+\d{16,22}\b/i.test(topic) ||
+    /\bticket\b/i.test(topic) ||
+    /^ticket[-_]/i.test(name) ||
+    /^rc(?:-|$)/i.test(name)
+  );
+}
+
+async function getTicketCommandChannel(env, interaction) {
+  const channelId = String(interaction.channel_id || "").replace(/\D/g, "");
+  if (!channelId) throw new Error("Salon introuvable.");
+  const channel = await discordRequest(env, "GET", `/channels/${channelId}`);
+  if (!isTicketChannelInfo(channel)) {
+    const err = new Error("Commande disponible uniquement dans un ticket.");
+    err.isUserError = true;
+    throw err;
+  }
+  return channel;
+}
+
+async function sendTicketCommandLog(env, channelId, content) {
+  await discordRequest(env, "POST", `/channels/${channelId}/messages`, {
+    content,
+    allowed_mentions: { parse: [] }
+  });
+}
+
+async function addTicketMember(env, interaction, targetId) {
+  const channel = await getTicketCommandChannel(env, interaction);
+  await discordRequest(env, "PUT", `/channels/${channel.id}/permissions/${targetId}`, {
+    type: 1,
+    allow: TICKET_BASE_PERMS,
+    deny: "0"
+  });
+  const actorId = interaction.member?.user?.id || interaction.user?.id;
+  await sendTicketCommandLog(env, channel.id, `<@${targetId}> a ete ajoute au ticket par <@${actorId}>.`);
+}
+
+async function removeTicketMember(env, interaction, targetId) {
+  const channel = await getTicketCommandChannel(env, interaction);
+  await discordRequest(env, "DELETE", `/channels/${channel.id}/permissions/${targetId}`);
+  const actorId = interaction.member?.user?.id || interaction.user?.id;
+  await sendTicketCommandLog(env, channel.id, `<@${targetId}> a ete retire du ticket par <@${actorId}>.`);
+}
+
+async function renameTicketChannel(env, interaction, rawName) {
+  const channel = await getTicketCommandChannel(env, interaction);
+  const name = ticketSafeName(rawName);
+  if (!name || name === "ticket") {
+    const err = new Error("Nom de ticket invalide.");
+    err.isUserError = true;
+    throw err;
+  }
+  await discordRequest(env, "PATCH", `/channels/${channel.id}`, { name: name.slice(0, 95) });
+  const actorId = interaction.member?.user?.id || interaction.user?.id;
+  await sendTicketCommandLog(env, channel.id, `Ticket renomme en **${name}** par <@${actorId}>.`);
+  return name;
+}
+
 function normalizeTicketOptions(options) {
   const src = Array.isArray(options) && options.length ? options : TICKET_OPTIONS;
   return src
@@ -4373,6 +4439,59 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/install-ticket-tools-commands" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const commands = [
+          {
+            name: "add",
+            description: "Ajouter un membre au ticket",
+            options: [{
+              type: 6,
+              name: "membre",
+              description: "Membre a ajouter au ticket",
+              required: true
+            }]
+          },
+          {
+            name: "remove",
+            description: "Retirer un membre du ticket",
+            options: [{
+              type: 6,
+              name: "membre",
+              description: "Membre a retirer du ticket",
+              required: true
+            }]
+          },
+          {
+            name: "rename",
+            description: "Renommer le ticket",
+            options: [{
+              type: 3,
+              name: "nom",
+              description: "Nouveau nom du ticket",
+              required: true,
+              max_length: 90
+            }]
+          }
+        ];
+        const results = [];
+        for (const command of commands) {
+          const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+            method: "POST",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify(command)
+          });
+          const data = await res.json().catch(() => null);
+          results.push({ name: command.name, ok: res.ok, status: res.status, data });
+        }
+        return json({ ok: results.every(result => result.ok), results });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/install-ticket-command" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
@@ -4567,6 +4686,33 @@ export default {
           return json({ type: 4, data: { content: `Panneau tickets envoye dans <#${targetChannelId}>.`, flags: 64 } });
         } catch (e) {
           return json({ type: 4, data: { content: `Erreur panneau tickets : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
+        }
+      }
+
+      // Slash commands tickets: /add, /remove, /rename
+      if (interaction.type === 2 && ["add", "remove", "rename"].includes(interaction.data.name)) {
+        try {
+          if (interaction.data.name === "add") {
+            const targetId = String(commandOptionValue(interaction, "membre") || "").replace(/\D/g, "");
+            if (!targetId) return json({ type: 4, data: { content: "Membre invalide.", flags: 64 } });
+            await addTicketMember(env, interaction, targetId);
+            return json({ type: 4, data: { content: `<@${targetId}> ajoute au ticket.`, flags: 64, allowed_mentions: { users: [targetId], parse: [] } } });
+          }
+
+          if (interaction.data.name === "remove") {
+            const targetId = String(commandOptionValue(interaction, "membre") || "").replace(/\D/g, "");
+            if (!targetId) return json({ type: 4, data: { content: "Membre invalide.", flags: 64 } });
+            await removeTicketMember(env, interaction, targetId);
+            return json({ type: 4, data: { content: `<@${targetId}> retire du ticket.`, flags: 64, allowed_mentions: { users: [targetId], parse: [] } } });
+          }
+
+          const rawName = String(commandOptionValue(interaction, "nom") || "").trim();
+          if (!rawName) return json({ type: 4, data: { content: "Nom invalide.", flags: 64 } });
+          const newName = await renameTicketChannel(env, interaction, rawName);
+          return json({ type: 4, data: { content: `Ticket renomme : #${newName}`, flags: 64 } });
+        } catch (e) {
+          const message = e?.isUserError ? e.message : `Erreur ticket : ${String(e.message || e).slice(0, 1500)}`;
+          return json({ type: 4, data: { content: message, flags: 64 } });
         }
       }
 
