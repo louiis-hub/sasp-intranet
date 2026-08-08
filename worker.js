@@ -358,7 +358,7 @@ const TICKET_PANEL_ACCENT_COLOR = 0x0b2f4a;
 const TICKET_FOOTER_TEXT = "SASP - San Andreas State Trooper";
 const TICKET_OPTIONS = [
   { key: "etat-major", emoji: "\ud83d\udc51", label: "Etat-Major", roleIds: ["1500975725153620033", "1504452141518032956"], categoryId: "1501323835562000384" },
-  { key: "police-academy", emoji: "\ud83c\udf93", label: "Police Academy", roleIds: ["1504452141518032956", "1518631032167993534"], categoryId: "1518633398753562794" },
+  { key: "police-academy", emoji: "\ud83c\udf93", label: "Police Academy", roleIds: ["1518632035911205168", "1504452141518032956"], categoryId: "1518633398753562794" },
   { key: "cnu", emoji: "\ud83e\udd1d", label: "Crisis Negotiation Unit", roleIds: ["1504452141518032956", "1519495585487388773", "1519495618060619877"], categoryId: "1519498275974025226" },
   { key: "traffic-unit", emoji: "\ud83d\udea6", label: "Traffic Unit", roleIds: ["1504452141518032956", "1501522839717679185", "1501525042037788772"], categoryId: "1519498407503466616" },
   { key: "cid", emoji: "\ud83d\udd75\ufe0f", label: "Criminal Investigation Division", roleIds: ["1504452141518032956", "1501526499910746132"], categoryId: "1528370627185082482" },
@@ -370,7 +370,7 @@ const TICKET_OPTIONS = [
 ];
 const TICKET_ACADEMY_PANEL_OPTIONS = [
   { key: "etat-major", emoji: "\ud83c\udfdb\ufe0f", label: "Etat-Major", roleIds: ["1500975725153620033", "1504452141518032956"], categoryId: "1501323835562000384", description: "Demande officielle ou administrative" },
-  { key: "police-academy-rc", emoji: "\ud83c\udf93", label: "Police Academy", roleIds: ["1504452141518032956", "1518631032167993534"], categoryId: "1518633398753562794", channelPrefix: "rc", description: "Recrutement, formations ou candidatures" }
+  { key: "police-academy-rc", emoji: "\ud83c\udf93", label: "Police Academy", roleIds: ["1518632035911205168", "1504452141518032956"], categoryId: "1518633398753562794", channelPrefix: "rc", description: "Recrutement, formations ou candidatures" }
 ];
 const TICKET_EM_SUPERVISOR_ROLE_ID = "1504452141518032956";
 
