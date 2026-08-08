@@ -362,6 +362,14 @@ const DEFCON_ALLOWED_ROLE_IDS = [
   "1519500254180020284"
 ];
 const DEFCON_PING_ROLE_ID = "1500975724750704665";
+const DEFCON_STATUS_CHANNEL_ID = "1533653868465094656";
+const DEFCON_CHANNEL_NAMES = {
+  "1": "🚥・𝖣𝖤𝖥𝖢𝖮𝖭-1",
+  "2": "🚥・𝖣𝖤𝖥𝖢𝖮𝖭-2",
+  "3": "🚥・𝖣𝖤𝖥𝖢𝖮𝖭-3",
+  "4": "🚥・𝖣𝖤𝖥𝖢𝖮𝖭-4",
+  "5": "🚥・𝖣𝖤𝖥𝖢𝖮𝖭-5"
+};
 const DEFCON_IMAGE_URLS = {
   "1": "https://louiis-hub.github.io/sasp-intranet/assets/defcon-1.jpg",
   "2": "https://louiis-hub.github.io/sasp-intranet/assets/defcon-2.jpg",
@@ -1604,6 +1612,33 @@ async function cloneAndDeleteChannel(env, guildId, channelId) {
     throw new Error(`Suppression ancien salon impossible (${deleteRes.status}) ${err}`);
   }
   return { old_channel_id: channelId, new_channel_id: created.id, name: created.name };
+}
+
+async function renameDefconStatusChannel(env, level) {
+  const name = DEFCON_CHANNEL_NAMES[String(level)];
+  if (!name || !DEFCON_STATUS_CHANNEL_ID || !env.DISCORD_BOT_TOKEN) return false;
+
+  try {
+    const response = await discordFetch(`${DISCORD_API}/channels/${DEFCON_STATUS_CHANNEL_ID}`, {
+      method: "PATCH",
+      headers: {
+        "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ name })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      console.log("DEFCON channel rename failed", response.status, errorText);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.log("DEFCON channel rename error", error?.message || error);
+    return false;
+  }
 }
 
 async function createServiceHousingLiaison(env, interaction, gamme) {
@@ -5087,6 +5122,7 @@ export default {
         }
 
         const userId = interaction.member?.user?.id || interaction.user?.id || "";
+        await renameDefconStatusChannel(env, level);
 
         return json({
           type: 4,
