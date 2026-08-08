@@ -356,6 +356,26 @@ const TICKET_PANEL_IMAGE_URL = "https://louiis-hub.github.io/sasp-intranet/asset
 const TICKET_PANEL_LOGO_URL = "https://louiis-hub.github.io/sasp-intranet/assets/sasp-sud-logo-def.png";
 const TICKET_PANEL_ACCENT_COLOR = 0x0b2f4a;
 const TICKET_FOOTER_TEXT = "SASP - San Andreas State Trooper";
+const DEFCON_ALLOWED_ROLE_IDS = [
+  "1500975725153620033",
+  "1504452141518032956",
+  "1519500254180020284"
+];
+const DEFCON_PING_ROLE_ID = "1500975724750704665";
+const DEFCON_IMAGE_URLS = {
+  "1": "https://louiis-hub.github.io/sasp-intranet/assets/defcon-1.jpg",
+  "2": "https://louiis-hub.github.io/sasp-intranet/assets/defcon-2.jpg",
+  "3": "https://louiis-hub.github.io/sasp-intranet/assets/defcon-3.jpg",
+  "4": "https://louiis-hub.github.io/sasp-intranet/assets/defcon-4.jpg",
+  "5": "https://louiis-hub.github.io/sasp-intranet/assets/defcon-5.jpg"
+};
+const DEFCON_COLORS = {
+  "1": 0xb91c1c,
+  "2": 0xea580c,
+  "3": 0xf59e0b,
+  "4": 0x84cc16,
+  "5": 0x22c55e
+};
 const TICKET_OPTIONS = [
   { key: "etat-major", emoji: "\ud83d\udc51", label: "Etat-Major", roleIds: ["1500975725153620033", "1504452141518032956"], categoryId: "1501323835562000384" },
   { key: "police-academy", emoji: "\ud83c\udf93", label: "Police Academy", roleIds: ["1518632035911205168", "1504452141518032956"], categoryId: "1518633398753562794" },
@@ -4415,6 +4435,40 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/install-defcon-command" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "defcon",
+            description: "Publier une alerte DEFCON SASP",
+            options: [
+              {
+                type: 3,
+                name: "niveau",
+                description: "Niveau DEFCON a publier",
+                required: true,
+                choices: [
+                  { name: "DEFCON 1", value: "1" },
+                  { name: "DEFCON 2", value: "2" },
+                  { name: "DEFCON 3", value: "3" },
+                  { name: "DEFCON 4", value: "4" },
+                  { name: "DEFCON 5", value: "5" }
+                ]
+              }
+            ]
+          })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, data });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/install-candidature-command" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
@@ -5015,6 +5069,42 @@ export default {
         }
 
         return json({ type: 4, data: { content: "Mode clear inconnu.", flags: 64 } });
+      }
+
+      // Slash command /defcon
+      if (interaction.type === 2 && interaction.data.name === "defcon") {
+        const member = interaction.member || {};
+        if (!memberHasAnyRole(member, DEFCON_ALLOWED_ROLE_IDS)) {
+          return json({ type: 4, data: { content: "Tu n'as pas les permissions pour utiliser cette commande.", flags: 64 } });
+        }
+
+        const options = interaction.data.options || [];
+        const level = String(options.find(o => o.name === "niveau")?.value || "");
+        const imageUrl = DEFCON_IMAGE_URLS[level];
+
+        if (!imageUrl) {
+          return json({ type: 4, data: { content: "Niveau DEFCON invalide. Choisis 1, 2, 3, 4 ou 5.", flags: 64 } });
+        }
+
+        const userId = interaction.member?.user?.id || interaction.user?.id || "";
+
+        return json({
+          type: 4,
+          data: {
+            content: `<@&${DEFCON_PING_ROLE_ID}>`,
+            embeds: [
+              {
+                title: `Alerte DEFCON ${level}`,
+                description: `Niveau DEFCON ${level} publie par ${userId ? `<@${userId}>` : "le commandement"}.`,
+                color: DEFCON_COLORS[level] || TICKET_PANEL_ACCENT_COLOR,
+                image: { url: imageUrl },
+                footer: { text: TICKET_FOOTER_TEXT },
+                timestamp: new Date().toISOString()
+              }
+            ],
+            allowed_mentions: { parse: [], roles: [DEFCON_PING_ROLE_ID] }
+          }
+        });
       }
 
       // Slash command /message
