@@ -357,19 +357,20 @@ const TICKET_PANEL_LOGO_URL = "https://louiis-hub.github.io/sasp-intranet/assets
 const TICKET_PANEL_ACCENT_COLOR = 0x0b2f4a;
 const TICKET_FOOTER_TEXT = "SASP - San Andreas State Trooper";
 const TICKET_OPTIONS = [
-  { key: "etat-major", emoji: "\ud83d\udc51", label: "Etat-Major", roleId: "1500975725153620033", categoryId: "1501323835562000384" },
-  { key: "police-academy", emoji: "\ud83c\udf93", label: "Police Academy", roleId: "1518631987462668358", categoryId: "1518633398753562794" },
-  { key: "cnu", emoji: "\ud83e\udd1d", label: "Crisis Negotiation Unit", roleId: "1519495084276715663", categoryId: "1519498275974025226" },
-  { key: "traffic-unit", emoji: "\ud83d\udea6", label: "Traffic Unit", roleId: "1514523508980584528", categoryId: "1519498407503466616" },
-  { key: "cid", emoji: "\ud83d\udd75\ufe0f", label: "Criminal Investigation Division", roleId: "1518631634524569641", categoryId: "1528370627185082482" },
-  { key: "swat", emoji: "\u2694\ufe0f", label: "Special Weapons And Tactics", roleId: "1504454935645786222", categoryId: "1528370732323704833" },
-  { key: "ftf", emoji: "\ud83c\udfaf", label: "Fugitive Task Force", roleId: FTF_ROLE_ID, categoryId: "1528371149095043204" },
-  { key: "syndicat", emoji: "\ud83e\udd1d", label: "Syndicat", roleId: "1519496665499959418", categoryId: "1528371218422562836" },
-  { key: "affaires-internes", emoji: "\ud83d\udd12", label: "Affaires Internes", roleId: "", categoryId: "1528371395174727751", unavailable: true, description: "Pas disponible" }
+  { key: "etat-major", emoji: "\ud83d\udc51", label: "Etat-Major", roleIds: ["1500975725153620033", "1504452141518032956"], categoryId: "1501323835562000384" },
+  { key: "police-academy", emoji: "\ud83c\udf93", label: "Police Academy", roleIds: ["1504452141518032956", "1518631032167993534"], categoryId: "1518633398753562794" },
+  { key: "cnu", emoji: "\ud83e\udd1d", label: "Crisis Negotiation Unit", roleIds: ["1504452141518032956", "1519495585487388773", "1519495618060619877"], categoryId: "1519498275974025226" },
+  { key: "traffic-unit", emoji: "\ud83d\udea6", label: "Traffic Unit", roleIds: ["1504452141518032956", "1501522839717679185", "1501525042037788772"], categoryId: "1519498407503466616" },
+  { key: "cid", emoji: "\ud83d\udd75\ufe0f", label: "Criminal Investigation Division", roleIds: ["1504452141518032956", "1501526499910746132"], categoryId: "1528370627185082482" },
+  { key: "swat", emoji: "\u2694\ufe0f", label: "Special Weapons And Tactics", roleIds: ["1504452141518032956", "1504450026393309276"], categoryId: "1528370732323704833" },
+  { key: "ftf", emoji: "\ud83c\udfaf", label: "Fugitive Task Force", roleIds: ["1504452141518032956", "1528370954319822949"], categoryId: "1528371149095043204" },
+  { key: "syndicat", emoji: "\ud83e\udd1d", label: "Syndicat", roleIds: ["1504452141518032956", "1519496676539109486"], categoryId: "1528371218422562836" },
+  { key: "k9", emoji: "\ud83d\udc15", label: "K9 Unit", roleIds: ["1504452141518032956", "1535392140140748820", "1535392215889870869"], categoryId: "1535392569721094285" },
+  { key: "affaires-internes", emoji: "\ud83d\udd12", label: "Affaires Internes", roleIds: ["1504452141518032956", "1524117754725007422"], categoryId: "1528371395174727751", unavailable: true, description: "Pas disponible" }
 ];
 const TICKET_ACADEMY_PANEL_OPTIONS = [
-  { key: "etat-major", emoji: "\ud83c\udfdb\ufe0f", label: "Etat-Major", roleId: "1500975725153620033", categoryId: "1501323835562000384", description: "Demande officielle ou administrative" },
-  { key: "police-academy-rc", emoji: "\ud83c\udf93", label: "Police Academy", roleId: "1518631987462668358", categoryId: "1518633398753562794", channelPrefix: "rc", description: "Recrutement, formations ou candidatures" }
+  { key: "etat-major", emoji: "\ud83c\udfdb\ufe0f", label: "Etat-Major", roleIds: ["1500975725153620033", "1504452141518032956"], categoryId: "1501323835562000384", description: "Demande officielle ou administrative" },
+  { key: "police-academy-rc", emoji: "\ud83c\udf93", label: "Police Academy", roleIds: ["1504452141518032956", "1518631032167993534"], categoryId: "1518633398753562794", channelPrefix: "rc", description: "Recrutement, formations ou candidatures" }
 ];
 const TICKET_EM_SUPERVISOR_ROLE_ID = "1504452141518032956";
 
@@ -1703,8 +1704,25 @@ function ticketBuildChannelName(prefix, rawName, interaction, userId) {
 const TICKET_VIEW_PERM = "1024";
 const TICKET_BASE_PERMS = String(1024n | 2048n | 65536n | 32768n | 16384n);
 
+function ticketRoleIdsFromValue(value) {
+  if (Array.isArray(value)) return Array.from(new Set(value.map(v => String(v || "").replace(/\D/g, "")).filter(Boolean)));
+  if (typeof value === "string") return Array.from(new Set(value.split(/[\s,;]+/).map(v => v.replace(/\D/g, "")).filter(Boolean)));
+  return [];
+}
+
+function ticketOptionRoleIds(option = {}) {
+  const explicit = Array.isArray(option.roleIds) ? option.roleIds : option.role_ids;
+  const fallback = option.roleId || option.role_id || "";
+  return ticketRoleIdsFromValue(explicit || fallback);
+}
+
+function ticketRoleToken(roleIds = []) {
+  return ticketRoleIdsFromValue(roleIds).join(",");
+}
+
 function hasTicketAdminRole(member, roleId = "") {
-  return hasStaffRole(member) || (!!roleId && memberHasAnyRole(member, [roleId]));
+  const roleIds = ticketRoleIdsFromValue(roleId);
+  return hasStaffRole(member) || (!!roleIds.length && memberHasAnyRole(member, roleIds));
 }
 
 async function setTicketRequesterVisibility(env, channelId, requesterId, visible) {
@@ -1794,7 +1812,8 @@ function normalizeTicketOptions(options) {
       key: ticketSafeName(o.key || o.label || `ticket-${i + 1}`),
       emoji: String(o.emoji || "\ud83c\udfab").slice(0, 8),
       label: String(o.label || `Ticket ${i + 1}`).slice(0, 80),
-      roleId: String(o.roleId || o.role_id || "").replace(/\D/g, ""),
+      roleIds: ticketOptionRoleIds(o),
+      roleId: ticketOptionRoleIds(o)[0] || "",
       categoryId: String(o.categoryId || o.category_id || "").replace(/\D/g, ""),
       channelPrefix: ticketSafeName(o.channelPrefix || o.channel_prefix || ""),
       description: String(o.description || (o.unavailable ? "Pas disponible" : "Ouvrir une liaison privée")).slice(0, 100),
@@ -1922,12 +1941,15 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
   if (!userId) throw new Error("Utilisateur introuvable.");
 
   const staffRoles = Array.from(new Set([...ADMIN_ROLE_IDS, ...STAFF_ROLE_IDS]));
+  const optionRoleIds = ticketOptionRoleIds(option);
   const permissionOverwrites = [
     { id: interaction.guild_id, type: 0, deny: String(VIEW) },
     { id: userId, type: 1, allow: BASE },
     ...staffRoles.map(roleId => ({ id: roleId, type: 0, allow: STAFF }))
   ];
-  if (option.roleId) permissionOverwrites.push({ id: option.roleId, type: 0, allow: STAFF });
+  for (const roleId of optionRoleIds) {
+    if (!staffRoles.includes(roleId)) permissionOverwrites.push({ id: roleId, type: 0, allow: STAFF });
+  }
 
   const identity = await getAgentIdentityForInteraction(env, interaction);
   const rpName = `${identity.prenom || ""} ${identity.nom || ""}`.trim()
@@ -1952,11 +1974,9 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
   }
   const channel = await createRes.json();
 
-  const mentionRoleIds = [];
-  if (option.roleId) mentionRoleIds.push(option.roleId);
-  if (option.key === "etat-major") mentionRoleIds.push(TICKET_EM_SUPERVISOR_ROLE_ID);
-  const uniqueMentionRoleIds = Array.from(new Set(mentionRoleIds.filter(Boolean)));
+  const uniqueMentionRoleIds = Array.from(new Set(optionRoleIds.filter(Boolean)));
   const roleLine = uniqueMentionRoleIds.length ? `\n${uniqueMentionRoleIds.map(roleId => `<@&${roleId}>`).join(" ")}` : "";
+  const closeRoleToken = ticketRoleToken(uniqueMentionRoleIds);
   const msgRes = await discordFetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
     method: "POST",
     headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
@@ -1980,7 +2000,7 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
       }],
       components: [{
         type: 1,
-        components: [{ type: 2, style: 4, label: "Fermer le ticket", emoji: { name: "\ud83d\udd12" }, custom_id: `ticket_close|${userId}|${option.roleId || ""}`.slice(0, 100) }]
+        components: [{ type: 2, style: 4, label: "Fermer le ticket", emoji: { name: "\ud83d\udd12" }, custom_id: `ticket_close|${userId}|${closeRoleToken}`.slice(0, 100) }]
       }],
       allowed_mentions: { users: [userId], roles: uniqueMentionRoleIds, parse: [] }
     })
@@ -4574,6 +4594,7 @@ export default {
               { type: 3, name: "cat_swat", description: "Categorie tickets SWAT", required: false },
               { type: 3, name: "cat_ftf", description: "Categorie tickets FTF", required: false },
               { type: 3, name: "cat_syndicat", description: "Categorie tickets Syndicat", required: false },
+              { type: 3, name: "cat_k9", description: "Categorie tickets K9", required: false },
               {
                 type: 3,
                 name: "cat_ai",
@@ -4724,6 +4745,7 @@ export default {
           swat: optionValue("cat_swat"),
           ftf: optionValue("cat_ftf"),
           syndicat: optionValue("cat_syndicat"),
+          k9: optionValue("cat_k9"),
           "affaires-internes": optionValue("cat_ai")
         };
         const panelOptions = TICKET_OPTIONS.map(option => ({
@@ -4848,13 +4870,14 @@ export default {
       if (interaction.type === 3 && interaction.data.custom_id?.startsWith("ticket_close|")) {
         const [, requesterId, roleId = ""] = interaction.data.custom_id.split("|");
         const userId = interaction.member?.user?.id || interaction.user?.id;
+        const closeRoleIds = ticketRoleIdsFromValue(roleId);
         if (userId !== requesterId && !hasTicketAdminRole(interaction.member || {}, roleId)) {
           return json({ type: 4, data: { content: "Tu n'as pas l'autorisation de demander la fermeture de ce ticket.", flags: 64 } });
         }
         ctx.waitUntil((async () => {
           await setTicketRequesterVisibility(env, interaction.channel_id, requesterId, false);
         })());
-        const roleLine = roleId ? `<@&${roleId}>` : "@staff";
+        const roleLine = closeRoleIds.length ? closeRoleIds.map(id => `<@&${id}>`).join(" ") : "@staff";
         return json({
           type: 4,
           data: {
@@ -4877,7 +4900,7 @@ export default {
                 { type: 2, style: 3, label: "Réouvrir le ticket", emoji: { name: "🔓" }, custom_id: `ticket_reopen|${requesterId}|${roleId}`.slice(0, 100) }
               ]
             }],
-            allowed_mentions: { users: [requesterId], roles: roleId ? [roleId] : [], parse: [] }
+            allowed_mentions: { users: [requesterId], roles: closeRoleIds, parse: [] }
           }
         });
       }
