@@ -386,7 +386,7 @@ const DEFCON_COLORS = {
 };
 const TICKET_OPTIONS = [
   { key: "etat-major", emoji: "\ud83d\udc51", label: "Etat-Major", roleIds: ["1500975725153620033", "1504452141518032956"], categoryId: "1501323835562000384" },
-  { key: "police-academy", emoji: "\ud83c\udf93", label: "Police Academy", roleIds: ["1518632035911205168", "1504452141518032956"], categoryId: "1518633398753562794" },
+  { key: "police-academy", emoji: "\ud83c\udf93", label: "Police Academy", roleIds: ["1518632035911205168", "1518631032167993534", "1504452141518032956"], categoryId: "1518633398753562794" },
   { key: "cnu", emoji: "\ud83e\udd1d", label: "Crisis Negotiation Unit", roleIds: ["1504452141518032956", "1519495585487388773", "1519495618060619877"], categoryId: "1519498275974025226" },
   { key: "traffic-unit", emoji: "\ud83d\udea6", label: "Traffic Unit", roleIds: ["1504452141518032956", "1501522839717679185", "1501525042037788772"], categoryId: "1519498407503466616" },
   { key: "cid", emoji: "\ud83d\udd75\ufe0f", label: "Criminal Investigation Division", roleIds: ["1504452141518032956", "1501526499910746132"], categoryId: "1528370627185082482" },
@@ -398,9 +398,10 @@ const TICKET_OPTIONS = [
 ];
 const TICKET_ACADEMY_PANEL_OPTIONS = [
   { key: "etat-major", emoji: "\ud83c\udfdb\ufe0f", label: "Etat-Major", roleIds: ["1500975725153620033", "1504452141518032956"], categoryId: "1501323835562000384", description: "Demande officielle ou administrative" },
-  { key: "police-academy-rc", emoji: "\ud83c\udf93", label: "Police Academy", roleIds: ["1518632035911205168", "1504452141518032956"], categoryId: "1518633398753562794", channelPrefix: "rc", description: "Recrutement, formations ou candidatures" }
+  { key: "police-academy-rc", emoji: "\ud83c\udf93", label: "Police Academy", roleIds: ["1518632035911205168", "1518631032167993534", "1504452141518032956"], categoryId: "1518633398753562794", channelPrefix: "rc", description: "Recrutement, formations ou candidatures" }
 ];
 const TICKET_EM_SUPERVISOR_ROLE_ID = "1504452141518032956";
+const TICKET_POLICE_ACADEMY_ACCESS_ROLE_ID = "1518631032167993534";
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ENTERPRISE_GUILD_ID = "1523759012623941746";
@@ -1771,6 +1772,35 @@ function ticketOptionRoleIds(option = {}) {
   return ticketRoleIdsFromValue(explicit || fallback);
 }
 
+function ticketIsEtatMajorOption(option = {}) {
+  const key = String(option.key || "").toLowerCase();
+  const label = String(option.label || "").toLowerCase();
+  return key === "em" || key === "etat-major" || key.includes("etat-major") || label.includes("etat-major") || label.includes("etat major");
+}
+
+function ticketIsPoliceAcademyOption(option = {}) {
+  const key = String(option.key || "").toLowerCase();
+  const label = String(option.label || "").toLowerCase();
+  return key.includes("police-academy") || key.includes("academy") || label.includes("police academy");
+}
+
+function ticketAccessRoleIds(option = {}) {
+  const roleIds = [
+    ...ticketOptionRoleIds(option),
+    ...ticketIdList(option.support_role_ids),
+    ...ticketIdList(option.manager_role_ids)
+  ];
+  if (ticketIsPoliceAcademyOption(option)) roleIds.push(TICKET_POLICE_ACADEMY_ACCESS_ROLE_ID);
+  return ticketRoleIdsFromValue(roleIds);
+}
+
+function ticketMentionRoleIds(option = {}) {
+  const explicit = Array.isArray(option.mentionRoleIds) ? option.mentionRoleIds : option.mention_role_ids;
+  const fallback = ticketOptionRoleIds(option);
+  const roleIds = ticketRoleIdsFromValue(explicit && explicit.length ? explicit : fallback);
+  return roleIds.filter(roleId => roleId !== TICKET_EM_SUPERVISOR_ROLE_ID || ticketIsEtatMajorOption(option));
+}
+
 function ticketRoleToken(roleIds = []) {
   return ticketRoleIdsFromValue(roleIds).join(",");
 }
@@ -1867,8 +1897,9 @@ function normalizeTicketOptions(options) {
       key: ticketSafeName(o.key || o.label || `ticket-${i + 1}`),
       emoji: String(o.emoji || "\ud83c\udfab").slice(0, 8),
       label: String(o.label || `Ticket ${i + 1}`).slice(0, 80),
-      roleIds: ticketOptionRoleIds(o),
-      roleId: ticketOptionRoleIds(o)[0] || "",
+      roleIds: ticketAccessRoleIds(o),
+      roleId: ticketAccessRoleIds(o)[0] || "",
+      mentionRoleIds: ticketMentionRoleIds(o),
       categoryId: String(o.categoryId || o.category_id || "").replace(/\D/g, ""),
       channelPrefix: ticketSafeName(o.channelPrefix || o.channel_prefix || ""),
       description: String(o.description || (o.unavailable ? "Pas disponible" : "Ouvrir une liaison privée")).slice(0, 100),
@@ -1996,7 +2027,7 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
   if (!userId) throw new Error("Utilisateur introuvable.");
 
   const staffRoles = Array.from(new Set([...ADMIN_ROLE_IDS, ...STAFF_ROLE_IDS]));
-  const optionRoleIds = ticketOptionRoleIds(option);
+  const optionRoleIds = ticketAccessRoleIds(option);
   const permissionOverwrites = [
     { id: interaction.guild_id, type: 0, deny: String(VIEW) },
     { id: userId, type: 1, allow: BASE },
@@ -2029,7 +2060,7 @@ async function createTicketChannel(env, interaction, categoryId, selectedKey) {
   }
   const channel = await createRes.json();
 
-  const uniqueMentionRoleIds = Array.from(new Set(optionRoleIds.filter(Boolean)));
+  const uniqueMentionRoleIds = ticketMentionRoleIds(option);
   const roleLine = uniqueMentionRoleIds.length ? `\n${uniqueMentionRoleIds.map(roleId => `<@&${roleId}>`).join(" ")}` : "";
   const closeRoleToken = ticketRoleToken(uniqueMentionRoleIds);
   const msgRes = await discordFetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
@@ -2224,8 +2255,7 @@ function ticketPermissionOverwrites(interaction, option) {
   const staffRoles = Array.from(new Set([
     ...ADMIN_ROLE_IDS,
     ...STAFF_ROLE_IDS,
-    ...ticketIdList(option.support_role_ids),
-    ...ticketIdList(option.manager_role_ids)
+    ...ticketAccessRoleIds(option)
   ]));
   return [
     { id: interaction.guild_id, type: 0, deny: String(VIEW) },
@@ -2247,10 +2277,7 @@ async function getTicketManageContext(env, siteKey, ticketId, member) {
   if (!ticket?.option_id) return { allowed: false, ticket };
   const options = await sbForSite(env, "GET", `/ticket_options?id=eq.${encodeURIComponent(ticket.option_id)}&select=support_role_ids,manager_role_ids&limit=1`, null, siteKey).catch(() => []);
   const option = Array.isArray(options) ? options[0] : null;
-  const allowedRoles = [
-    ...ticketIdList(option?.support_role_ids),
-    ...ticketIdList(option?.manager_role_ids)
-  ];
+  const allowedRoles = ticketAccessRoleIds(option);
   return { allowed: memberHasAnyRole(member, allowedRoles), ticket };
 }
 
@@ -2331,7 +2358,7 @@ async function createTicketChannelFromDb(env, interaction, panelId, optionId) {
     opened_at: new Date().toISOString()
   }, siteKey).catch(() => null);
   const ticket = ticketFirstRow(insertRows) || { id: `channel-${channel.id}` };
-  const mentionRoles = ticketIdList(option.mention_role_ids);
+  const mentionRoles = ticketMentionRoleIds(option);
   const roleLine = mentionRoles.map(id => `<@&${id}>`).join(" ");
   const welcome = option.welcome_message || "Expliquez clairement votre demande, ajoutez les captures ou documents utiles, puis attendez une reponse du service concerne.";
   await discordFetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
