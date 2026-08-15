@@ -402,6 +402,7 @@ const TICKET_ACADEMY_PANEL_OPTIONS = [
 ];
 const TICKET_EM_SUPERVISOR_ROLE_ID = "1504452141518032956";
 const TICKET_POLICE_ACADEMY_ACCESS_ROLE_ID = "1518631032167993534";
+const PLAINTESASP_DEFAULT_CHANNEL_ID = "1538289329917534328";
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ENTERPRISE_GUILD_ID = "1523759012623941746";
@@ -4101,6 +4102,24 @@ export default {
       }
     }
 
+    // Installer la commande /plaintesasp
+    if (url.pathname === "/admin/install-plaintesasp-command" && request.method === "GET") {
+      try {
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "plaintesasp", description: "Transmettre une plainte SASP" })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, data });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     if (url.pathname === "/admin/kick-non-sasp" && request.method === "GET") {
       const SASP_GUILD   = "1500975724750704661";
       const TARGET_GUILD = "1382167184607940658";
@@ -6142,6 +6161,62 @@ export default {
           });
         })());
         return json({ type: 5, data: { flags: 64 } });
+      }
+
+      // Slash command /plaintesasp
+      if (interaction.type === 2 && interaction.data.name === "plaintesasp") {
+        return json({
+          type: 9,
+          data: {
+            custom_id: "plaintesasp_modal",
+            title: "Plainte anonyme — SASP",
+            components: [
+              { type: 1, components: [{ type: 4, custom_id: "psasp_motif", label: "Motif de votre plainte", style: 2, required: true, placeholder: "Abus d’autorité, comportement, procédure, hiérarchie, conflit...", min_length: 2, max_length: 1000 }] },
+              { type: 1, components: [{ type: 4, custom_id: "psasp_agents", label: "Agent(s) SASP concerne(s)", style: 1, required: true, placeholder: "Nom, matricule ou grade si vous les connaissez", min_length: 2, max_length: 200 }] },
+              { type: 1, components: [{ type: 4, custom_id: "psasp_faits", label: "Faits et contexte", style: 2, required: true, placeholder: "Expliquez la situation dans l’ordre et les personnes présentes", min_length: 10, max_length: 2000 }] },
+              { type: 1, components: [{ type: 4, custom_id: "psasp_date_lieu", label: "Date, heure et lieu", style: 1, required: true, placeholder: "Date, heure approximative et lieu", min_length: 2, max_length: 200 }] },
+              { type: 1, components: [{ type: 4, custom_id: "psasp_preuves", label: "Preuves ou témoins", style: 2, required: false, placeholder: "Screenshots, clips, rapports, témoins, messages...", max_length: 1000 }] }
+            ]
+          }
+        });
+      }
+
+      // Modal submit /plaintesasp
+      if (interaction.type === 5 && interaction.data.custom_id === "plaintesasp_modal") {
+        const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value?.trim() || "";
+        const cleanField = (value) => (value || "—").slice(0, 1024);
+        const user = interaction.member?.user || interaction.user || {};
+        const discordName = user.global_name || user.username || "Utilisateur inconnu";
+        const targetChannelId = String(env.PLAINTESASP_CHANNEL_ID || PLAINTESASP_DEFAULT_CHANNEL_ID).replace(/\D/g, "");
+
+        const postRes = await discordFetch(`${DISCORD_API}/channels/${targetChannelId}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            embeds: [{
+              title: "🚨 PLAINTE ANONYME — SASP",
+              color: 0xc0392b,
+              fields: [
+                { name: "Nom Discord", value: cleanField(discordName), inline: false },
+                { name: "Motif", value: cleanField(getValue("psasp_motif")), inline: false },
+                { name: "Agent(s) concerné(s)", value: cleanField(getValue("psasp_agents")), inline: false },
+                { name: "Description des faits", value: cleanField(getValue("psasp_faits")), inline: false },
+                { name: "Date / lieu", value: cleanField(getValue("psasp_date_lieu")), inline: false },
+                { name: "Preuves / témoins", value: cleanField(getValue("psasp_preuves")), inline: false }
+              ],
+              footer: { text: "Signalement anonyme • SASP" },
+              timestamp: new Date().toISOString()
+            }],
+            allowed_mentions: { parse: [] }
+          })
+        });
+
+        if (!postRes.ok) {
+          await postRes.text().catch(() => "");
+          return json({ type: 4, data: { content: `❌ Erreur envoi plainte SASP (${postRes.status}).`, flags: 64 } });
+        }
+
+        return json({ type: 4, data: { content: "✅ Votre plainte SASP a bien été transmise anonymement.", flags: 64 } });
       }
 
       // Slash command /plainte
