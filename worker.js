@@ -1382,6 +1382,55 @@ async function refreshPointeuseMessage(env, channelId, messageId, siteKey = "sud
   return { ok: true, count: uniqueActivePointages(allActive).length };
 }
 
+async function updateInteractionOriginal(env, appId, token, content) {
+  if (!appId || !token) return;
+  await discordFetch(`${DISCORD_API}/webhooks/${appId}/${token}/messages/@original`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content, components: [] })
+  });
+}
+
+async function handlePointeuseServiceButton(env, interaction, customId) {
+  const siteKey = siteKeyFromGuildId(interaction.guild_id);
+  const appId = env.DISCORD_APPLICATION_ID;
+  const token = interaction.token;
+  const channelId = interaction.channel_id || env.POINTEUSE_CHANNEL_ID;
+  const messageId = interaction.message?.id || env.POINTEUSE_MESSAGE_ID;
+
+  try {
+    const agent = await getAgentForPointeuseInteraction(env, interaction, siteKey);
+    if (!agent) {
+      await updateInteractionOriginal(env, appId, token, "❌ Ton Discord ID n'est lié à aucun agent. Configure-le dans ton profil sur l'intranet.");
+      return;
+    }
+
+    let content;
+    if (customId === "prise_service") {
+      const existing = await getActivePointagesForAgentIdentity(env, agent, siteKey);
+      if (existing.length) {
+        content = `⚠️ Tu es déjà en service, ${agent.prenom} !`;
+      } else {
+        await sbForSite(env, "POST", "/pointages", { agent_id: agent.id, clock_in: new Date().toISOString() }, siteKey);
+        content = `✅ Prise de service enregistrée, ${agent.prenom}.`;
+      }
+    } else {
+      const active = await getActivePointagesForAgentIdentity(env, agent, siteKey);
+      if (!active.length) {
+        content = `⚠️ Tu n'es pas en service, ${agent.prenom} !`;
+      } else {
+        await closeActivePointagesForAgentIdentity(env, agent, siteKey);
+        content = `✅ Fin de service enregistrée, ${agent.prenom}.`;
+      }
+    }
+
+    await refreshPointeuseMessage(env, channelId, messageId, siteKey);
+    await updateInteractionOriginal(env, appId, token, content);
+  } catch (e) {
+    await updateInteractionOriginal(env, appId, token, `❌ Erreur pointeuse : ${String(e.message || e).slice(0, 1500)}`);
+  }
+}
+
 function startOfCurrentWeekUtc(now = new Date()) {
   const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const day = d.getUTCDay() || 7;
@@ -6502,35 +6551,8 @@ export default {
           return json({ type: 4, data: { content: "âŒ Action inconnue.", flags: 64 } });
         }
 
-        let agent;
-        const pointeuseSiteKey = siteKeyFromGuildId(interaction.guild_id);
-        try {
-          agent = await getAgentForPointeuseInteraction(env, interaction, pointeuseSiteKey);
-        } catch (e) {
-          return json({ type: 4, data: { content: `âŒ Erreur : ${e.message}`, flags: 64 } });
-        }
-
-        if (!agent) {
-          return json({ type: 4, data: { content: "âŒ Ton Discord ID n'est liÃ© Ã  aucun agent. Configure-le dans ton profil sur l'intranet.", flags: 64 } });
-        }
-
-        if (customId === "prise_service") {
-          const existing = await getActivePointagesForAgentIdentity(env, agent, pointeuseSiteKey);
-          if (existing.length) {
-            return json({ type: 4, data: { content: `âš ï¸ Tu es dÃ©jÃ  en service, ${agent.prenom} !`, flags: 64 } });
-          }
-          await sbForSite(env, "POST", "/pointages", { agent_id: agent.id, clock_in: new Date().toISOString() }, pointeuseSiteKey);
-        } else {
-          const active = await getActivePointagesForAgentIdentity(env, agent, pointeuseSiteKey);
-          if (!active.length) {
-            ctx.waitUntil(refreshPointeuseMessage(env, interaction.channel_id, interaction.message?.id, pointeuseSiteKey));
-            return json({ type: 4, data: { content: `âš ï¸ Tu n'es pas en service, ${agent.prenom} !`, flags: 64 } });
-          }
-          await closeActivePointagesForAgentIdentity(env, agent, pointeuseSiteKey);
-        }
-
-        const allActive = await getAllActivePointages(env, pointeuseSiteKey);
-        return json({ type: 7, data: buildPointeuseMessage(allActive) });
+        ctx.waitUntil(handlePointeuseServiceButton(env, interaction, customId));
+        return json({ type: 5, data: { flags: 64 } });
       }
 
       return json({ type: 4, data: { content: "Type d'interaction non supporté.", flags: 64 } });
@@ -6746,6 +6768,9 @@ export default {
       ctx.waitUntil(autoClockoutAll(env));
     } else {
       ctx.waitUntil(autoClockout6h(env));
+      if (env.POINTEUSE_CHANNEL_ID && env.POINTEUSE_MESSAGE_ID) {
+        ctx.waitUntil(refreshPointeuseMessage(env, env.POINTEUSE_CHANNEL_ID, env.POINTEUSE_MESSAGE_ID, "sud").catch(() => null));
+      }
       ctx.waitUntil(reactToChannelMessages(env).catch(() => null));
       ctx.waitUntil((async () => {
         const SOURCE_GUILD  = "1500975724750704661";
