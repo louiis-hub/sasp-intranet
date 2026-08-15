@@ -6186,7 +6186,8 @@ export default {
         const getValue = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value?.trim() || "";
         const cleanField = (value) => (value || "—").slice(0, 1024);
         const user = interaction.member?.user || interaction.user || {};
-        const discordName = user.global_name || user.username || "Utilisateur inconnu";
+        const userId = String(user.id || "").replace(/\D/g, "");
+        const discordMention = userId ? `<@${userId}>` : "Utilisateur inconnu";
         const targetChannelId = String(env.PLAINTESASP_CHANNEL_ID || PLAINTESASP_DEFAULT_CHANNEL_ID).replace(/\D/g, "");
 
         const postRes = await discordFetch(`${DISCORD_API}/channels/${targetChannelId}/messages`, {
@@ -6197,7 +6198,7 @@ export default {
               title: "🚨 PLAINTE ANONYME — SASP",
               color: 0xc0392b,
               fields: [
-                { name: "Nom Discord", value: cleanField(discordName), inline: false },
+                { name: "Auteur", value: cleanField(discordMention), inline: false },
                 { name: "Motif", value: cleanField(getValue("psasp_motif")), inline: false },
                 { name: "Agent(s) concerné(s)", value: cleanField(getValue("psasp_agents")), inline: false },
                 { name: "Description des faits", value: cleanField(getValue("psasp_faits")), inline: false },
@@ -6207,7 +6208,7 @@ export default {
               footer: { text: "Signalement anonyme • SASP" },
               timestamp: new Date().toISOString()
             }],
-            allowed_mentions: { parse: [] }
+            allowed_mentions: { users: userId ? [userId] : [], parse: [] }
           })
         });
 
