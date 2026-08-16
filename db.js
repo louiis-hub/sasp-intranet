@@ -274,16 +274,37 @@ var DB = {
   async clockIn(agentId) {
     var existing = await getDb().from('pointages').select('id').eq('agent_id', agentId).is('clock_out', null).limit(1);
     if (existing.data && existing.data.length) return { data: existing.data[0], alreadyActive: true };
-    return getDb().from('pointages').insert({ agent_id: agentId, clock_in: new Date().toISOString() }).select().single();
+    var now = new Date().toISOString();
+    return getDb().from('pointages').insert({
+      agent_id: agentId,
+      clock_in: now,
+      next_confirmation_at: new Date(new Date(now).getTime() + 5*60*60*1000).toISOString(),
+      confirmation_count: 0
+    }).select().single();
   },
   async clockOut(id) {
-    return getDb().from('pointages').update({ clock_out: new Date().toISOString() }).eq('id', id);
+    var now = new Date().toISOString();
+    var current = await getDb().from('pointages').select('clock_in').eq('id', id).limit(1).single();
+    var seconds = current.data && current.data.clock_in ? Math.max(0, Math.round((new Date(now) - new Date(current.data.clock_in)) / 1000)) : null;
+    return getDb().from('pointages').update({
+      clock_out: now,
+      clockout_reason: 'manual',
+      total_duration_seconds: seconds
+    }).eq('id', id);
   },
   async clockOutActiveForAgent(agentId) {
-    return getDb().from('pointages')
-      .update({ clock_out: new Date().toISOString() })
-      .eq('agent_id', agentId)
-      .is('clock_out', null);
+    var now = new Date().toISOString();
+    var active = await getDb().from('pointages').select('id,clock_in').eq('agent_id', agentId).is('clock_out', null);
+    var rows = active.data || [];
+    for (var i = 0; i < rows.length; i++) {
+      var seconds = rows[i].clock_in ? Math.max(0, Math.round((new Date(now) - new Date(rows[i].clock_in)) / 1000)) : null;
+      await getDb().from('pointages').update({
+        clock_out: now,
+        clockout_reason: 'manual',
+        total_duration_seconds: seconds
+      }).eq('id', rows[i].id);
+    }
+    return { data: rows, error: active.error };
   },
   async getAllPointages() {
     var { data } = await getDb().from('pointages')

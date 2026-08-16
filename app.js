@@ -4698,6 +4698,50 @@ function roleBadge(r) {
 // ══ POINTEUSE ══════════════════════════════════════════════════════
 var _pointageActifs = {};
 
+function pointeuseRelativeTime(targetIso, suffix) {
+  if (!targetIso) return '—';
+  var diff = new Date(targetIso).getTime() - Date.now();
+  var past = diff < 0;
+  var abs = Math.abs(diff);
+  var h = Math.floor(abs / 3600000);
+  var m = Math.floor((abs % 3600000) / 60000);
+  var value = h > 0 ? h + 'h' + (m < 10 ? '0' : '') + m : m + ' min';
+  return past ? 'maintenant' : value + (suffix || '');
+}
+
+function pointeuseStatusHtml(actif) {
+  if (!actif) return '<span class="badge badge-gray">Hors service</span>';
+  var since = fmtDuration(actif.clock_in);
+  if (actif.confirmation_requested_at) {
+    return '<div class="pointeuse-status">' +
+      '<span class="badge badge-gold">Confirmation demandée</span>' +
+      '<small>En service depuis ' + esc(since) + '</small>' +
+    '</div>';
+  }
+  return '<div class="pointeuse-status">' +
+    '<span class="badge badge-green">En service · ' + esc(since) + '</span>' +
+    '<small>Surveillance automatique active</small>' +
+  '</div>';
+}
+
+function pointeuseFollowupHtml(actif) {
+  if (!actif) return '<span style="color:var(--t3)">—</span>';
+  var parts = [];
+  if (actif.confirmation_requested_at) {
+    parts.push('<div><strong style="color:var(--gold)">Réponse attendue</strong><span>Demande envoyée à ' + fmtClock(actif.confirmation_requested_at) + '</span></div>');
+    parts.push('<div><strong>Délai auto</strong><span>15 min après la demande</span></div>');
+  } else if (actif.next_confirmation_at) {
+    parts.push('<div><strong>Prochaine vérif.</strong><span>' + fmtClock(actif.next_confirmation_at) + ' · dans ' + pointeuseRelativeTime(actif.next_confirmation_at) + '</span></div>');
+  } else {
+    parts.push('<div><strong>Prochaine vérif.</strong><span>Après 5h de service</span></div>');
+  }
+  if (actif.last_confirmation_at) {
+    parts.push('<div><strong>Dernière confirmation</strong><span>' + fmtClock(actif.last_confirmation_at) + ' · ' + fmt(actif.last_confirmation_at) + '</span></div>');
+  }
+  parts.push('<div><strong>Confirmations</strong><span>' + Number(actif.confirmation_count || 0) + '</span></div>');
+  return '<div class="pointeuse-followup">' + parts.join('') + '</div>';
+}
+
 async function renderPointeuse() {
   var _today = new Date();
   var _dow = _today.getDay();
@@ -4724,18 +4768,16 @@ async function renderPointeuse() {
     var actif = _pointageActifs[a.id];
     var last = lastByAgent[a.id];
     var lastClosed = lastClosedByAgent[a.id];
-    var since = actif ? fmtDuration(actif.clock_in) : '';
     var priseHtml = actif
       ? '<strong class="text-gold">' + fmtClock(actif.clock_in) + '</strong><br><small style="color:var(--t3)">' + fmt(actif.clock_in) + '</small>'
       : (last ? '<span>' + fmtClock(last.clock_in) + '</span><br><small style="color:var(--t3)">' + fmt(last.clock_in) + '</small>' : '<span style="color:var(--t3)">—</span>');
     var finHtml = actif
       ? '<span class="badge badge-green">En cours</span>'
       : (lastClosed ? '<span>' + fmtClock(lastClosed.clock_out) + '</span><br><small style="color:var(--t3)">' + fmt(lastClosed.clock_out) + '</small>' : '<span style="color:var(--t3)">—</span>');
-    var statusHtml = actif
-      ? '<span class="badge badge-green">En service · ' + since + '</span>'
-      : '<span class="badge badge-gray">Hors service</span>';
+    var statusHtml = pointeuseStatusHtml(actif);
+    var followupHtml = pointeuseFollowupHtml(actif);
     var forceBtn = (actif && canWrite())
-      ? ' <button class="btn btn-ghost btn-sm" style="color:#e74c3c;border-color:rgba(231,76,60,.3)" onclick="forceClockOut(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')" title="Forcer fin de service">🛑</button>'
+      ? ' <button class="btn btn-ghost btn-sm" style="color:#e74c3c;border-color:rgba(231,76,60,.3)" onclick="forceClockOut(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')" title="Forcer fin de service">Forcer</button>'
       : '';
     var btnHtml = actif
       ? '<button class="btn btn-danger btn-sm" onclick="doClockOut(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.matricule) + '\')">⏹ Sortie</button>' + forceBtn
@@ -4750,6 +4792,7 @@ async function renderPointeuse() {
       '<td>' + telephoneCell + '</td>' +
       '<td>' + statusHtml + '</td>' +
       '<td>' + priseHtml + '</td>' +
+      '<td>' + followupHtml + '</td>' +
       '<td>' + finHtml + '</td>' +
       '<td>' + btnHtml + '</td>' +
     '</tr>';
@@ -4834,8 +4877,8 @@ async function renderPointeuse() {
     '</div>' +
     '<div class="card">' +
       '<div class="table-wrap"><table>' +
-        '<thead><tr><th>GRADE</th><th>AGENT</th><th>TELEPHONE</th><th>STATUT</th><th>PRISE SERVICE</th><th>FIN SERVICE</th><th>ACTION</th></tr></thead>' +
-        '<tbody>' + (rows || '<tr><td colspan="7" style="text-align:center;color:var(--t3)">Aucun agent</td></tr>') + '</tbody>' +
+        '<thead><tr><th>GRADE</th><th>AGENT</th><th>TELEPHONE</th><th>STATUT</th><th>PRISE SERVICE</th><th>SUIVI AUTO</th><th>FIN SERVICE</th><th>ACTION</th></tr></thead>' +
+        '<tbody>' + (rows || '<tr><td colspan="8" style="text-align:center;color:var(--t3)">Aucun agent</td></tr>') + '</tbody>' +
       '</table></div>' +
     '</div>' +
     rapportHtml

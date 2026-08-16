@@ -8,4 +8,4 @@ POINTEUSE_MESSAGE_ID = "1527982879722836029"
 PLAINTESASP_CHANNEL_ID = "1538289329917534328"
 
 [triggers]
-crons = ["3 10 * * SUN", "3 11 * * SUN", "0 18 * * SUN", "*/15 * * * *"]
+crons = ["0 18 * * SUN", "*/15 * * * *"]

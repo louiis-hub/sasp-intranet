@@ -78,7 +78,8 @@ async function sendUserDM(env, userId, payload) {
     body: JSON.stringify(Object.assign({ allowed_mentions: { parse: [] } }, payload))
   });
   if (!msgRes.ok) return { ok: false, error: `dm_message_${msgRes.status}`, details: await msgRes.text() };
-  return { ok: true };
+  const message = await msgRes.json().catch(() => ({}));
+  return { ok: true, channel_id: channel.id, message_id: message.id };
 }
 
 const AUTO_REACTION_CHANNEL_ID = "1500994818543849723";
@@ -1335,12 +1336,34 @@ async function getActivePointage(env, agentId, siteKey = "sud") {
   return data && data.length > 0 ? data[0] : null;
 }
 
-async function closeActivePointagesForAgent(env, agentId, siteKey = "sud") {
+function pointageDurationSeconds(pointage, endIso) {
+  const start = new Date(pointage?.clock_in || Date.now()).getTime();
+  const end = new Date(endIso || Date.now()).getTime();
+  return Math.max(0, Math.round((end - start) / 1000));
+}
+
+function pointageClosePatch(pointage, endIso, reason = "manual") {
+  return {
+    clock_out: endIso,
+    clockout_reason: reason,
+    total_duration_seconds: pointageDurationSeconds(pointage, endIso)
+  };
+}
+
+async function closePointage(env, pointage, siteKey = "sud", reason = "manual") {
   const now = new Date().toISOString();
-  const data = await sbForSite(env, "GET", `/pointages?agent_id=eq.${agentId}&clock_out=is.null&select=id`, null, siteKey);
+  await sbForSite(env, "PATCH", `/pointages?id=eq.${pointage.id}`, pointageClosePatch(pointage, now, reason), siteKey);
+  return { clock_out: now, duration_seconds: pointageDurationSeconds(pointage, now) };
+}
+
+async function closeActivePointagesForAgent(env, agentId, siteKey = "sud", reason = "manual") {
+  const now = new Date().toISOString();
+  const data = await sbForSite(env, "GET", `/pointages?agent_id=eq.${agentId}&clock_out=is.null&select=id,clock_in`, null, siteKey);
   const active = Array.isArray(data) ? data : [];
   if (!active.length) return { count: 0, clock_out: now };
-  await sbForSite(env, "PATCH", `/pointages?agent_id=eq.${agentId}&clock_out=is.null`, { clock_out: now }, siteKey);
+  for (const p of active) {
+    await sbForSite(env, "PATCH", `/pointages?id=eq.${p.id}`, pointageClosePatch(p, now, reason), siteKey);
+  }
   return { count: active.length, clock_out: now };
 }
 
@@ -1365,12 +1388,12 @@ async function getActivePointagesForAgentIdentity(env, agent, siteKey = "sud") {
   return (Array.isArray(data) ? data : []).filter(p => sameAgentIdentity(p, agent));
 }
 
-async function closeActivePointagesForAgentIdentity(env, agent, siteKey = "sud") {
+async function closeActivePointagesForAgentIdentity(env, agent, siteKey = "sud", reason = "manual") {
   const now = new Date().toISOString();
   const active = await getActivePointagesForAgentIdentity(env, agent, siteKey);
   if (!active.length) return { count: 0, clock_out: now };
   for (const p of active) {
-    await sbForSite(env, "PATCH", `/pointages?id=eq.${p.id}`, { clock_out: now }, siteKey);
+    await sbForSite(env, "PATCH", `/pointages?id=eq.${p.id}`, pointageClosePatch(p, now, reason), siteKey);
   }
   return { count: active.length, clock_out: now };
 }
@@ -1411,7 +1434,14 @@ async function handlePointeuseServiceButton(env, interaction, customId) {
       if (existing.length) {
         content = `⚠️ Tu es déjà en service, ${agent.prenom} !`;
       } else {
-        await sbForSite(env, "POST", "/pointages", { agent_id: agent.id, clock_in: new Date().toISOString() }, siteKey);
+        const now = new Date().toISOString();
+        await sbForSite(env, "POST", "/pointages", {
+          agent_id: agent.id,
+          clock_in: now,
+          discord_id: agent.discord_id || null,
+          next_confirmation_at: addMsIso(now, SERVICE_CONFIRM_AFTER_MS),
+          confirmation_count: 0
+        }, siteKey);
         content = `✅ Prise de service enregistrée, ${agent.prenom}.`;
       }
     } else {
@@ -1481,7 +1511,7 @@ async function getWeeklyServiceSummary(env, agent, siteKey = "sud", now = new Da
 }
 
 async function getAllActivePointages(env, siteKey = "sud") {
-  const data = await sbForSite(env, "GET", `/pointages?clock_out=is.null&select=id,agent_id,clock_in,agents(nom,prenom,matricule)&order=clock_in.asc`, null, siteKey);
+  const data = await sbForSite(env, "GET", `/pointages?clock_out=is.null&select=id,agent_id,clock_in,last_confirmation_at,confirmation_count,next_confirmation_at,confirmation_requested_at,discord_id,agents(nom,prenom,matricule,discord_id)&order=clock_in.asc`, null, siteKey);
   return data || [];
 }
 
@@ -1526,6 +1556,247 @@ function buildPointeuseMessage(active) {
         { type: 2, style: 2, label: "Retirer un agent", emoji: { name: "\ud83d\uded1" }, custom_id: "admin_remove" }
       ]
     }]
+  };
+}
+
+const SERVICE_CONFIRM_AFTER_MS = 5 * 60 * 60 * 1000;
+const SERVICE_CONFIRM_REPEAT_MS = 2 * 60 * 60 * 1000;
+const SERVICE_CONFIRM_GRACE_MS = 15 * 60 * 1000;
+const POINTEUSE_LOG_CHANNEL_ID = "1519525957390827711";
+
+function addMsIso(iso, ms) {
+  return new Date(new Date(iso).getTime() + ms).toISOString();
+}
+
+function buildPointeuseConfirmationDm(pointage, siteKey) {
+  return {
+    embeds: [{
+      title: "🚓 SASP — Pointeuse",
+      description: "Vous êtes en service depuis bientôt 6 heures.\nÊtes-vous toujours en service ?",
+      color: 0x3A9B4E,
+      fields: [
+        { name: "Prise de service", value: `<t:${Math.floor(new Date(pointage.clock_in).getTime() / 1000)}:f>`, inline: false },
+        { name: "Délai de réponse", value: "15 minutes", inline: true }
+      ],
+      footer: { text: "SASP · Pointeuse" },
+      timestamp: new Date().toISOString()
+    }],
+    components: [{
+      type: 1,
+      components: [
+        { type: 2, style: 3, label: "Oui, je suis toujours en service", emoji: { name: "🟢" }, custom_id: `pointeuse_confirm_yes|${siteKey}|${pointage.id}` },
+        { type: 2, style: 4, label: "Non, terminer mon service", emoji: { name: "🔴" }, custom_id: `pointeuse_confirm_no|${siteKey}|${pointage.id}` }
+      ]
+    }]
+  };
+}
+
+function buildDisabledPointeuseConfirmationDm(title, description, color = 0x3A4E64) {
+  return {
+    embeds: [{
+      title,
+      description,
+      color,
+      footer: { text: "SASP · Pointeuse" },
+      timestamp: new Date().toISOString()
+    }],
+    components: [{
+      type: 1,
+      components: [
+        { type: 2, style: 3, label: "Oui, je suis toujours en service", emoji: { name: "🟢" }, custom_id: "pointeuse_confirm_closed_yes", disabled: true },
+        { type: 2, style: 4, label: "Non, terminer mon service", emoji: { name: "🔴" }, custom_id: "pointeuse_confirm_closed_no", disabled: true }
+      ]
+    }]
+  };
+}
+
+async function getPointageById(env, pointageId, siteKey = "sud") {
+  const rows = await sbForSite(
+    env,
+    "GET",
+    `/pointages?id=eq.${encodeURIComponent(pointageId)}&select=id,agent_id,clock_in,clock_out,last_confirmation_at,confirmation_count,next_confirmation_at,confirmation_requested_at,confirmation_channel_id,confirmation_message_id,discord_id,agents(nom,prenom,matricule,discord_id)&limit=1`,
+    null,
+    siteKey
+  );
+  return Array.isArray(rows) && rows.length ? rows[0] : null;
+}
+
+async function logPointeuseAutoClose(env, rows, title, color = 0xe67e22) {
+  if (!rows.length) return;
+  const lines = rows.map(p => {
+    const a = p.agents || {};
+    return `• **${`${a.prenom || ""} ${a.nom || ""}`.trim() || "Agent SASP"}** (${a.matricule || "—"})`;
+  }).join("\n");
+  await discordFetch(`${DISCORD_API}/channels/${POINTEUSE_LOG_CHANNEL_ID}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      allowed_mentions: { parse: [] },
+      embeds: [{
+        title,
+        description: lines,
+        color,
+        footer: { text: "SASP · Pointeuse" },
+        timestamp: new Date().toISOString()
+      }]
+    })
+  }).catch(() => null);
+}
+
+async function sendPointeuseConfirmationRequest(env, pointage, siteKey = "sud") {
+  const a = pointage.agents || {};
+  const userId = pointage.discord_id || a.discord_id;
+  const sent = await sendUserDM(env, userId, buildPointeuseConfirmationDm(pointage, siteKey));
+  if (!sent.ok) throw new Error(sent.error || "dm_failed");
+  const now = new Date().toISOString();
+  await sbForSite(env, "PATCH", `/pointages?id=eq.${pointage.id}`, {
+    confirmation_requested_at: now,
+    confirmation_channel_id: sent.channel_id || null,
+    confirmation_message_id: sent.message_id || null,
+    discord_id: userId || null
+  }, siteKey);
+  return sent;
+}
+
+async function closePointageAfterNoConfirmation(env, pointage, siteKey = "sud") {
+  const closed = await closePointage(env, pointage, siteKey, "AUTO_CLOSED");
+  const a = pointage.agents || {};
+  const userId = pointage.discord_id || a.discord_id;
+  const description = "Votre service a été automatiquement clôturé car aucune confirmation n'a été reçue.\n\nSi vous étiez toujours en service, contactez un membre du Command Staff afin que votre temps puisse être corrigé.";
+  if (pointage.confirmation_channel_id && pointage.confirmation_message_id) {
+    await editMessage(env, pointage.confirmation_channel_id, pointage.confirmation_message_id, buildDisabledPointeuseConfirmationDm(
+      "⚠️ SASP — Fin de service automatique",
+      description,
+      0xe67e22
+    )).catch(() => null);
+  }
+  await sendUserDM(env, userId, {
+    embeds: [{
+      title: "⚠️ SASP — Fin de service automatique",
+      description,
+      color: 0xe67e22,
+      fields: [
+        { name: "Prise de service", value: `<t:${Math.floor(new Date(pointage.clock_in).getTime() / 1000)}:f>`, inline: false },
+        { name: "Durée retenue", value: formatDurationFromMs(closed.duration_seconds * 1000), inline: true }
+      ],
+      footer: { text: "SASP · Pointeuse" },
+      timestamp: closed.clock_out
+    }]
+  }).catch(() => null);
+}
+
+async function processPointeuseConfirmations(env, siteKey = "sud") {
+  const nowMs = Date.now();
+  const active = await sbForSite(
+    env,
+    "GET",
+    `/pointages?clock_out=is.null&select=id,agent_id,clock_in,last_confirmation_at,confirmation_count,next_confirmation_at,confirmation_requested_at,confirmation_channel_id,confirmation_message_id,discord_id,agents(nom,prenom,matricule,discord_id)&order=clock_in.asc`,
+    null,
+    siteKey
+  );
+  const rows = uniqueActivePointages(active || []);
+  const autoClosed = [];
+  let requested = 0;
+
+  for (const p of rows) {
+    const requestedAt = p.confirmation_requested_at ? new Date(p.confirmation_requested_at).getTime() : 0;
+    if (requestedAt && nowMs >= requestedAt + SERVICE_CONFIRM_GRACE_MS) {
+      await closePointageAfterNoConfirmation(env, p, siteKey);
+      autoClosed.push(p);
+      continue;
+    }
+
+    const dueMs = new Date(p.next_confirmation_at || addMsIso(p.clock_in, SERVICE_CONFIRM_AFTER_MS)).getTime();
+    if (!requestedAt && Number.isFinite(dueMs) && nowMs >= dueMs) {
+      try {
+        await sendPointeuseConfirmationRequest(env, p, siteKey);
+        requested += 1;
+      } catch (err) {
+        console.warn("pointeuse confirmation dm failed", p.id, err && err.message);
+      }
+    }
+  }
+
+  if (autoClosed.length) {
+    await logPointeuseAutoClose(env, autoClosed, "⏱️ Fin de service automatique — aucune confirmation");
+  }
+  if ((autoClosed.length || requested) && env.POINTEUSE_CHANNEL_ID && env.POINTEUSE_MESSAGE_ID) {
+    await refreshPointeuseMessage(env, env.POINTEUSE_CHANNEL_ID, env.POINTEUSE_MESSAGE_ID, siteKey).catch(() => null);
+  }
+  return { requested, auto_closed: autoClosed.length };
+}
+
+async function handlePointeuseConfirmationButton(env, interaction, customId) {
+  const parts = customId.split("|");
+  const action = parts[0] === "pointeuse_confirm_yes" ? "yes" : "no";
+  const siteKey = parts[1] === "nord" ? "nord" : "sud";
+  const pointageId = parts[2];
+  const pointage = await getPointageById(env, pointageId, siteKey);
+  if (!pointage || pointage.clock_out) {
+    if (interaction.channel_id && interaction.message?.id) {
+      await editMessage(env, interaction.channel_id, interaction.message.id, buildDisabledPointeuseConfirmationDm(
+        "🚓 SASP — Pointeuse",
+        "Cette demande de confirmation n'est plus active.",
+        0x3A4E64
+      )).catch(() => null);
+    }
+    return;
+  }
+
+  const now = new Date().toISOString();
+  if (action === "yes") {
+    await sbForSite(env, "PATCH", `/pointages?id=eq.${pointage.id}`, {
+      last_confirmation_at: now,
+      confirmation_count: Number(pointage.confirmation_count || 0) + 1,
+      confirmation_requested_at: null,
+      confirmation_channel_id: null,
+      confirmation_message_id: null,
+      next_confirmation_at: addMsIso(now, SERVICE_CONFIRM_REPEAT_MS)
+    }, siteKey);
+    if (interaction.channel_id && interaction.message?.id) {
+      await editMessage(env, interaction.channel_id, interaction.message.id, buildDisabledPointeuseConfirmationDm(
+        "✅ SASP — Service confirmé",
+        "Votre service continue normalement. Une nouvelle confirmation pourra être demandée dans 2 heures.",
+        0x2ecc71
+      )).catch(() => null);
+    }
+    return;
+  }
+
+  const closed = await closePointage(env, pointage, siteKey, "manual");
+  if (interaction.channel_id && interaction.message?.id) {
+    await editMessage(env, interaction.channel_id, interaction.message.id, buildDisabledPointeuseConfirmationDm(
+      "🔴 SASP — Fin de service enregistrée",
+      `Votre service a été clôturé.\nDurée totale : **${formatDurationFromMs(closed.duration_seconds * 1000)}**.`,
+      0xe74c3c
+    )).catch(() => null);
+  }
+  if (env.POINTEUSE_CHANNEL_ID && env.POINTEUSE_MESSAGE_ID) {
+    await refreshPointeuseMessage(env, env.POINTEUSE_CHANNEL_ID, env.POINTEUSE_MESSAGE_ID, siteKey).catch(() => null);
+  }
+}
+
+async function testPointeuseConfirmationForUser(env, userId, siteKey = "sud") {
+  const agent = await getAgentByDiscordId(env, userId, siteKey);
+  if (!agent) return { ok: false, error: "agent_not_found" };
+  const active = await getActivePointagesForAgentIdentity(env, agent, siteKey);
+  const pointage = uniqueActivePointages(active)[0];
+  if (!pointage) return { ok: false, error: "agent_not_in_service", agent };
+  const enriched = await getPointageById(env, pointage.id, siteKey) || { ...pointage, agents: agent };
+  const sent = await sendPointeuseConfirmationRequest(env, enriched, siteKey);
+  return {
+    ok: sent.ok,
+    agent: {
+      id: agent.id,
+      matricule: agent.matricule,
+      nom: agent.nom,
+      prenom: agent.prenom,
+      discord_id: agent.discord_id
+    },
+    pointage_id: pointage.id,
+    dm_channel_id: sent.channel_id || null,
+    dm_message_id: sent.message_id || null,
+    error: sent.error || null
   };
 }
 
@@ -2504,7 +2775,7 @@ async function autoClockout6h(env) {
   }
   const now = new Date().toISOString();
   for (const p of realExpired) {
-    await closeActivePointagesForAgent(env, p.agent_id, "sud");
+    await closeActivePointagesForAgent(env, p.agent_id, "sud", "AUTO_CLOSED_LEGACY_6H");
     const a = p.agents || {};
     const displayName = `${a.prenom || ""} ${a.nom || ""}`.trim() || "Agent SASP";
     try {
@@ -2559,7 +2830,7 @@ async function autoClockoutAll(env) {
   const activeUnique = uniqueActivePointages(active);
   const now = new Date().toISOString();
   for (const p of active) {
-    await sb(env, "PATCH", `/pointages?id=eq.${p.id}`, { clock_out: now });
+    await sb(env, "PATCH", `/pointages?id=eq.${p.id}`, pointageClosePatch(p, now, "AUTO_CLOSED_WEEKLY"));
   }
   const names = activeUnique.map(p => {
     const a = p.agents || {};
@@ -2629,6 +2900,20 @@ export default {
         }]
       });
       return json(result, result.ok ? 200 : 500);
+    }
+
+    if (url.pathname === "/admin/test-pointeuse-confirmation" && request.method === "GET") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const userId = url.searchParams.get("user_id");
+      if (!userId) return json({ ok: false, error: "user_id requis" }, 400);
+      const siteKey = url.searchParams.get("site") === "nord" ? "nord" : "sud";
+      try {
+        const result = await testPointeuseConfirmationForUser(env, userId, siteKey);
+        return json(result, result.ok ? 200 : 400);
+      } catch (e) {
+        return json({ ok: false, error: e.message || String(e) }, 500);
+      }
     }
 
     // Sync divisions intranet â†’ Discord
@@ -6414,6 +6699,11 @@ export default {
         const discordUserId = interaction.member?.user?.id || interaction.user?.id;
         const member = interaction.member;
 
+        if (customId.startsWith("pointeuse_confirm_yes|") || customId.startsWith("pointeuse_confirm_no|")) {
+          ctx.waitUntil(handlePointeuseConfirmationButton(env, interaction, customId));
+          return json({ type: 6 });
+        }
+
         if (customId.startsWith("ftf_convocation_schedule|")) {
           const dossierId = customId.split("|")[1];
           const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -6762,12 +7052,10 @@ export default {
 
   // â”€â”€ Cron â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async scheduled(event, env, ctx) {
-    if (event.cron === '3 10 * * SUN' || event.cron === '3 11 * * SUN') {
-      ctx.waitUntil(sendCeremonieReminder(env));
-    } else if (event.cron === '0 18 * * SUN') {
+    if (event.cron === '0 18 * * SUN') {
       ctx.waitUntil(autoClockoutAll(env));
     } else {
-      ctx.waitUntil(autoClockout6h(env));
+      ctx.waitUntil(processPointeuseConfirmations(env, "sud"));
       if (env.POINTEUSE_CHANNEL_ID && env.POINTEUSE_MESSAGE_ID) {
         ctx.waitUntil(refreshPointeuseMessage(env, env.POINTEUSE_CHANNEL_ID, env.POINTEUSE_MESSAGE_ID, "sud").catch(() => null));
       }
