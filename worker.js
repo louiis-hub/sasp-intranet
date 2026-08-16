@@ -1350,9 +1350,14 @@ function pointageClosePatch(pointage, endIso, reason = "manual") {
   };
 }
 
+function pointageClosePatchForSite(pointage, endIso, siteKey = "sud", reason = "manual") {
+  if (siteKey === "nord") return { clock_out: endIso };
+  return pointageClosePatch(pointage, endIso, reason);
+}
+
 async function closePointage(env, pointage, siteKey = "sud", reason = "manual") {
   const now = new Date().toISOString();
-  await sbForSite(env, "PATCH", `/pointages?id=eq.${pointage.id}`, pointageClosePatch(pointage, now, reason), siteKey);
+  await sbForSite(env, "PATCH", `/pointages?id=eq.${pointage.id}`, pointageClosePatchForSite(pointage, now, siteKey, reason), siteKey);
   return { clock_out: now, duration_seconds: pointageDurationSeconds(pointage, now) };
 }
 
@@ -1362,7 +1367,7 @@ async function closeActivePointagesForAgent(env, agentId, siteKey = "sud", reaso
   const active = Array.isArray(data) ? data : [];
   if (!active.length) return { count: 0, clock_out: now };
   for (const p of active) {
-    await sbForSite(env, "PATCH", `/pointages?id=eq.${p.id}`, pointageClosePatch(p, now, reason), siteKey);
+    await sbForSite(env, "PATCH", `/pointages?id=eq.${p.id}`, pointageClosePatchForSite(p, now, siteKey, reason), siteKey);
   }
   return { count: active.length, clock_out: now };
 }
@@ -1393,7 +1398,7 @@ async function closeActivePointagesForAgentIdentity(env, agent, siteKey = "sud",
   const active = await getActivePointagesForAgentIdentity(env, agent, siteKey);
   if (!active.length) return { count: 0, clock_out: now };
   for (const p of active) {
-    await sbForSite(env, "PATCH", `/pointages?id=eq.${p.id}`, pointageClosePatch(p, now, reason), siteKey);
+    await sbForSite(env, "PATCH", `/pointages?id=eq.${p.id}`, pointageClosePatchForSite(p, now, siteKey, reason), siteKey);
   }
   return { count: active.length, clock_out: now };
 }
@@ -1435,13 +1440,16 @@ async function handlePointeuseServiceButton(env, interaction, customId) {
         content = `⚠️ Tu es déjà en service, ${agent.prenom} !`;
       } else {
         const now = new Date().toISOString();
-        await sbForSite(env, "POST", "/pointages", {
-          agent_id: agent.id,
-          clock_in: now,
-          discord_id: agent.discord_id || null,
-          next_confirmation_at: addMsIso(now, SERVICE_CONFIRM_AFTER_MS),
-          confirmation_count: 0
-        }, siteKey);
+        const payload = siteKey === "nord"
+          ? { agent_id: agent.id, clock_in: now }
+          : {
+              agent_id: agent.id,
+              clock_in: now,
+              discord_id: agent.discord_id || null,
+              next_confirmation_at: addMsIso(now, SERVICE_CONFIRM_AFTER_MS),
+              confirmation_count: 0
+            };
+        await sbForSite(env, "POST", "/pointages", payload, siteKey);
         content = `✅ Prise de service enregistrée, ${agent.prenom}.`;
       }
     } else {
@@ -1511,7 +1519,10 @@ async function getWeeklyServiceSummary(env, agent, siteKey = "sud", now = new Da
 }
 
 async function getAllActivePointages(env, siteKey = "sud") {
-  const data = await sbForSite(env, "GET", `/pointages?clock_out=is.null&select=id,agent_id,clock_in,last_confirmation_at,confirmation_count,next_confirmation_at,confirmation_requested_at,discord_id,agents(nom,prenom,matricule,discord_id)&order=clock_in.asc`, null, siteKey);
+  const select = siteKey === "nord"
+    ? "id,agent_id,clock_in,agents(nom,prenom,matricule,discord_id)"
+    : "id,agent_id,clock_in,last_confirmation_at,confirmation_count,next_confirmation_at,confirmation_requested_at,discord_id,agents(nom,prenom,matricule,discord_id)";
+  const data = await sbForSite(env, "GET", `/pointages?clock_out=is.null&select=${select}&order=clock_in.asc`, null, siteKey);
   return data || [];
 }
 
