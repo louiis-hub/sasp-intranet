@@ -1823,6 +1823,53 @@ async function editMessage(env, channelId, messageId, payload) {
   });
 }
 
+function isPointeuseBoardMessage(message) {
+  const title = message?.embeds?.[0]?.title || "";
+  const componentIds = (message?.components || [])
+    .flatMap(row => row.components || [])
+    .map(component => component.custom_id)
+    .filter(Boolean);
+  return title.includes("Tableau de service")
+    || componentIds.includes("prise_service")
+    || componentIds.includes("fin_service")
+    || componentIds.includes("admin_remove");
+}
+
+async function refreshPointeuseChannelBoards(env, channelId, siteKey = "sud", limit = 50) {
+  if (!channelId) return { ok: false, error: "missing_channel_id", updated: 0, count: 0 };
+  const active = await getAllActivePointages(env, siteKey);
+  const payload = buildPointeuseMessage(active);
+  const maxScan = Math.max(1, Math.min(Number(limit) || 50, 1000));
+  const messages = [];
+  let before = "";
+  while (messages.length < maxScan) {
+    const pageLimit = Math.min(100, maxScan - messages.length);
+    const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages?limit=${pageLimit}${before ? `&before=${before}` : ""}`, {
+      headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+    });
+    if (!res.ok) return { ok: false, error: `messages_${res.status}`, details: await res.text(), updated: 0, count: uniqueActivePointages(active).length };
+    const page = await res.json();
+    if (!Array.isArray(page) || !page.length) break;
+    messages.push(...page);
+    before = page[page.length - 1].id;
+    if (page.length < pageLimit) break;
+  }
+  const pinsRes = await discordFetch(`${DISCORD_API}/channels/${channelId}/pins`, {
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+  }).catch(() => null);
+  if (pinsRes && pinsRes.ok) {
+    const pins = await pinsRes.json().catch(() => []);
+    if (Array.isArray(pins)) messages.push(...pins);
+  }
+  const byId = new Map();
+  for (const message of messages) if (message?.id) byId.set(message.id, message);
+  const boards = Array.from(byId.values()).filter(isPointeuseBoardMessage);
+  for (const message of boards) {
+    await editMessage(env, channelId, message.id, payload).catch(() => null);
+  }
+  return { ok: true, scanned: byId.size, updated: boards.length, count: uniqueActivePointages(active).length };
+}
+
 async function sendFtfLog(env, title, description, color = 0xc9a84c) {
   if (!FTF_LOG_CHANNEL_ID || !env.DISCORD_BOT_TOKEN) return;
   try {
@@ -6885,11 +6932,23 @@ export default {
       const body = await request.json().catch(() => ({}));
       const siteKey = body.site === "nord" ? "nord" : "sud";
       const chId = body.channel_id || env.POINTEUSE_CHANNEL_ID;
+      if (body.all_messages) {
+        return json(await refreshPointeuseChannelBoards(env, chId, siteKey, body.limit || 50));
+      }
       const msgId = body.message_id || env.POINTEUSE_MESSAGE_ID;
       if (!chId || !msgId) return json({ ok: false, error: "Missing pointeuse message config" }, 400);
       const active = await getAllActivePointages(env, siteKey);
       await editMessage(env, chId, msgId, buildPointeuseMessage(active));
       return json({ ok: true, count: uniqueActivePointages(active).length });
+    }
+
+    if (url.pathname === "/admin/refresh-pointeuse-channel" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const body = await request.json().catch(() => ({}));
+      const siteKey = body.site === "nord" ? "nord" : "sud";
+      const chId = body.channel_id || env.POINTEUSE_CHANNEL_ID;
+      return json(await refreshPointeuseChannelBoards(env, chId, siteKey, body.limit || 50));
     }
 
     // â”€â”€ Reset manuel tous les agents (admin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
