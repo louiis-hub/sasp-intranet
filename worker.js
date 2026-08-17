@@ -6972,6 +6972,29 @@ export default {
       return json({ ok: res.ok, status: res.status, channel_id: channelId, message_id: data.id || null, response: data }, res.ok ? 200 : 500);
     }
 
+    if (url.pathname === "/admin/edit-channel-message" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const body = await request.json().catch(() => ({}));
+      const channelId = String(body.channel_id || "").replace(/\D/g, "");
+      const messageId = String(body.message_id || "").replace(/\D/g, "");
+      const content = String(body.content || "").trim();
+      if (!channelId) return json({ ok: false, error: "Missing channel_id" }, 400);
+      if (!messageId) return json({ ok: false, error: "Missing message_id" }, 400);
+      if (!content) return json({ ok: false, error: "Missing content" }, 400);
+      if (content.length > 2000) return json({ ok: false, error: "Message too long" }, 400);
+      const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          allowed_mentions: { parse: ["users", "roles"] }
+        })
+      });
+      const data = await res.json().catch(async () => ({ error: await res.text().catch(() => "") }));
+      return json({ ok: res.ok, status: res.status, channel_id: channelId, message_id: messageId, response: data }, res.ok ? 200 : 500);
+    }
+
     // â”€â”€ Reset manuel tous les agents (admin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (url.pathname === "/clockout-all" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
