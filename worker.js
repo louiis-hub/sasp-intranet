@@ -6816,8 +6816,14 @@ export default {
           if (!hasStaffRole(member)) {
             return json({ type: 4, data: { content: "âŒ Tu n'as pas les permissions pour cette action.", flags: 64 } });
           }
-          const active = uniqueActivePointages(await getAllActivePointages(env, siteKeyFromGuildId(interaction.guild_id)));
+          const siteKey = siteKeyFromGuildId(interaction.guild_id);
+          const active = uniqueActivePointages(await getAllActivePointages(env, siteKey));
           if (!active.length) {
+            const channelId = interaction.channel_id;
+            const messageId = interaction.message?.id;
+            if (channelId && messageId) {
+              await editMessage(env, channelId, messageId, buildPointeuseMessage([])).catch(() => null);
+            }
             return json({ type: 4, data: { content: "Aucun agent en service actuellement.", flags: 64 } });
           }
           const options = active.map(p => {
