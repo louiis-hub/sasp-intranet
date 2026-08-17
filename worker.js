@@ -189,6 +189,7 @@ async function reactToChannelMessages(env, channelId = AUTO_REACTION_CHANNEL_ID,
 const DIVISION_ROLES = {
   'CID':  '1518631634524569641',
   'SWAT': '1504454935645786222',
+  'FTF':  '1528370846908026951',
   'PA':   '1518631987462668358',
   'CNU':  '1519495084276715663',
   'TU':   '1514523508980584528',
@@ -7022,6 +7023,25 @@ export default {
       });
       const data = await res.json().catch(async () => ({ error: await res.text().catch(() => "") }));
       return json({ ok: res.ok, status: res.status, channel_id: channelId, message_id: messageId, response: data }, res.ok ? 200 : 500);
+    }
+
+    if (url.pathname === "/admin/upsert-unit" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const body = await request.json().catch(() => ({}));
+      const siteKey = body.site === "nord" ? "nord" : "sud";
+      const code = String(body.code || "").trim().toUpperCase();
+      const nom = String(body.nom || "").trim();
+      if (!code || !nom) return json({ ok: false, error: "Missing code or nom" }, 400);
+      const payload = {
+        code,
+        nom,
+        description: String(body.description || "").trim() || null,
+        conditions_acces: String(body.conditions_acces || "").trim() || null,
+        discord_role_id: String(body.discord_role_id || "").replace(/\D/g, "") || null
+      };
+      const data = await sbForSite(env, "POST", "/units?on_conflict=code", payload, siteKey);
+      return json({ ok: true, site: siteKey, unit: Array.isArray(data) ? data[0] : data });
     }
 
     // â”€â”€ Reset manuel tous les agents (admin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

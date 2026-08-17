@@ -85,7 +85,7 @@ function parseMoneyInput(v) {
 var WORKER_BASE = 'https://sasp-intranet-bot.louisleurin.workers.dev';
 var LOG_WORKER  = WORKER_BASE + '/log';
 var LOG_TOKEN   = 'SASPlogs2026!';
-var TRACKED_DIVISIONS = ['CID','SWAT','PA','CNU','TU','SYND','LP'];
+var TRACKED_DIVISIONS = ['CID','SWAT','PA','CNU','TU','SYND','LP','FTF'];
 
 function refreshAgentList() {
   DB.getAgents({}).then(function(agents) {
@@ -2705,7 +2705,7 @@ async function renderUnits() {
 
   var html = units.map(function(u) {
     var members = agents.filter(function(a){ return (a.unites||[]).includes(u.code); });
-    var colors = { PA:'blue', CID:'orange', SWAT:'red', TU:'green', PRD:'gold' };
+    var colors = { PA:'blue', CID:'orange', SWAT:'red', TU:'green', PRD:'gold', FTF:'gold' };
     var cls = 'badge-' + (colors[u.code]||'gray');
     return '<div class="card">' +
       '<div class="card-head">' +

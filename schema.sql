@@ -46,12 +46,14 @@ CREATE TABLE IF NOT EXISTS units (
   nom              TEXT NOT NULL,
   description      TEXT,
   conditions_acces TEXT,
+  discord_role_id  TEXT,
   created_at       TIMESTAMP DEFAULT NOW()
 );
 
 INSERT INTO units (code, nom, description) VALUES
   ('PA',   'SASP Academy',               'Formation initiale des nouvelles recrues SASP.'),
   ('CID',  'Criminal Investigation Div.','Investigations criminelles et enquêtes judiciaires.'),
+  ('FTF',  'Fugitive Task Force',         'Recherche, convocation et suivi des fugitifs.'),
   ('SWAT', 'Special Weapons and Tactics','Interventions tactiques à haut risque.'),
   ('TU',   'Traffic Unit',               'Contrôle de la circulation et accidents de la route.'),
   ('HP',   'Highway Patrol',             'Patrouille autoroutière et premier engagement.')
