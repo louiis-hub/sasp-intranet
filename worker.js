@@ -1573,10 +1573,18 @@ function buildPointeuseMessage(active) {
 const SERVICE_CONFIRM_AFTER_MS = 5 * 60 * 60 * 1000;
 const SERVICE_CONFIRM_REPEAT_MS = 2 * 60 * 60 * 1000;
 const SERVICE_CONFIRM_GRACE_MS = 15 * 60 * 1000;
+const SERVICE_FIRST_MISSED_PENALTY_MS = 4 * 60 * 60 * 1000;
+const SERVICE_CONFIRMED_END_PENALTY_MS = 1 * 60 * 60 * 1000;
 const POINTEUSE_LOG_CHANNEL_ID = "1519525957390827711";
 
 function addMsIso(iso, ms) {
   return new Date(new Date(iso).getTime() + ms).toISOString();
+}
+
+function penalizedEndIso(pointage, actualEndIso, penaltyMs) {
+  const startMs = new Date(pointage?.clock_in || actualEndIso).getTime();
+  const endMs = new Date(actualEndIso).getTime();
+  return new Date(Math.max(startMs, endMs - Math.max(0, penaltyMs || 0))).toISOString();
 }
 
 function buildPointeuseConfirmationDm(pointage, siteKey) {
@@ -1670,10 +1678,20 @@ async function sendPointeuseConfirmationRequest(env, pointage, siteKey = "sud") 
 }
 
 async function closePointageAfterNoConfirmation(env, pointage, siteKey = "sud") {
-  const closed = await closePointage(env, pointage, siteKey, "AUTO_CLOSED");
+  const actualClosedAt = new Date().toISOString();
+  const alreadyConfirmed = Number(pointage.confirmation_count || 0) > 0;
+  const penaltyMs = alreadyConfirmed ? SERVICE_CONFIRMED_END_PENALTY_MS : SERVICE_FIRST_MISSED_PENALTY_MS;
+  const effectiveClosedAt = siteKey === "nord" ? actualClosedAt : penalizedEndIso(pointage, actualClosedAt, penaltyMs);
+  await sbForSite(env, "PATCH", `/pointages?id=eq.${pointage.id}`, pointageClosePatchForSite(pointage, effectiveClosedAt, siteKey, alreadyConfirmed ? "AUTO_CLOSED_MINUS_1H" : "AUTO_CLOSED_MINUS_4H"), siteKey);
+  const closed = {
+    clock_out: effectiveClosedAt,
+    actual_clock_out: actualClosedAt,
+    duration_seconds: pointageDurationSeconds(pointage, effectiveClosedAt),
+    penalty_label: alreadyConfirmed ? "1h" : "4h"
+  };
   const a = pointage.agents || {};
   const userId = pointage.discord_id || a.discord_id;
-  const description = "Votre service a été automatiquement clôturé car aucune confirmation n'a été reçue.\n\nSi vous étiez toujours en service, contactez un membre du Command Staff afin que votre temps puisse être corrigé.";
+  const description = `Votre service a été automatiquement clôturé car aucune confirmation n'a été reçue.\n\nUne pénalité de **${closed.penalty_label}** a été appliquée sur votre temps de service.\n\nSi vous étiez toujours en service, contactez un membre du Command Staff afin que votre temps puisse être corrigé.`;
   if (pointage.confirmation_channel_id && pointage.confirmation_message_id) {
     await editMessage(env, pointage.confirmation_channel_id, pointage.confirmation_message_id, buildDisabledPointeuseConfirmationDm(
       "⚠️ SASP — Fin de service automatique",
@@ -1688,10 +1706,11 @@ async function closePointageAfterNoConfirmation(env, pointage, siteKey = "sud") 
       color: 0xe67e22,
       fields: [
         { name: "Prise de service", value: `<t:${Math.floor(new Date(pointage.clock_in).getTime() / 1000)}:f>`, inline: false },
+        { name: "Pénalité", value: closed.penalty_label, inline: true },
         { name: "Durée retenue", value: formatDurationFromMs(closed.duration_seconds * 1000), inline: true }
       ],
       footer: { text: "SASP · Pointeuse" },
-      timestamp: closed.clock_out
+      timestamp: closed.actual_clock_out
     }]
   }).catch(() => null);
 }
@@ -1774,11 +1793,21 @@ async function handlePointeuseConfirmationButton(env, interaction, customId) {
     return;
   }
 
-  const closed = await closePointage(env, pointage, siteKey, "manual");
+  const confirmedBefore = Number(pointage.confirmation_count || 0) > 0;
+  const actualClosedAt = new Date().toISOString();
+  const effectiveClosedAt = confirmedBefore && siteKey !== "nord"
+    ? penalizedEndIso(pointage, actualClosedAt, SERVICE_CONFIRMED_END_PENALTY_MS)
+    : actualClosedAt;
+  await sbForSite(env, "PATCH", `/pointages?id=eq.${pointage.id}`, pointageClosePatchForSite(pointage, effectiveClosedAt, siteKey, confirmedBefore ? "manual_minus_1h" : "manual"), siteKey);
+  const closed = {
+    clock_out: effectiveClosedAt,
+    duration_seconds: pointageDurationSeconds(pointage, effectiveClosedAt),
+    penalty_label: confirmedBefore ? "1h" : null
+  };
   if (interaction.channel_id && interaction.message?.id) {
     await editMessage(env, interaction.channel_id, interaction.message.id, buildDisabledPointeuseConfirmationDm(
       "🔴 SASP — Fin de service enregistrée",
-      `Votre service a été clôturé.\nDurée totale : **${formatDurationFromMs(closed.duration_seconds * 1000)}**.`,
+      `Votre service a été clôturé.${closed.penalty_label ? `\nPénalité appliquée : **${closed.penalty_label}**.` : ""}\nDurée retenue : **${formatDurationFromMs(closed.duration_seconds * 1000)}**.`,
       0xe74c3c
     )).catch(() => null);
   }
