@@ -3138,7 +3138,11 @@ window.postCompletudDiscord = async function(btn) {
   btn.disabled = true;
   btn.textContent = '⏳ Envoi…';
   try {
-    var res = await fetch(WORKER_BASE + '/admin/post-completude');
+    var res = await fetch(WORKER_BASE + '/admin/post-completude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cid_inventory: collectCidWeaponInventory() })
+    });
     var data = await res.json();
     btn.textContent = data.ok ? '✅ Envoyé !' : '❌ Erreur';
   } catch(e) {
@@ -3147,8 +3151,73 @@ window.postCompletudDiscord = async function(btn) {
   setTimeout(function() { btn.textContent = orig; btn.disabled = false; }, 2500);
 };
 
+function normalizeSerial(v) {
+  return String(v || '').trim().toUpperCase().replace(/\s+/g, '');
+}
+
+function collectCidWeaponInventory() {
+  var cases = [];
+  try { cases = typeof cidLoad === 'function' ? cidLoad() : []; } catch(e) { cases = []; }
+  var rows = [];
+  (cases || []).forEach(function(c) {
+    (c.preuves || []).forEach(function(p) {
+      if (String(p.type || '').toLowerCase() !== 'arme') return;
+      var d = p.details || {};
+      rows.push({
+        source: 'CID',
+        case_id: c.id || '',
+        case_numero: c.numero || '',
+        case_title: c.titre || '',
+        scelle: p.scelle || '',
+        nom: d.type_arme || p.description || 'Arme',
+        serie: d.numero_serie || '',
+        suspect: cidPersonNameById(c, d.suspect_id) || ''
+      });
+    });
+  });
+  return rows;
+}
+
+function buildSerialInventory(agentWeapons, cidWeapons) {
+  var rows = [];
+  (agentWeapons || []).forEach(function(w) {
+    var a = w.agent || {};
+    rows.push({
+      source: 'Agent',
+      nom: w.nom || 'Arme',
+      serie: w.serie || '',
+      serial_key: normalizeSerial(w.serie),
+      owner: a.id ? ((a.prenom || '') + ' ' + (a.nom || '') + ' (' + (a.matricule || '—') + ')') : 'Agent inconnu',
+      agent_id: a.id || '',
+      detail: w.ppa_niveau ? 'PPA ' + w.ppa_niveau : 'Sans PPA'
+    });
+  });
+  (cidWeapons || []).forEach(function(w) {
+    rows.push({
+      source: 'CID',
+      nom: w.nom || 'Arme',
+      serie: w.serie || '',
+      serial_key: normalizeSerial(w.serie),
+      owner: (w.case_numero || 'CID') + (w.case_title ? ' — ' + w.case_title : ''),
+      agent_id: '',
+      detail: [w.scelle, w.suspect ? 'Suspect: ' + w.suspect : ''].filter(Boolean).join(' · ')
+    });
+  });
+  var counts = {};
+  rows.forEach(function(r) { if (r.serial_key) counts[r.serial_key] = (counts[r.serial_key] || 0) + 1; });
+  rows.forEach(function(r) { r.duplicate = !!r.serial_key && counts[r.serial_key] > 1; });
+  return rows;
+}
+
 async function renderCompletude() {
-  var agents = await DB.getAgents({});
+  var [agents, agentWeapons] = await Promise.all([
+    DB.getAgents({}),
+    DB.getAllAgentArmes ? DB.getAllAgentArmes() : Promise.resolve([])
+  ]);
+  var cidWeapons = collectCidWeaponInventory();
+  var serialInventory = buildSerialInventory(agentWeapons, cidWeapons);
+  var missingSerials = serialInventory.filter(function(r){ return !r.serial_key; }).length;
+  var duplicates = serialInventory.filter(function(r){ return r.duplicate; }).length;
   var FIELDS = [
     { key: 'iban',            label: 'IBAN' },
     { key: 'telephone',       label: 'Téléphone' },
@@ -3172,6 +3241,16 @@ async function renderCompletude() {
   }).join('');
 
   var incomplete = agents.filter(function(a){ return FIELDS.some(function(f){ return !a[f.key]; }); }).length;
+  var inventoryRows = serialInventory.length ? serialInventory.map(function(r) {
+    return '<tr' + (r.agent_id ? ' onclick="navigate(\'agent-profile\',{id:\'' + r.agent_id + '\'})" style="cursor:pointer"' : '') + '>' +
+      '<td><span class="badge ' + (r.source === 'CID' ? 'badge-blue' : 'badge-gold') + '" style="font-size:.65rem">' + esc(r.source) + '</span></td>' +
+      '<td style="font-weight:600;color:var(--t0)">' + esc(r.nom) + '</td>' +
+      '<td class="mono ' + (r.serial_key ? 'text-gold' : 'text-muted') + '">' + (r.serie ? esc(r.serie) : '—') + '</td>' +
+      '<td>' + esc(r.owner || '—') + '</td>' +
+      '<td style="color:var(--t3);font-size:.78rem">' + esc(r.detail || '—') + '</td>' +
+      '<td style="text-align:center">' + (r.duplicate ? '<span class="badge badge-red" style="font-size:.65rem">Doublon</span>' : (r.serial_key ? ok : nok)) + '</td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="6"><div class="empty-state" style="padding:26px"><div class="empty-icon">🔫</div><div class="empty-title">Aucune arme inventoriée</div></div></td></tr>';
 
   setContent(
     '<div class="flex-between mb-20 flex-wrap gap-8">' +
@@ -3195,6 +3274,21 @@ async function renderCompletude() {
           '<th style="text-align:center">Statut</th>' +
         '</tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
+      '</table>' +
+    '</div>' +
+    '<div class="flex-between mb-12 mt-20 flex-wrap gap-8">' +
+      '<div>' +
+        '<h2 style="font-size:1.05rem;font-weight:700;color:var(--t0);margin:0">Inventaire numéros de série</h2>' +
+        '<div style="font-size:.78rem;color:var(--t3);margin-top:3px">' + serialInventory.length + ' arme' + (serialInventory.length!==1?'s':'') + ' inventoriée' + (serialInventory.length!==1?'s':'') + ' — ' +
+          '<span style="color:' + (missingSerials?'#e74c3c':'#2ecc71') + '">' + missingSerials + ' sans S/N</span>' +
+          (duplicates ? ' — <span style="color:#f39c12">' + duplicates + ' doublon' + (duplicates>1?'s':'') + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="card" style="padding:0;overflow:hidden">' +
+      '<table class="table">' +
+        '<thead><tr><th>Source</th><th>Arme</th><th>S/N</th><th>Détenteur / dossier</th><th>Détail</th><th style="text-align:center">État</th></tr></thead>' +
+        '<tbody>' + inventoryRows + '</tbody>' +
       '</table>' +
     '</div>'
   );
@@ -3736,6 +3830,10 @@ async function doSearch(q) {
   }
   el.innerHTML = '<div class="loader-block" style="padding:30px"><div class="spinner"></div></div>';
   var { agents, mdt, armes } = await DB.search(q);
+  var qNorm = normalizeSerial(q);
+  var cidArmes = collectCidWeaponInventory().filter(function(w) {
+    return normalizeSerial(w.serie).indexOf(qNorm) !== -1 || String(w.nom || '').toLowerCase().indexOf(String(q || '').toLowerCase()) !== -1;
+  });
 
   var html = '';
   if (agents.length) {
@@ -3755,6 +3853,16 @@ async function doSearch(q) {
           '<span class="mono text-gold" style="min-width:110px">' + esc(w.serie || '—') + '</span>' +
           '<span style="font-weight:600;color:var(--t0);flex:1">' + esc(w.nom || 'Arme') + '</span>' +
           '<span style="font-size:.8rem;color:var(--t2)">' + (hasAgent ? esc((a.prenom || '') + ' ' + (a.nom || '') + ' (' + (a.matricule || '—') + ')') : 'Agent inconnu') + '</span>' +
+        '</div>';
+      }).join('') + '</div>';
+  }
+  if (cidArmes.length) {
+    html += '<div class="card mb-14"><div class="card-head"><div class="card-icon">🕵️</div><div><div class="card-title">Inventaire CID</div><div class="card-sub">' + cidArmes.length + ' RÉSULTAT(S)</div></div></div>' +
+      cidArmes.map(function(w){
+        return '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border0);cursor:pointer" onclick="navigate(\'cid\',{id:\'' + esc(w.case_id) + '\'})">' +
+          '<span class="mono text-gold" style="min-width:110px">' + esc(w.serie || '—') + '</span>' +
+          '<span style="font-weight:600;color:var(--t0);flex:1">' + esc(w.nom || 'Arme') + '</span>' +
+          '<span style="font-size:.8rem;color:var(--t2)">' + esc((w.case_numero || 'CID') + (w.scelle ? ' · ' + w.scelle : '')) + '</span>' +
         '</div>';
       }).join('') + '</div>';
   }

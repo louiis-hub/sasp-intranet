@@ -195,6 +195,12 @@ var DB = {
       .select('*').eq('agent_id', agentId).order('ppa_niveau').order('nom');
     return data || [];
   },
+  async getAllAgentArmes() {
+    var { data } = await getDb().from('agent_armes')
+      .select('id,agent_id,nom,serie,ppa_niveau,agent:agent_id(id,nom,prenom,matricule,grade,statut)')
+      .order('nom');
+    return data || [];
+  },
   async addAgentArme(data) { return getDb().from('agent_armes').insert(data).select().single(); },
   async deleteAgentArme(id) { return getDb().from('agent_armes').delete().eq('id', id); },
   async deleteAgent(id) {

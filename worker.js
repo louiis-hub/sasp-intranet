@@ -7052,15 +7052,19 @@ export default {
       return json({ ok: true, count });
     }
 
-    if (url.pathname === "/admin/post-completude" && request.method === "GET") {
+    if (url.pathname === "/admin/post-completude" && (request.method === "GET" || request.method === "POST")) {
       const CHANNEL = "1500986066562318379";
       try {
+        const body = request.method === "POST" ? await request.json().catch(() => ({})) : {};
+        const cidInventory = Array.isArray(body.cid_inventory) ? body.cid_inventory : [];
+        const serialKey = (v) => String(v || "").trim().toUpperCase().replace(/\s+/g, "");
         const [agents, armes] = await Promise.all([
           sbForSite(env, "GET", `/agents?select=id,matricule,nom,prenom,grade,iban,telephone,discord_id&statut=neq.Arch%C3%A9&order=matricule`, null, "sud"),
           sbForSite(env, "GET", `/agent_armes?select=id,agent_id,nom,serie,ppa_niveau&order=nom`, null, "sud")
         ]);
         const agentById = {};
         (agents || []).forEach(a => { agentById[a.id] = a; });
+        const agentSerials = new Set((armes || []).map(w => serialKey(w.serie)).filter(Boolean));
 
         const rows = [];
         (agents || []).forEach(a => {
@@ -7085,8 +7089,20 @@ export default {
             line: `${a.discord_id ? `<@${a.discord_id}> ` : ""}**(${a.matricule || "—"})** ${a.prenom || ""} ${a.nom || ""} — numéro de série manquant sur **${w.nom || "arme"}**`
           });
         });
+        const inventoryLines = [];
+        cidInventory.forEach(w => {
+          const key = serialKey(w.serie);
+          const label = `**${w.serie || "S/N manquant"}** — ${w.nom || "Arme"} · ${w.case_numero || "CID"}${w.scelle ? " · " + w.scelle : ""}${w.suspect ? " · " + w.suspect : ""}`;
+          if (!key) {
+            inventoryLines.push(`> ${label}`);
+            return;
+          }
+          if (!agentSerials.has(key)) {
+            inventoryLines.push(`> ${label} — non retrouvé dans les armes agents`);
+          }
+        });
 
-        if (!rows.length) {
+        if (!rows.length && !inventoryLines.length) {
           await discordFetch(`${DISCORD_API}/channels/${CHANNEL}/messages`, {
             method: "POST",
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
@@ -7094,7 +7110,7 @@ export default {
               embeds: [{ title: "✅ Infos agents complètes", description: "Aucun IBAN, téléphone ou numéro de série ne manque actuellement.", color: 0x2ecc71 }]
             })
           });
-          return json({ ok: true, incomplete: 0, channel_id: CHANNEL });
+          return json({ ok: true, incomplete: 0, inventory: 0, channel_id: CHANNEL });
         }
 
         const lines = rows.map(r => `> ${r.line}`);
@@ -7113,9 +7129,19 @@ export default {
           visibleChunks[visibleChunks.length - 1] += `\n> ... ${chunks.length - visibleChunks.length} bloc(s) supplémentaire(s) non affiché(s).`;
         }
         const fields = visibleChunks.map((c, i) => ({ name: i === 0 ? `${rows.length} élément(s) à compléter` : "​", value: c, inline: false }));
+        const inventoryChunks = [];
+        let invCur = "";
+        for (const l of inventoryLines) {
+          if ((invCur + "\n" + l).length > 900) { inventoryChunks.push(invCur); invCur = l; }
+          else invCur = invCur ? invCur + "\n" + l : l;
+        }
+        if (invCur) inventoryChunks.push(invCur);
+        inventoryChunks.slice(0, Math.max(0, 25 - fields.length)).forEach((c, i) => {
+          fields.push({ name: i === 0 ? `${inventoryLines.length} S/N CID à inventorier` : "​", value: c, inline: false });
+        });
         const embed = {
           title: "📋 Infos agents à compléter",
-          description: "Merci de compléter les informations manquantes ci-dessous : IBAN, téléphone ou numéro de série d'arme.",
+          description: "Merci de compléter les informations manquantes ci-dessous. L'inventaire CID liste aussi les S/N présents dans les dossiers mais non retrouvés dans les armes agents.",
           color: 0xe74c3c,
           fields,
           footer: { text: `Mis à jour le ${now}` }
@@ -7133,7 +7159,7 @@ export default {
             allowed_mentions: { users }
           })
         });
-        return json({ ok: true, incomplete: rows.length, pings: users.length, channel_id: CHANNEL });
+        return json({ ok: true, incomplete: rows.length, inventory: inventoryLines.length, pings: users.length, channel_id: CHANNEL });
       } catch(e) {
         return json({ ok: false, error: e.message }, 500);
       }
