@@ -7165,8 +7165,9 @@ export default {
       }
     }
 
-    if (url.pathname === "/admin/post-completude-full" && request.method === "GET") {
-      const CHANNEL = "1518636313325076672";
+    if ((url.pathname === "/admin/post-completude-full" || url.pathname === "/admin/post-completude-pa") && request.method === "GET") {
+      const isPaMessage = url.pathname === "/admin/post-completude-pa";
+      const CHANNEL = isPaMessage ? "1500986066562318379" : "1518636313325076672";
       const FIELDS = [
         { key: "iban",             label: "IBAN" },
         { key: "telephone",        label: "Téléphone" },
@@ -7227,7 +7228,9 @@ export default {
         const fields = visibleChunks.map((c, i) => ({ name: i === 0 ? `${rows.length} élément(s) manquant(s)` : "​", value: c, inline: false }));
         const embed = {
           title: "📋 Infos manquantes agents",
-          description: "Merci de compléter vos informations manquantes sur le site : téléphone, IBAN, dates, Discord ID ou numéros de série.",
+          description: isPaMessage
+            ? "Merci de contacter la PA afin de transmettre les informations manquantes ci-dessous : téléphone, IBAN, dates, Discord ID ou numéros de série."
+            : "Merci de compléter vos informations manquantes sur le site : téléphone, IBAN, dates, Discord ID ou numéros de série.",
           color: 0xe74c3c,
           fields,
           footer: { text: `Mis à jour le ${now}` }
