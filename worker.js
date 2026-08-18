@@ -7165,6 +7165,92 @@ export default {
       }
     }
 
+    if (url.pathname === "/admin/post-completude-full" && request.method === "GET") {
+      const CHANNEL = "1518636313325076672";
+      const FIELDS = [
+        { key: "iban",             label: "IBAN" },
+        { key: "telephone",        label: "Téléphone" },
+        { key: "date_naissance",   label: "Date naissance" },
+        { key: "date_recrutement", label: "Date recrutement" },
+        { key: "discord_id",       label: "Discord ID" }
+      ];
+      try {
+        const [agents, armes] = await Promise.all([
+          sbForSite(env, "GET", `/agents?select=id,matricule,nom,prenom,grade,iban,telephone,date_naissance,date_recrutement,discord_id&statut=neq.Arch%C3%A9&order=matricule`, null, "sud"),
+          sbForSite(env, "GET", `/agent_armes?select=id,agent_id,nom,serie,ppa_niveau&order=nom`, null, "sud")
+        ]);
+        const agentById = {};
+        (agents || []).forEach(a => { agentById[a.id] = a; });
+
+        const rows = [];
+        (agents || []).forEach(a => {
+          const missing = FIELDS.filter(f => !a[f.key]).map(f => f.label);
+          if (!missing.length) return;
+          rows.push({
+            agent: a,
+            line: `${a.discord_id ? `<@${a.discord_id}> ` : ""}**(${a.matricule || "—"})** ${a.prenom || ""} ${a.nom || ""} — ${missing.join(", ")}`
+          });
+        });
+        (armes || []).forEach(w => {
+          if (w.serie) return;
+          const a = agentById[w.agent_id];
+          if (!a) return;
+          rows.push({
+            agent: a,
+            line: `${a.discord_id ? `<@${a.discord_id}> ` : ""}**(${a.matricule || "—"})** ${a.prenom || ""} ${a.nom || ""} — numéro de série manquant sur **${w.nom || "arme"}**`
+          });
+        });
+
+        if (!rows.length) {
+          await discordFetch(`${DISCORD_API}/channels/${CHANNEL}/messages`, {
+            method: "POST",
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ embeds: [{ title: "✅ Complétude des fiches", description: "Toutes les fiches agents sont complètes.", color: 0x2ecc71 }] })
+          });
+          return json({ ok: true, incomplete: 0, pings: 0, channel_id: CHANNEL });
+        }
+
+        const lines = rows.map(r => `> ${r.line}`);
+        const chunks = [];
+        let cur = "";
+        for (const l of lines) {
+          if ((cur + "\n" + l).length > 900) { chunks.push(cur); cur = l; }
+          else cur = cur ? cur + "\n" + l : l;
+        }
+        if (cur) chunks.push(cur);
+
+        const now = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+        const visibleChunks = chunks.slice(0, 25);
+        if (chunks.length > visibleChunks.length) {
+          visibleChunks[visibleChunks.length - 1] += `\n> ... ${chunks.length - visibleChunks.length} bloc(s) supplémentaire(s) non affiché(s).`;
+        }
+        const fields = visibleChunks.map((c, i) => ({ name: i === 0 ? `${rows.length} élément(s) manquant(s)` : "​", value: c, inline: false }));
+        const embed = {
+          title: "📋 Infos manquantes agents",
+          description: "Merci de compléter vos informations manquantes sur le site : téléphone, IBAN, dates, Discord ID ou numéros de série.",
+          color: 0xe74c3c,
+          fields,
+          footer: { text: `Mis à jour le ${now}` }
+        };
+        const users = Array.from(new Set(rows.map(r => r.agent && r.agent.discord_id).filter(Boolean))).slice(0, 100);
+        let content = users.length ? users.map(id => `<@${id}>`).join(" ") : "";
+        if (content.length > 1800) content = content.slice(0, 1800);
+
+        await discordFetch(`${DISCORD_API}/channels/${CHANNEL}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content,
+            embeds: [embed],
+            allowed_mentions: { users }
+          })
+        });
+        return json({ ok: true, incomplete: rows.length, pings: users.length, channel_id: CHANNEL });
+      } catch(e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     if (url.pathname === "/admin/post-referents" && request.method === "GET") {
       const CHANNEL = "1518640738559197284";
       try {
