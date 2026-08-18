@@ -198,6 +198,12 @@ const DIVISION_ROLES = {
 };
 const ROLE_TO_DIVISION = Object.fromEntries(Object.entries(DIVISION_ROLES).map(([k,v]) => [v,k]));
 
+function agentMentionLine(agent, text) {
+  const fallback = `**(${agent?.matricule || "—"})** ${agent?.prenom || ""} ${agent?.nom || ""}`.trim();
+  const mention = agent?.discord_id ? `<@${agent.discord_id}>` : fallback;
+  return `${mention} — ${text}`;
+}
+
 const PPA_ROLES = {
   'ppa1':  '1519517647132168372',
   'ppa2':  '1519517683379343372',
@@ -7075,7 +7081,7 @@ export default {
             rows.push({
               agent: a,
               labels: missing,
-              line: `${a.discord_id ? `<@${a.discord_id}> ` : ""}**(${a.matricule || "—"})** ${a.prenom || ""} ${a.nom || ""} — ${missing.join(", ")}`
+              line: agentMentionLine(a, missing.join(", "))
             });
           }
         });
@@ -7086,7 +7092,7 @@ export default {
           rows.push({
             agent: a,
             labels: ["Numéro de série"],
-            line: `${a.discord_id ? `<@${a.discord_id}> ` : ""}**(${a.matricule || "—"})** ${a.prenom || ""} ${a.nom || ""} — numéro de série manquant sur **${w.nom || "arme"}**`
+            line: agentMentionLine(a, `numéro de série manquant sur **${w.nom || "arme"}**`)
           });
         });
         const inventoryLines = [];
@@ -7189,7 +7195,7 @@ export default {
           if (!missing.length) return;
           rows.push({
             agent: a,
-            line: `${a.discord_id ? `<@${a.discord_id}> ` : ""}**(${a.matricule || "—"})** ${a.prenom || ""} ${a.nom || ""} — ${missing.join(", ")}`
+            line: agentMentionLine(a, missing.join(", "))
           });
         });
         (armes || []).forEach(w => {
@@ -7198,7 +7204,7 @@ export default {
           if (!a) return;
           rows.push({
             agent: a,
-            line: `${a.discord_id ? `<@${a.discord_id}> ` : ""}**(${a.matricule || "—"})** ${a.prenom || ""} ${a.nom || ""} — numéro de série manquant sur **${w.nom || "arme"}**`
+            line: agentMentionLine(a, `numéro de série manquant sur **${w.nom || "arme"}**`)
           });
         });
 
