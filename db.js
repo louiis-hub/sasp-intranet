@@ -368,12 +368,16 @@ var DB = {
 
   // ── Search ───────────────────────────────────────────────────
   async search(q) {
-    if (!q || q.length < 2) return { agents: [], mdt: [] };
-    var [ag, mdt] = await Promise.all([
+    if (!q || q.length < 2) return { agents: [], mdt: [], armes: [] };
+    var [ag, mdt, armes] = await Promise.all([
       getDb().from('agents').select('id,nom,prenom,matricule,grade,statut')
         .or('nom.ilike.%' + q + '%,prenom.ilike.%' + q + '%,matricule.ilike.%' + q + '%').limit(8),
-      getDb().from('mdt_pages').select('id,titre,categorie_id').ilike('titre', '%' + q + '%').limit(6)
+      getDb().from('mdt_pages').select('id,titre,categorie_id').ilike('titre', '%' + q + '%').limit(6),
+      getDb().from('agent_armes')
+        .select('id,nom,serie,ppa_niveau,agent:agent_id(id,nom,prenom,matricule,grade,statut)')
+        .ilike('serie', '%' + q + '%')
+        .limit(10)
     ]);
-    return { agents: ag.data || [], mdt: mdt.data || [] };
+    return { agents: ag.data || [], mdt: mdt.data || [], armes: armes.data || [] };
   }
 };

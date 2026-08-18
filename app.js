@@ -3712,7 +3712,7 @@ async function renderSearch() {
   setContent(
     '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Recherche globale</h1></div></div>' +
     '<div class="search-wrap mb-20" style="max-width:600px"><span class="search-icon" style="font-size:1.1rem">🔍</span>' +
-      '<input class="form-control search-input" id="globalSearchInput" placeholder="Rechercher agents, grades, dossiers, MDT…" value="' + esc(q) + '" oninput="globalSearch(this.value)" style="font-size:1rem;padding:13px 13px 13px 38px">' +
+      '<input class="form-control search-input" id="globalSearchInput" placeholder="Rechercher agent, matricule, numéro de série, MDT…" value="' + esc(q) + '" oninput="globalSearch(this.value)" style="font-size:1rem;padding:13px 13px 13px 38px">' +
     '</div>' +
     '<div id="searchResults">' + (q ? '' : '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Tapez pour rechercher…</div></div>') + '</div>'
   );
@@ -3735,7 +3735,7 @@ async function doSearch(q) {
     return;
   }
   el.innerHTML = '<div class="loader-block" style="padding:30px"><div class="spinner"></div></div>';
-  var { agents, mdt } = await DB.search(q);
+  var { agents, mdt, armes } = await DB.search(q);
 
   var html = '';
   if (agents.length) {
@@ -3745,6 +3745,18 @@ async function doSearch(q) {
         '<span style="font-weight:600;color:var(--t0);flex:1">' + esc(a.prenom+' '+a.nom) + '</span>' +
         gradeBadge(a.grade) + statusBadge(a.statut) +
       '</div>'; }).join('') + '</div>';
+  }
+  if ((armes || []).length) {
+    html += '<div class="card mb-14"><div class="card-head"><div class="card-icon">🔫</div><div><div class="card-title">Numéros de série</div><div class="card-sub">' + armes.length + ' RÉSULTAT(S)</div></div></div>' +
+      armes.map(function(w){
+        var a = w.agent || {};
+        var hasAgent = !!a.id;
+        return '<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border0);' + (hasAgent?'cursor:pointer':'') + '" ' + (hasAgent ? 'onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})"' : '') + '>' +
+          '<span class="mono text-gold" style="min-width:110px">' + esc(w.serie || '—') + '</span>' +
+          '<span style="font-weight:600;color:var(--t0);flex:1">' + esc(w.nom || 'Arme') + '</span>' +
+          '<span style="font-size:.8rem;color:var(--t2)">' + (hasAgent ? esc((a.prenom || '') + ' ' + (a.nom || '') + ' (' + (a.matricule || '—') + ')') : 'Agent inconnu') + '</span>' +
+        '</div>';
+      }).join('') + '</div>';
   }
   if (mdt.length) {
     html += '<div class="card mb-14"><div class="card-head"><div class="card-icon">📚</div><div><div class="card-title">Guide MDT</div><div class="card-sub">' + mdt.length + ' PAGE(S)</div></div></div>' +

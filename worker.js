@@ -7053,50 +7053,87 @@ export default {
     }
 
     if (url.pathname === "/admin/post-completude" && request.method === "GET") {
-      const CHANNEL = "1518636313325076672";
-      const FIELDS = [
-        { key: "iban",             label: "IBAN" },
-        { key: "telephone",        label: "Téléphone" },
-        { key: "date_naissance",   label: "Date naissance" },
-        { key: "date_recrutement", label: "Date recrutement" },
-        { key: "discord_id",       label: "Discord ID" }
-      ];
+      const CHANNEL = "1500986066562318379";
       try {
-        const agents = await sbForSite(env, "GET", `/agents?select=matricule,nom,prenom,grade,iban,telephone,date_naissance,date_recrutement,discord_id&statut=neq.Arch%C3%A9&order=matricule`, null, "sud");
-        const incomplete = (agents || []).filter(a => FIELDS.some(f => !a[f.key]));
+        const [agents, armes] = await Promise.all([
+          sbForSite(env, "GET", `/agents?select=id,matricule,nom,prenom,grade,iban,telephone,discord_id&statut=neq.Arch%C3%A9&order=matricule`, null, "sud"),
+          sbForSite(env, "GET", `/agent_armes?select=id,agent_id,nom,serie,ppa_niveau&order=nom`, null, "sud")
+        ]);
+        const agentById = {};
+        (agents || []).forEach(a => { agentById[a.id] = a; });
 
-        if (!incomplete.length) {
+        const rows = [];
+        (agents || []).forEach(a => {
+          const missing = [];
+          if (!a.iban) missing.push("IBAN");
+          if (!a.telephone) missing.push("Téléphone");
+          if (missing.length) {
+            rows.push({
+              agent: a,
+              labels: missing,
+              line: `${a.discord_id ? `<@${a.discord_id}> ` : ""}**(${a.matricule || "—"})** ${a.prenom || ""} ${a.nom || ""} — ${missing.join(", ")}`
+            });
+          }
+        });
+        (armes || []).forEach(w => {
+          if (w.serie) return;
+          const a = agentById[w.agent_id];
+          if (!a) return;
+          rows.push({
+            agent: a,
+            labels: ["Numéro de série"],
+            line: `${a.discord_id ? `<@${a.discord_id}> ` : ""}**(${a.matricule || "—"})** ${a.prenom || ""} ${a.nom || ""} — numéro de série manquant sur **${w.nom || "arme"}**`
+          });
+        });
+
+        if (!rows.length) {
           await discordFetch(`${DISCORD_API}/channels/${CHANNEL}/messages`, {
             method: "POST",
             headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ embeds: [{ title: "✅ Complétude des fiches", description: "Toutes les fiches agents sont complètes.", color: 0x2ecc71 }] })
+            body: JSON.stringify({
+              embeds: [{ title: "✅ Infos agents complètes", description: "Aucun IBAN, téléphone ou numéro de série ne manque actuellement.", color: 0x2ecc71 }]
+            })
           });
-          return json({ ok: true, incomplete: 0 });
+          return json({ ok: true, incomplete: 0, channel_id: CHANNEL });
         }
 
-        const lines = incomplete.map(a => {
-          const missing = FIELDS.filter(f => !a[f.key]).map(f => f.label).join(", ");
-          return `> **(${a.matricule})** ${a.prenom} ${a.nom} — ${missing}`;
-        });
+        const lines = rows.map(r => `> ${r.line}`);
 
         const chunks = [];
         let cur = "";
         for (const l of lines) {
-          if ((cur + "\n" + l).length > 1000) { chunks.push(cur); cur = l; }
+          if ((cur + "\n" + l).length > 900) { chunks.push(cur); cur = l; }
           else cur = cur ? cur + "\n" + l : l;
         }
         if (cur) chunks.push(cur);
 
         const now = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
-        const fields = chunks.map((c, i) => ({ name: i === 0 ? `${incomplete.length} fiche(s) incomplète(s)` : "​", value: c, inline: false }));
-        const embed = { title: "📋 Complétude des fiches agents", color: 0xe74c3c, fields, footer: { text: `Mis à jour le ${now}` } };
+        const visibleChunks = chunks.slice(0, 25);
+        if (chunks.length > visibleChunks.length) {
+          visibleChunks[visibleChunks.length - 1] += `\n> ... ${chunks.length - visibleChunks.length} bloc(s) supplémentaire(s) non affiché(s).`;
+        }
+        const fields = visibleChunks.map((c, i) => ({ name: i === 0 ? `${rows.length} élément(s) à compléter` : "​", value: c, inline: false }));
+        const embed = {
+          title: "📋 Infos agents à compléter",
+          description: "Merci de compléter les informations manquantes ci-dessous : IBAN, téléphone ou numéro de série d'arme.",
+          color: 0xe74c3c,
+          fields,
+          footer: { text: `Mis à jour le ${now}` }
+        };
+        const users = Array.from(new Set(rows.map(r => r.agent && r.agent.discord_id).filter(Boolean))).slice(0, 100);
+        let content = users.length ? users.map(id => `<@${id}>`).join(" ") : "";
+        if (content.length > 1800) content = content.slice(0, 1800);
 
         await discordFetch(`${DISCORD_API}/channels/${CHANNEL}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ embeds: [embed] })
+          body: JSON.stringify({
+            content,
+            embeds: [embed],
+            allowed_mentions: { users }
+          })
         });
-        return json({ ok: true, incomplete: incomplete.length });
+        return json({ ok: true, incomplete: rows.length, pings: users.length, channel_id: CHANNEL });
       } catch(e) {
         return json({ ok: false, error: e.message }, 500);
       }
