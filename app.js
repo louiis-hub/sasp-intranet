@@ -6740,9 +6740,9 @@ function pointeuseAgentKey(a) {
 
 function getPointeuseCorrectionMinutes(semaineKey, agentId) {
   var row = _pointeuseCorrections[pointeuseCorrectionKey(semaineKey, agentId)];
-  if (row) return Math.max(0, parseInt(row.minutes_retires || 0, 10));
+  if (row) return parseInt(row.minutes_retires || 0, 10) || 0;
   if (_pointeuseCorrectionsMissing) {
-    return Math.max(0, parseInt(localStorage.getItem('corr_' + semaineKey + '_' + agentId) || '0', 10));
+    return parseInt(localStorage.getItem('corr_' + semaineKey + '_' + agentId) || '0', 10) || 0;
   }
   return 0;
 }
@@ -6951,9 +6951,9 @@ async function renderPointeuseHistorique() {
         '<td>' + ibanCell + '</td>' +
         '<td>' + telephoneCell + '</td>' +
         '<td>' + (sessionsHtml || '<span style="color:var(--t3)">—</span>') + '</td>' +
-        '<td style="text-align:center"><strong>' + fmtSec(sec) + '</strong>' + (entry.ongoing ? ' <span style="color:var(--gold);font-size:.75rem">+en cours</span>' : '') + (correctionMinutes ? '<br><small style="color:var(--red,#ff5b5b)">brut ' + fmtSec(rawSec) + ' - retrait ' + fmtMinutesDuration(correctionMinutes) + '</small>' : '') + '</td>' +
+        '<td style="text-align:center"><strong>' + fmtSec(sec) + '</strong>' + (entry.ongoing ? ' <span style="color:var(--gold);font-size:.75rem">+en cours</span>' : '') + (correctionMinutes ? '<br><small style="color:' + (correctionMinutes > 0 ? 'var(--red,#ff5b5b)' : 'var(--green,#2ecc71)') + '">brut ' + fmtSec(rawSec) + (correctionMinutes > 0 ? ' - retrait ' + fmtMinutesDuration(correctionMinutes) : ' + crédit ' + fmtMinutesDuration(Math.abs(correctionMinutes))) + '</small>' : '') + '</td>' +
         '<td style="text-align:center;color:var(--gold);font-weight:700">' + fmtMoney(sal) + '</td>' +
-        '<td style="text-align:center"><div style="display:flex;align-items:center;justify-content:center;gap:5px"><input type="number" min="0" step="0.25" value="' + esc(correctionHours) + '" onchange="setCorrectionHisto(\'' + jsStr(key) + '\',\'' + jsStr(agentKey) + '\',\'' + jsStr(label) + '\',\'' + jsStr(a.matricule || '') + '\',\'' + jsStr(((a.prenom || '') + ' ' + (a.nom || '')).trim()) + '\',this.value,this)" title="Heures a retirer du calcul" style="width:74px;background:var(--bg2);color:var(--t0);border:1px solid var(--border0);border-radius:6px;padding:5px 7px;text-align:right"><span style="font-size:.75rem;color:var(--t3)">h</span></div></td>' +
+        '<td style="text-align:center"><div style="display:flex;align-items:center;justify-content:center;gap:5px"><input type="number" step="0.25" value="' + esc(correctionHours) + '" onchange="setCorrectionHisto(\'' + jsStr(key) + '\',\'' + jsStr(agentKey) + '\',\'' + jsStr(label) + '\',\'' + jsStr(a.matricule || '') + '\',\'' + jsStr(((a.prenom || '') + ' ' + (a.nom || '')).trim()) + '\',this.value,this)" title="Heures a retirer du calcul. Valeur négative = heures créditées." style="width:74px;background:var(--bg2);color:var(--t0);border:1px solid var(--border0);border-radius:6px;padding:5px 7px;text-align:right"><span style="font-size:.75rem;color:var(--t3)">h</span></div></td>' +
         '<td style="text-align:center"><input type="number" min="0" step="1" value="' + prime + '" onchange="setPrimeHisto(\'' + primeKey + '\',this.value)" style="width:92px;background:var(--bg2);color:var(--t0);border:1px solid var(--border0);border-radius:6px;padding:5px 7px;text-align:right"></td>' +
         '<td style="text-align:center;color:var(--green,#2ecc71);font-weight:700">' + fmtMoney(totalAgent) + '</td>' +
         '<td style="text-align:center"><input type="checkbox"' + (isPaid ? ' checked' : '') + paidTitle + ' onchange="togglePaidHisto(\'' + jsStr(key) + '\',\'' + jsStr(paidAgentId) + '\',\'' + jsStr(label) + '\',\'' + jsStr(a.matricule || '') + '\',\'' + jsStr(((a.prenom || '') + ' ' + (a.nom || '')).trim()) + '\',this)" style="width:16px;height:16px;cursor:pointer;accent-color:var(--green,#2ecc71)"></td>' +
@@ -7002,7 +7002,8 @@ async function renderPointeuseHistorique() {
 }
 
 async function setCorrectionHisto(semaineKey, agentId, semaineLabel, agentMatricule, agentNom, value, input) {
-  var hours = parseHoursInput(value);
+  var hours = parseFloat(String(value || '').replace(',', '.'));
+  if (!isFinite(hours)) hours = 0;
   var minutes = Math.round(hours * 60);
   if (input) input.disabled = true;
   try {
@@ -7014,11 +7015,11 @@ async function setCorrectionHisto(semaineKey, agentId, semaineLabel, agentMatric
       await renderPointeuseHistorique();
       return;
     }
-    if (minutes <= 0) {
+    if (minutes === 0) {
       var del = await DB.deletePointeuseCorrection(semaineKey, agentId);
       if (del.error) throw del.error;
       delete _pointeuseCorrections[pointeuseCorrectionKey(semaineKey, agentId)];
-      toast('Retrait d heures supprime.', 'info');
+      toast('Correction d heures supprimee.', 'info');
     } else {
       var payload = {
         semaine_key: semaineKey,
@@ -7033,7 +7034,7 @@ async function setCorrectionHisto(semaineKey, agentId, semaineLabel, agentMatric
       var res = await DB.setPointeuseCorrection(payload);
       if (res.error) throw res.error;
       _pointeuseCorrections[pointeuseCorrectionKey(semaineKey, agentId)] = res.data || payload;
-      toast('Retrait applique: -' + fmtMinutesDuration(minutes) + '.', 'success');
+      toast(minutes > 0 ? 'Retrait applique: -' + fmtMinutesDuration(minutes) + '.' : 'Credit applique: +' + fmtMinutesDuration(Math.abs(minutes)) + '.', 'success');
     }
     await renderPointeuseHistorique();
   } catch(e) {

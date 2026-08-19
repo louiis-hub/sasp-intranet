@@ -1583,6 +1583,36 @@ const SERVICE_CONFIRM_GRACE_MS = 15 * 60 * 1000;
 const SERVICE_FIRST_MISSED_PENALTY_MS = 4 * 60 * 60 * 1000;
 const SERVICE_CONFIRMED_END_PENALTY_MS = 1 * 60 * 60 * 1000;
 const POINTEUSE_LOG_CHANNEL_ID = "1519525957390827711";
+const POINTEUSE_CLAIM_CHANNEL_ID = "1519525957390827711";
+
+function parsePositiveHours(value) {
+  const n = Number(String(value || "").replace(",", "."));
+  return Number.isFinite(n) && n > 0 ? Math.min(n, 24) : 0;
+}
+
+function weekInfoFromIso(iso) {
+  const d = new Date(iso || Date.now());
+  const monday = new Date(d);
+  const dow = monday.getDay();
+  monday.setDate(monday.getDate() - (dow === 0 ? 6 : dow - 1));
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday.getTime() + 6 * 86400000);
+  const key = monday.toISOString().slice(0, 10);
+  const label = "Semaine du "
+    + monday.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })
+    + " au "
+    + sunday.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return { key, label };
+}
+
+function agentDisplayName(agent) {
+  return `${agent?.prenom || ""} ${agent?.nom || ""}`.trim() || "Agent";
+}
+
+function claimStaffAllowed(interaction) {
+  const roles = interaction?.member?.roles || [];
+  return ADMIN_ROLE_IDS.some(r => roles.includes(r));
+}
 
 function addMsIso(iso, ms) {
   return new Date(new Date(iso).getTime() + ms).toISOString();
@@ -1611,7 +1641,8 @@ function buildPointeuseConfirmationDm(pointage, siteKey) {
       type: 1,
       components: [
         { type: 2, style: 3, label: "Oui, je suis toujours en service", emoji: { name: "🟢" }, custom_id: `pointeuse_confirm_yes|${siteKey}|${pointage.id}` },
-        { type: 2, style: 4, label: "Non, terminer mon service", emoji: { name: "🔴" }, custom_id: `pointeuse_confirm_no|${siteKey}|${pointage.id}` }
+        { type: 2, style: 4, label: "Non, terminer mon service", emoji: { name: "🔴" }, custom_id: `pointeuse_confirm_no|${siteKey}|${pointage.id}` },
+        { type: 2, style: 1, label: "Réclamer des heures", emoji: { name: "⏱️" }, custom_id: `pointeuse_claim|${siteKey}|${pointage.id}` }
       ]
     }]
   };
@@ -1630,7 +1661,8 @@ function buildDisabledPointeuseConfirmationDm(title, description, color = 0x3A4E
       type: 1,
       components: [
         { type: 2, style: 3, label: "Oui, je suis toujours en service", emoji: { name: "🟢" }, custom_id: "pointeuse_confirm_closed_yes", disabled: true },
-        { type: 2, style: 4, label: "Non, terminer mon service", emoji: { name: "🔴" }, custom_id: "pointeuse_confirm_closed_no", disabled: true }
+        { type: 2, style: 4, label: "Non, terminer mon service", emoji: { name: "🔴" }, custom_id: "pointeuse_confirm_closed_no", disabled: true },
+        { type: 2, style: 1, label: "Réclamer des heures", emoji: { name: "⏱️" }, custom_id: "pointeuse_claim_closed", disabled: true }
       ]
     }]
   };
@@ -1640,7 +1672,7 @@ async function getPointageById(env, pointageId, siteKey = "sud") {
   const rows = await sbForSite(
     env,
     "GET",
-    `/pointages?id=eq.${encodeURIComponent(pointageId)}&select=id,agent_id,clock_in,clock_out,last_confirmation_at,confirmation_count,next_confirmation_at,confirmation_requested_at,confirmation_channel_id,confirmation_message_id,discord_id,agents(nom,prenom,matricule,discord_id)&limit=1`,
+    `/pointages?id=eq.${encodeURIComponent(pointageId)}&select=id,agent_id,clock_in,clock_out,last_confirmation_at,confirmation_count,next_confirmation_at,confirmation_requested_at,confirmation_channel_id,confirmation_message_id,discord_id,agents(id,nom,prenom,matricule,discord_id)&limit=1`,
     null,
     siteKey
   );
@@ -1698,7 +1730,7 @@ async function closePointageAfterNoConfirmation(env, pointage, siteKey = "sud") 
   };
   const a = pointage.agents || {};
   const userId = pointage.discord_id || a.discord_id;
-  const description = `Votre service a été automatiquement clôturé car aucune confirmation n'a été reçue.\n\nUne pénalité de **${closed.penalty_label}** a été appliquée sur votre temps de service.\n\nSi vous étiez toujours en service, contactez un membre du Command Staff afin que votre temps puisse être corrigé.`;
+  const description = `Votre service a été automatiquement clôturé car aucune confirmation n'a été reçue.\n\nUne pénalité de **${closed.penalty_label}** a été appliquée sur votre temps de service.\n\nSi vous étiez toujours en service, vous pouvez envoyer une demande de récupération d'heures au Command Staff.`;
   if (pointage.confirmation_channel_id && pointage.confirmation_message_id) {
     await editMessage(env, pointage.confirmation_channel_id, pointage.confirmation_message_id, buildDisabledPointeuseConfirmationDm(
       "⚠️ SASP — Fin de service automatique",
@@ -1718,6 +1750,12 @@ async function closePointageAfterNoConfirmation(env, pointage, siteKey = "sud") 
       ],
       footer: { text: "SASP · Pointeuse" },
       timestamp: closed.actual_clock_out
+    }],
+    components: [{
+      type: 1,
+      components: [
+        { type: 2, style: 1, label: "Réclamer des heures", emoji: { name: "⏱️" }, custom_id: `pointeuse_claim|${siteKey}|${pointage.id}` }
+      ]
     }]
   }).catch(() => null);
 }
@@ -1727,7 +1765,7 @@ async function processPointeuseConfirmations(env, siteKey = "sud") {
   const active = await sbForSite(
     env,
     "GET",
-    `/pointages?clock_out=is.null&select=id,agent_id,clock_in,last_confirmation_at,confirmation_count,next_confirmation_at,confirmation_requested_at,confirmation_channel_id,confirmation_message_id,discord_id,agents(nom,prenom,matricule,discord_id)&order=clock_in.asc`,
+    `/pointages?clock_out=is.null&select=id,agent_id,clock_in,last_confirmation_at,confirmation_count,next_confirmation_at,confirmation_requested_at,confirmation_channel_id,confirmation_message_id,discord_id,agents(id,nom,prenom,matricule,discord_id)&order=clock_in.asc`,
     null,
     siteKey
   );
@@ -1821,6 +1859,189 @@ async function handlePointeuseConfirmationButton(env, interaction, customId) {
   if (env.POINTEUSE_CHANNEL_ID && env.POINTEUSE_MESSAGE_ID) {
     await refreshPointeuseMessage(env, env.POINTEUSE_CHANNEL_ID, env.POINTEUSE_MESSAGE_ID, siteKey).catch(() => null);
   }
+}
+
+function pointeuseClaimModal(customId) {
+  return {
+    type: 9,
+    data: {
+      title: "Réclamation d'heures",
+      custom_id: customId,
+      components: [
+        { type: 1, components: [{ type: 4, custom_id: "claim_hours", label: "Nombre d'heures demandées", style: 1, required: true, placeholder: "Ex : 1.5", min_length: 1, max_length: 8 }] },
+        { type: 1, components: [{ type: 4, custom_id: "claim_reason", label: "Raison de la demande", style: 2, required: true, placeholder: "Explique ce qui s'est passé avec la pointeuse.", min_length: 5, max_length: 1000 }] }
+      ]
+    }
+  };
+}
+
+function staffClaimHoursModal(customId, defaultHours = "") {
+  return {
+    type: 9,
+    data: {
+      title: "Saisir les heures validées",
+      custom_id: customId,
+      components: [
+        { type: 1, components: [{ type: 4, custom_id: "staff_hours", label: "Heures à créditer", style: 1, required: true, value: String(defaultHours || ""), placeholder: "Ex : 1.5", min_length: 1, max_length: 8 }] },
+        { type: 1, components: [{ type: 4, custom_id: "staff_note", label: "Note staff", style: 2, required: false, placeholder: "Optionnel : raison de l'ajustement.", max_length: 500 }] }
+      ]
+    }
+  };
+}
+
+function modalValue(interaction, id) {
+  return interaction.data?.components?.flatMap(r => r.components || [])?.find(c => c.custom_id === id)?.value?.trim() || "";
+}
+
+async function sendPointeuseClaimToStaff(env, interaction, customId) {
+  const [, siteToken, pointageId] = customId.split("|");
+  const siteKey = siteToken === "nord" ? "nord" : "sud";
+  const pointage = await getPointageById(env, pointageId, siteKey);
+  const hours = parsePositiveHours(modalValue(interaction, "claim_hours"));
+  const reason = modalValue(interaction, "claim_reason");
+  if (!pointage || !hours) {
+    return {
+      type: 4,
+      data: { content: "❌ Demande invalide ou service introuvable.", flags: 64 }
+    };
+  }
+
+  const a = pointage.agents || {};
+  const requesterId = interaction.user?.id || pointage.discord_id || a.discord_id || "";
+  const claimChannel = env.POINTEUSE_CLAIM_CHANNEL_ID || POINTEUSE_CLAIM_CHANNEL_ID;
+  const claimId = `${siteKey}|${pointage.id}|${requesterId}|${String(hours).replace(".", "_")}`;
+  const started = Math.floor(new Date(pointage.clock_in).getTime() / 1000);
+  await discordFetch(`${DISCORD_API}/channels/${claimChannel}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      content: `<@&1500975725153620033>`,
+      allowed_mentions: { roles: ["1500975725153620033"] },
+      embeds: [{
+        title: "⏱️ Demande de récupération d'heures",
+        color: 0xf1c40f,
+        description: `${requesterId ? `<@${requesterId}>` : agentDisplayName(a)} demande **${hours}h** à créditer sur sa pointeuse.`,
+        fields: [
+          { name: "Agent", value: `${agentDisplayName(a)} (${a.matricule || "—"})`, inline: true },
+          { name: "Site", value: siteKey.toUpperCase(), inline: true },
+          { name: "Service commencé", value: `<t:${started}:f>`, inline: false },
+          { name: "Raison", value: reason.slice(0, 1024), inline: false }
+        ],
+        footer: { text: "Command Staff · validation requise" },
+        timestamp: new Date().toISOString()
+      }],
+      components: [{
+        type: 1,
+        components: [
+          { type: 2, style: 3, label: `Valider ${hours}h`, emoji: { name: "✅" }, custom_id: `pointeuse_claim_accept|${claimId}`.slice(0, 100) },
+          { type: 2, style: 1, label: "Saisir heures", emoji: { name: "✏️" }, custom_id: `pointeuse_claim_custom|${siteKey}|${pointage.id}|${requesterId}`.slice(0, 100) },
+          { type: 2, style: 4, label: "Refuser", emoji: { name: "❌" }, custom_id: `pointeuse_claim_refuse|${siteKey}|${pointage.id}|${requesterId}`.slice(0, 100) }
+        ]
+      }]
+    })
+  });
+
+  return {
+    type: 4,
+    data: { content: "✅ Ta demande a été envoyée au Command Staff.", flags: 64 }
+  };
+}
+
+async function applyPointeuseClaimCorrection(env, interaction, { siteKey, pointageId, requesterId, hours, note = "" }) {
+  if (!claimStaffAllowed(interaction)) {
+    return { type: 4, data: { content: "❌ Command Staff uniquement.", flags: 64 } };
+  }
+  const pointage = await getPointageById(env, pointageId, siteKey);
+  if (!pointage) return { type: 4, data: { content: "❌ Pointage introuvable.", flags: 64 } };
+  const parsedHours = parsePositiveHours(hours);
+  if (!parsedHours) return { type: 4, data: { content: "❌ Nombre d'heures invalide.", flags: 64 } };
+
+  const a = pointage.agents || {};
+  const week = weekInfoFromIso(pointage.clock_in);
+  const minutesToAdd = Math.round(parsedHours * 60);
+  const staffId = interaction.member?.user?.id || interaction.user?.id || "";
+  const agentKey = a.id || pointage.agent_id || a.matricule || `${a.prenom || ""}${a.nom || ""}`;
+  const existingRows = await sbForSite(env, "GET", `/pointeuse_corrections?semaine_key=eq.${encodeURIComponent(week.key)}&agent_id=eq.${encodeURIComponent(agentKey)}&select=*`, null, siteKey).catch(() => []);
+  const existing = Array.isArray(existingRows) && existingRows.length ? existingRows[0] : null;
+  const currentMinutes = parseInt(existing?.minutes_retires || 0, 10) || 0;
+  const nextMinutes = currentMinutes - minutesToAdd;
+  await sbForSite(env, "POST", "/pointeuse_corrections?on_conflict=semaine_key,agent_id", {
+    semaine_key: week.key,
+    semaine_label: week.label,
+    agent_id: String(agentKey),
+    agent_matricule: a.matricule || "",
+    agent_nom: agentDisplayName(a),
+    minutes_retires: nextMinutes,
+    updated_by: staffId ? `<@${staffId}>` : "Command Staff",
+    updated_at: new Date().toISOString()
+  }, siteKey);
+
+  if (interaction.channel_id && interaction.message?.id) {
+    const oldEmbed = interaction.message.embeds?.[0] || {};
+    await editMessage(env, interaction.channel_id, interaction.message.id, {
+      content: "",
+      embeds: [{
+        title: "✅ Demande d'heures validée",
+        color: 0x2ecc71,
+        description: `${requesterId ? `<@${requesterId}>` : agentDisplayName(a)} reçoit **${parsedHours}h** créditée(s) sur sa pointeuse.`,
+        fields: [
+          ...(oldEmbed.fields || []).slice(0, 4),
+          { name: "Validé par", value: staffId ? `<@${staffId}>` : "Command Staff", inline: true },
+          { name: "Correction appliquée", value: `+${parsedHours}h (${minutesToAdd} min)`, inline: true },
+          ...(note ? [{ name: "Note", value: String(note).slice(0, 1024), inline: false }] : [])
+        ],
+        footer: { text: "SASP · Pointeuse" },
+        timestamp: new Date().toISOString()
+      }],
+      components: []
+    }).catch(() => null);
+  }
+
+  if (requesterId) {
+    await sendUserDM(env, requesterId, {
+      embeds: [{
+        title: "✅ Réclamation d'heures validée",
+        description: `Le Command Staff a validé **${parsedHours}h** à créditer sur ta pointeuse.`,
+        color: 0x2ecc71,
+        footer: { text: "SASP · Pointeuse" },
+        timestamp: new Date().toISOString()
+      }]
+    }).catch(() => null);
+  }
+  return { type: 4, data: { content: `✅ ${parsedHours}h créditée(s).`, flags: 64 } };
+}
+
+async function refusePointeuseClaim(env, interaction, customId) {
+  if (!claimStaffAllowed(interaction)) return { type: 4, data: { content: "❌ Command Staff uniquement.", flags: 64 } };
+  const [, siteKey, pointageId, requesterId = ""] = customId.split("|");
+  const pointage = await getPointageById(env, pointageId, siteKey === "nord" ? "nord" : "sud").catch(() => null);
+  const a = pointage?.agents || {};
+  const staffId = interaction.member?.user?.id || interaction.user?.id || "";
+  if (interaction.channel_id && interaction.message?.id) {
+    await editMessage(env, interaction.channel_id, interaction.message.id, {
+      content: "",
+      embeds: [{
+        title: "❌ Demande d'heures refusée",
+        description: `${requesterId ? `<@${requesterId}>` : agentDisplayName(a)} — demande refusée par ${staffId ? `<@${staffId}>` : "Command Staff"}.`,
+        color: 0xe74c3c,
+        footer: { text: "SASP · Pointeuse" },
+        timestamp: new Date().toISOString()
+      }],
+      components: []
+    }).catch(() => null);
+  }
+  if (requesterId) {
+    await sendUserDM(env, requesterId, {
+      embeds: [{
+        title: "❌ Réclamation d'heures refusée",
+        description: "Le Command Staff a refusé ta demande de récupération d'heures.",
+        color: 0xe74c3c,
+        footer: { text: "SASP · Pointeuse" },
+        timestamp: new Date().toISOString()
+      }]
+    }).catch(() => null);
+  }
+  return { type: 4, data: { content: "Demande refusée.", flags: 64 } };
 }
 
 async function testPointeuseConfirmationForUser(env, userId, siteKey = "sud") {
@@ -6787,6 +7008,21 @@ export default {
         return json({ type: 4, data: { content: "âœ… Plainte modifiÃ©e.", flags: 64 } });
       }
 
+      if (interaction.type === 5 && interaction.data.custom_id.startsWith("pointeuse_claim_modal|")) {
+        return json(await sendPointeuseClaimToStaff(env, interaction, interaction.data.custom_id));
+      }
+
+      if (interaction.type === 5 && interaction.data.custom_id.startsWith("pointeuse_claim_staff_modal|")) {
+        const [, siteToken, pointageId, requesterId = ""] = interaction.data.custom_id.split("|");
+        return json(await applyPointeuseClaimCorrection(env, interaction, {
+          siteKey: siteToken === "nord" ? "nord" : "sud",
+          pointageId,
+          requesterId,
+          hours: modalValue(interaction, "staff_hours"),
+          note: modalValue(interaction, "staff_note")
+        }));
+      }
+
       // Composant (bouton ou select)
       if (interaction.type === 3) {
         const customId = interaction.data.custom_id;
@@ -6796,6 +7032,31 @@ export default {
         if (customId.startsWith("pointeuse_confirm_yes|") || customId.startsWith("pointeuse_confirm_no|")) {
           ctx.waitUntil(handlePointeuseConfirmationButton(env, interaction, customId));
           return json({ type: 6 });
+        }
+
+        if (customId.startsWith("pointeuse_claim|")) {
+          const parts = customId.split("|");
+          return json(pointeuseClaimModal(`pointeuse_claim_modal|${parts[1] || "sud"}|${parts[2] || ""}`));
+        }
+
+        if (customId.startsWith("pointeuse_claim_accept|")) {
+          const [, siteToken, pointageId, requesterId = "", hoursToken = ""] = customId.split("|");
+          return json(await applyPointeuseClaimCorrection(env, interaction, {
+            siteKey: siteToken === "nord" ? "nord" : "sud",
+            pointageId,
+            requesterId,
+            hours: hoursToken.replace("_", ".")
+          }));
+        }
+
+        if (customId.startsWith("pointeuse_claim_custom|")) {
+          if (!claimStaffAllowed(interaction)) return json({ type: 4, data: { content: "❌ Command Staff uniquement.", flags: 64 } });
+          const [, siteToken, pointageId, requesterId = ""] = customId.split("|");
+          return json(staffClaimHoursModal(`pointeuse_claim_staff_modal|${siteToken === "nord" ? "nord" : "sud"}|${pointageId}|${requesterId}`));
+        }
+
+        if (customId.startsWith("pointeuse_claim_refuse|")) {
+          return json(await refusePointeuseClaim(env, interaction, customId));
         }
 
         if (customId.startsWith("ftf_convocation_schedule|")) {
