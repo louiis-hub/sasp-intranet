@@ -1264,6 +1264,7 @@ async function upsertFtfDossier(env, dossier) {
 const SITE_ACCESS_PIN_SETTING_ID = "__site_access_pin_sud";
 const SITE_ACCESS_COMMAND_ROLE_ID = "1500975725153620033";
 const SITE_ACCESS_PIN_LOG_CHANNEL_ID = "1518640738559197284";
+const SITE_ACCESS_PIN_NOTIFY_ROLE_ID = "1539812691655397436";
 
 async function sha256Hex(value) {
   const input = new TextEncoder().encode(String(value || ""));
@@ -1304,11 +1305,12 @@ async function setSiteAccessPin(env, pin, updatedBy = "Command Staff") {
 async function sendSiteAccessPinLog(env, pin, updatedBy, updatedByUserId = "") {
   const cleanPin = String(pin || "").replace(/\D/g, "");
   const content = [
+    `<@&${SITE_ACCESS_PIN_NOTIFY_ROLE_ID}> <@${SITE_ACCESS_PIN_NOTIFY_ROLE_ID}>`,
     "🔐 **PIN du site modifié**",
     `Nouveau PIN : \`${cleanPin}\``,
     `Modifié par : ${updatedBy || "Command Staff"}`
   ].join("\n");
-  const allowedUsers = updatedByUserId ? [String(updatedByUserId)] : [];
+  const allowedUsers = [SITE_ACCESS_PIN_NOTIFY_ROLE_ID, updatedByUserId].filter(Boolean).map(String);
   const res = await discordFetch(`${DISCORD_API}/channels/${SITE_ACCESS_PIN_LOG_CHANNEL_ID}/messages`, {
     method: "POST",
     headers: {
@@ -1317,7 +1319,7 @@ async function sendSiteAccessPinLog(env, pin, updatedBy, updatedByUserId = "") {
     },
     body: JSON.stringify({
       content,
-      allowed_mentions: { parse: [], users: allowedUsers }
+      allowed_mentions: { parse: [], users: allowedUsers, roles: [SITE_ACCESS_PIN_NOTIFY_ROLE_ID] }
     })
   });
   if (!res.ok) throw new Error(`Message log PIN impossible (${res.status})`);
