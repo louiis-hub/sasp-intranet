@@ -1264,7 +1264,7 @@ async function upsertFtfDossier(env, dossier) {
 const SITE_ACCESS_PIN_SETTING_ID = "__site_access_pin_sud";
 const SITE_ACCESS_COMMAND_ROLE_ID = "1500975725153620033";
 const SITE_ACCESS_PIN_LOG_CHANNEL_ID = "1518640738559197284";
-const SITE_ACCESS_PIN_NOTIFY_ROLE_ID = "1539812691655397436";
+const SITE_ACCESS_PIN_NOTIFY_ROLE_ID = "1518631032167993534";
 
 async function sha256Hex(value) {
   const input = new TextEncoder().encode(String(value || ""));
