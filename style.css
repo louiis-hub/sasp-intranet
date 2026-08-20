@@ -63,6 +63,7 @@ a{color:var(--gold);text-decoration:none}
 .login-sub{font-size:.82rem;color:var(--t2);margin-bottom:28px}
 .login-err{display:none;background:var(--redDim);border:1px solid rgba(231,76,60,.25);color:var(--red);padding:10px 14px;border-radius:var(--rMd);font-size:.84rem;margin-bottom:16px;text-align:left}
 .login-err.show{display:block}
+.pin-input{text-align:center;font-family:'Share Tech Mono',monospace;font-size:1.35rem;letter-spacing:.35em;margin:0 0 12px;padding-left:calc(14px + .35em)}
 .login-footer{margin-top:24px;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--t3);letter-spacing:2px}
 
 /* ── SIDEBAR ─────────────────────────────────────────────────────── */

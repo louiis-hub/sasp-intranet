@@ -301,16 +301,81 @@ var PAGE_TITLES = {
   cid:'CID', ftf:'FTF', 'ftf-dossier':'Dossier FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
 };
 
+var ACCESS_PIN_STORAGE_KEY = 'sasp_site_access_pin_version';
+var _pendingPinBoot = null;
+
+async function getAccessPinStatus() {
+  var res = await fetch(WORKER_BASE + '/site-access/status', { cache: 'no-store' });
+  if (!res.ok) throw new Error('Verification PIN indisponible.');
+  var data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Verification PIN indisponible.');
+  return data;
+}
+
+async function ensureSiteAccessPin() {
+  var status = await getAccessPinStatus();
+  var saved = '';
+  try { saved = localStorage.getItem(ACCESS_PIN_STORAGE_KEY) || ''; } catch(e) {}
+  if (saved && saved === String(status.version || '')) return true;
+  _pendingPinBoot = status;
+  showPinGate();
+  return false;
+}
+
+function showPinGate(message) {
+  var login = document.getElementById('loginView');
+  var pin = document.getElementById('pinView');
+  var app = document.getElementById('appView');
+  if (login) login.style.display = 'none';
+  if (app) app.style.display = 'none';
+  if (pin) pin.style.display = '';
+  var err = document.getElementById('pinErr');
+  if (err) {
+    err.textContent = message || '';
+    err.classList.toggle('show', !!message);
+  }
+  setTimeout(function() {
+    var input = document.getElementById('sitePinInput');
+    if (input) input.focus();
+  }, 50);
+}
+
+async function submitAccessPin() {
+  var input = document.getElementById('sitePinInput');
+  var btn = document.getElementById('pinBtn');
+  var err = document.getElementById('pinErr');
+  var pin = input ? input.value.trim() : '';
+  if (err) err.classList.remove('show');
+  if (!pin) { showPinGate('Entre le PIN du site.'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Verification...'; }
+  try {
+    var res = await fetch(WORKER_BASE + '/site-access/check-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: pin })
+    });
+    var data = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !data.ok) throw new Error(data.error || 'PIN invalide.');
+    localStorage.setItem(ACCESS_PIN_STORAGE_KEY, String(data.version || ''));
+    var pinView = document.getElementById('pinView');
+    if (pinView) pinView.style.display = 'none';
+    await startOpenAccess();
+  } catch(e) {
+    showPinGate(e.message || 'PIN invalide.');
+    if (input) { input.value = ''; input.focus(); }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Accéder au site'; }
+  }
+}
+
 // ── Boot ───────────────────────────────────────────────────────────
 (async function boot() {
   if (isAuthDisabled()) {
     try {
-      await startOpenAccess();
+      if (await ensureSiteAccessPin()) await startOpenAccess();
     } catch(e) {
       console.error('[auth] open access failed:', e);
-      showLogin();
-      var openErr = document.getElementById('loginErr');
-      if (openErr) { openErr.textContent = 'Erreur acces libre: ' + (e.message || e); openErr.classList.add('show'); }
+      showPinGate('Erreur acces site: ' + (e.message || e));
     }
     return;
   }
@@ -447,7 +512,8 @@ async function loadWikiSections() {
 
 async function doLogout() {
   if (isAuthDisabled()) {
-    await startOpenAccess();
+    try { localStorage.removeItem(ACCESS_PIN_STORAGE_KEY); } catch(e) {}
+    showPinGate();
     return;
   }
   await DB.logout();
@@ -457,6 +523,8 @@ async function doLogout() {
 
 function showLogin() {
   document.getElementById('loginView').style.display = '';
+  var pinView = document.getElementById('pinView');
+  if (pinView) pinView.style.display = 'none';
   document.getElementById('appView').style.display = 'none';
   document.getElementById('loginBtnTxt').textContent = 'Se connecter avec Discord';
   document.getElementById('loginBtn').disabled = false;
@@ -466,6 +534,8 @@ function showLogin() {
 
 function showApp() {
   document.getElementById('loginView').style.display = 'none';
+  var pinView = document.getElementById('pinView');
+  if (pinView) pinView.style.display = 'none';
   document.getElementById('appView').style.display = '';
   buildNav();
   updateUserUI();
