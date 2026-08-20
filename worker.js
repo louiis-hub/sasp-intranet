@@ -1265,6 +1265,7 @@ const SITE_ACCESS_PIN_SETTING_ID = "__site_access_pin_sud";
 const SITE_ACCESS_COMMAND_ROLE_ID = "1500975725153620033";
 const SITE_ACCESS_PIN_LOG_CHANNEL_ID = "1518640738559197284";
 const SITE_ACCESS_PIN_NOTIFY_ROLE_ID = "1518631032167993534";
+const INFO_COMMAND_EXTRA_ROLE_ID = "1518631032167993534";
 
 async function sha256Hex(value) {
   const input = new TextEncoder().encode(String(value || ""));
@@ -1384,7 +1385,8 @@ async function getGuildRoleMap(env, guildId) {
 
 async function buildInfoCommandResponse(env, interaction) {
   const member = interaction.member || {};
-  if (!hasStaffRole(member)) {
+  const memberRoles = member.roles || [];
+  if (!hasStaffRole(member) && !memberRoles.includes(INFO_COMMAND_EXTRA_ROLE_ID)) {
     return { type: 4, data: { content: "Tu n'as pas les permissions pour utiliser cette commande.", flags: 64 } };
   }
 
