@@ -1401,17 +1401,27 @@ async function buildInfoCommandResponse(env, interaction) {
   if (!agent && parsed?.matricule) agent = await getFullAgentByMatricule(env, parsed.matricule, siteKey);
 
   const roleInfo = targetMember ? memberRoleInfo(targetMember, guildId) : { divisions: [], ppa1: false, ppa2: false, ppa3: false, grade: null };
+  const roleConfig = roleConfigForGuild(guildId);
   const roleMap = targetMember ? await getGuildRoleMap(env, guildId) : new Map();
-  const roleNames = (targetMember?.roles || [])
+  const roleMentions = (targetMember?.roles || [])
     .map(id => roleMap.get(String(id)))
     .filter(Boolean)
     .sort((a, b) => (Number(b.position || 0) - Number(a.position || 0)))
-    .map(role => cleanDiscordLine(role.name))
+    .map(role => `<@&${role.id}>`)
     .filter(Boolean);
+  const gradeMention = roleInfo.grade && roleConfig.grades[roleInfo.grade] ? `<@&${roleConfig.grades[roleInfo.grade]}>` : "Aucun";
+  const divisionMentions = roleInfo.divisions
+    .map(code => roleConfig.divisions[code] ? `<@&${roleConfig.divisions[code]}>` : code)
+    .join(", ");
+  const ppaMentions = [
+    roleInfo.ppa1 && roleConfig.ppa.ppa1 ? `<@&${roleConfig.ppa.ppa1}>` : "",
+    roleInfo.ppa2 && roleConfig.ppa.ppa2 ? `<@&${roleConfig.ppa.ppa2}>` : "",
+    roleInfo.ppa3 && roleConfig.ppa.ppa3a ? `<@&${roleConfig.ppa.ppa3a}>` : ""
+  ].filter(Boolean).join(", ");
   const trackedRoles = [
-    `Grade Discord : **${roleInfo.grade || "Aucun"}**`,
-    `Divisions Discord : **${roleInfo.divisions.length ? roleInfo.divisions.join(", ") : "Aucune"}**`,
-    `PPA Discord : **${[roleInfo.ppa1 ? "PPA1" : "", roleInfo.ppa2 ? "PPA2" : "", roleInfo.ppa3 ? "PPA3" : ""].filter(Boolean).join(", ") || "Aucune"}**`
+    `Grade Discord : ${gradeMention}`,
+    `Divisions Discord : ${divisionMentions || "Aucune"}`,
+    `PPA Discord : ${ppaMentions || "Aucune"}`
   ].join("\n");
   const agentUnites = Array.isArray(agent?.unites) ? agent.unites.filter(Boolean).join(", ") : "";
   const siteLines = agent ? [
@@ -1426,8 +1436,8 @@ async function buildInfoCommandResponse(env, interaction) {
     `Date recrutement : **${cleanDiscordLine(agent.date_recrutement) || "—"}**`,
     `Discord ID site : **${cleanDiscordLine(agent.discord_id) || "—"}**`
   ].join("\n") : "Aucune fiche site trouvée pour ce membre.";
-  const rolesText = roleNames.length
-    ? roleNames.map(name => `• ${name}`).join("\n")
+  const rolesText = roleMentions.length
+    ? roleMentions.map(mention => `• ${mention}`).join("\n")
     : (targetMember ? "Aucun rôle affichable." : "Membre Discord introuvable sur ce serveur.");
 
   return {
@@ -1442,7 +1452,7 @@ async function buildInfoCommandResponse(env, interaction) {
         fields: [
           { name: "Site SASP", value: truncateDiscordValue(siteLines), inline: false },
           { name: "Rôles suivis", value: truncateDiscordValue(trackedRoles), inline: false },
-          { name: `Rôles Discord (${roleNames.length})`, value: truncateDiscordValue(rolesText), inline: false }
+          { name: `Rôles Discord (${roleMentions.length})`, value: truncateDiscordValue(rolesText), inline: false }
         ],
         footer: { text: "SASP Intranet" },
         timestamp: new Date().toISOString()
