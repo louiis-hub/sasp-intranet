@@ -281,13 +281,13 @@ var NAV = [
   // wiki sections injected dynamically by loadWikiSections()
   { divider: true, staffOnly: true, _wikiEnd: true },
   { group: 'ADMINISTRATION', staffOnly: true },
-  { id: 'archives',        icon: '🗃️', label: 'Archives',          staffOnly: true },
+  { id: 'archives',        icon: '🗃️', label: 'Archives',          staffOnly: true, hidden: true },
   { id: 'stats',           icon: '📈', label: 'Statistiques',       staffOnly: true },
   { id: 'service-logements', icon: '🏠', label: 'Logements service', adminOnly: true },
   { id: 'ticketing', icon: '🎫', label: 'Tickets Discord', adminOnly: true, hidden: true },
 ];
 
-var REMOVED_PAGES = ['cid', 'ceremonie'];
+var REMOVED_PAGES = ['cid', 'ceremonie', 'archives'];
 
 var PAGE_TITLES = {
   dashboard:'Tableau de bord', agents:'Agents', 'agent-profile':'Fiche agent',
@@ -548,7 +548,7 @@ function buildNav() {
   var isVisiteur = S.role === 'visiteur';
   var isFtfOnly = S.role === 'ftf';
   var VISITEUR_NAV = ['dashboard', 'pointeuse', 'faq', 'cartes'];
-  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'archives', 'recap', 'ceremonie', 'completude'];
+  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'recap', 'ceremonie', 'completude'];
   var html = '';
   NAV.forEach(function(item) {
     if (item.hidden) return;
@@ -642,7 +642,7 @@ async function navigate(page, pd) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au Command Staff et aux Superviseurs.</div></div>');
     return;
   }
-  var RH_ALLOWED = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'archives', 'recap', 'ceremonie'];
+  var RH_ALLOWED = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'recap', 'ceremonie'];
   if (S.role === 'rh' && page !== 'ftf' && RH_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée aux administrateurs.</div></div>');
     return;
@@ -2151,7 +2151,7 @@ async function openAgentModal(id) {
       '<div class="form-grid2">' +
         '<div class="form-group"><label class="form-label">Grade *</label><select class="form-control" id="agGrade">' + gradeOpts + '</select></div>' +
         '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="agStatut">' +
-          ['En service','En congé','Suspendu','Licencié','Retraité','Démission','Archivé'].map(function(s){ return '<option' + (v.statut===s?' selected':'') + '>' + s + '</option>'; }).join('') +
+          ['En service','En congé','Suspendu','Licencié','Retraité','Démission'].map(function(s){ return '<option' + (v.statut===s?' selected':'') + '>' + s + '</option>'; }).join('') +
         '</select></div>' +
       '</div>' +
       '<div class="form-grid2">' +
@@ -3369,6 +3369,8 @@ async function renderCompletude() {
 // ══ ARCHIVES ════════════════════════════════════════════════════════
 var _archiveSearch = '';
 async function renderArchives() {
+  await navigate('dashboard');
+  return;
   var agents = await DB.getArchivedAgents(_archiveSearch);
   var rows = agents.length ? agents.map(function(a) {
     var unites = (a.unites||[]).map(function(u){ return unitBadge(u); }).join(' ');
@@ -4612,7 +4614,6 @@ async function renderGlobalSettings() {
   var appUsers = await DB.getAppUsers();
   var grades   = await DB.getGrades();
   var units    = await DB.getUnits();
-  var archived = await DB.getArchivedAgents('');
 
   function section(icon, title, sub, body) {
     return '<div class="card" style="margin-bottom:18px">' +
@@ -4671,8 +4672,7 @@ async function renderGlobalSettings() {
     { id:'tenue',         label:'Tenues' },
     { id:'document',      label:'Documents' },
     { id:'stats',         label:'Statistiques', staffDefault:true },
-    { id:'search',        label:'Recherche',    staffDefault:true },
-    { id:'archives',      label:'Archives',     staffDefault:true }
+    { id:'search',        label:'Recherche',    staffDefault:true }
   ];
   var agentPages   = cfg.agentPages   || ['dashboard','agents','agent-profile','grades','units','mdt','vehicles','info','manuel','tenue','document'];
   var academyPages = cfg.academyPages  || allPages.map(function(p){ return p.id; });
@@ -4720,21 +4720,13 @@ async function renderGlobalSettings() {
     '</div>' +
     '<button class="btn btn-outline btn-sm" onclick="openDocSectionModal()">+ Nouvelle section</button>';
 
-  // ── Zone de danger ──
-  var dangerHtml = '<p style="font-size:.83rem;color:var(--t2);margin-bottom:14px">' + archived.length + ' agent(s) dans les archives.</p>' +
-    '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
-      '<button class="btn btn-outline btn-sm" onclick="navigate(\'archives\')">🗃️ Voir les archives</button>' +
-      (archived.length ? '<button class="btn btn-danger btn-sm" onclick="purgeAllArchives()">💀 Purger toutes les archives</button>' : '') +
-    '</div>';
-
   setContent(
     '<div class="flex-between mb-20"><div><h1 style="font-size:1.4rem">Réglages globaux</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">Configuration générale du site — accès admin uniquement</p></div></div>' +
     section('👥', 'Gestion des accès', 'RÔLES DES UTILISATEURS', usersHtml) +
     section('🎖️', 'Grades', 'HIÉRARCHIE', gradesHtml) +
     section('🚔', 'Divisions', 'UNITÉS DE LA SASP', unitsHtml) +
     section('📚', 'Documentation', 'SECTIONS DU MENU', docsHtml) +
-    section('🔐', 'Permissions & Rôles Discord', 'CONTRÔLE D\'ACCÈS', permHtml) +
-    section('⚠️', 'Zone de danger', 'ACTIONS IRRÉVERSIBLES', dangerHtml)
+    section('🔐', 'Permissions & Rôles Discord', 'CONTRÔLE D\'ACCÈS', permHtml)
   );
 }
 function openDocSectionModal() {
@@ -4792,7 +4784,7 @@ async function deleteDocSection(id, nom) {
 }
 
 function savePermissions() {
-  var allPageIds = ['dashboard','agents','grades','units','mdt','vehicles','info','manuel','tenue','document','stats','search','archives'];
+  var allPageIds = ['dashboard','agents','grades','units','mdt','vehicles','info','manuel','tenue','document','stats','search'];
   var agentPages   = allPageIds.filter(function(id){ var el = document.getElementById('perm_agent_'   + id); return el && !el.disabled && el.checked; });
   var academyPages = allPageIds.filter(function(id){ var el = document.getElementById('perm_academy_' + id); return el && !el.disabled && el.checked; });
   var adminRaw = document.getElementById('cfgAdminId').value;
@@ -4825,6 +4817,8 @@ async function deleteUnitGS(id, code) {
   renderGlobalSettings();
 }
 async function purgeAllArchives() {
+  toast('La page Archives est desactivee.', 'info');
+  return;
   var archived = await DB.getArchivedAgents('');
   if (!archived.length) { toast('Aucune archive à purger.', 'info'); return; }
   if (!confirm('Supprimer définitivement les ' + archived.length + ' agent(s) archivé(s) ?\n\nCette action est IRRÉVERSIBLE.')) return;
