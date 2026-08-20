@@ -284,7 +284,7 @@ var NAV = [
   { id: 'archives',        icon: '🗃️', label: 'Archives',          staffOnly: true },
   { id: 'stats',           icon: '📈', label: 'Statistiques',       staffOnly: true },
   { id: 'service-logements', icon: '🏠', label: 'Logements service', adminOnly: true },
-  { id: 'ticketing', icon: '🎫', label: 'Tickets Discord', adminOnly: true },
+  { id: 'ticketing', icon: '🎫', label: 'Tickets Discord', adminOnly: true, hidden: true },
 ];
 
 var REMOVED_PAGES = ['cid', 'ceremonie'];
@@ -551,6 +551,7 @@ function buildNav() {
   var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'archives', 'recap', 'ceremonie', 'completude'];
   var html = '';
   NAV.forEach(function(item) {
+    if (item.hidden) return;
     if (item.ftfOnly && !canAccessFTF()) return;
     if (item.cidOnly && !canAccessCID()) return;
     if (isFtfOnly && item.id && item.id !== 'ftf') return;
