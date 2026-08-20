@@ -1341,6 +1341,116 @@ async function getAgentByDiscordId(env, discordId, siteKey = "sud") {
   return data && data.length > 0 ? data[0] : null;
 }
 
+function truncateDiscordValue(value, max = 1024) {
+  const text = String(value || "").trim();
+  if (text.length <= max) return text || "—";
+  return text.slice(0, Math.max(0, max - 18)).trimEnd() + "\n... texte coupe";
+}
+
+function cleanDiscordLine(value) {
+  return String(value || "")
+    .replace(/[`*_~>|]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function getFullAgentByDiscordId(env, discordId, siteKey = "sud") {
+  const data = await sbForSite(env, "GET", `/agents?discord_id=eq.${discordId}&select=*&limit=1`, null, siteKey);
+  return data && data.length > 0 ? data[0] : null;
+}
+
+async function getFullAgentByMatricule(env, matricule, siteKey = "sud") {
+  if (!matricule) return null;
+  const data = await sbForSite(env, "GET", `/agents?matricule=eq.${encodeURIComponent(matricule)}&select=*&limit=1`, null, siteKey);
+  return data && data.length > 0 ? data[0] : null;
+}
+
+async function getGuildMember(env, guildId, userId) {
+  const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${userId}`, {
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function getGuildRoleMap(env, guildId) {
+  const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/roles`, {
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+  });
+  if (!res.ok) return new Map();
+  const roles = await res.json().catch(() => []);
+  return new Map((Array.isArray(roles) ? roles : []).map(role => [String(role.id), role]));
+}
+
+async function buildInfoCommandResponse(env, interaction) {
+  const member = interaction.member || {};
+  if (!hasStaffRole(member)) {
+    return { type: 4, data: { content: "Tu n'as pas les permissions pour utiliser cette commande.", flags: 64 } };
+  }
+
+  const guildId = interaction.guild_id || env.DISCORD_GUILD_ID || SUD_SITE_GUILD_ID;
+  const siteKey = siteKeyFromGuildId(guildId);
+  const targetId = String((interaction.data.options || []).find(o => o.name === "joueur")?.value || "").replace(/\D/g, "");
+  if (!targetId) return { type: 4, data: { content: "Joueur invalide.", flags: 64 } };
+
+  const targetMember = await getGuildMember(env, guildId, targetId);
+  const targetUser = targetMember?.user || interaction.data.resolved?.users?.[targetId] || {};
+  const displayName = targetMember?.nick || targetUser.global_name || targetUser.username || `ID ${targetId}`;
+  const parsed = parseAgentIdentityFromDiscordName(displayName);
+  let agent = await getFullAgentByDiscordId(env, targetId, siteKey);
+  if (!agent && parsed?.matricule) agent = await getFullAgentByMatricule(env, parsed.matricule, siteKey);
+
+  const roleInfo = targetMember ? memberRoleInfo(targetMember, guildId) : { divisions: [], ppa1: false, ppa2: false, ppa3: false, grade: null };
+  const roleMap = targetMember ? await getGuildRoleMap(env, guildId) : new Map();
+  const roleNames = (targetMember?.roles || [])
+    .map(id => roleMap.get(String(id)))
+    .filter(Boolean)
+    .sort((a, b) => (Number(b.position || 0) - Number(a.position || 0)))
+    .map(role => cleanDiscordLine(role.name))
+    .filter(Boolean);
+  const trackedRoles = [
+    `Grade Discord : **${roleInfo.grade || "Aucun"}**`,
+    `Divisions Discord : **${roleInfo.divisions.length ? roleInfo.divisions.join(", ") : "Aucune"}**`,
+    `PPA Discord : **${[roleInfo.ppa1 ? "PPA1" : "", roleInfo.ppa2 ? "PPA2" : "", roleInfo.ppa3 ? "PPA3" : ""].filter(Boolean).join(", ") || "Aucune"}**`
+  ].join("\n");
+  const agentUnites = Array.isArray(agent?.unites) ? agent.unites.filter(Boolean).join(", ") : "";
+  const siteLines = agent ? [
+    `Matricule : **${cleanDiscordLine(agent.matricule) || "—"}**`,
+    `Nom : **${cleanDiscordLine(`${agent.prenom || ""} ${agent.nom || ""}`) || "—"}**`,
+    `Grade site : **${cleanDiscordLine(agent.grade) || "—"}**`,
+    `Statut site : **${cleanDiscordLine(agent.statut) || "—"}**`,
+    `Divisions site : **${cleanDiscordLine(agentUnites) || "—"}**`,
+    `Téléphone : **${cleanDiscordLine(agent.telephone) || "—"}**`,
+    `IBAN : **${cleanDiscordLine(agent.iban) || "—"}**`,
+    `Date naissance : **${cleanDiscordLine(agent.date_naissance) || "—"}**`,
+    `Date recrutement : **${cleanDiscordLine(agent.date_recrutement) || "—"}**`,
+    `Discord ID site : **${cleanDiscordLine(agent.discord_id) || "—"}**`
+  ].join("\n") : "Aucune fiche site trouvée pour ce membre.";
+  const rolesText = roleNames.length
+    ? roleNames.map(name => `• ${name}`).join("\n")
+    : (targetMember ? "Aucun rôle affichable." : "Membre Discord introuvable sur ce serveur.");
+
+  return {
+    type: 4,
+    data: {
+      content: `📋 Récap de <@${targetId}>`,
+      allowed_mentions: { parse: [] },
+      embeds: [{
+        color: 0xc9a84c,
+        title: `Info agent - ${cleanDiscordLine(displayName)}`,
+        description: `Serveur : **${siteKey.toUpperCase()}**`,
+        fields: [
+          { name: "Site SASP", value: truncateDiscordValue(siteLines), inline: false },
+          { name: "Rôles suivis", value: truncateDiscordValue(trackedRoles), inline: false },
+          { name: `Rôles Discord (${roleNames.length})`, value: truncateDiscordValue(rolesText), inline: false }
+        ],
+        footer: { text: "SASP Intranet" },
+        timestamp: new Date().toISOString()
+      }]
+    }
+  };
+}
+
 function parseAgentIdentityFromDiscordName(name) {
   const raw = String(name || "");
   const bracketMatricule = raw.match(/\[(\d{1,5})\]/);
@@ -5078,6 +5188,49 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
+    if (url.pathname === "/admin/install-info-command" && request.method === "GET") {
+      try {
+        const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+        if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const appId = env.DISCORD_APPLICATION_ID;
+        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
+        const reset = url.searchParams.get("reset") === "1";
+        const resetDeleted = [];
+        if (reset) {
+          const listRes = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          const commands = await listRes.json();
+          if (!listRes.ok) return json({ ok: false, step: "list", data: commands }, listRes.status);
+          for (const command of commands.filter(c => c.name === "info")) {
+            const delRes = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands/${command.id}`, {
+              method: "DELETE",
+              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+            });
+            resetDeleted.push({ id: command.id, ok: delRes.status === 204, status: delRes.status });
+          }
+        }
+        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "info",
+            description: "Afficher le recap site et Discord d'un agent",
+            options: [{
+              type: 6,
+              name: "joueur",
+              description: "Joueur a verifier",
+              required: true
+            }]
+          })
+        });
+        const data = await res.json();
+        return json({ ok: res.ok, reset, resetDeleted, data }, res.ok ? 200 : res.status);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
     if (url.pathname === "/admin/debug-commands" && request.method === "GET") {
       try {
         const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
@@ -5641,6 +5794,14 @@ export default {
           });
         } catch (e) {
           return json({ type: 4, data: { content: `❌ ${e.message || e}`, flags: 64 } });
+        }
+      }
+
+      if (interaction.type === 2 && interaction.data.name === "info") {
+        try {
+          return json(await buildInfoCommandResponse(env, interaction));
+        } catch (e) {
+          return json({ type: 4, data: { content: `Erreur info : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
         }
       }
 
