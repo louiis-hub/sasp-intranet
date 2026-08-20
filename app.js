@@ -36,6 +36,27 @@ function makeOpenAccessUser() {
   };
 }
 
+function initCursorCompanion() {
+  var el = document.getElementById('cursorCompanion');
+  if (!el || !window.matchMedia || window.matchMedia('(hover: none), (pointer: coarse)').matches) return;
+  var x = -120, y = -120, tx = x, ty = y, raf = 0;
+  function tick() {
+    x += (tx - x) * 0.24;
+    y += (ty - y) * 0.24;
+    el.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0)';
+    raf = requestAnimationFrame(tick);
+  }
+  document.addEventListener('mousemove', function(e) {
+    tx = e.clientX + 18;
+    ty = e.clientY + 18;
+    el.classList.add('visible');
+    if (!raf) raf = requestAnimationFrame(tick);
+  }, { passive: true });
+  document.addEventListener('mouseleave', function() {
+    el.classList.remove('visible');
+  });
+}
+
 async function startOpenAccess() {
   var role = (typeof AUTH_BYPASS_ROLE !== 'undefined' && AUTH_BYPASS_ROLE) ? AUTH_BYPASS_ROLE : 'admin';
   var anonSession = await DB.ensureAnonymousSession();
@@ -53,6 +74,8 @@ async function startOpenAccess() {
   showApp();
   await navigate('dashboard');
 }
+
+initCursorCompanion();
 
 // ── Salaires par grade ($/h) ─────────────────────────────────────────
 var GRADE_SALAIRE = {
