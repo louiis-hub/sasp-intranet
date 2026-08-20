@@ -1263,6 +1263,7 @@ async function upsertFtfDossier(env, dossier) {
 
 const SITE_ACCESS_PIN_SETTING_ID = "__site_access_pin_sud";
 const SITE_ACCESS_COMMAND_ROLE_ID = "1500975725153620033";
+const SITE_ACCESS_PIN_LOG_CHANNEL_ID = "1518640738559197284";
 
 async function sha256Hex(value) {
   const input = new TextEncoder().encode(String(value || ""));
@@ -1298,6 +1299,29 @@ async function setSiteAccessPin(env, pin, updatedBy = "Command Staff") {
     updated_at: now
   });
   return setting;
+}
+
+async function sendSiteAccessPinLog(env, pin, updatedBy, updatedByUserId = "") {
+  const cleanPin = String(pin || "").replace(/\D/g, "");
+  const content = [
+    "🔐 **PIN du site modifié**",
+    `Nouveau PIN : \`${cleanPin}\``,
+    `Modifié par : ${updatedBy || "Command Staff"}`
+  ].join("\n");
+  const allowedUsers = updatedByUserId ? [String(updatedByUserId)] : [];
+  const res = await discordFetch(`${DISCORD_API}/channels/${SITE_ACCESS_PIN_LOG_CHANNEL_ID}/messages`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      content,
+      allowed_mentions: { parse: [], users: allowedUsers }
+    })
+  });
+  if (!res.ok) throw new Error(`Message log PIN impossible (${res.status})`);
+  return res.json().catch(() => ({}));
 }
 
 async function verifySiteAccessPin(env, pin) {
@@ -5603,7 +5627,9 @@ export default {
         const pin = String((interaction.data.options || []).find(o => o.name === "pin")?.value || "").replace(/\D/g, "");
         try {
           const staffId = interaction.member?.user?.id || interaction.user?.id || "";
-          const setting = await setSiteAccessPin(env, pin, staffId ? `<@${staffId}>` : "Command Staff");
+          const updatedBy = staffId ? `<@${staffId}>` : "Command Staff";
+          await setSiteAccessPin(env, pin, updatedBy);
+          await sendSiteAccessPinLog(env, pin, updatedBy, staffId);
           return json({
             type: 4,
             data: {
