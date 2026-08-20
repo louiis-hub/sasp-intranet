@@ -21,9 +21,6 @@ h1,h2,h3,h4{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--t0);le
 ::-webkit-scrollbar-track{background:var(--bg0)}
 ::-webkit-scrollbar-thumb{background:var(--goldDk);border-radius:3px}
 a{color:var(--gold);text-decoration:none}
-.cursor-companion{position:fixed;left:0;top:0;width:71px;height:96px;z-index:9998;pointer-events:none;opacity:0;transform:translate3d(-120px,-120px,0);filter:drop-shadow(0 8px 16px rgba(0,0,0,.55));transition:opacity .18s var(--ease);will-change:transform,opacity}
-.cursor-companion.visible{opacity:.92}
-@media (hover:none),(pointer:coarse){.cursor-companion{display:none}}
 
 .arrival-splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(circle at 50% 42%,rgba(31,74,132,.20),transparent 26%),linear-gradient(180deg,#02050a 0%,#07101d 52%,#02050a 100%);transition:opacity .75s var(--ease),visibility .75s var(--ease);isolation:isolate}
 .arrival-splash.done{opacity:0;visibility:hidden;pointer-events:none}
