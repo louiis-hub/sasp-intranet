@@ -1099,6 +1099,128 @@ async function copyGuildStructureAdditive(env, options = {}) {
   };
 }
 
+async function applyCopiedGuildCitizenVisibility(env, options = {}) {
+  const sourceGuildId = String(options.sourceGuildId || "1523759012623941746");
+  const targetGuildId = String(options.targetGuildId || "1514330576390324444");
+  const targetCitizenRoleId = String(options.targetCitizenRoleId || "1528183035785253004");
+  const maxPatches = Math.max(1, Math.min(40, Number(options.maxPatches || 25) || 25));
+  const reason = "Permissions salons copies SASP";
+  const VIEW = 1024n;
+  const SEND = 2048n;
+  const READ_HISTORY = 65536n;
+  const allowReadOnly = String(VIEW | READ_HISTORY);
+  const denyView = String(VIEW);
+  const denySend = String(SEND);
+  const protectedIds = [targetGuildId, targetCitizenRoleId];
+
+  const sourceChannels = await discordRequest(env, "GET", `/guilds/${sourceGuildId}/channels`, null, `${reason} - source`);
+  const targetChannels = await discordRequest(env, "GET", `/guilds/${targetGuildId}/channels`, null, `${reason} - cible`);
+  const targetCategoryByName = new Map(targetChannels.filter(ch => ch.type === 4).map(ch => [ch.name, ch]));
+  const categoryMap = new Map();
+  const patched = [];
+  const skipped = [];
+  const errors = [];
+  let truncated = false;
+
+  const upsertRoleOverwrite = (channel, roleId, allow, deny) => {
+    const others = (channel.permission_overwrites || [])
+      .filter(overwrite => !(Number(overwrite.type) === 0 && String(overwrite.id) === String(roleId)))
+      .map(overwrite => ({
+        id: String(overwrite.id),
+        type: Number(overwrite.type),
+        allow: String(overwrite.allow || "0"),
+        deny: String(overwrite.deny || "0")
+      }));
+    others.push({ id: String(roleId), type: 0, allow: String(allow || "0"), deny: String(deny || "0") });
+    return others;
+  };
+
+  const patchChannel = async (channel, allowAnnouncement) => {
+    if (patched.length >= maxPatches) { truncated = true; return; }
+    const hasDesiredOverwrite = roleId => {
+      const overwrite = (channel.permission_overwrites || []).find(item => Number(item.type) === 0 && String(item.id) === String(roleId));
+      if (!overwrite) return false;
+      const allow = BigInt(overwrite.allow || "0");
+      const deny = BigInt(overwrite.deny || "0");
+      if (allowAnnouncement) return (allow & (VIEW | READ_HISTORY)) === (VIEW | READ_HISTORY) && (deny & SEND) === SEND;
+      return (deny & VIEW) === VIEW;
+    };
+    if (protectedIds.every(hasDesiredOverwrite)) {
+      skipped.push({ step: "already_ok", id: channel.id, name: channel.name, type: channel.type, annonce: allowAnnouncement });
+      return;
+    }
+    let overwrites = channel.permission_overwrites || [];
+    for (const roleId of protectedIds) {
+      overwrites = upsertRoleOverwrite(
+        { permission_overwrites: overwrites },
+        roleId,
+        allowAnnouncement ? allowReadOnly : "0",
+        allowAnnouncement ? denySend : denyView
+      );
+    }
+    const item = await discordRequest(env, "PATCH", `/channels/${channel.id}`, {
+      permission_overwrites: overwrites
+    }, `${reason} - ${channel.name}`);
+    patched.push({ id: item.id, name: item.name, type: item.type, annonce: allowAnnouncement });
+  };
+
+  const sourceCategories = sourceChannels
+    .filter(channel => channel.type === 4)
+    .sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
+  for (const sourceCategory of sourceCategories) {
+    const targetCategory = targetCategoryByName.get(sourceCategory.name);
+    if (!targetCategory) {
+      skipped.push({ step: "category_missing", name: sourceCategory.name });
+      continue;
+    }
+    categoryMap.set(String(sourceCategory.id), String(targetCategory.id));
+    try {
+      await patchChannel(targetCategory, false);
+    } catch (e) {
+      errors.push({ step: "category", id: targetCategory.id, name: targetCategory.name, error: e.message });
+    }
+    if (truncated) break;
+  }
+
+  if (!truncated) {
+    const targetByParentNameType = new Map(targetChannels
+      .filter(channel => channel.type !== 4)
+      .map(channel => [`${channel.parent_id || ""}:${channel.name}:${channel.type}`, channel]));
+    const sourceChildren = sourceChannels
+      .filter(channel => channel.type !== 4)
+      .sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
+    for (const sourceChannel of sourceChildren) {
+      const targetParentId = sourceChannel.parent_id ? categoryMap.get(String(sourceChannel.parent_id)) : "";
+      const targetChannel = targetByParentNameType.get(`${targetParentId || ""}:${sourceChannel.name}:${sourceChannel.type}`);
+      if (!targetChannel) {
+        skipped.push({ step: "channel_missing", name: sourceChannel.name, type: sourceChannel.type });
+        continue;
+      }
+      const isAnnouncement = String(sourceChannel.name || "").toLowerCase().includes("annonce");
+      try {
+        await patchChannel(targetChannel, isAnnouncement);
+      } catch (e) {
+        errors.push({ step: "channel", id: targetChannel.id, name: targetChannel.name, error: e.message });
+      }
+      if (truncated) break;
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    source_guild_id: sourceGuildId,
+    target_guild_id: targetGuildId,
+    target_citizen_role_id: targetCitizenRoleId,
+    patched: patched.length,
+    skipped: skipped.length,
+    max_patches: maxPatches,
+    truncated,
+    has_more: truncated,
+    errors,
+    details: { patched, skipped }
+  };
+}
+
 // â”€â”€ Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminRoleId = ENTERPRISE_ADMIN_ROLE_ID, start = 0, limit = ENTERPRISES.length) {
   const VIEW = 1024n;
@@ -3713,6 +3835,22 @@ export default {
           sourceCitizenRoleId: url.searchParams.get("source_citizen_role") || "1523766467114569820",
           targetCitizenRoleId: url.searchParams.get("target_citizen_role") || "1528183035785253004",
           maxCreates: url.searchParams.get("max_creates") || 20
+        });
+        return json(result, result.ok ? 200 : 207);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/apply-copied-guild-visibility" && request.method === "GET") {
+      try {
+        const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+        if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+        const result = await applyCopiedGuildCitizenVisibility(env, {
+          sourceGuildId: url.searchParams.get("source") || "1523759012623941746",
+          targetGuildId: url.searchParams.get("target") || "1514330576390324444",
+          targetCitizenRoleId: url.searchParams.get("target_citizen_role") || "1528183035785253004",
+          maxPatches: url.searchParams.get("max_patches") || 25
         });
         return json(result, result.ok ? 200 : 207);
       } catch (e) {
