@@ -1221,6 +1221,156 @@ async function applyCopiedGuildCitizenVisibility(env, options = {}) {
   };
 }
 
+function normalizeCopiedRoleName(name) {
+  return String(name || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/(?:ãƒ»|aƒ»|ãƒ|aƒ|ƒ|»)/gi, "")
+    .replace(/[-_|\[\](){}.,:;'"·・•]/g, "")
+    .replace(/[^a-z0-9]+/gi, "")
+    .toLowerCase();
+}
+
+function roleEnterpriseMatch(roleName) {
+  const compactRole = normalizeCopiedRoleName(roleName);
+  for (let enterpriseIndex = 0; enterpriseIndex < ENTERPRISES.length; enterpriseIndex++) {
+    const enterprise = ENTERPRISES[enterpriseIndex];
+    const compactEnterprise = normalizeCopiedRoleName(enterprise);
+    if (!compactRole.endsWith(compactEnterprise)) continue;
+    const specs = enterpriseRoleSpecs(enterprise);
+    for (let specIndex = 0; specIndex < specs.length; specIndex++) {
+      const labels = [specs[specIndex].label, ...(specs[specIndex].legacy || []).map(label => label.replace(new RegExp(`\\s+${enterprise.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), ""))];
+      if (labels.some(label => compactRole.includes(normalizeCopiedRoleName(label)))) {
+        return { enterprise, enterpriseIndex, specIndex };
+      }
+    }
+  }
+  return null;
+}
+
+async function cleanupCopiedGuildEnterpriseRoles(env, options = {}) {
+  const targetGuildId = String(options.targetGuildId || "1514330576390324444");
+  const targetCitizenRoleId = String(options.targetCitizenRoleId || "1528183035785253004");
+  const dryRun = options.dryRun === true || String(options.dryRun || "") === "1";
+  const reason = "Nettoyage roles entreprises copies SASP";
+  const roles = await discordRequest(env, "GET", `/guilds/${targetGuildId}/roles`, null, `${reason} - liste`);
+  const deleted = [];
+  const deleteErrors = [];
+
+  const malformedRoles = roles.filter(role =>
+    role.id !== targetGuildId &&
+    role.id !== targetCitizenRoleId &&
+    !role.managed &&
+    String(role.name || "").includes("ãƒ»")
+  );
+  for (const role of malformedRoles) {
+    if (!dryRun) {
+      try {
+        await discordRequest(env, "DELETE", `/guilds/${targetGuildId}/roles/${role.id}`, null, `${reason} - ${role.name}`);
+      } catch (e) {
+        deleteErrors.push({ id: role.id, name: role.name, error: e.message });
+        continue;
+      }
+    }
+    deleted.push({ id: role.id, name: role.name });
+  }
+
+  const remainingRoles = roles.filter(role => !deleted.some(item => item.id === role.id));
+  const enterpriseRoles = remainingRoles
+    .map(role => ({ role, match: roleEnterpriseMatch(role.name) }))
+    .filter(item =>
+      item.match &&
+      item.role.id !== targetGuildId &&
+      item.role.id !== targetCitizenRoleId &&
+      !item.role.managed &&
+      !String(item.role.name || "").includes("ãƒ»")
+    )
+    .sort((a, b) =>
+      a.match.enterpriseIndex - b.match.enterpriseIndex ||
+      a.match.specIndex - b.match.specIndex ||
+      String(a.role.name || "").localeCompare(String(b.role.name || ""))
+    );
+
+  const currentTop = enterpriseRoles.reduce((max, item) => Math.max(max, Number(item.role.position || 0)), 1);
+  const reorderPayload = enterpriseRoles.map((item, index) => ({
+    id: item.role.id,
+    position: Math.max(1, currentTop - index)
+  }));
+  let reordered = 0;
+  let reorderError = null;
+  if (reorderPayload.length && !dryRun) {
+    try {
+      await discordRequest(env, "PATCH", `/guilds/${targetGuildId}/roles`, reorderPayload, `${reason} - tri entreprises`);
+      reordered = reorderPayload.length;
+    } catch (e) {
+      reorderError = e.message;
+    }
+  }
+
+  return {
+    ok: deleteErrors.length === 0 && !reorderError,
+    target_guild_id: targetGuildId,
+    dry_run: dryRun,
+    deleted_malformed_roles: deleted.length,
+    reordered_enterprise_roles: dryRun ? reorderPayload.length : reordered,
+    errors: [...deleteErrors, ...(reorderError ? [{ step: "reorder", error: reorderError }] : [])],
+    details: {
+      deleted,
+      grouped_order: enterpriseRoles.map(item => ({
+        id: item.role.id,
+        name: item.role.name,
+        enterprise: item.match.enterprise,
+        position_before: item.role.position || 0
+      }))
+    }
+  };
+}
+
+async function auditCopiedGuildRoleDuplicates(env, options = {}) {
+  const sourceGuildId = String(options.sourceGuildId || "1523759012623941746");
+  const targetGuildId = String(options.targetGuildId || "1514330576390324444");
+  const sourceCitizenRoleId = String(options.sourceCitizenRoleId || "1523766467114569820");
+  const targetCitizenRoleId = String(options.targetCitizenRoleId || "1528183035785253004");
+  const reason = "Audit doublons roles copie SASP";
+
+  const sourceRoles = await discordRequest(env, "GET", `/guilds/${sourceGuildId}/roles`, null, `${reason} - source`);
+  const targetRoles = await discordRequest(env, "GET", `/guilds/${targetGuildId}/roles`, null, `${reason} - cible`);
+  const sourceKeys = new Set(sourceRoles
+    .filter(role => role.id !== sourceGuildId && role.id !== sourceCitizenRoleId && !role.managed)
+    .map(role => normalizeCopiedRoleName(role.name))
+    .filter(Boolean));
+
+  const grouped = new Map();
+  for (const role of targetRoles) {
+    if (role.id === targetGuildId || role.id === targetCitizenRoleId || role.managed) continue;
+    const key = normalizeCopiedRoleName(role.name);
+    if (!key || !sourceKeys.has(key)) continue;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push({
+      id: role.id,
+      name: role.name,
+      position: role.position || 0,
+      color: role.color || 0,
+      hoist: Boolean(role.hoist),
+      mentionable: Boolean(role.mentionable)
+    });
+  }
+
+  const duplicateGroups = [...grouped.entries()]
+    .map(([key, roles]) => ({ key, roles: roles.sort((a, b) => Number(b.position || 0) - Number(a.position || 0)) }))
+    .filter(group => group.roles.length > 1)
+    .sort((a, b) => a.key.localeCompare(b.key));
+
+  return {
+    ok: true,
+    source_guild_id: sourceGuildId,
+    target_guild_id: targetGuildId,
+    duplicate_groups: duplicateGroups.length,
+    duplicate_roles: duplicateGroups.reduce((total, group) => total + group.roles.length, 0),
+    details: duplicateGroups
+  };
+}
+
 async function organizeCopiedGuildCategories(env, options = {}) {
   const sourceGuildId = String(options.sourceGuildId || "1523759012623941746");
   const targetGuildId = String(options.targetGuildId || "1514330576390324444");
@@ -3990,6 +4140,37 @@ export default {
           targetGuildId: url.searchParams.get("target") || "1514330576390324444",
           targetCitizenRoleId: url.searchParams.get("target_citizen_role") || "1528183035785253004",
           maxPatches: url.searchParams.get("max_patches") || 25
+        });
+        return json(result, result.ok ? 200 : 207);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/audit-copied-guild-role-duplicates" && request.method === "GET") {
+      try {
+        const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+        if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+        const result = await auditCopiedGuildRoleDuplicates(env, {
+          sourceGuildId: url.searchParams.get("source") || "1523759012623941746",
+          targetGuildId: url.searchParams.get("target") || "1514330576390324444",
+          sourceCitizenRoleId: url.searchParams.get("source_citizen_role") || "1523766467114569820",
+          targetCitizenRoleId: url.searchParams.get("target_citizen_role") || "1528183035785253004"
+        });
+        return json(result);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/cleanup-copied-guild-enterprise-roles" && request.method === "GET") {
+      try {
+        const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+        if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+        const result = await cleanupCopiedGuildEnterpriseRoles(env, {
+          targetGuildId: url.searchParams.get("target") || "1514330576390324444",
+          targetCitizenRoleId: url.searchParams.get("target_citizen_role") || "1528183035785253004",
+          dryRun: url.searchParams.get("dry_run") || false
         });
         return json(result, result.ok ? 200 : 207);
       } catch (e) {
