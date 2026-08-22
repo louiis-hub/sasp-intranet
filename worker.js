@@ -4662,7 +4662,7 @@ export default {
 
     // Envoyer le message sticky plainte
     const STICKY_PLAINTE_CHANNEL = "1519510826233364500";
-    const STICKY_PLAINTE_EMBED = { embeds: [{ title: "ðŸ“‹ DÃ©poser une plainte", color: 0x3498db, description: "Utilisez la commande `/plainte` pour dÃ©poser une plainte officielle.\n\nUne fois le formulaire validÃ©, **copiez-collez** le message gÃ©nÃ©rÃ© et envoyez-le ici :\nhttps://discord.com/channels/1512185605805703179/1517219854724235477", footer: { text: "SASP â€¢ Service des plaintes" } }] };
+    const STICKY_PLAINTE_EMBED = { embeds: [{ title: "ðŸ“‹ DÃ©poser une plainte", color: 0x3498db, description: "Utilisez la commande `/plainte` pour dÃ©poser une plainte officielle.\n\nUne fois le formulaire validÃ©, la plainte est envoyÃ©e automatiquement dans ce salon.", footer: { text: "SASP â€¢ Service des plaintes" } }] };
     if (url.pathname === "/admin/send-sticky-plainte" && request.method === "GET") {
       const res = await discordFetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages`, {
         method: "POST",
@@ -7953,7 +7953,7 @@ export default {
           { name: "âš–ï¸ Note",              value: "La Cour est respectueusement saisie de ce dossier et invitÃ©e Ã  statuer sur les suites judiciaires Ã  y apporter. Le SASP demeure Ã  disposition pour toute information complÃ©mentaire jugÃ©e nÃ©cessaire Ã  l'instruction de cette affaire.", inline: false }
         ];
 
-        const postRes = await discordFetch(`${DISCORD_API}/channels/${interaction.channel_id}/messages`, {
+        const postRes = await discordFetch(`${DISCORD_API}/channels/${STICKY_PLAINTE_CHANNEL}/messages`, {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -7987,7 +7987,7 @@ export default {
           });
         } catch {}
 
-        return json({ type: 4, data: { content: "âœ… Plainte enregistrÃ©e !\n\nMaintenant, faites un **copier-coller** du message de la plainte et envoyez-le ici : https://discord.com/channels/1512185605805703179/1517219854724235477", flags: 64 } });
+        return json({ type: 4, data: { content: "âœ… Plainte enregistrÃ©e et envoyÃ©e dans le salon des plaintes SASP.", flags: 64 } });
       }
 
       // Modal submit plainte (modification)
