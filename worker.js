@@ -1237,10 +1237,11 @@ function roleEnterpriseMatch(roleName) {
     const enterprise = ENTERPRISES[enterpriseIndex];
     const compactEnterprise = normalizeCopiedRoleName(enterprise);
     if (!compactRole.endsWith(compactEnterprise)) continue;
+    const compactGrade = compactRole.slice(0, -compactEnterprise.length);
     const specs = enterpriseRoleSpecs(enterprise);
     for (let specIndex = 0; specIndex < specs.length; specIndex++) {
       const labels = [specs[specIndex].label, ...(specs[specIndex].legacy || []).map(label => label.replace(new RegExp(`\\s+${enterprise.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`), ""))];
-      if (labels.some(label => compactRole.includes(normalizeCopiedRoleName(label)))) {
+      if (labels.some(label => compactGrade === normalizeCopiedRoleName(label))) {
         return { enterprise, enterpriseIndex, specIndex };
       }
     }
