@@ -1221,6 +1221,145 @@ async function applyCopiedGuildCitizenVisibility(env, options = {}) {
   };
 }
 
+async function organizeCopiedGuildCategories(env, options = {}) {
+  const sourceGuildId = String(options.sourceGuildId || "1523759012623941746");
+  const targetGuildId = String(options.targetGuildId || "1514330576390324444");
+  const targetCitizenRoleId = String(options.targetCitizenRoleId || "1528183035785253004");
+  const start = Math.max(0, Number(options.start || 0) || 0);
+  const limit = Math.max(1, Math.min(10, Number(options.limit || 5) || 5));
+  const cleanupDuplicateTickets = options.cleanupDuplicateTickets === true || String(options.cleanupDuplicateTickets || "") === "1";
+  const reason = "Organisation categories copiees SASP";
+  const VIEW = 1024n;
+
+  const sourceChannels = await discordRequest(env, "GET", `/guilds/${sourceGuildId}/channels`, null, `${reason} - source`);
+  const targetChannels = await discordRequest(env, "GET", `/guilds/${targetGuildId}/channels`, null, `${reason} - cible`);
+  const targetCategoryByName = new Map(targetChannels.filter(ch => ch.type === 4).map(ch => [ch.name, ch]));
+  const sourceCategories = sourceChannels
+    .filter(channel => channel.type === 4)
+    .sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
+  const selectedCategories = sourceCategories.slice(start, start + limit);
+  const childrenByParent = new Map();
+  for (const channel of targetChannels.filter(ch => ch.type !== 4)) {
+    const parentId = channel.parent_id || "";
+    if (!childrenByParent.has(parentId)) childrenByParent.set(parentId, []);
+    childrenByParent.get(parentId).push(channel);
+  }
+
+  const ticketOverwrites = [
+    { id: targetGuildId, type: 0, allow: "0", deny: String(VIEW) },
+    { id: targetCitizenRoleId, type: 0, allow: "0", deny: String(VIEW) }
+  ];
+  const isTicketChannel = channel => channel.type === 0 && String(channel.name || "").toLowerCase().includes("tickets");
+  const processed = [];
+  const skipped = [];
+  const errors = [];
+  let createdTickets = 0;
+  let patchedTickets = 0;
+  let deletedDuplicateTickets = 0;
+  let reordered = 0;
+
+  async function ensureHiddenTicket(channel, categoryName) {
+    const protectedIds = [targetGuildId, targetCitizenRoleId];
+    const overwrites = Array.isArray(channel.permission_overwrites) ? channel.permission_overwrites.slice() : [];
+    let changed = false;
+    for (const roleId of protectedIds) {
+      const index = overwrites.findIndex(item => Number(item.type) === 0 && String(item.id) === roleId);
+      if (index === -1) {
+        overwrites.push({ id: roleId, type: 0, allow: "0", deny: String(VIEW) });
+        changed = true;
+        continue;
+      }
+      const current = overwrites[index];
+      const deny = BigInt(current.deny || "0");
+      if ((deny & VIEW) !== VIEW) {
+        overwrites[index] = { ...current, deny: String(deny | VIEW) };
+        changed = true;
+      }
+    }
+    if (!changed) return channel;
+    patchedTickets++;
+    return discordRequest(env, "PATCH", `/channels/${channel.id}`, {
+      permission_overwrites: overwrites
+    }, `${reason} - permissions ticket ${categoryName}`);
+  }
+
+  for (const sourceCategory of selectedCategories) {
+    const category = targetCategoryByName.get(sourceCategory.name);
+    if (!category) {
+      skipped.push({ step: "category_missing", name: sourceCategory.name });
+      continue;
+    }
+    try {
+      let children = (childrenByParent.get(category.id) || []).slice().sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
+      let ticket = children.find(isTicketChannel);
+      if (!ticket) {
+        ticket = await discordRequest(env, "POST", `/guilds/${targetGuildId}/channels`, {
+          name: "--Tickets--",
+          type: 0,
+          parent_id: category.id,
+          permission_overwrites: ticketOverwrites
+        }, `${reason} - ticket ${category.name}`);
+        createdTickets++;
+        children.push(ticket);
+      }
+      ticket = await ensureHiddenTicket(ticket, category.name);
+      children = children.map(channel => channel.id === ticket.id ? ticket : channel);
+
+      const annonce = children.filter(channel => channel.name === "📢annonce");
+      const documents = children.filter(channel => channel.type === 15 && channel.name === "🗃️document");
+      let tickets = children.filter(isTicketChannel).sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
+      if (cleanupDuplicateTickets && tickets.length > 1) {
+        const duplicates = tickets.slice(1);
+        for (const duplicate of duplicates) {
+          await discordRequest(env, "DELETE", `/channels/${duplicate.id}`, null, `${reason} - doublon ticket ${category.name}`);
+          deletedDuplicateTickets++;
+        }
+        const duplicateIds = new Set(duplicates.map(channel => channel.id));
+        children = children.filter(channel => !duplicateIds.has(channel.id));
+        tickets = tickets.slice(0, 1);
+      }
+      const specialIds = new Set([...annonce, ...documents, ...tickets].map(channel => channel.id));
+      const middle = children.filter(channel => !specialIds.has(channel.id));
+      const ordered = [...annonce, ...middle, ...documents, ...tickets];
+      if (ordered.length) {
+        await discordRequest(env, "PATCH", `/guilds/${targetGuildId}/channels`, ordered.map((channel, index) => ({
+          id: channel.id,
+          position: index
+        })), `${reason} - ordre ${category.name}`);
+        reordered++;
+      }
+      processed.push({
+        category_id: category.id,
+        category: category.name,
+        annonce: annonce.length,
+        documents: documents.length,
+        tickets: tickets.length,
+        ticket_hidden: true
+      });
+    } catch (e) {
+      errors.push({ category_id: category.id, category: category.name, error: e.message });
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    source_guild_id: sourceGuildId,
+    target_guild_id: targetGuildId,
+    start,
+    limit,
+    total_categories: sourceCategories.length,
+    processed_categories: processed.length,
+    skipped_categories: skipped.length,
+    created_tickets: createdTickets,
+    patched_tickets: patchedTickets,
+    deleted_duplicate_tickets: deletedDuplicateTickets,
+    reordered_categories: reordered,
+    has_more: start + limit < sourceCategories.length,
+    errors,
+    details: { processed, skipped }
+  };
+}
+
 // â”€â”€ Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminRoleId = ENTERPRISE_ADMIN_ROLE_ID, start = 0, limit = ENTERPRISES.length) {
   const VIEW = 1024n;
@@ -3851,6 +3990,24 @@ export default {
           targetGuildId: url.searchParams.get("target") || "1514330576390324444",
           targetCitizenRoleId: url.searchParams.get("target_citizen_role") || "1528183035785253004",
           maxPatches: url.searchParams.get("max_patches") || 25
+        });
+        return json(result, result.ok ? 200 : 207);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/organize-copied-guild-categories" && request.method === "GET") {
+      try {
+        const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+        if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+        const result = await organizeCopiedGuildCategories(env, {
+          sourceGuildId: url.searchParams.get("source") || "1523759012623941746",
+          targetGuildId: url.searchParams.get("target") || "1514330576390324444",
+          targetCitizenRoleId: url.searchParams.get("target_citizen_role") || "1528183035785253004",
+          start: url.searchParams.get("start") || 0,
+          limit: url.searchParams.get("limit") || 5,
+          cleanupDuplicateTickets: url.searchParams.get("cleanup_duplicate_tickets") || false
         });
         return json(result, result.ok ? 200 : 207);
       } catch (e) {
