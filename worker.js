@@ -910,6 +910,195 @@ async function copySwatChannels(env, sourceGuildId = "1382167184607940658", targ
   };
 }
 
+async function copyGuildStructureAdditive(env, options = {}) {
+  const sourceGuildId = String(options.sourceGuildId || "1523759012623941746");
+  const targetGuildId = String(options.targetGuildId || "1514330576390324444");
+  const sourceCitizenRoleId = String(options.sourceCitizenRoleId || "1523766467114569820");
+  const targetCitizenRoleId = String(options.targetCitizenRoleId || "1528183035785253004");
+  const maxCreates = Math.max(1, Math.min(40, Number(options.maxCreates || 20) || 20));
+  const reason = "Copie additive serveur SASP";
+
+  const sourceRoles = await discordRequest(env, "GET", `/guilds/${sourceGuildId}/roles`, null, `${reason} - roles source`);
+  const targetRoles = await discordRequest(env, "GET", `/guilds/${targetGuildId}/roles`, null, `${reason} - roles cible`);
+  const roleMap = new Map([[sourceGuildId, targetGuildId], [sourceCitizenRoleId, targetCitizenRoleId]]);
+  const targetRoleByName = new Map(targetRoles.map(role => [role.name, role]));
+  const createdRoles = [];
+  const skippedRoles = [];
+  let createdOps = 0;
+  let truncated = false;
+
+  const sortedSourceRoles = sourceRoles
+    .filter(role => role.id !== sourceGuildId && role.id !== sourceCitizenRoleId && !role.managed)
+    .sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
+  for (const role of sortedSourceRoles) {
+    const existing = targetRoleByName.get(role.name);
+    if (existing) {
+      roleMap.set(String(role.id), String(existing.id));
+      skippedRoles.push({ source_id: role.id, target_id: existing.id, name: role.name });
+      continue;
+    }
+    if (createdOps >= maxCreates) { truncated = true; break; }
+    const made = await discordRequest(env, "POST", `/guilds/${targetGuildId}/roles`, {
+      name: role.name,
+      color: role.color || 0,
+      hoist: Boolean(role.hoist),
+      mentionable: Boolean(role.mentionable),
+      permissions: String(role.permissions || "0")
+    }, `${reason} - role ${role.name}`);
+    createdOps++;
+    roleMap.set(String(role.id), String(made.id));
+    targetRoleByName.set(made.name, made);
+    createdRoles.push({ source_id: role.id, target_id: made.id, name: made.name });
+  }
+
+  if (truncated) {
+    return {
+      ok: true,
+      source_guild_id: sourceGuildId,
+      target_guild_id: targetGuildId,
+      citizen_role_mapping: { source: sourceCitizenRoleId, target: targetCitizenRoleId },
+      created_roles: createdRoles.length,
+      skipped_roles: skippedRoles.length,
+      created_categories: 0,
+      skipped_categories: 0,
+      created_channels: 0,
+      skipped_channels: 0,
+      max_creates: maxCreates,
+      created_ops: createdOps,
+      truncated: true,
+      has_more: true,
+      errors: [],
+      details: { created_roles: createdRoles, created_categories: [], created_channels: [] }
+    };
+  }
+
+  const sourceChannels = await discordRequest(env, "GET", `/guilds/${sourceGuildId}/channels`, null, `${reason} - salons source`);
+  const targetChannels = await discordRequest(env, "GET", `/guilds/${targetGuildId}/channels`, null, `${reason} - salons cible`);
+  const targetCategoryByName = new Map(targetChannels.filter(ch => ch.type === 4).map(ch => [ch.name, ch]));
+  const categoryMap = new Map();
+  const createdCategories = [];
+  const skippedCategories = [];
+  const createdChannels = [];
+  const skippedChannels = [];
+  const errors = [];
+
+  const mapOverwrites = (overwrites = []) => overwrites
+    .map(overwrite => {
+      if (Number(overwrite.type) === 1) return null;
+      const mappedId = roleMap.get(String(overwrite.id));
+      if (!mappedId) return null;
+      return {
+        id: mappedId,
+        type: 0,
+        allow: String(overwrite.allow || "0"),
+        deny: String(overwrite.deny || "0")
+      };
+    })
+    .filter(Boolean);
+
+  const channelPayload = (channel, parentId = undefined) => {
+    const payload = {
+      name: channel.name,
+      type: channel.type,
+      permission_overwrites: mapOverwrites(channel.permission_overwrites || [])
+    };
+    if (parentId) payload.parent_id = parentId;
+    if (channel.topic) payload.topic = String(channel.topic).slice(0, 1024);
+    if (typeof channel.nsfw === "boolean") payload.nsfw = channel.nsfw;
+    if (typeof channel.rate_limit_per_user === "number") payload.rate_limit_per_user = channel.rate_limit_per_user;
+    if (typeof channel.bitrate === "number") payload.bitrate = channel.bitrate;
+    if (typeof channel.user_limit === "number") payload.user_limit = channel.user_limit;
+    if (typeof channel.default_auto_archive_duration === "number") payload.default_auto_archive_duration = channel.default_auto_archive_duration;
+    if (typeof channel.default_thread_rate_limit_per_user === "number") payload.default_thread_rate_limit_per_user = channel.default_thread_rate_limit_per_user;
+    if (typeof channel.default_sort_order === "number") payload.default_sort_order = channel.default_sort_order;
+    if (typeof channel.default_forum_layout === "number") payload.default_forum_layout = channel.default_forum_layout;
+    if (Array.isArray(channel.available_tags) && channel.available_tags.length) {
+      payload.available_tags = channel.available_tags.map(tag => ({
+        name: tag.name,
+        moderated: Boolean(tag.moderated),
+        emoji_id: tag.emoji_id || null,
+        emoji_name: tag.emoji_name || null
+      })).slice(0, 20);
+    }
+    return payload;
+  };
+
+  const sourceCategories = sourceChannels
+    .filter(channel => channel.type === 4)
+    .sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
+  for (const category of sourceCategories) {
+    const existing = targetCategoryByName.get(category.name);
+    if (existing) {
+      categoryMap.set(String(category.id), String(existing.id));
+      skippedCategories.push({ source_id: category.id, target_id: existing.id, name: category.name });
+      continue;
+    }
+    if (createdOps >= maxCreates) { truncated = true; break; }
+    try {
+      const made = await discordRequest(env, "POST", `/guilds/${targetGuildId}/channels`, channelPayload(category), `${reason} - categorie ${category.name}`);
+      createdOps++;
+      categoryMap.set(String(category.id), String(made.id));
+      targetCategoryByName.set(made.name, made);
+      createdCategories.push({ source_id: category.id, target_id: made.id, name: made.name });
+    } catch (e) {
+      errors.push({ step: "category", source_id: category.id, name: category.name, error: e.message });
+    }
+  }
+
+  const targetChannelsByParentNameType = new Map(targetChannels
+    .filter(channel => channel.type !== 4)
+    .map(channel => [`${channel.parent_id || ""}:${channel.name}:${channel.type}`, channel]));
+  const uncategorizedTargetByNameType = new Map(targetChannels
+    .filter(channel => channel.type !== 4 && !channel.parent_id)
+    .map(channel => [`${channel.name}:${channel.type}`, channel]));
+  const sourceChildren = sourceChannels
+    .filter(channel => channel.type !== 4)
+    .sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
+  for (const channel of sourceChildren) {
+    if (truncated) break;
+    const parentId = channel.parent_id ? categoryMap.get(String(channel.parent_id)) : undefined;
+    const key = `${parentId || ""}:${channel.name}:${channel.type}`;
+    const looseKey = `${channel.name}:${channel.type}`;
+    const existing = targetChannelsByParentNameType.get(key) || (!parentId ? uncategorizedTargetByNameType.get(looseKey) : null);
+    if (existing) {
+      skippedChannels.push({ source_id: channel.id, target_id: existing.id, name: channel.name, type: channel.type });
+      continue;
+    }
+    if (createdOps >= maxCreates) { truncated = true; break; }
+    try {
+      const made = await discordRequest(env, "POST", `/guilds/${targetGuildId}/channels`, channelPayload(channel, parentId), `${reason} - salon ${channel.name}`);
+      createdOps++;
+      targetChannelsByParentNameType.set(`${made.parent_id || ""}:${made.name}:${made.type}`, made);
+      createdChannels.push({ source_id: channel.id, target_id: made.id, name: made.name, type: made.type, parent_id: made.parent_id || null });
+    } catch (e) {
+      errors.push({ step: "channel", source_id: channel.id, name: channel.name, type: channel.type, error: e.message });
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    source_guild_id: sourceGuildId,
+    target_guild_id: targetGuildId,
+    citizen_role_mapping: { source: sourceCitizenRoleId, target: targetCitizenRoleId },
+    created_roles: createdRoles.length,
+    skipped_roles: skippedRoles.length,
+    created_categories: createdCategories.length,
+    skipped_categories: skippedCategories.length,
+    created_channels: createdChannels.length,
+    skipped_channels: skippedChannels.length,
+    max_creates: maxCreates,
+    created_ops: createdOps,
+    truncated,
+    has_more: truncated,
+    errors,
+    details: {
+      created_roles: createdRoles,
+      created_categories: createdCategories,
+      created_channels: createdChannels
+    }
+  };
+}
+
 // â”€â”€ Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminRoleId = ENTERPRISE_ADMIN_ROLE_ID, start = 0, limit = ENTERPRISES.length) {
   const VIEW = 1024n;
@@ -3509,6 +3698,23 @@ export default {
         const targetGuildId = url.searchParams.get("target") || "1500975724750704661";
         const result = await copySwatChannels(env, sourceGuildId, targetGuildId);
         return json(result);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/copy-guild-structure-additive" && request.method === "GET") {
+      try {
+        const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+        if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+        const result = await copyGuildStructureAdditive(env, {
+          sourceGuildId: url.searchParams.get("source") || "1523759012623941746",
+          targetGuildId: url.searchParams.get("target") || "1514330576390324444",
+          sourceCitizenRoleId: url.searchParams.get("source_citizen_role") || "1523766467114569820",
+          targetCitizenRoleId: url.searchParams.get("target_citizen_role") || "1528183035785253004",
+          maxCreates: url.searchParams.get("max_creates") || 20
+        });
+        return json(result, result.ok ? 200 : 207);
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
