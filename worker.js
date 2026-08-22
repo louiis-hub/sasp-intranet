@@ -575,6 +575,119 @@ async function discordRequest(env, method, path, body, reason) {
   return data;
 }
 
+function cloneDiscordEmbed(embed = {}) {
+  const out = {};
+  for (const key of ["title", "description", "url", "color", "timestamp"]) {
+    if (embed[key] != null) out[key] = embed[key];
+  }
+  if (embed.footer?.text) out.footer = { text: embed.footer.text, ...(embed.footer.icon_url ? { icon_url: embed.footer.icon_url } : {}) };
+  if (embed.image?.url) out.image = { url: embed.image.url };
+  if (embed.thumbnail?.url) out.thumbnail = { url: embed.thumbnail.url };
+  if (embed.author?.name) out.author = { name: embed.author.name, ...(embed.author.url ? { url: embed.author.url } : {}), ...(embed.author.icon_url ? { icon_url: embed.author.icon_url } : {}) };
+  if (Array.isArray(embed.fields)) out.fields = embed.fields.map(field => ({
+    name: String(field.name || "\u200b").slice(0, 256),
+    value: String(field.value || "\u200b").slice(0, 1024),
+    inline: Boolean(field.inline)
+  })).slice(0, 25);
+  return out;
+}
+
+function cloneLinkComponents(components = []) {
+  return components.map(row => ({
+    type: 1,
+    components: (row.components || [])
+      .filter(component => Number(component.type) === 2 && Number(component.style) === 5 && component.url)
+      .map(component => ({
+        type: 2,
+        style: 5,
+        label: String(component.label || "Lien").slice(0, 80),
+        url: component.url,
+        ...(component.emoji ? { emoji: component.emoji } : {})
+      }))
+      .slice(0, 5)
+  })).filter(row => row.components.length).slice(0, 5);
+}
+
+async function copyDiscordMessageById(env, options = {}) {
+  const messageId = String(options.messageId || "").replace(/\D/g, "");
+  const targetChannelId = String(options.targetChannelId || "").replace(/\D/g, "");
+  const sourceChannelId = String(options.sourceChannelId || "").replace(/\D/g, "");
+  if (!messageId || !targetChannelId) throw new Error("Missing message_id or target_channel_id");
+
+  const targetChannel = await discordRequest(env, "GET", `/channels/${targetChannelId}`, null, "Copie message - salon cible");
+  const candidateGuildIds = [...new Set([
+    options.guildId,
+    targetChannel.guild_id,
+    env.DISCORD_GUILD_ID,
+    "1500975724750704661",
+    "1516510943318642950",
+    "1512185605805703179",
+    "1523759012623941746",
+    "1514330576390324444"
+  ].filter(Boolean).map(String))];
+  const scanned = [];
+  let found = null;
+
+  async function tryChannel(channelId, channelName = null, guildId = null) {
+    const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
+      headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+    });
+    if (res.ok) {
+      found = { guild_id: guildId, channel_id: channelId, channel_name: channelName, message: await res.json() };
+      return true;
+    }
+    return false;
+  }
+
+  if (sourceChannelId && await tryChannel(sourceChannelId, null, options.guildId || null)) {
+    scanned.push({ source_channel_id: sourceChannelId, found: true });
+  }
+
+  for (const guildId of candidateGuildIds) {
+    if (found) break;
+    let channels = [];
+    try {
+      channels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, "Copie message - scan salons");
+    } catch (e) {
+      scanned.push({ guild_id: guildId, error: e.message });
+      continue;
+    }
+    const readableChannels = channels.filter(channel => [0, 5, 10, 11, 12, 15].includes(Number(channel.type)));
+    scanned.push({ guild_id: guildId, channels: readableChannels.length });
+    for (const channel of readableChannels) {
+      if (await tryChannel(channel.id, channel.name, guildId)) break;
+    }
+  }
+
+  if (!found) {
+    return { ok: false, message_id: messageId, target_channel_id: targetChannelId, error: "Message introuvable dans les serveurs scannés", scanned };
+  }
+
+  const message = found.message;
+  const attachmentUrls = (message.attachments || []).map(attachment => attachment.url).filter(Boolean);
+  const contentParts = [message.content || "", ...attachmentUrls].map(part => String(part).trim()).filter(Boolean);
+  const payload = {
+    content: contentParts.join("\n").slice(0, 2000) || undefined,
+    embeds: (message.embeds || []).map(cloneDiscordEmbed).filter(embed => Object.keys(embed).length).slice(0, 10),
+    components: cloneLinkComponents(message.components || []),
+    allowed_mentions: { parse: [] }
+  };
+  if (!payload.embeds.length) delete payload.embeds;
+  if (!payload.components.length) delete payload.components;
+
+  const sent = await discordRequest(env, "POST", `/channels/${targetChannelId}/messages`, payload, "Copie message SASP");
+  return {
+    ok: true,
+    source_guild_id: found.guild_id,
+    source_channel_id: found.channel_id,
+    source_channel_name: found.channel_name,
+    source_message_id: messageId,
+    target_channel_id: targetChannelId,
+    copied_message_id: sent.id,
+    scanned
+  };
+}
+
 async function setupEnterpriseDiscord(env, guildId = ENTERPRISE_GUILD_ID, adminRoleId = ENTERPRISE_ADMIN_ROLE_ID, start = 0, limit = ENTERPRISES.length) {
   const VIEW = 1024n;
   const MANAGE_CHANNELS = 16n;
@@ -4671,6 +4784,22 @@ export default {
       });
       const data = await res.json();
       return json({ ok: res.ok, data });
+    }
+
+    if (url.pathname === "/admin/copy-discord-message" && request.method === "GET") {
+      try {
+        const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+        if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+        const result = await copyDiscordMessageById(env, {
+          messageId: url.searchParams.get("message_id"),
+          targetChannelId: url.searchParams.get("target_channel_id"),
+          sourceChannelId: url.searchParams.get("source_channel_id"),
+          guildId: url.searchParams.get("guild_id")
+        });
+        return json(result, result.ok ? 200 : 404);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
     }
 
     const STICKY_PROC_CHANNEL = "1521575058500489478";
