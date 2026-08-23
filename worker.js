@@ -8404,6 +8404,24 @@ export default {
       return json(await refreshPointeuseChannelBoards(env, chId, siteKey, body.limit || 50));
     }
 
+    if (url.pathname === "/admin/send-pointeuse-message" && request.method === "POST") {
+      const token = request.headers.get("x-log-token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const body = await request.json().catch(() => ({}));
+      const siteKey = body.site === "nord" ? "nord" : "sud";
+      const channelId = String(body.channel_id || env.POINTEUSE_CHANNEL_ID || "").replace(/\D/g, "");
+      if (!channelId) return json({ ok: false, error: "Missing channel_id" }, 400);
+      const active = await getAllActivePointages(env, siteKey);
+      const payload = buildPointeuseMessage(active);
+      const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+        method: "POST",
+        headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(async () => ({ error: await res.text().catch(() => "") }));
+      return json({ ok: res.ok, status: res.status, channel_id: channelId, message_id: data.id || null, count: uniqueActivePointages(active).length, response: data }, res.ok ? 200 : 500);
+    }
+
     if (url.pathname === "/admin/send-channel-message" && request.method === "POST") {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
