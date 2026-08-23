@@ -5344,12 +5344,12 @@ async function renderCeremonie() {
     var voteBtn = '<button class="btn btn-ghost btn-sm" onclick="openCeremonieVoteModal(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.grade||'') + '\')">' + (myVote ? '✏️ Modifier' : '🗳️ Voter') + '</button>';
 
     var row = '<tr>' +
-      '<td><span style="font-family:\'Share Tech Mono\',monospace;color:var(--gold);font-size:.85rem">#' + esc(a.matricule||'—') + '</span></td>' +
-      '<td><strong>' + esc(a.prenom + ' ' + a.nom) + '</strong></td>' +
-      '<td>' + gradeBadge(a.grade) + '</td>' +
-      '<td>' + myVoteHtml + '</td>';
-    if (isCmd) row += '<td style="max-width:260px">' + allVotesHtml + '</td><td>' + applyHtml + '</td>';
-    row += '<td>' + voteBtn + '</td></tr>';
+      '<td class="cer-mat"><span>#' + esc(String(a.matricule || '—').padStart(2, '0')) + '</span></td>' +
+      '<td class="cer-agent"><strong>' + esc(a.prenom + ' ' + a.nom) + '</strong></td>' +
+      '<td class="cer-grade">' + gradeBadge(a.grade) + '</td>' +
+      '<td class="cer-opinion">' + myVoteHtml + '</td>';
+    if (isCmd) row += '<td class="cer-allvotes">' + allVotesHtml + '</td><td class="cer-apply">' + applyHtml + '</td>';
+    row += '<td class="cer-actions">' + voteBtn + '</td></tr>';
     return row;
   }).join('');
 
@@ -5360,8 +5360,8 @@ async function renderCeremonie() {
       '<p class="text-muted">Votes de grade — session en cours</p></div>' +
     '</div>' +
     debriefHtml +
-    '<div class="card">' +
-      '<div class="table-wrap"><table>' +
+    '<div class="card ceremonie-card">' +
+      '<div class="table-wrap ceremonie-wrap"><table class="ceremonie-table">' +
         '<thead><tr><th>#</th><th>AGENT</th><th>GRADE ACTUEL</th><th>MON AVIS</th>' + theadExtra + '<th></th></tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
       '</table></div>' +
