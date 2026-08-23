@@ -5173,9 +5173,11 @@ async function renderCeremonie() {
   var isCmd = S.role === 'admin';
 
   var sorted = agents.slice().sort(function(a, b) {
-    var ga = _grades.find(function(g){ return g.nom === a.grade; });
-    var gb = _grades.find(function(g){ return g.nom === b.grade; });
-    return ((gb&&gb.ordre)||0) - ((ga&&ga.ordre)||0);
+    var ma = parseInt(String(a.matricule || '999').replace(/\D/g, ''), 10);
+    var mb = parseInt(String(b.matricule || '999').replace(/\D/g, ''), 10);
+    if (isNaN(ma)) ma = 999;
+    if (isNaN(mb)) mb = 999;
+    return ma - mb || String(a.matricule || '').localeCompare(String(b.matricule || ''), 'fr', { numeric: true });
   });
 
   // Débrief (admin uniquement)
