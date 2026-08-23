@@ -272,7 +272,6 @@ var NAV = [
   { group: 'RESSOURCES HUMAINES' },
   { id: 'recap',    icon: '📋', label: 'Récap agents', staffOnly: true },
   { id: 'completude', icon: '🗂️', label: 'Complétude fiches', staffOnly: true },
-  { id: 'ceremonie', icon: '🎖️', label: 'Montées en grade', ceremonyOnly: true },
   { id: 'agents',   icon: '👮', label: 'Agents' },
   { id: 'grades',   icon: '🎖️', label: 'Grades' },
   { id: 'units',     icon: '🚔', label: 'Divisions' },
@@ -287,6 +286,8 @@ var NAV = [
   { id: 'stats',           icon: '📈', label: 'Statistiques',       staffOnly: true },
   { id: 'service-logements', icon: '🏠', label: 'Logements service', adminOnly: true },
   { id: 'ticketing', icon: '🎫', label: 'Tickets Discord', adminOnly: true, hidden: true },
+  { divider: true, ceremonyOnly: true },
+  { id: 'ceremonie', icon: '🎖️', label: 'Montées en grade', ceremonyOnly: true },
 ];
 
 var REMOVED_PAGES = ['cid', 'archives'];
@@ -305,6 +306,8 @@ var PAGE_TITLES = {
 
 var ACCESS_PIN_STORAGE_KEY = 'sasp_site_access_pin_version';
 var _pendingPinBoot = null;
+var CEREMONIE_PIN = '7826';
+var CEREMONIE_PIN_STORAGE_KEY = 'sasp_ceremonie_pin_ok';
 
 async function getAccessPinStatus() {
   var res = await fetch(WORKER_BASE + '/site-access/status', { cache: 'no-store' });
@@ -340,6 +343,40 @@ function showPinGate(message) {
     var input = document.getElementById('sitePinInput');
     if (input) input.focus();
   }, 50);
+}
+
+function hasCeremoniePinAccess() {
+  try { return sessionStorage.getItem(CEREMONIE_PIN_STORAGE_KEY) === '1'; } catch(e) { return false; }
+}
+
+function renderCeremoniePinGate(message) {
+  setContent(
+    '<div class="empty-state" style="max-width:460px;margin:70px auto">' +
+      '<div class="empty-icon">🔐</div>' +
+      '<div class="empty-title">Accès Montées en grade</div>' +
+      '<div class="empty-sub">Entre le PIN pour afficher les votes et les archives.</div>' +
+      '<div style="display:flex;gap:8px;margin-top:18px;justify-content:center">' +
+        '<input class="form-control" id="ceremoniePinInput" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" style="max-width:160px;text-align:center" onkeydown="if(event.key===\'Enter\') submitCeremoniePin()">' +
+        '<button class="btn btn-primary" onclick="submitCeremoniePin()">Valider</button>' +
+      '</div>' +
+      (message ? '<div style="color:#e74c3c;font-size:.82rem;margin-top:12px">' + esc(message) + '</div>' : '') +
+    '</div>'
+  );
+  setTimeout(function() {
+    var input = document.getElementById('ceremoniePinInput');
+    if (input) input.focus();
+  }, 50);
+}
+
+async function submitCeremoniePin() {
+  var input = document.getElementById('ceremoniePinInput');
+  var pin = input ? input.value.trim() : '';
+  if (pin !== CEREMONIE_PIN) {
+    renderCeremoniePinGate('PIN incorrect.');
+    return;
+  }
+  try { sessionStorage.setItem(CEREMONIE_PIN_STORAGE_KEY, '1'); } catch(e) {}
+  await navigate('ceremonie');
 }
 
 async function submitAccessPin() {
@@ -660,6 +697,10 @@ async function navigate(page, pd) {
   }
   if (S.role === 'academy' && page !== 'ftf' && ACADEMY_ALLOWED && ACADEMY_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée aux administrateurs.</div></div>');
+    return;
+  }
+  if (page === 'ceremonie' && !hasCeremoniePinAccess()) {
+    renderCeremoniePinGate();
     return;
   }
   try {
