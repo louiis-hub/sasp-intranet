@@ -5218,6 +5218,11 @@ function ceremonieVoterId() {
   return stored;
 }
 
+function isCeremonieVoteLockedGrade(grade) {
+  var key = gradeKey(grade);
+  return key === 'chief' || key === 'commandant' || key === 'capitaine';
+}
+
 async function renderCeremonie() {
   var [agents, votes, archives] = await Promise.all([
     DB.getAgents(),
@@ -5301,6 +5306,7 @@ async function renderCeremonie() {
   var rows = sorted.map(function(a) {
     var av = votesByAgent[a.id] || [];
     var myVote = av.find(function(v){ return v.voter_discord_id === myId; });
+    var voteLocked = isCeremonieVoteLockedGrade(a.grade);
 
     var myVoteHtml = myVote
       ? (myVote.decision === 'promotion'
@@ -5333,15 +5339,17 @@ async function renderCeremonie() {
         allVotesHtml += '<div>' + badge + '</div>';
 
         var aid = a.id, an = esc(a.prenom+' '+a.nom), ag = esc(a.grade||'');
-        if (pCount === av.length) {
+        if (!voteLocked && pCount === av.length) {
           applyHtml = '<button class="btn btn-primary btn-sm" style="font-size:.72rem;white-space:nowrap" onclick="applyCeremonieDecision(\'' + aid + '\',\'promotion\',\'' + an + '\',\'' + ag + '\')">✅ Appliquer</button>';
-        } else if (rCount === av.length) {
+        } else if (!voteLocked && rCount === av.length) {
           applyHtml = '<button class="btn btn-danger btn-sm" style="font-size:.72rem;white-space:nowrap" onclick="applyCeremonieDecision(\'' + aid + '\',\'retrogradation\',\'' + an + '\',\'' + ag + '\')">✅ Appliquer</button>';
         }
       }
     }
 
-    var voteBtn = '<button class="btn btn-ghost btn-sm" onclick="openCeremonieVoteModal(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.grade||'') + '\')">' + (myVote ? '✏️ Modifier' : '🗳️ Voter') + '</button>';
+    var voteBtn = voteLocked
+      ? '<span class="badge badge-gray" title="Vote désactivé pour ce grade">🔒 Non votable</span>'
+      : '<button class="btn btn-ghost btn-sm" onclick="openCeremonieVoteModal(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\',\'' + esc(a.grade||'') + '\')">' + (myVote ? '✏️ Modifier' : '🗳️ Voter') + '</button>';
 
     var row = '<tr>' +
       '<td class="cer-mat"><span>#' + esc(String(a.matricule || '—').padStart(2, '0')) + '</span></td>' +
@@ -5371,7 +5379,12 @@ async function renderCeremonie() {
 }
 
 function openCeremonieVoteModal(agentId, agentName, grade) {
+  if (isCeremonieVoteLockedGrade(grade)) {
+    toast('Vote désactivé pour ce grade.', 'info');
+    return;
+  }
   window._cVoteId = agentId;
+  window._cVoteGrade = grade || '';
   window._cDecision = null;
   openModal({
     eyebrow: 'VOTE · ' + grade,
@@ -5405,6 +5418,7 @@ function setCeremonieDecision(decision) {
 async function submitCeremonieVote() {
   var decision = window._cDecision;
   var commentaire = (document.getElementById('cComment').value || '').trim();
+  if (isCeremonieVoteLockedGrade(window._cVoteGrade)) { toast('Vote désactivé pour ce grade.', 'error'); return; }
   if (!decision) { toast('Sélectionne une décision', 'error'); return; }
   if (decision === 'retrogradation' && !commentaire) { toast('Commentaire obligatoire pour une rétrogradation', 'error'); return; }
   var myId = ceremonieVoterId();
