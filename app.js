@@ -2143,7 +2143,7 @@ async function openAgentModal(id) {
         fld('Nom *', 'text', 'agNom', v.nom) +
       '</div>' +
       '<div class="form-grid2">' +
-        fld('Matricule *', 'text', 'agMatricule', v.matricule, 'Ex: SASP-001') +
+        fld('Matricule *', 'text', 'agMatricule', v.matricule, '00') +
         fld('Date de naissance', 'date', 'agDob', v.date_naissance) +
       '</div>' +
       '<div class="form-group"><label class="form-label">Téléphone</label><input class="form-control" type="text" id="agTel" value="' + esc(fmtTel(v.telephone)||'') + '" placeholder="(555) 0000" oninput="formatTel(this)" maxlength="11"></div>' +
