@@ -5162,6 +5162,20 @@ function _myDiscordId() {
          (S.user.user_metadata && S.user.user_metadata.provider_id) || null;
 }
 
+function ceremonieVoterId() {
+  var discordId = _myDiscordId();
+  if (discordId) return String(discordId);
+  if (S.user && S.user.id) return 'site:' + S.user.id;
+  var key = 'sasp_ceremonie_voter_id';
+  var stored = '';
+  try { stored = localStorage.getItem(key) || ''; } catch(e) {}
+  if (!stored) {
+    stored = 'pin:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    try { localStorage.setItem(key, stored); } catch(e) {}
+  }
+  return stored;
+}
+
 async function renderCeremonie() {
   var [agents, votes, archives] = await Promise.all([
     DB.getAgents(),
@@ -5173,7 +5187,7 @@ async function renderCeremonie() {
     if (!votesByAgent[v.agent_id]) votesByAgent[v.agent_id] = [];
     votesByAgent[v.agent_id].push(v);
   });
-  var myId = _myDiscordId();
+  var myId = ceremonieVoterId();
   var isCmd = S.role === 'admin';
 
   var sorted = agents.slice().sort(function(a, b) {
@@ -5348,7 +5362,7 @@ async function submitCeremonieVote() {
   var commentaire = (document.getElementById('cComment').value || '').trim();
   if (!decision) { toast('Sélectionne une décision', 'error'); return; }
   if (decision === 'retrogradation' && !commentaire) { toast('Commentaire obligatoire pour une rétrogradation', 'error'); return; }
-  var myId = _myDiscordId();
+  var myId = ceremonieVoterId();
   var myName = _whoAmI();
   var { error } = await DB.upsertCeremonieVote({ agent_id: window._cVoteId, voter_discord_id: myId, voter_name: myName, decision: decision, commentaire: commentaire || null });
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
