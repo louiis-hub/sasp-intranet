@@ -271,6 +271,7 @@ var NAV = [
   { group: 'RESSOURCES HUMAINES' },
   { id: 'recap',    icon: '📋', label: 'Récap agents', staffOnly: true },
   { id: 'completude', icon: '🗂️', label: 'Complétude fiches', staffOnly: true },
+  { id: 'ceremonie', icon: '🎖️', label: 'Montées en grade', ceremonyOnly: true },
   { id: 'agents',   icon: '👮', label: 'Agents' },
   { id: 'grades',   icon: '🎖️', label: 'Grades' },
   { id: 'units',     icon: '🚔', label: 'Divisions' },
@@ -287,7 +288,7 @@ var NAV = [
   { id: 'ticketing', icon: '🎫', label: 'Tickets Discord', adminOnly: true, hidden: true },
 ];
 
-var REMOVED_PAGES = ['cid', 'ceremonie', 'archives'];
+var REMOVED_PAGES = ['cid', 'archives'];
 
 var PAGE_TITLES = {
   dashboard:'Tableau de bord', agents:'Agents', 'agent-profile':'Fiche agent',
