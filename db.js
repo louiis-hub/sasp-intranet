@@ -352,6 +352,17 @@ var DB = {
     var { data } = await getDb().from('ceremonie_votes').select('*').order('created_at', { ascending: true });
     return data || [];
   },
+  async getCeremonieArchives() {
+    var { data, error } = await getDb().from('ceremonie_archives')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (error) throw error;
+    return data || [];
+  },
+  async createCeremonieArchive(data) {
+    return getDb().from('ceremonie_archives').insert(data).select().single();
+  },
   async upsertCeremonieVote(v) {
     return getDb().from('ceremonie_votes').upsert(v, { onConflict: 'agent_id,voter_discord_id' });
   },

@@ -5163,7 +5163,11 @@ function _myDiscordId() {
 }
 
 async function renderCeremonie() {
-  var [agents, votes] = await Promise.all([DB.getAgents(), DB.getCeremonieVotes()]);
+  var [agents, votes, archives] = await Promise.all([
+    DB.getAgents(),
+    DB.getCeremonieVotes(),
+    DB.getCeremonieArchives().catch(function(){ return []; })
+  ]);
   var votesByAgent = {};
   votes.forEach(function(v) {
     if (!votesByAgent[v.agent_id]) votesByAgent[v.agent_id] = [];
@@ -5209,6 +5213,28 @@ async function renderCeremonie() {
         stat(uRetro.length, 'rgba(231,76,60,.08)',  '📉', 'RÉTROGRADATIONS UNANIMES', uRetro) +
         stat(contested.length, 'rgba(243,156,18,.08)', '⚠️', 'À DISCUTER', contested) +
       '</div>' +
+    '</div>';
+  }
+
+  var archivesHtml = '';
+  if (isCmd) {
+    archivesHtml = '<div class="card" style="margin-top:18px">' +
+      '<div class="card-head"><div class="card-icon">🗃️</div><div><div class="card-title">Archives des resets</div><div class="card-sub">Dernières sessions sauvegardées</div></div></div>' +
+      ((archives || []).length
+        ? '<div class="table-wrap"><table><thead><tr><th>DATE</th><th>VOTES</th><th>PROMOTIONS</th><th>RÉTROGRADATIONS</th><th>À DISCUTER</th><th>PAR</th></tr></thead><tbody>' +
+          archives.map(function(ar) {
+            var s = ar.summary || {};
+            return '<tr>' +
+              '<td><strong>' + esc(ar.session_label || fmt(ar.created_at)) + '</strong><br><small style="color:var(--t3)">' + esc(fmt(ar.created_at)) + '</small></td>' +
+              '<td>' + esc(ar.votes_count || 0) + '</td>' +
+              '<td><span class="badge" style="background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.3)">' + esc(s.promotions_unanimes || 0) + '</span></td>' +
+              '<td><span class="badge badge-red">' + esc(s.retrogradations_unanimes || 0) + '</span></td>' +
+              '<td><span class="badge badge-gray">' + esc(s.a_discuter || 0) + '</span></td>' +
+              '<td>' + esc(ar.archived_by || '—') + '</td>' +
+            '</tr>';
+          }).join('') +
+          '</tbody></table></div>'
+        : '<div class="empty-state" style="padding:24px"><div class="empty-icon">🗃️</div><div class="empty-title">Aucune archive</div><div class="empty-sub">Le prochain reset sauvegardera la session ici.</div></div>') +
     '</div>';
   }
 
@@ -5280,7 +5306,8 @@ async function renderCeremonie() {
         '<thead><tr><th>#</th><th>AGENT</th><th>GRADE ACTUEL</th><th>MON AVIS</th>' + theadExtra + '<th></th></tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
       '</table></div>' +
-    '</div>'
+    '</div>' +
+    archivesHtml
   );
 }
 
@@ -5362,16 +5389,72 @@ async function confirmCeremonieDecision(agentId, newGrade, agentName, decision) 
 function resetCeremonieVotes() {
   openModal({
     eyebrow: 'CÉRÉMONIE', title: 'Réinitialiser les votes ?',
-    body: '<p style="color:var(--t1)">Tous les votes de la session seront supprimés définitivement.</p>',
+    body: '<p style="color:var(--t1)">Une archive de la session sera créée, puis les votes en cours seront supprimés.</p>',
     footer: '<button class="btn btn-ghost btn-sm" onclick="closeModal()">Annuler</button>' +
             '<button class="btn btn-danger btn-sm" onclick="closeModal();confirmResetCeremonieVotes()">Supprimer</button>'
   });
 }
 
+function buildCeremonieArchivePayload(agents, votes) {
+  var byAgent = {};
+  agents.forEach(function(a){ byAgent[a.id] = a; });
+  var votesByAgent = {};
+  votes.forEach(function(v) {
+    if (!votesByAgent[v.agent_id]) votesByAgent[v.agent_id] = [];
+    votesByAgent[v.agent_id].push(v);
+  });
+  var promotions = 0, retros = 0, discuter = 0;
+  Object.keys(votesByAgent).forEach(function(agentId) {
+    var av = votesByAgent[agentId] || [];
+    if (!av.length) return;
+    var p = av.filter(function(v){ return v.decision === 'promotion'; }).length;
+    var r = av.filter(function(v){ return v.decision === 'retrogradation'; }).length;
+    if (p === av.length) promotions++;
+    else if (r === av.length) retros++;
+    else discuter++;
+  });
+  var now = new Date();
+  return {
+    session_label: 'Reset du ' + now.toLocaleDateString('fr-FR') + ' à ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+    archived_by: _whoAmI(),
+    votes_count: votes.length,
+    agents_count: Object.keys(votesByAgent).length,
+    summary: {
+      promotions_unanimes: promotions,
+      retrogradations_unanimes: retros,
+      a_discuter: discuter
+    },
+    votes: votes.map(function(v) {
+      var a = byAgent[v.agent_id] || {};
+      return {
+        agent_id: v.agent_id,
+        agent_matricule: a.matricule || '',
+        agent_nom: ((a.prenom || '') + ' ' + (a.nom || '')).trim(),
+        agent_grade: a.grade || '',
+        voter_discord_id: v.voter_discord_id || '',
+        voter_name: v.voter_name || '',
+        decision: v.decision || '',
+        commentaire: v.commentaire || '',
+        created_at: v.created_at || ''
+      };
+    })
+  };
+}
+
 async function confirmResetCeremonieVotes() {
+  var [agents, votes] = await Promise.all([DB.getAgents(), DB.getCeremonieVotes()]);
+  if (votes.length) {
+    var archive = buildCeremonieArchivePayload(agents, votes);
+    var saved = await DB.createCeremonieArchive(archive);
+    if (saved.error) {
+      var missingTable = saved.error.code === 'PGRST205' || /ceremonie_archives/i.test(saved.error.message || '');
+      toast(missingTable ? 'Table archives manquante : exécute ceremonie-archives.sql dans Supabase.' : 'Archive non créée : ' + saved.error.message, 'error');
+      return;
+    }
+  }
   var { error } = await DB.deleteCeremonieVotes();
   if (error) { toast('Erreur : ' + error.message, 'error'); return; }
-  toast('Votes réinitialisés', 'success');
+  toast(votes.length ? 'Archive créée, votes réinitialisés' : 'Votes réinitialisés', 'success');
   await renderCeremonie();
 }
 
