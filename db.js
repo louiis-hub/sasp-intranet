@@ -364,6 +364,16 @@ var DB = {
     return getDb().from('ceremonie_archives').insert(data).select().single();
   },
   async upsertCeremonieVote(v) {
+    if (!v.voter_discord_id) {
+      var key = 'sasp_ceremonie_voter_id';
+      var fallback = '';
+      try { fallback = localStorage.getItem(key) || ''; } catch(e) {}
+      if (!fallback) {
+        fallback = 'pin:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        try { localStorage.setItem(key, fallback); } catch(e) {}
+      }
+      v.voter_discord_id = fallback;
+    }
     return getDb().from('ceremonie_votes').upsert(v, { onConflict: 'agent_id,voter_discord_id' });
   },
   async deleteCeremonieVotes() {
