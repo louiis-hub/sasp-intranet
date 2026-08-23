@@ -363,6 +363,9 @@ var DB = {
   async createCeremonieArchive(data) {
     return getDb().from('ceremonie_archives').insert(data).select().single();
   },
+  async deleteCeremonieArchive(id) {
+    return getDb().from('ceremonie_archives').delete().eq('id', id);
+  },
   async upsertCeremonieVote(v) {
     if (!v.voter_discord_id) {
       var key = 'sasp_ceremonie_voter_id';

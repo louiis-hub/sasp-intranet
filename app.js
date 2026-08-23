@@ -263,6 +263,7 @@ var _wikiCats     = {};
 var _wikiPages    = {};
 var _wikiSlug     = null;
 var _wikiSections = [];
+var _ceremonieArchives = [];
 
 var NAV = [
   { id: 'faq',      icon: '❓', label: 'FAQ' },
@@ -5189,6 +5190,7 @@ async function renderCeremonie() {
   });
   var myId = ceremonieVoterId();
   var isCmd = S.role === 'admin';
+  _ceremonieArchives = archives || [];
 
   var sorted = agents.slice().sort(function(a, b) {
     var ma = parseInt(String(a.matricule || '999').replace(/\D/g, ''), 10);
@@ -5235,16 +5237,18 @@ async function renderCeremonie() {
     archivesHtml = '<div class="card" style="margin-top:18px">' +
       '<div class="card-head"><div class="card-icon">🗃️</div><div><div class="card-title">Archives des resets</div><div class="card-sub">Dernières sessions sauvegardées</div></div></div>' +
       ((archives || []).length
-        ? '<div class="table-wrap"><table><thead><tr><th>DATE</th><th>VOTES</th><th>PROMOTIONS</th><th>RÉTROGRADATIONS</th><th>À DISCUTER</th><th>PAR</th></tr></thead><tbody>' +
+        ? '<div class="table-wrap"><table><thead><tr><th>DATE</th><th>VOTES</th><th>PROMOTIONS</th><th>RÉTROGRADATIONS</th><th>À DISCUTER</th><th>PAR</th><th>ACTIONS</th></tr></thead><tbody>' +
           archives.map(function(ar) {
             var s = ar.summary || {};
-            return '<tr>' +
-              '<td><strong>' + esc(ar.session_label || fmt(ar.created_at)) + '</strong><br><small style="color:var(--t3)">' + esc(fmt(ar.created_at)) + '</small></td>' +
+            return '<tr style="cursor:pointer" onclick="openCeremonieArchive(\'' + esc(ar.id) + '\')">' +
+              '<td><strong>' + esc(ar.session_label || fmt(ar.created_at)) + '</strong><br><small style="color:var(--t3)">Cliquer pour voir le détail · ' + esc(fmt(ar.created_at)) + '</small></td>' +
               '<td>' + esc(ar.votes_count || 0) + '</td>' +
               '<td><span class="badge" style="background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.3)">' + esc(s.promotions_unanimes || 0) + '</span></td>' +
               '<td><span class="badge badge-red">' + esc(s.retrogradations_unanimes || 0) + '</span></td>' +
               '<td><span class="badge badge-gray">' + esc(s.a_discuter || 0) + '</span></td>' +
               '<td>' + esc(ar.archived_by || '—') + '</td>' +
+              '<td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openCeremonieArchive(\'' + esc(ar.id) + '\')">👁️ Voir</button> ' +
+                '<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCeremonieArchive(\'' + esc(ar.id) + '\')">🗑️ Supprimer</button></td>' +
             '</tr>';
           }).join('') +
           '</tbody></table></div>'
@@ -5453,6 +5457,62 @@ function buildCeremonieArchivePayload(agents, votes) {
       };
     })
   };
+}
+
+function openCeremonieArchive(id) {
+  var ar = (_ceremonieArchives || []).find(function(x){ return String(x.id) === String(id); });
+  if (!ar) { toast('Archive introuvable.', 'error'); return; }
+  var s = ar.summary || {};
+  var votes = Array.isArray(ar.votes) ? ar.votes.slice() : [];
+  votes.sort(function(a, b) {
+    var ma = parseInt(String(a.agent_matricule || '999').replace(/\D/g, ''), 10);
+    var mb = parseInt(String(b.agent_matricule || '999').replace(/\D/g, ''), 10);
+    if (isNaN(ma)) ma = 999;
+    if (isNaN(mb)) mb = 999;
+    return ma - mb || String(a.agent_nom || '').localeCompare(String(b.agent_nom || ''), 'fr', { numeric: true });
+  });
+  var decisionBadge = function(d) {
+    if (d === 'promotion') return '<span class="badge" style="background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.3)">📈 Promotion</span>';
+    if (d === 'retrogradation') return '<span class="badge badge-red">📉 Rétrogradation</span>';
+    return '<span class="badge badge-gray">➡️ Maintien</span>';
+  };
+  var body = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">' +
+      '<div class="mini-stat"><strong>' + esc(ar.votes_count || 0) + '</strong><span>votes</span></div>' +
+      '<div class="mini-stat"><strong>' + esc(s.promotions_unanimes || 0) + '</strong><span>promotions</span></div>' +
+      '<div class="mini-stat"><strong>' + esc(s.retrogradations_unanimes || 0) + '</strong><span>rétrogradations</span></div>' +
+      '<div class="mini-stat"><strong>' + esc(s.a_discuter || 0) + '</strong><span>à discuter</span></div>' +
+    '</div>' +
+    (votes.length
+      ? '<div class="table-wrap" style="max-height:60vh;overflow:auto"><table><thead><tr><th>#</th><th>AGENT</th><th>GRADE</th><th>VOTANT</th><th>DÉCISION</th><th>COMMENTAIRE</th></tr></thead><tbody>' +
+        votes.map(function(v) {
+          return '<tr>' +
+            '<td><span class="mono text-gold">#' + esc(v.agent_matricule || '—') + '</span></td>' +
+            '<td><strong>' + esc(v.agent_nom || 'Agent inconnu') + '</strong></td>' +
+            '<td>' + esc(v.agent_grade || '—') + '</td>' +
+            '<td>' + esc(v.voter_name || '—') + '</td>' +
+            '<td>' + decisionBadge(v.decision) + '</td>' +
+            '<td style="max-width:360px;color:var(--t2)">' + esc(v.commentaire || '—') + '</td>' +
+          '</tr>';
+        }).join('') +
+        '</tbody></table></div>'
+      : '<div class="empty-state" style="padding:24px"><div class="empty-title">Aucun vote dans cette archive</div></div>');
+  openModal({
+    eyebrow: 'ARCHIVE · ' + esc(fmt(ar.created_at)),
+    title: ar.session_label || 'Archive cérémonie',
+    body: body,
+    footer: '<button class="btn btn-danger btn-sm" onclick="closeModal();deleteCeremonieArchive(\'' + esc(ar.id) + '\')">Supprimer</button>' +
+            '<button class="btn btn-primary btn-sm" onclick="closeModal()">Fermer</button>'
+  });
+}
+
+async function deleteCeremonieArchive(id) {
+  var ar = (_ceremonieArchives || []).find(function(x){ return String(x.id) === String(id); });
+  var label = ar ? (ar.session_label || fmt(ar.created_at)) : 'cette archive';
+  if (!confirm('Supprimer définitivement ' + label + ' ?')) return;
+  var { error } = await DB.deleteCeremonieArchive(id);
+  if (error) { toast('Erreur suppression archive : ' + error.message, 'error'); return; }
+  toast('Archive supprimée.', 'success');
+  await renderCeremonie();
 }
 
 async function confirmResetCeremonieVotes() {
