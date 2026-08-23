@@ -118,19 +118,22 @@ a{color:var(--gold);text-decoration:none}
 .ceremonie-card{padding:0;overflow:hidden}
 .ceremonie-wrap{border-radius:var(--rLg);overflow:auto}
 .ceremonie-table{border-collapse:separate;border-spacing:0;min-width:980px}
-.ceremonie-table thead th{height:42px;background:linear-gradient(180deg,rgba(35,61,101,.72),rgba(20,38,67,.82));color:#dbeafe;border-bottom:1px solid rgba(147,183,226,.28);border-right:1px solid rgba(147,183,226,.18);font-size:.66rem;letter-spacing:2.6px;text-align:center}
+.ceremonie-table thead th{height:40px;background:rgba(8,16,28,.76);color:var(--t3);border-bottom:1px solid var(--border1);border-right:1px solid var(--border0);font-size:.62rem;letter-spacing:2.6px;text-align:left}
 .ceremonie-table thead th:first-child{width:92px}
-.ceremonie-table thead th:nth-child(2){text-align:left;width:260px}
+.ceremonie-table thead th:nth-child(2){width:260px}
 .ceremonie-table thead th:last-child{border-right:0;width:130px}
-.ceremonie-table tbody tr{height:42px;background:rgba(19,36,64,.72);border:0;cursor:default}
-.ceremonie-table tbody tr:nth-child(even){background:rgba(32,54,90,.64)}
-.ceremonie-table tbody tr:hover{background:rgba(201,168,76,.12)}
-.ceremonie-table tbody td{padding:7px 13px;border-right:1px solid rgba(147,183,226,.16);border-bottom:1px solid rgba(147,183,226,.18);vertical-align:middle}
+.ceremonie-table tbody tr{height:46px;background:rgba(9,17,30,.58);border:0;cursor:default}
+.ceremonie-table tbody tr:nth-child(even){background:rgba(12,22,38,.72)}
+.ceremonie-table tbody tr:hover{background:rgba(255,255,255,.025)}
+.ceremonie-table tbody td{padding:8px 13px;border-right:1px solid var(--border0);border-bottom:1px solid var(--border0);vertical-align:middle}
 .ceremonie-table tbody td:last-child{border-right:0}
-.cer-mat{text-align:center;background:rgba(115,158,220,.12);font-family:'Share Tech Mono',monospace;font-weight:800;color:var(--gold)}
+.cer-mat{text-align:center;background:rgba(201,168,76,.035);font-family:'Share Tech Mono',monospace;font-weight:800;color:var(--gold)}
 .cer-mat span{display:inline-flex;min-width:44px;justify-content:center}
-.cer-agent strong{color:var(--t0);font-weight:800}
-.cer-grade,.cer-opinion,.cer-allvotes,.cer-apply,.cer-actions{text-align:center}
+.cer-agent{cursor:pointer}
+.cer-agent strong{display:block;color:var(--t0);font-weight:800}
+.cer-agent small{display:block;margin-top:1px;color:var(--t3);font-size:.68rem}
+.cer-agent:hover strong{color:var(--gold)}
+.cer-grade,.cer-opinion,.cer-apply,.cer-actions{text-align:center}
 .cer-grade .badge{justify-content:center;min-width:96px}
 .cer-opinion{color:var(--t3)}
 .cer-allvotes{text-align:left;max-width:320px}

@@ -5345,7 +5345,7 @@ async function renderCeremonie() {
 
     var row = '<tr>' +
       '<td class="cer-mat"><span>#' + esc(String(a.matricule || '—').padStart(2, '0')) + '</span></td>' +
-      '<td class="cer-agent"><strong>' + esc(a.prenom + ' ' + a.nom) + '</strong></td>' +
+      '<td class="cer-agent" onclick="navigate(\'agent-profile\',{id:\'' + a.id + '\'})"><strong>' + esc(a.prenom + ' ' + a.nom) + '</strong><small>Ouvrir la fiche</small></td>' +
       '<td class="cer-grade">' + gradeBadge(a.grade) + '</td>' +
       '<td class="cer-opinion">' + myVoteHtml + '</td>';
     if (isCmd) row += '<td class="cer-allvotes">' + allVotesHtml + '</td><td class="cer-apply">' + applyHtml + '</td>';
