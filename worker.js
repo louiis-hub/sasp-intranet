@@ -1658,6 +1658,14 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
   if (!patronRole) return { ok: false, error: "patron_role_missing", enterprise, matched_roles: roleMatches.map(item => item.role.name) };
 
   const compactEnterprise = normalizeCopiedRoleName(enterprise);
+  const enterpriseRole = roles.find(role =>
+    role.id !== guildId &&
+    !role.managed &&
+    normalizeCopiedRoleName(role.name) === compactEnterprise
+  );
+  const employeeRoles = [employeeRole, enterpriseRole]
+    .filter(Boolean)
+    .filter((role, index, list) => list.findIndex(item => item.id === role.id) === index);
   const category = channels.find(channel =>
     Number(channel.type) === 4 &&
     normalizeCopiedRoleName(channel.name).endsWith(compactEnterprise)
@@ -1678,6 +1686,7 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
     roleOverwrite(guildId, 0n, VIEW),
     ...allowed.filter(Boolean)
   ];
+  const employeeOverwrites = (allow, deny = 0n) => employeeRoles.map(role => roleOverwrite(role.id, allow, deny));
   const schemaForChannel = channel => {
     const key = normalizeCopiedRoleName(channel.name);
     if (key.includes("liaison") && key.includes("mairie")) {
@@ -1694,7 +1703,7 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
         action: "annonce",
         overwrites: baseOverwrites([
           roleOverwrite(patronRole.id, WRITE),
-          employeeRole ? roleOverwrite(employeeRole.id, READ_ONLY, NO_WRITE) : null
+          ...employeeOverwrites(READ_ONLY, NO_WRITE)
         ])
       };
     }
@@ -1709,7 +1718,7 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
         action: "discussion_employe",
         overwrites: baseOverwrites([
           roleOverwrite(patronRole.id, WRITE),
-          employeeRole ? roleOverwrite(employeeRole.id, WRITE) : null
+          ...employeeOverwrites(WRITE)
         ])
       };
     }
@@ -1724,7 +1733,7 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
         action: "document",
         overwrites: baseOverwrites([
           roleOverwrite(patronRole.id, WRITE),
-          employeeRole ? roleOverwrite(employeeRole.id, WRITE) : null
+          ...employeeOverwrites(WRITE)
         ])
       };
     }
@@ -1738,7 +1747,7 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
 
   const categoryOverwrites = baseOverwrites([
     roleOverwrite(patronRole.id, READ_ONLY),
-    employeeRole ? roleOverwrite(employeeRole.id, READ_ONLY) : null
+    ...employeeOverwrites(READ_ONLY)
   ]);
   if (dryRun) {
     patched.push({ id: category.id, name: category.name, type: category.type, action: "category", overwrites: categoryOverwrites });
@@ -1807,6 +1816,8 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
     roles: {
       patron: patronRole ? { id: patronRole.id, name: patronRole.name } : null,
       employe: employeeRole ? { id: employeeRole.id, name: employeeRole.name } : null,
+      entreprise: enterpriseRole ? { id: enterpriseRole.id, name: enterpriseRole.name } : null,
+      employe_effectif: employeeRoles.map(role => ({ id: role.id, name: role.name })),
       mairie: mairieRoleId,
       citoyen_removed: citizenRoleId
     },
