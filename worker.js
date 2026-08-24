@@ -1624,6 +1624,200 @@ async function organizeCopiedGuildCategories(env, options = {}) {
   };
 }
 
+async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
+  const guildId = String(options.guildId || "1514330576390324444");
+  const enterprise = String(options.enterprise || "").trim();
+  const citizenRoleId = String(options.citizenRoleId || "1528183035785253004");
+  const mairieRoleId = String(options.mairieRoleId || "1528145691057197207");
+  const dryRun = options.dryRun === true || String(options.dryRun || "") === "1";
+  const reason = `Permissions categorie entreprise ${enterprise || "inconnue"}`;
+  if (!enterprise) return { ok: false, error: "missing_enterprise" };
+
+  const VIEW = 1024n;
+  const SEND = 2048n;
+  const READ_HISTORY = 65536n;
+  const CREATE_PUBLIC_THREADS = 34359738368n;
+  const SEND_IN_THREADS = 274877906944n;
+  const WRITE = VIEW | SEND | READ_HISTORY | CREATE_PUBLIC_THREADS | SEND_IN_THREADS;
+  const READ_ONLY = VIEW | READ_HISTORY;
+  const NO_WRITE = SEND | CREATE_PUBLIC_THREADS | SEND_IN_THREADS;
+
+  const channels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, `${reason} - salons`);
+  const roles = await discordRequest(env, "GET", `/guilds/${guildId}/roles`, null, `${reason} - roles`);
+  const roleMatches = roles
+    .map(role => ({ role, match: roleEnterpriseMatch(role.name) }))
+    .filter(item => item.match && item.match.enterprise === enterprise);
+
+  const roleByLabel = new Map();
+  for (const item of roleMatches) {
+    const label = enterpriseRoleSpecs(enterprise)[item.match.specIndex]?.label;
+    if (label && !roleByLabel.has(label)) roleByLabel.set(label, item.role);
+  }
+  const patronRole = roleByLabel.get("Patron") || roleByLabel.get("Commandant") || roleByLabel.get("Juge") || roleByLabel.get("Gouverneur");
+  const employeeRole = roleByLabel.get("Employé") || roleByLabel.get("Avocat");
+  if (!patronRole) return { ok: false, error: "patron_role_missing", enterprise, matched_roles: roleMatches.map(item => item.role.name) };
+
+  const compactEnterprise = normalizeCopiedRoleName(enterprise);
+  const category = channels.find(channel =>
+    Number(channel.type) === 4 &&
+    normalizeCopiedRoleName(channel.name).endsWith(compactEnterprise)
+  );
+  if (!category) return { ok: false, error: "category_missing", enterprise };
+
+  const children = channels
+    .filter(channel => channel.parent_id === category.id)
+    .sort((a, b) => Number(a.position || 0) - Number(b.position || 0));
+
+  const roleOverwrite = (roleId, allow, deny = 0n) => ({
+    id: String(roleId),
+    type: 0,
+    allow: String(allow),
+    deny: String(deny)
+  });
+  const baseOverwrites = allowed => [
+    roleOverwrite(guildId, 0n, VIEW),
+    ...allowed.filter(Boolean)
+  ];
+  const schemaForChannel = channel => {
+    const key = normalizeCopiedRoleName(channel.name);
+    if (key.includes("liaison") && key.includes("mairie")) {
+      return {
+        action: "liaison_mairie",
+        overwrites: baseOverwrites([
+          roleOverwrite(mairieRoleId, WRITE),
+          roleOverwrite(patronRole.id, WRITE)
+        ])
+      };
+    }
+    if (key.includes("annonce")) {
+      return {
+        action: "annonce",
+        overwrites: baseOverwrites([
+          roleOverwrite(patronRole.id, WRITE),
+          employeeRole ? roleOverwrite(employeeRole.id, READ_ONLY, NO_WRITE) : null
+        ])
+      };
+    }
+    if (key.includes("discussion") && key.includes("patron")) {
+      return {
+        action: "discussion_patron",
+        overwrites: baseOverwrites([roleOverwrite(patronRole.id, WRITE)])
+      };
+    }
+    if (key.includes("discussion") && (key.includes("employe") || key.includes("employee"))) {
+      return {
+        action: "discussion_employe",
+        overwrites: baseOverwrites([
+          roleOverwrite(patronRole.id, WRITE),
+          employeeRole ? roleOverwrite(employeeRole.id, WRITE) : null
+        ])
+      };
+    }
+    if (key.includes("liaison") && key.includes("staff")) {
+      return {
+        action: "liaison_staff",
+        overwrites: baseOverwrites([roleOverwrite(patronRole.id, WRITE)])
+      };
+    }
+    if (key.includes("document")) {
+      return {
+        action: "document",
+        overwrites: baseOverwrites([
+          roleOverwrite(patronRole.id, WRITE),
+          employeeRole ? roleOverwrite(employeeRole.id, WRITE) : null
+        ])
+      };
+    }
+    return null;
+  };
+
+  const deleted = [];
+  const patched = [];
+  const skipped = [];
+  const errors = [];
+
+  const categoryOverwrites = baseOverwrites([
+    roleOverwrite(patronRole.id, READ_ONLY),
+    employeeRole ? roleOverwrite(employeeRole.id, READ_ONLY) : null
+  ]);
+  if (dryRun) {
+    patched.push({ id: category.id, name: category.name, type: category.type, action: "category", overwrites: categoryOverwrites });
+  } else {
+    try {
+      await discordRequest(env, "PATCH", `/channels/${category.id}`, { permission_overwrites: categoryOverwrites }, `${reason} - categorie`);
+      patched.push({ id: category.id, name: category.name, type: category.type, action: "category" });
+    } catch (e) {
+      errors.push({ id: category.id, name: category.name, action: "category", error: e.message });
+    }
+  }
+
+  for (const channel of children) {
+    const key = normalizeCopiedRoleName(channel.name);
+    const isTicket = key.includes("ticket");
+    if (isTicket) {
+      if (!dryRun) {
+        try {
+          await discordRequest(env, "DELETE", `/channels/${channel.id}`, null, `${reason} - suppression ticket`);
+        } catch (e) {
+          errors.push({ id: channel.id, name: channel.name, action: "delete_ticket", error: e.message });
+          continue;
+        }
+      }
+      deleted.push({ id: channel.id, name: channel.name, type: channel.type, action: "delete_ticket" });
+      continue;
+    }
+
+    const schema = schemaForChannel(channel);
+    if (!schema) {
+      const hadCitizen = (channel.permission_overwrites || []).some(item => Number(item.type) === 0 && String(item.id) === citizenRoleId);
+      if (!hadCitizen) {
+        skipped.push({ id: channel.id, name: channel.name, type: channel.type, reason: "no_schema" });
+        continue;
+      }
+      const nextOverwrites = (channel.permission_overwrites || []).filter(item => !(Number(item.type) === 0 && String(item.id) === citizenRoleId));
+      if (!dryRun) {
+        try {
+          await discordRequest(env, "PATCH", `/channels/${channel.id}`, { permission_overwrites: nextOverwrites }, `${reason} - retrait citoyen`);
+        } catch (e) {
+          errors.push({ id: channel.id, name: channel.name, action: "remove_citizen", error: e.message });
+          continue;
+        }
+      }
+      patched.push({ id: channel.id, name: channel.name, type: channel.type, action: "remove_citizen_only", overwrites: dryRun ? nextOverwrites : undefined });
+      continue;
+    }
+
+    if (!dryRun) {
+      try {
+        await discordRequest(env, "PATCH", `/channels/${channel.id}`, { permission_overwrites: schema.overwrites }, `${reason} - ${schema.action}`);
+      } catch (e) {
+        errors.push({ id: channel.id, name: channel.name, action: schema.action, error: e.message });
+        continue;
+      }
+    }
+    patched.push({ id: channel.id, name: channel.name, type: channel.type, action: schema.action, overwrites: dryRun ? schema.overwrites : undefined });
+  }
+
+  return {
+    ok: errors.length === 0,
+    guild_id: guildId,
+    enterprise,
+    dry_run: dryRun,
+    category: { id: category.id, name: category.name },
+    roles: {
+      patron: patronRole ? { id: patronRole.id, name: patronRole.name } : null,
+      employe: employeeRole ? { id: employeeRole.id, name: employeeRole.name } : null,
+      mairie: mairieRoleId,
+      citoyen_removed: citizenRoleId
+    },
+    patched: patched.length,
+    deleted_tickets: deleted.length,
+    skipped: skipped.length,
+    errors,
+    details: { patched, deleted, skipped }
+  };
+}
+
 // â”€â”€ Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function setupEnterpriseGeneral(env, guildId = ENTERPRISE_GUILD_ID, adminRoleId = ENTERPRISE_ADMIN_ROLE_ID, start = 0, limit = ENTERPRISES.length) {
   const VIEW = 1024n;
@@ -4303,6 +4497,23 @@ export default {
           start: url.searchParams.get("start") || 0,
           limit: url.searchParams.get("limit") || 5,
           cleanupDuplicateTickets: url.searchParams.get("cleanup_duplicate_tickets") || false
+        });
+        return json(result, result.ok ? 200 : 207);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/apply-enterprise-category-permissions" && request.method === "GET") {
+      try {
+        const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+        if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+        const result = await applyEnterpriseCategoryPermissionSchema(env, {
+          guildId: url.searchParams.get("guild") || "1514330576390324444",
+          enterprise: url.searchParams.get("enterprise") || "",
+          citizenRoleId: url.searchParams.get("citizen_role") || "1528183035785253004",
+          mairieRoleId: url.searchParams.get("mairie_role") || "1528145691057197207",
+          dryRun: url.searchParams.get("dry_run") || false
         });
         return json(result, result.ok ? 200 : 207);
       } catch (e) {
