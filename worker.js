@@ -1647,8 +1647,16 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
   const PATRON_CATEGORY = READ_ONLY | MANAGE_PERMISSIONS;
   const PATRON_CHANNEL = WRITE | MANAGE_PERMISSIONS;
 
-  const channels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, `${reason} - salons`);
-  const roles = await discordRequest(env, "GET", `/guilds/${guildId}/roles`, null, `${reason} - roles`);
+  const channels = options.channels || await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, `${reason} - salons`);
+  const roles = options.roles || await discordRequest(env, "GET", `/guilds/${guildId}/roles`, null, `${reason} - roles`);
+  const compactEnterprise = normalizeCopiedRoleName(enterprise);
+  const findRoleByLabel = labels => roles.find(role => {
+    if (role.id === guildId || role.managed) return false;
+    const compactRole = normalizeCopiedRoleName(role.name);
+    if (!compactRole.endsWith(compactEnterprise)) return false;
+    const compactLabel = compactRole.slice(0, -compactEnterprise.length);
+    return labels.some(label => compactLabel === normalizeCopiedRoleName(label));
+  });
   const roleMatches = roles
     .map(role => ({ role, match: roleEnterpriseMatch(role.name) }))
     .filter(item => item.match && item.match.enterprise === enterprise);
@@ -1658,11 +1666,10 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
     const label = enterpriseRoleSpecs(enterprise)[item.match.specIndex]?.label;
     if (label && !roleByLabel.has(label)) roleByLabel.set(label, item.role);
   }
-  const patronRole = roleByLabel.get("Patron") || roleByLabel.get("Commandant") || roleByLabel.get("Juge") || roleByLabel.get("Gouverneur");
-  const employeeRole = roleByLabel.get("Employé") || roleByLabel.get("Avocat");
+  const patronRole = roleByLabel.get("Patron") || roleByLabel.get("Commandant") || roleByLabel.get("Juge") || roleByLabel.get("Gouverneur") || findRoleByLabel(["Patron", "Commandant", "Juge", "Gouverneur"]);
+  const employeeRole = roleByLabel.get("Employé") || roleByLabel.get("Avocat") || findRoleByLabel(["Employé", "Employe", "Avocat"]);
   if (!patronRole) return { ok: false, error: "patron_role_missing", enterprise, matched_roles: roleMatches.map(item => item.role.name) };
 
-  const compactEnterprise = normalizeCopiedRoleName(enterprise);
   const enterpriseRole = roles.find(role =>
     role.id !== guildId &&
     !role.managed &&
@@ -1832,6 +1839,125 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
     errors,
     details: { patched, deleted, skipped }
   };
+}
+
+function enterpriseNameFromCategoryName(categoryName) {
+  const raw = String(categoryName || "").trim();
+  if (!raw) return "";
+  const parts = raw.split("\u30fb");
+  return (parts.length > 1 ? parts.slice(1).join("\u30fb") : raw)
+    .replace(/^[^\p{L}\p{N}]+/u, "")
+    .trim();
+}
+
+async function applyAllEnterpriseCategoryPermissionSchema(env, options = {}) {
+  const guildId = String(options.guildId || "1514330576390324444");
+  const dryRun = options.dryRun === true || String(options.dryRun || "") === "1";
+  const start = Math.max(0, Number(options.start || 0) || 0);
+  const limit = Math.max(1, Math.min(50, Number(options.limit || 50) || 50));
+  const targetNames = new Set((options.targets || []).map(name => normalizeCopiedRoleName(name)).filter(Boolean));
+  const exclusions = new Set((options.exclusions || ["SASP-SUD", "SASP-NORD", "Avocat The Deck & Firm", "SAMS"])
+    .map(name => normalizeCopiedRoleName(name))
+    .filter(Boolean));
+
+  const channels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, "Permissions entreprises - liste categories");
+  const roles = await discordRequest(env, "GET", `/guilds/${guildId}/roles`, null, "Permissions entreprises - liste roles");
+  const categories = channels
+    .filter(channel => Number(channel.type) === 4)
+    .map(channel => ({ channel, enterprise: enterpriseNameFromCategoryName(channel.name) }))
+    .filter(item => item.enterprise && !exclusions.has(normalizeCopiedRoleName(item.enterprise)))
+    .filter(item => !targetNames.size || targetNames.has(normalizeCopiedRoleName(item.enterprise)))
+    .filter(item => {
+      const key = normalizeCopiedRoleName(item.enterprise);
+      return key && !key.includes("nord") && !key.includes("sud");
+    })
+    .sort((a, b) => Number(a.channel.position || 0) - Number(b.channel.position || 0));
+
+  const selected = categories.slice(start, start + limit);
+  const applied = [];
+  const errors = [];
+  const skipped = [];
+  for (const item of selected) {
+    try {
+      const result = await applyEnterpriseCategoryPermissionSchema(env, {
+        guildId,
+        enterprise: item.enterprise,
+        citizenRoleId: options.citizenRoleId || "1528183035785253004",
+        mairieRoleId: options.mairieRoleId || "1528145691057197207",
+        dryRun,
+        channels,
+        roles
+      });
+      if (!result.ok) {
+        errors.push({ category: item.channel.name, enterprise: item.enterprise, error: result.error, details: result });
+        continue;
+      }
+      applied.push({
+        category: item.channel.name,
+        enterprise: item.enterprise,
+        patched: result.patched,
+        deleted_tickets: result.deleted_tickets,
+        roles: result.roles
+      });
+    } catch (e) {
+      errors.push({ category: item.channel.name, enterprise: item.enterprise, error: e.message });
+    }
+  }
+
+  for (const channel of channels.filter(channel => Number(channel.type) === 4)) {
+    const enterprise = enterpriseNameFromCategoryName(channel.name);
+    if (enterprise && exclusions.has(normalizeCopiedRoleName(enterprise))) {
+      skipped.push({ category: channel.name, enterprise, reason: "excluded" });
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    guild_id: guildId,
+    dry_run: dryRun,
+    start,
+    limit,
+    total_categories: categories.length,
+    processed: selected.length,
+    applied: applied.length,
+    skipped_excluded: skipped.length,
+    has_more: start + limit < categories.length,
+    errors,
+    details: { applied, skipped }
+  };
+}
+
+async function applyScreenEnterpriseCategoryPermissionSchema(env, options = {}) {
+  const screenTargets = [
+    "Tuner Shop",
+    "Burgershot",
+    "Burgershot (Vespucci)",
+    "Record",
+    "PDM",
+    "Ammunation",
+    "Rex's Dinner",
+    "LiquorBar",
+    "BlackWood",
+    "Chico Motors",
+    "Beekers",
+    "Hornys",
+    "Pizzathis",
+    "Bahamas",
+    "Unicorn",
+    "PawnShop",
+    "Logistic",
+    "Logistic (grossiste matières premières)",
+    "Taxi",
+    "Casino",
+    "Agence Immobilière",
+    "Weazel News",
+    "Benny's"
+  ];
+  return applyAllEnterpriseCategoryPermissionSchema(env, {
+    ...options,
+    targets: screenTargets,
+    exclusions: ["SASP-SUD", "SASP-NORD", "Avocat The Deck & Firm", "SAMS"]
+  });
 }
 
 // â”€â”€ Supabase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -4530,6 +4656,24 @@ export default {
           citizenRoleId: url.searchParams.get("citizen_role") || "1528183035785253004",
           mairieRoleId: url.searchParams.get("mairie_role") || "1528145691057197207",
           dryRun: url.searchParams.get("dry_run") || false
+        });
+        return json(result, result.ok ? 200 : 207);
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/apply-screen-enterprise-permissions" && request.method === "GET") {
+      try {
+        const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+        if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+        const result = await applyScreenEnterpriseCategoryPermissionSchema(env, {
+          guildId: url.searchParams.get("guild") || "1514330576390324444",
+          citizenRoleId: url.searchParams.get("citizen_role") || "1528183035785253004",
+          mairieRoleId: url.searchParams.get("mairie_role") || "1528145691057197207",
+          dryRun: url.searchParams.get("dry_run") || false,
+          start: url.searchParams.get("start") || 0,
+          limit: url.searchParams.get("limit") || 50
         });
         return json(result, result.ok ? 200 : 207);
       } catch (e) {
