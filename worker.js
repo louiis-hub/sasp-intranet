@@ -1645,6 +1645,7 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
   const NO_WRITE = SEND | CREATE_PUBLIC_THREADS | SEND_IN_THREADS;
   const MANAGE_PERMISSIONS = MANAGE_CHANNELS | MANAGE_ROLES;
   const PATRON_CATEGORY = READ_ONLY | MANAGE_PERMISSIONS;
+  const PATRON_CHANNEL = WRITE | MANAGE_PERMISSIONS;
 
   const channels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, `${reason} - salons`);
   const roles = await discordRequest(env, "GET", `/guilds/${guildId}/roles`, null, `${reason} - roles`);
@@ -1706,7 +1707,7 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
       return {
         action: "annonce",
         overwrites: baseOverwrites([
-          roleOverwrite(patronRole.id, WRITE),
+          roleOverwrite(patronRole.id, PATRON_CHANNEL),
           ...employeeOverwrites(READ_ONLY, NO_WRITE)
         ])
       };
@@ -1714,14 +1715,14 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
     if (key.includes("discussion") && key.includes("patron")) {
       return {
         action: "discussion_patron",
-        overwrites: baseOverwrites([roleOverwrite(patronRole.id, WRITE)])
+        overwrites: baseOverwrites([roleOverwrite(patronRole.id, PATRON_CHANNEL)])
       };
     }
     if (key.includes("discussion") && (key.includes("employe") || key.includes("employee"))) {
       return {
         action: "discussion_employe",
         overwrites: baseOverwrites([
-          roleOverwrite(patronRole.id, WRITE),
+          roleOverwrite(patronRole.id, PATRON_CHANNEL),
           ...employeeOverwrites(WRITE)
         ])
       };
@@ -1736,7 +1737,7 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
       return {
         action: "document",
         overwrites: baseOverwrites([
-          roleOverwrite(patronRole.id, WRITE),
+          roleOverwrite(patronRole.id, PATRON_CHANNEL),
           ...employeeOverwrites(WRITE)
         ])
       };
