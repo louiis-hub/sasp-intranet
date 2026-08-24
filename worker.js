@@ -1634,6 +1634,8 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
   if (!enterprise) return { ok: false, error: "missing_enterprise" };
 
   const VIEW = 1024n;
+  const MANAGE_CHANNELS = 16n;
+  const MANAGE_ROLES = 268435456n;
   const SEND = 2048n;
   const READ_HISTORY = 65536n;
   const CREATE_PUBLIC_THREADS = 34359738368n;
@@ -1641,6 +1643,8 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
   const WRITE = VIEW | SEND | READ_HISTORY | CREATE_PUBLIC_THREADS | SEND_IN_THREADS;
   const READ_ONLY = VIEW | READ_HISTORY;
   const NO_WRITE = SEND | CREATE_PUBLIC_THREADS | SEND_IN_THREADS;
+  const MANAGE_PERMISSIONS = MANAGE_CHANNELS | MANAGE_ROLES;
+  const PATRON_CATEGORY = READ_ONLY | MANAGE_PERMISSIONS;
 
   const channels = await discordRequest(env, "GET", `/guilds/${guildId}/channels`, null, `${reason} - salons`);
   const roles = await discordRequest(env, "GET", `/guilds/${guildId}/roles`, null, `${reason} - roles`);
@@ -1694,7 +1698,7 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
         action: "liaison_mairie",
         overwrites: baseOverwrites([
           roleOverwrite(mairieRoleId, WRITE),
-          roleOverwrite(patronRole.id, WRITE)
+          roleOverwrite(patronRole.id, WRITE, MANAGE_PERMISSIONS)
         ])
       };
     }
@@ -1725,7 +1729,7 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
     if (key.includes("liaison") && key.includes("staff")) {
       return {
         action: "liaison_staff",
-        overwrites: baseOverwrites([roleOverwrite(patronRole.id, WRITE)])
+        overwrites: baseOverwrites([roleOverwrite(patronRole.id, WRITE, MANAGE_PERMISSIONS)])
       };
     }
     if (key.includes("document")) {
@@ -1746,7 +1750,7 @@ async function applyEnterpriseCategoryPermissionSchema(env, options = {}) {
   const errors = [];
 
   const categoryOverwrites = baseOverwrites([
-    roleOverwrite(patronRole.id, READ_ONLY),
+    roleOverwrite(patronRole.id, PATRON_CATEGORY),
     ...employeeOverwrites(READ_ONLY)
   ]);
   if (dryRun) {
