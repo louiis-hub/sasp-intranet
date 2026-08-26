@@ -2314,6 +2314,7 @@ async function upsertFtfDossier(env, dossier) {
 const SITE_ACCESS_PIN_SETTING_ID = "__site_access_pin_sud";
 const SITE_ACCESS_COMMAND_ROLE_ID = "1500975725153620033";
 const SITE_ACCESS_PIN_LOG_CHANNEL_ID = "1518640738559197284";
+const SITE_ACCESS_PIN_EXTRA_LOG_CHANNEL_ID = "1528384664883171438";
 const SITE_ACCESS_PIN_NOTIFY_ROLE_ID = "1518631032167993534";
 const INFO_COMMAND_EXTRA_ROLE_ID = "1518631032167993534";
 
@@ -2356,25 +2357,30 @@ async function setSiteAccessPin(env, pin, updatedBy = "Command Staff") {
 async function sendSiteAccessPinLog(env, pin, updatedBy, updatedByUserId = "") {
   const cleanPin = String(pin || "").replace(/\D/g, "");
   const content = [
-    `<@&${SITE_ACCESS_PIN_NOTIFY_ROLE_ID}> <@${SITE_ACCESS_PIN_NOTIFY_ROLE_ID}>`,
+    `<@&${SITE_ACCESS_PIN_NOTIFY_ROLE_ID}>`,
     "🔐 **PIN du site modifié**",
     `Nouveau PIN : \`${cleanPin}\``,
     `Modifié par : ${updatedBy || "Command Staff"}`
   ].join("\n");
-  const allowedUsers = [SITE_ACCESS_PIN_NOTIFY_ROLE_ID, updatedByUserId].filter(Boolean).map(String);
-  const res = await discordFetch(`${DISCORD_API}/channels/${SITE_ACCESS_PIN_LOG_CHANNEL_ID}/messages`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      content,
-      allowed_mentions: { parse: [], users: allowedUsers, roles: [SITE_ACCESS_PIN_NOTIFY_ROLE_ID] }
-    })
-  });
-  if (!res.ok) throw new Error(`Message log PIN impossible (${res.status})`);
-  return res.json().catch(() => ({}));
+  const allowedUsers = [updatedByUserId].filter(Boolean).map(String);
+  const channelIds = [SITE_ACCESS_PIN_LOG_CHANNEL_ID, SITE_ACCESS_PIN_EXTRA_LOG_CHANNEL_ID].filter(Boolean);
+  const sent = [];
+  for (const channelId of channelIds) {
+    const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        content,
+        allowed_mentions: { parse: [], users: allowedUsers, roles: [SITE_ACCESS_PIN_NOTIFY_ROLE_ID] }
+      })
+    });
+    if (!res.ok) throw new Error(`Message log PIN impossible (${res.status}) dans ${channelId}`);
+    sent.push(await res.json().catch(() => ({ channel_id: channelId })));
+  }
+  return { ok: true, sent };
 }
 
 async function verifySiteAccessPin(env, pin) {
