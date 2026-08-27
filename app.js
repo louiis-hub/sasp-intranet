@@ -3270,7 +3270,7 @@ function buildSerialInventory(agentWeapons, cidWeapons) {
 // redessine l'attestation officielle, que le Worker ne peut pas produire :
 // il n'a ni canvas ni moteur de police.
 var TP_LARGEUR = 1240, TP_HAUTEUR = 1754;
-var TP_MARINE = '#12315C', TP_OR = '#C9A84C', TP_FOND = '#F4F6FA', TP_TRAIT = '#8FA3BF';
+var TP_MARINE = '#12315C', TP_FOND = '#F4F6FA', TP_TRAIT = '#8FA3BF';
 
 function tpLigne(ctx, x1, y, x2, couleur, epaisseur) {
   ctx.strokeStyle = couleur || TP_TRAIT;
@@ -3312,8 +3312,7 @@ async function tpDessiner(t) {
   ctx.fillText('SAN ANDREAS STATE POLICE', TP_LARGEUR / 2, 250);
   ctx.font = '700 27px Arial, Helvetica, sans-serif';
   ctx.fillText("SASP — SERVICE DE POLICE D'ÉTAT", TP_LARGEUR / 2, 296);
-  tpLigne(ctx, 180, 287, 420, TP_OR, 3);
-  tpLigne(ctx, 820, 287, 1060, TP_OR, 3);
+
 
   ctx.font = '700 48px Arial, Helvetica, sans-serif';
   ctx.fillText('ATTESTATION DE TEST DE RÉSIDUS DE POUDRE', TP_LARGEUR / 2, 372);
