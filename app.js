@@ -265,6 +265,36 @@ var _wikiSlug     = null;
 var _wikiSections = [];
 var _ceremonieArchives = [];
 
+// Champs attendus sur une fiche agent. Source unique pour le bandeau du profil
+// et pour la page Completude, afin que les deux ne puissent pas diverger.
+// `label` sert d'en-tete de colonne, `manque` se lit dans une phrase.
+var AGENT_REQUIRED_FIELDS = [
+  { key: 'iban',             label: 'IBAN',         manque: "l'IBAN" },
+  { key: 'telephone',        label: 'Téléphone',    manque: 'le téléphone' },
+  { key: 'date_naissance',   label: 'Date naiss.',  manque: 'la date de naissance' },
+  { key: 'date_recrutement', label: 'Date recrut.', manque: 'la date de recrutement' },
+  { key: 'discord_id',       label: 'Discord',      manque: "l'identifiant Discord" }
+];
+function missingAgentFields(agent) {
+  return AGENT_REQUIRED_FIELDS.filter(function(f){ return !agent || !agent[f.key]; });
+}
+function agentCompletenessBanner(agent) {
+  var missing = missingAgentFields(agent);
+  if (!missing.length) {
+    return '<div class="fiche-check fiche-check-ok">' +
+      '<span class="fiche-check-ico">✓</span>' +
+      '<span>Fiche complète — toutes les informations demandées sont renseignées.</span>' +
+    '</div>';
+  }
+  var noms = missing.map(function(f){ return f.manque; });
+  var dernier = noms.pop();
+  var texte = noms.length ? noms.join(', ') + ' et ' + dernier : dernier;
+  return '<div class="fiche-check fiche-check-ko">' +
+    '<span class="fiche-check-ico">!</span>' +
+    '<span>Fiche incomplète — il manque <b>' + esc(texte) + '</b>.</span>' +
+  '</div>';
+}
+
 // `img` designe une icone 3D de assets/icons ; `icon` sert de secours si
 // l'image ne charge pas.
 var NAV = [
@@ -2276,6 +2306,8 @@ async function renderAgentProfile() {
           '</div>' : '') +
     '</div>' +
 
+    agentCompletenessBanner(ag) +
+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">' +
       '<div style="display:contents">' +
 
@@ -3236,13 +3268,7 @@ async function renderCompletude() {
   var serialInventory = buildSerialInventory(agentWeapons, cidWeapons);
   var missingSerials = serialInventory.filter(function(r){ return !r.serial_key; }).length;
   var duplicates = serialInventory.filter(function(r){ return r.duplicate; }).length;
-  var FIELDS = [
-    { key: 'iban',            label: 'IBAN' },
-    { key: 'telephone',       label: 'Téléphone' },
-    { key: 'date_naissance',  label: 'Date naiss.' },
-    { key: 'date_recrutement',label: 'Date recrut.' },
-    { key: 'discord_id',      label: 'Discord' },
-  ];
+  var FIELDS = AGENT_REQUIRED_FIELDS;
   var ok   = '<span style="color:#2ecc71;font-size:1rem">✓</span>';
   var nok  = '<span style="color:#e74c3c;font-size:1rem;font-weight:700">✗</span>';
 
