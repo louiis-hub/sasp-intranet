@@ -9072,6 +9072,36 @@ export default {
       }
     }
 
+    if (url.pathname === "/admin/export-agents" && request.method === "GET") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const siteKey = url.searchParams.get("site") === "nord" ? "nord" : "sud";
+        const includeArchived = url.searchParams.get("archived") === "1";
+        const agentFilter = includeArchived ? "" : "&statut=neq.Archiv%C3%A9";
+        const [agents, armes] = await Promise.all([
+          sbForSite(env, "GET", `/agents?select=*${agentFilter}&order=matricule`, null, siteKey),
+          sbForSite(env, "GET", `/agent_armes?select=id,agent_id,nom,serie,ppa_niveau&order=nom`, null, siteKey).catch(() => [])
+        ]);
+        const armesByAgent = {};
+        (armes || []).forEach(arme => {
+          if (!armesByAgent[arme.agent_id]) armesByAgent[arme.agent_id] = [];
+          armesByAgent[arme.agent_id].push(arme);
+        });
+        return json({
+          ok: true,
+          site: siteKey,
+          count: Array.isArray(agents) ? agents.length : 0,
+          agents: (agents || []).map(agent => ({
+            ...agent,
+            armes: armesByAgent[agent.id] || []
+          }))
+        });
+      } catch(e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     if (url.pathname === "/admin/post-referents" && request.method === "GET") {
       const CHANNEL = "1518640738559197284";
       try {
