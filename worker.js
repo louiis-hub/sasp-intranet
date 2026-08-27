@@ -251,6 +251,15 @@ const ALL_SYNCABLE_ROLES = { ...DIVISION_ROLES, ...PPA_ROLES, ...GRADE_ROLES };
 const SUD_SITE_GUILD_ID = "1500975724750704661";
 const NORD_SITE_GUILD_ID = "1516510943318642950";
 
+// Le secret DISCORD_GUILD_ID est optionnel. Une valeur non vide mais invalide
+// (espace, retour a la ligne, identifiant errone) traversait le "||" des appels
+// et faisait echouer toutes les requetes Discord, authentification comprise.
+// On ne la retient donc que si elle a la forme d'un identifiant Discord.
+function envGuildId(env) {
+  const raw = String(env.DISCORD_GUILD_ID || "").trim();
+  return /^\d{17,20}$/.test(raw) ? raw : SUD_SITE_GUILD_ID;
+}
+
 const NORD_DIVISION_ROLES = {
   'PA': '1519012732886585526'
 };
@@ -2533,7 +2542,7 @@ async function buildInfoCommandResponse(env, interaction) {
     return { type: 4, data: { content: "Tu n'as pas les permissions pour utiliser cette commande.", flags: 64 } };
   }
 
-  const guildId = interaction.guild_id || env.DISCORD_GUILD_ID || SUD_SITE_GUILD_ID;
+  const guildId = interaction.guild_id || envGuildId(env);
   const siteKey = siteKeyFromGuildId(guildId);
   const targetId = String((interaction.data.options || []).find(o => o.name === "joueur")?.value || "").replace(/\D/g, "");
   if (!targetId) return { type: 4, data: { content: "Joueur invalide.", flags: 64 } };
@@ -4759,7 +4768,7 @@ export default {
       const token = request.headers.get("x-log-token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
       const { discord_id, add_codes, remove_codes, guild_id } = await request.json();
-      const guildId = guild_id || url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+      const guildId = guild_id || url.searchParams.get("guild_id") || envGuildId(env);
       const syncableRoles = syncableRolesForGuild(guildId);
       const divisionSets = roleConfigForGuild(guildId).divisionSets || {};
       // Une division = plusieurs roles Discord (role principal + separateur decoratif).
@@ -4793,7 +4802,7 @@ export default {
 
     // Sync divisions Discord â†’ intranet
     if (url.pathname === "/grade-role-counts" && request.method === "GET") {
-      const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+      const guildId = url.searchParams.get("guild_id") || envGuildId(env);
       try {
         const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/roles/member-counts`, {
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
@@ -5040,7 +5049,7 @@ export default {
     if (url.pathname === "/get-member-roles" && request.method === "GET") {
       const discordId = url.searchParams.get("discord_id");
       if (!discordId) return json({ error: "Missing discord_id" }, 400);
-      const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+      const guildId = url.searchParams.get("guild_id") || envGuildId(env);
       const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
@@ -5060,7 +5069,7 @@ export default {
     }
 
     if (url.pathname === "/discord/agents-roster" && request.method === "GET") {
-      const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+      const guildId = url.searchParams.get("guild_id") || envGuildId(env);
       const roleIds = String(url.searchParams.get("role_ids") || "")
         .split(",")
         .map(s => s.trim())
@@ -5114,7 +5123,7 @@ export default {
         const token = request.headers.get("x-log-token");
         if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
         const { discord_ids } = await request.json();
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const map = {};
         for (const discordId of (discord_ids || [])) {
           const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
@@ -5146,7 +5155,7 @@ export default {
       const agents = Array.isArray(payload.agents)
         ? payload.agents
         : (payload.agents && typeof payload.agents === "object" ? Object.values(payload.agents) : []);
-      const guildId = payload.guild_id || url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+      const guildId = payload.guild_id || url.searchParams.get("guild_id") || envGuildId(env);
       const divisionRoles = roleConfigForGuild(guildId).divisions;
       const allCodes = Object.keys(divisionRoles);
       let ok = 0, errors = 0;
@@ -5248,7 +5257,7 @@ export default {
     if (url.pathname === "/auth/check-roles" && request.method === "GET") {
       const userId = url.searchParams.get("user_id");
       if (!userId) return json({ error: "Missing user_id" }, 400);
-      const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+      const guildId = url.searchParams.get("guild_id") || envGuildId(env);
       try {
         const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${userId}`, {
           headers: { authorization: `Bot ${env.DISCORD_BOT_TOKEN}` }
@@ -5618,7 +5627,7 @@ export default {
       return found;
     }
 
-    async function getActiveBracelets(env, guildId = env.DISCORD_GUILD_ID || "1500975724750704661", forumId = BRACELET_FORUM_CHANNEL) {
+    async function getActiveBracelets(env, guildId = envGuildId(env), forumId = BRACELET_FORUM_CHANNEL) {
       const activeRes = await discordFetch(`${DISCORD_API}/guilds/${guildId}/threads/active`, {
         headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
       });
@@ -5640,7 +5649,7 @@ export default {
       return bracelets.sort((a, b) => a.suspect.localeCompare(b.suspect, "fr"));
     }
 
-    async function sendBraceletRecap(env, channelId = STICKY_PROC_CHANNEL, guildId = env.DISCORD_GUILD_ID || "1500975724750704661", forumId = BRACELET_FORUM_CHANNEL, source = "all") {
+    async function sendBraceletRecap(env, channelId = STICKY_PROC_CHANNEL, guildId = envGuildId(env), forumId = BRACELET_FORUM_CHANNEL, source = "all") {
       const allBracelets = await getActiveBracelets(env, guildId, forumId);
       const bracelets = source === "proc" ? allBracelets.filter(b => b.proc_thread_id) : allBracelets;
       const lines = bracelets.length
@@ -6177,7 +6186,7 @@ export default {
         return json(await sendBraceletRecap(
           env,
           url.searchParams.get("channel_id") || STICKY_PROC_CHANNEL,
-          url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661",
+          url.searchParams.get("guild_id") || envGuildId(env),
           url.searchParams.get("forum_id") || BRACELET_FORUM_CHANNEL,
           url.searchParams.get("source") || "all"
         ));
@@ -6285,7 +6294,7 @@ export default {
     // Installer la commande /plainte
     if (url.pathname === "/admin/install-plainte-command" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
@@ -6303,7 +6312,7 @@ export default {
     // Installer la commande /plaintesasp
     if (url.pathname === "/admin/install-plaintesasp-command" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
@@ -6398,7 +6407,7 @@ export default {
     }
     if (url.pathname === "/admin/install-bracelet-command" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
@@ -6414,7 +6423,7 @@ export default {
     }
     if (url.pathname === "/admin/install-subvention-command" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const reset = url.searchParams.get("reset") === "1";
@@ -6446,7 +6455,7 @@ export default {
     }
     if (url.pathname === "/admin/install-heures-command" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const reset = url.searchParams.get("reset") === "1";
@@ -6480,7 +6489,7 @@ export default {
       try {
         const token = request.headers.get("x-log-token") || url.searchParams.get("token");
         if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const reset = url.searchParams.get("reset") === "1";
@@ -6521,7 +6530,7 @@ export default {
     }
     if (url.pathname === "/admin/debug-commands" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
@@ -6556,7 +6565,7 @@ export default {
     }
     if (url.pathname === "/admin/debug-command-permissions" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         const name = url.searchParams.get("name") || "subvention";
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
@@ -6578,7 +6587,7 @@ export default {
     }
     if (url.pathname === "/admin/debug-channel-command-perms" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const roleIds = (url.searchParams.get("role_ids") || guildId).split(",").map(s => s.trim()).filter(Boolean);
         const USE_APPLICATION_COMMANDS = 2147483648n;
         const patchableTypes = new Set([0, 4, 5, 15, 16]);
@@ -6612,7 +6621,7 @@ export default {
     }
     if (url.pathname === "/admin/allow-role-slash-commands" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const roleIds = (url.searchParams.get("role_ids") || "").split(",").map(s => s.trim()).filter(Boolean);
         if (!roleIds.length) return json({ ok: false, error: "role_ids manquant" }, 400);
         const USE_APPLICATION_COMMANDS = 2147483648n;
@@ -6649,7 +6658,7 @@ export default {
     }
     if (url.pathname === "/admin/clear-slash-command-denies" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const dryRun = url.searchParams.get("dry") === "1";
         const start = Math.max(0, Number(url.searchParams.get("start") || 0));
         const limit = Math.max(1, Math.min(30, Number(url.searchParams.get("limit") || 20)));
@@ -6695,7 +6704,7 @@ export default {
     }
     if (url.pathname === "/admin/allow-slash-commands-everywhere" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const targetRoleId = url.searchParams.get("role_id") || guildId;
         const dryRun = url.searchParams.get("dry") === "1";
         const start = Math.max(0, Number(url.searchParams.get("start") || 0));
@@ -6731,7 +6740,7 @@ export default {
     }
     if (url.pathname === "/admin/install-message-command" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
@@ -6759,7 +6768,7 @@ export default {
     }
     if (url.pathname === "/admin/install-defcon-command" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
@@ -6793,7 +6802,7 @@ export default {
     }
     if (url.pathname === "/admin/install-candidature-command" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const reset = url.searchParams.get("reset") === "1";
@@ -6828,7 +6837,7 @@ export default {
     }
     if (url.pathname === "/admin/install-clear-command" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
@@ -6867,7 +6876,7 @@ export default {
     }
     if (url.pathname === "/admin/install-location-command" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
@@ -6886,7 +6895,7 @@ export default {
     }
     if (url.pathname === "/admin/install-ticket-tools-commands" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const commands = [
@@ -6939,7 +6948,7 @@ export default {
     }
     if (url.pathname === "/admin/install-ticket-command" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
@@ -7005,7 +7014,7 @@ export default {
         if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
         const body = await request.json().catch(() => ({}));
         const panelId = String(body.panel_id || body.panelId || "").trim();
-        const guildId = String(body.guild_id || body.guildId || env.DISCORD_GUILD_ID || "1500975724750704661").replace(/\D/g, "");
+        const guildId = String(body.guild_id || body.guildId || envGuildId(env)).replace(/\D/g, "");
         if (!panelId) return json({ ok: false, error: "panel_id manquant" }, 400);
         const result = await publishTicketPanelFromDb(env, panelId, guildId);
         return json({ ok: true, ...result });
@@ -7031,7 +7040,7 @@ export default {
     }
     if (url.pathname === "/admin/install-proc-command" && request.method === "GET") {
       try {
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
+        const guildId = url.searchParams.get("guild_id") || envGuildId(env);
         const appId = env.DISCORD_APPLICATION_ID;
         if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
         const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
