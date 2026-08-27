@@ -248,6 +248,26 @@ const ROLE_TO_GRADE = Object.fromEntries(Object.entries(GRADE_ROLES).map(([k,v])
 
 const ALL_SYNCABLE_ROLES = { ...DIVISION_ROLES, ...PPA_ROLES, ...GRADE_ROLES };
 
+// Un agent archive, licencie, retraite ou demissionnaire n'a plus a etre aligne
+// sur ses roles Discord : sa fiche est figee telle qu'a son depart.
+const INACTIVE_AGENT_STATUSES = ["Archivé", "Licencié", "Retraité", "Démission"];
+const ACTIVE_AGENTS_FILTER =
+  "statut=not.in.(" + INACTIVE_AGENT_STATUSES.map(s => encodeURIComponent(s)).join(",") + ")";
+
+// Libelles des divisions, pour semer la table units depuis DIVISION_ROLE_SETS.
+const DIVISION_LABELS = {
+  CID:  "Criminal Investigation Division",
+  SWAT: "Special Weapons And Tactics",
+  FTF:  "Fugitive Task Force",
+  PA:   "Police Academy",
+  CNU:  "Crisis Negotiation Unit",
+  TU:   "Traffic Unit",
+  SYND: "Syndicat",
+  LP:   "Lincoln Patrol",
+  K9:   "Unité cynophile",
+  IA:   "Affaires Internes"
+};
+
 const SUD_SITE_GUILD_ID = "1500975724750704661";
 const NORD_SITE_GUILD_ID = "1516510943318642950";
 
@@ -389,7 +409,7 @@ async function syncRolesFromDiscord(env, options = {}) {
 
   const agents = await sbForSite(
     env, "GET",
-    `/agents?select=id,matricule,prenom,nom,grade,unites,ppa1,ppa2,ppa3,discord_id&discord_id=not.is.null&statut=neq.Archiv%C3%A9`,
+    `/agents?select=id,matricule,prenom,nom,grade,unites,ppa1,ppa2,ppa3,discord_id&discord_id=not.is.null&${ACTIVE_AGENTS_FILTER}`,
     null, siteKey
   );
   const agentByDiscord = {};
@@ -4864,6 +4884,30 @@ export default {
       }
     }
 
+    // Aligne la table units sur DIVISION_ROLE_SETS : cree ce qui manque, ne
+    // touche a rien d'existant. A relancer apres l'ajout d'une division au code.
+    if (url.pathname === "/admin/ensure-units" && request.method === "GET") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const existing = await sbForSite(env, "GET", "/units?select=id,code,nom", null, "sud");
+        const have = new Set((existing || []).map(u => String(u.code || "").toUpperCase()));
+        const missing = Object.keys(DIVISION_ROLE_SETS).filter(code => !have.has(code));
+        const created = [];
+        for (const code of missing) {
+          await sbForSite(env, "POST", "/units", { code, nom: DIVISION_LABELS[code] || code }, "sud");
+          created.push({ code, nom: DIVISION_LABELS[code] || code });
+        }
+        return json({
+          ok: true,
+          deja_presentes: [...have].sort(),
+          creees: created
+        });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     if (url.pathname === "/admin/roles-inventory" && request.method === "GET") {
       const token = request.headers.get("x-log-token") || url.searchParams.get("token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
@@ -9301,7 +9345,7 @@ export default {
       try {
         // 1. Tous les agents avec discord_id. Le filtre visait "Archivé" : mal encode,
         //    il ne correspondait a aucun statut et laissait passer les archives.
-        const agents = await sbForSite(env, "GET", `/agents?select=id,grade,discord_id&discord_id=not.is.null&statut=neq.Archiv%C3%A9`, null, "sud");
+        const agents = await sbForSite(env, "GET", `/agents?select=id,grade,discord_id&discord_id=not.is.null&${ACTIVE_AGENTS_FILTER}`, null, "sud");
         const agentByDiscord = {};
         for (const a of (agents || [])) agentByDiscord[a.discord_id] = a;
 
