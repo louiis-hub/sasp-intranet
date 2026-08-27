@@ -4886,6 +4886,118 @@ export default {
 
     // Aligne la table units sur DIVISION_ROLE_SETS : cree ce qui manque, ne
     // touche a rien d'existant. A relancer apres l'ajout d'une division au code.
+    // Reprise des plaintes deposees avant la mise en place de l'archivage :
+    // leur contenu n'existait que dans les embeds du salon. On relit le salon,
+    // on extrait les champs et on complete les lignes deja creees en base.
+    // dry_run=1 : rapport seul, aucune ecriture.
+    if (url.pathname === "/admin/import-plaintes" && request.method === "GET") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const dryRun = url.searchParams.get("dry_run") === "1";
+      // Litteral volontaire : STICKY_PLAINTE_CHANNEL est declare plus bas dans ce
+      // meme bloc, donc encore dans sa zone morte temporelle a cet endroit.
+      const channelId = url.searchParams.get("channel_id") || "1519510826233364500";
+      const maxPages = Math.max(1, Math.min(40, Number(url.searchParams.get("pages") || "20") || 20));
+      try {
+        // Les noms de champs portent des emojis dont l'encodage a varie dans le
+        // temps : on cherche donc un fragment stable plutot que le libelle exact.
+        const champ = (embed, fragment) =>
+          (embed.fields || []).find(f => String(f.name || "").includes(fragment))?.value || "";
+
+        const trouvees = [];
+        let before = null;
+        for (let page = 0; page < maxPages; page++) {
+          const url2 = `${DISCORD_API}/channels/${channelId}/messages?limit=100` + (before ? `&before=${before}` : "");
+          const res = await discordFetch(url2, { headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` } });
+          if (!res.ok) throw new Error(`Discord ${res.status} sur la lecture du salon`);
+          const messages = await res.json();
+          if (!Array.isArray(messages) || !messages.length) break;
+          for (const m of messages) {
+            const embed = m.embeds?.[0];
+            if (!embed || !String(embed.title || "").includes("Plainte")) continue;
+            const numero = (String(embed.title).match(/#(\d+)/) || [])[1];
+            if (!numero) continue; // plainte dont l'insertion en base avait echoue
+            const agentBrut = champ(embed, "Agent");
+            trouvees.push({
+              id: Number(numero),
+              message_id: m.id,
+              created_at: embed.timestamp || m.timestamp || null,
+              plaignant: champ(embed, "Plaignant") || null,
+              mis_en_cause: champ(embed, "cause") || null,
+              telephone: (champ(embed, "phone") || "").replace(/^—$/, "") || null,
+              motif: champ(embed, "Motif") || null,
+              resume: champ(embed, "sum") || null,
+              agent_nom: agentBrut || null,
+              agent_discord_id: (agentBrut.match(/<@!?(\d+)>/) || [])[1] || null
+            });
+          }
+          before = messages[messages.length - 1].id;
+          if (messages.length < 100) break;
+        }
+
+        // Une plainte modifiee apparait plusieurs fois : on garde la plus recente,
+        // c'est a dire le message d'identifiant le plus eleve.
+        const parNumero = new Map();
+        for (const p of trouvees) {
+          const vu = parNumero.get(p.id);
+          if (!vu || BigInt(p.message_id) > BigInt(vu.message_id)) parNumero.set(p.id, p);
+        }
+
+        const existantes = await sbForSite(env, "GET", "/plaintes?select=id&limit=10000", null, "sud");
+        const idsExistants = new Set((existantes || []).map(r => Number(r.id)));
+
+        const aCompleter = [], sansLigne = [];
+        for (const p of parNumero.values()) {
+          (idsExistants.has(p.id) ? aCompleter : sansLigne).push(p);
+        }
+        aCompleter.sort((a, b) => a.id - b.id);
+
+        let completees = 0;
+        const erreurs = [];
+        if (!dryRun) {
+          for (const p of aCompleter) {
+            try {
+              // On ne touche ni au statut ni aux notes : le suivi saisi sur le
+              // site prime sur ce que raconte l'embed.
+              await sbForSite(env, "PATCH", `/plaintes?id=eq.${p.id}`, {
+                plaignant: p.plaignant,
+                mis_en_cause: p.mis_en_cause,
+                telephone: p.telephone,
+                motif: p.motif,
+                resume: p.resume,
+                agent_nom: p.agent_nom,
+                agent_discord_id: p.agent_discord_id,
+                discord_channel_id: channelId,
+                discord_message_id: p.message_id,
+                ...(p.created_at ? { created_at: p.created_at } : {}),
+                updated_at: new Date().toISOString()
+              }, "sud");
+              completees++;
+            } catch (e) {
+              erreurs.push({ id: p.id, error: e.message });
+            }
+          }
+        }
+
+        return json({
+          ok: true,
+          dry_run: dryRun,
+          salon: channelId,
+          embeds_lus: trouvees.length,
+          plaintes_distinctes: parNumero.size,
+          a_completer: aCompleter.length,
+          completees,
+          sans_ligne_en_base: sansLigne.map(p => p.id).sort((a, b) => a - b),
+          apercu: aCompleter.slice(0, 5).map(p => ({
+            id: p.id, plaignant: p.plaignant, mis_en_cause: p.mis_en_cause, motif: p.motif
+          })),
+          erreurs
+        });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     if (url.pathname === "/admin/ensure-units" && request.method === "GET") {
       const token = request.headers.get("x-log-token") || url.searchParams.get("token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
