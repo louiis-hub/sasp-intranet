@@ -250,7 +250,7 @@ const ALL_SYNCABLE_ROLES = { ...DIVISION_ROLES, ...PPA_ROLES, ...GRADE_ROLES };
 
 // Un agent archive, licencie, retraite ou demissionnaire n'a plus a etre aligne
 // sur ses roles Discord : sa fiche est figee telle qu'a son depart.
-const INACTIVE_AGENT_STATUSES = ["Archivé", "Licencié", "Retraité", "Démission"];
+const INACTIVE_AGENT_STATUSES = ["Licencié", "Retraité", "Démission"];
 const ACTIVE_AGENTS_FILTER =
   "statut=not.in.(" + INACTIVE_AGENT_STATUSES.map(s => encodeURIComponent(s)).join(",") + ")";
 
@@ -9255,8 +9255,7 @@ export default {
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
       try {
         const siteKey = url.searchParams.get("site") === "nord" ? "nord" : "sud";
-        const includeArchived = url.searchParams.get("archived") === "1";
-        const agentFilter = includeArchived ? "" : "&statut=neq.Archiv%C3%A9";
+        const agentFilter = "";
         const [agents, armes] = await Promise.all([
           sbForSite(env, "GET", `/agents?select=*${agentFilter}&order=matricule`, null, siteKey),
           sbForSite(env, "GET", `/agent_armes?select=id,agent_id,nom,serie,ppa_niveau&order=nom`, null, siteKey).catch(() => [])
@@ -9343,8 +9342,7 @@ export default {
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
       const guildId = SUD_SITE_GUILD_ID;
       try {
-        // 1. Tous les agents avec discord_id. Le filtre visait "Archivé" : mal encode,
-        //    il ne correspondait a aucun statut et laissait passer les archives.
+        // 1. Tous les agents en poste ayant un discord_id.
         const agents = await sbForSite(env, "GET", `/agents?select=id,grade,discord_id&discord_id=not.is.null&${ACTIVE_AGENTS_FILTER}`, null, "sud");
         const agentByDiscord = {};
         for (const a of (agents || [])) agentByDiscord[a.discord_id] = a;

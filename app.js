@@ -314,7 +314,6 @@ var NAV = [
   // wiki sections injected dynamically by loadWikiSections()
   { divider: true, staffOnly: true, _wikiEnd: true },
   { group: 'ADMINISTRATION', staffOnly: true },
-  { id: 'archives',        icon: '🗃️', img: 'archives', label: 'Archives',          staffOnly: true, hidden: true },
   { id: 'stats',           icon: '📈', img: 'stats', label: 'Statistiques',       staffOnly: true },
   { id: 'service-logements', icon: '🏠', img: 'logements', label: 'Logements service', adminOnly: true },
   { id: 'ticketing', icon: '🎫', img: 'ticketing', label: 'Tickets Discord', adminOnly: true, hidden: true },
@@ -322,14 +321,14 @@ var NAV = [
   { id: 'ceremonie', icon: '🎖️', img: 'grades', label: 'Montées en grade', ceremonyOnly: true },
 ];
 
-var REMOVED_PAGES = ['cid', 'archives'];
+var REMOVED_PAGES = ['cid'];
 
 var PAGE_TITLES = {
   dashboard:'Tableau de bord', agents:'Agents', 'agent-profile':'Fiche agent',
   grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', 'pointeuse-historique':'Historique pointages', mdt:'Guide MDT', vehicles:'Véhicules', cartes:'Cartes',
   faq:'FAQ',
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
-  archives:'Archives', ceremonie:'Prépa Cérémonie', completude:'Complétude fiches',
+  ceremonie:'Prépa Cérémonie', completude:'Complétude fiches',
   'global-settings':'Réglages globaux',
   'service-logements':'Logements de service',
   ticketing:'Tickets Discord',
@@ -654,7 +653,6 @@ async function navigate(page, pd) {
       cartes:                  renderCartes,
       cid:                     renderCID3,
       ceremonie:      renderCeremonie,
-      archives:       renderArchives,
       completude:     renderCompletude,
       'global-settings': renderGlobalSettings,
       'service-logements': renderServiceLogements,
@@ -788,7 +786,7 @@ function fmtClock(dateStr) {
   return new Date(dateStr).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
 }
 function statusBadge(s) {
-  var map = { 'En service':'badge-green','En congé':'badge-blue','Suspendu':'badge-orange','Licencié':'badge-red','Retraité':'badge-gray','Démission':'badge-gray','Archivé':'badge-red' };
+  var map = { 'En service':'badge-green','En congé':'badge-blue','Suspendu':'badge-orange','Licencié':'badge-red','Retraité':'badge-gray','Démission':'badge-gray' };
   return '<span class="badge ' + (map[s]||'badge-gray') + '">' + esc(s) + '</span>';
 }
 function gradeBadge(g) {
@@ -816,13 +814,9 @@ function normRosterText(v) {
     .replace(/\s+/g, ' ');
 }
 function gradeKey(v) { return normRosterText(canonicalGradeName(v)); }
-function isArchivedStatus(statut) { return normRosterText(statut) === 'archive'; }
-function visibleRosterAgents(agents) {
-  return (agents || []).filter(function(a){ return !isArchivedStatus(a.statut); });
-}
 function countAgentsByGrade(agents) {
   var counts = {};
-  visibleRosterAgents(agents).forEach(function(a){
+  (agents || []).forEach(function(a){
     var key = gradeKey(a.grade);
     if (key) counts[key] = (counts[key] || 0) + 1;
   });
@@ -1849,7 +1843,7 @@ async function rollbackFtfDossier(id) {
 
 async function renderDashboard() {
   _grades = await DB.getGrades();
-  var agents = visibleRosterAgents(await DB.getAgents());
+  var agents = await DB.getAgents();
   var hist = [];
   try {
     var { data: histData } = await getDb().from('agent_historique')
@@ -1931,7 +1925,7 @@ function renderOrgChart(agents) {
   }
 
   var sections = gradesSorted.map(function(g, idx) {
-    var members = agents.filter(function(a){ return gradeKey(a.grade) === gradeKey(g.nom) && !isArchivedStatus(a.statut); });
+    var members = agents.filter(function(a){ return gradeKey(a.grade) === gradeKey(g.nom); });
     var ac = gradeAccent(g.ordre||0);
 
     var header = '<div style="display:flex;align-items:center;gap:10px;margin:' + (idx===0?'4px':'22px') + ' 0 10px 0">' +
@@ -2296,9 +2290,7 @@ async function renderAgentProfile() {
         '<div class="profile-mat">' + esc(ag.matricule) + '</div>' +
         '<div class="profile-meta">' + gradeBadge(ag.grade) + statusBadge(ag.statut) + unites + '</div>' +
       '</div>' +
-      (ag.statut === 'Archivé' ?
-        '<div class="profile-actions"><span class="badge badge-red" style="font-size:.8rem;padding:6px 14px">🗃️ Archivé — lecture seule</span></div>' :
-        canWrite() ?
+      (canWrite() ?
           '<div class="profile-actions">' +
             '<button class="btn btn-outline btn-sm" onclick="openAgentModal(\'' + id + '\')">✏️ Modifier</button>' +
             '<button class="btn btn-ghost btn-sm" onclick="syncDiscordToAgent(\'' + id + '\')" title="Sync divisions depuis Discord">🔄 Sync Discord</button>' +
@@ -2322,7 +2314,7 @@ async function renderAgentProfile() {
         '<div class="card">' +
           '<div class="flex-between mb-10">' +
             '<div class="card-head" style="margin:0"><div class="card-icon">📝</div><div><div class="card-title">Notes internes</div></div></div>' +
-            (canWrite() && ag.statut !== 'Archivé' ? '<button class="btn btn-ghost btn-sm" onclick="openNotesModal(\'' + id + '\')">' + (ag.notes ? '✏️' : '+ Ajouter') + '</button>' : '') +
+            (canWrite() ? '<button class="btn btn-ghost btn-sm" onclick="openNotesModal(\'' + id + '\')">' + (ag.notes ? '✏️' : '+ Ajouter') + '</button>' : '') +
           '</div>' +
           (ag.notes ? '<div style="font-size:.84rem;color:var(--t1);white-space:pre-wrap;line-height:1.5">' + esc(ag.notes) + '</div>' : '<div style="font-size:.82rem;color:var(--t3)">Aucune note.</div>') +
         '</div>' +
@@ -2330,7 +2322,7 @@ async function renderAgentProfile() {
         '<div class="card">' +
           '<div class="flex-between mb-10">' +
             '<div class="card-head" style="margin:0"><div class="card-icon">📚</div><div><div class="card-title">Formations PPA</div></div></div>' +
-            (isAdmin() && ag.statut !== 'Archivé' ? '<button class="btn btn-ghost btn-sm" onclick="openPPAModal(\'' + id + '\')">✏️ PPA</button>' : '') +
+            (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="openPPAModal(\'' + id + '\')">✏️ PPA</button>' : '') +
           '</div>' +
           '<div class="ppa-grid">' + ppaHtml + '</div>' +
           (function(){
@@ -2338,7 +2330,7 @@ async function renderAgentProfile() {
             return '<div style="margin-top:14px;border-top:1px solid var(--border0);padding-top:12px">' +
               '<div class="flex-between" style="margin-bottom:8px">' +
                 '<div style="font-size:.72rem;color:var(--red);font-weight:700;letter-spacing:.8px">⚠️ BLÂMES</div>' +
-                (isAdmin() && ag.statut !== 'Archivé' ? '<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:2px 8px" onclick="openBlameModal(\'' + id + '\')">✏️ Blâmes</button>' : '') +
+                (isAdmin() ? '<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:2px 8px" onclick="openBlameModal(\'' + id + '\')">✏️ Blâmes</button>' : '') +
               '</div>' +
               '<div style="display:flex;gap:8px">' +
                 [1,2,3].map(function(n){
@@ -2359,7 +2351,7 @@ async function renderAgentProfile() {
           '<div style="margin-top:14px;border-top:1px solid var(--border0);padding-top:12px">' +
             '<div class="flex-between" style="margin-bottom:8px">' +
               '<div style="font-size:.72rem;color:var(--blue);font-weight:700;letter-spacing:.8px">📋 FORMATIONS</div>' +
-              (isAdmin() && ag.statut !== 'Archivé' ? '<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:2px 8px" onclick="openFormationsModal(\'' + id + '\')">✏️ Formations</button>' : '') +
+              (isAdmin() ? '<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:2px 8px" onclick="openFormationsModal(\'' + id + '\')">✏️ Formations</button>' : '') +
             '</div>' +
             '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
               (function(){
@@ -2383,7 +2375,7 @@ async function renderAgentProfile() {
         '<div class="card">' +
           '<div class="flex-between mb-10">' +
             '<div class="card-head" style="margin:0"><div class="card-icon">🔫</div><div><div class="card-title">Armement</div></div></div>' +
-            (canWrite() && ag.statut !== 'Archivé' ? '<button class="btn btn-outline btn-sm" onclick="openAddArmeModal(\'' + id + '\')">+ Ajouter</button>' : '') +
+            (canWrite() ? '<button class="btn btn-outline btn-sm" onclick="openAddArmeModal(\'' + id + '\')">+ Ajouter</button>' : '') +
           '</div>' +
           (function() {
             var html = '';
@@ -2682,7 +2674,7 @@ async function delArme(armeId, agentId) {
 // ══ GRADES ═════════════════════════════════════════════════════════
 async function renderGrades() {
   _grades = await DB.getGrades();
-  var agents = visibleRosterAgents(await DB.getAgents());
+  var agents = await DB.getAgents();
 
   var gradeCounts = await getDashboardGradeCounts(_grades, agents, 'grades');
 
@@ -3340,63 +3332,6 @@ async function renderCompletude() {
 
 // ══ DISCIPLINARY ═══════════════════════════════════════════════════
 // ══ ARCHIVES ════════════════════════════════════════════════════════
-var _archiveSearch = '';
-async function renderArchives() {
-  await navigate('dashboard');
-  return;
-  var agents = await DB.getArchivedAgents(_archiveSearch);
-  var rows = agents.length ? agents.map(function(a) {
-    var unites = (a.unites||[]).map(function(u){ return unitBadge(u); }).join(' ');
-    var ppas = ppaCount(a);
-    return '<tr onclick="openArchivedProfile(\'' + a.id + '\')" style="cursor:pointer">' +
-      '<td class="mono text-gold">' + esc(a.matricule) + '</td>' +
-      '<td style="font-weight:600;color:var(--t0)">' + esc(a.prenom) + ' ' + esc(a.nom) + '</td>' +
-      '<td>' + gradeBadge(a.grade) + '</td>' +
-      '<td>' + (unites||'<span class="text-muted">—</span>') + '</td>' +
-      '<td><span class="badge badge-gold" style="font-size:.65rem">PPA ' + ppas + '/3</span></td>' +
-      '<td onclick="event.stopPropagation()" style="white-space:nowrap">' +
-        '<button class="btn btn-ghost btn-sm" onclick="openArchivedProfile(\'' + a.id + '\')">Fiche</button>' +
-        (isAdmin() ? ' <button class="btn btn-danger btn-sm" onclick="deleteArchivedAgent(\'' + a.id + '\',\'' + esc(a.prenom+' '+a.nom) + '\')">Supprimer</button>' : '') +
-      '</td>' +
-    '</tr>';
-  }).join('') : '<tr><td colspan="6"><div class="empty-state" style="padding:40px"><div class="empty-icon">🗃️</div><div class="empty-title">Aucun agent archivé</div></div></td></tr>';
-
-  setContent(
-    '<div class="flex-between mb-20 flex-wrap gap-8">' +
-      '<div><h1 style="font-size:1.4rem">Archives</h1><p class="text-muted" style="font-size:.82rem;margin-top:3px">' + agents.length + ' agent(s) archivé(s) — consultation uniquement</p></div>' +
-    '</div>' +
-    '<div class="filter-bar">' +
-      '<div class="search-wrap" style="max-width:320px"><span class="search-icon">🔍</span>' +
-        '<input class="form-control search-input" placeholder="Nom, prénom, matricule…" value="' + esc(_archiveSearch) + '" oninput="archiveSearch(this.value)">' +
-      '</div>' +
-    '</div>' +
-    '<div class="card" style="padding:0;overflow:hidden">' +
-      '<div class="table-wrap"><table>' +
-        '<thead><tr><th>MATRICULE</th><th>NOM</th><th>GRADE</th><th>DIVISIONS</th><th>PPA</th><th>ACTIONS</th></tr></thead>' +
-        '<tbody>' + rows + '</tbody>' +
-      '</table></div>' +
-    '</div>'
-  );
-}
-var _archSearchTimer;
-function archiveSearch(v) {
-  clearTimeout(_archSearchTimer);
-  _archSearchTimer = setTimeout(function(){ _archiveSearch = v; renderArchives(); }, 280);
-}
-function openArchivedProfile(id) {
-  navigate('agent-profile', { id: id });
-}
-async function deleteArchivedAgent(id, name) {
-  if (!confirm('Supprimer définitivement ' + name + ' ?\n\nCette action est irréversible — toutes les données seront perdues.')) return;
-  var r = await DB.deleteAgent(id);
-  if (r.error) { toast(r.error.message, 'error'); return; }
-  toast('Dossier supprimé définitivement.', 'info');
-  sendLog('🗑️ Agent supprimé', 0xe74c3c, [
-    { name: 'Agent', value: name, inline: true },
-    { name: 'Par', value: _whoAmI(), inline: true }
-  ]);
-  renderArchives();
-}
 async function openNotesModal(agentId) {
   var ag = await DB.getAgent(agentId);
   openModal({
@@ -3419,7 +3354,7 @@ async function saveNotes(agentId) {
 async function renderAcademie() {
   var agents = await DB.getAgents({});
   var recrues = agents.filter(function(a) {
-    return (a.grade === 'Rookie' || a.grade === 'Trooper I') && a.statut !== 'Archivé';
+    return a.grade === 'Rookie' || a.grade === 'Trooper I';
   });
   var formateurMap = {};
   agents.filter(function(a){ return a.is_formateur; }).forEach(function(f){ formateurMap[f.id] = f; });
@@ -3500,7 +3435,6 @@ async function renderRecap() {
 
   function buildCards() {
     var filtered = agents.filter(function(a){
-      if (a.statut === 'Archivé') return false;
       if (_filterGrade  && a.grade  !== _filterGrade)  return false;
       if (_filterStatut && a.statut !== _filterStatut) return false;
       return true;
@@ -3588,7 +3522,6 @@ async function renderRecap() {
     _filterStatut = document.getElementById('recapFilterStatut').value;
     document.getElementById('recapGrid').innerHTML = buildCards();
     var cnt = window._recapAgents.filter(function(a){
-      if (a.statut==='Archivé') return false;
       if (_filterGrade  && a.grade  !== _filterGrade)  return false;
       if (_filterStatut && a.statut !== _filterStatut) return false;
       return true;
@@ -3597,7 +3530,7 @@ async function renderRecap() {
     if (el) el.textContent = cnt + ' agent' + (cnt!==1?'s':'');
   };
   document.getElementById('recapGrid').innerHTML = buildCards();
-  var total = agents.filter(function(a){ return a.statut !== 'Archivé'; }).length;
+  var total = agents.length;
   var cnt = document.getElementById('recapCount');
   if (cnt) cnt.textContent = total + ' agent' + (total!==1?'s':'');
 }
@@ -3645,9 +3578,6 @@ async function deleteAgentDirect(id) {
   navigate('agents');
 }
 
-async function archiveAgent(id) {
-  return deleteAgentDirect(id);
-}
 // ══ WIKI GÉNÉRIQUE ══════════════════════════════════════════════════
 async function renderWikiSection(slug, cfg) {
   _wikiSlug = slug;
@@ -4122,7 +4052,7 @@ function serviceHousingVisual(gamme) {
 
 async function renderServiceLogements() {
   if (!isAdmin()) { toast('Accès réservé aux administrateurs.', 'error'); return; }
-  _serviceAgents = visibleRosterAgents(await DB.getAgents()).filter(function(a){ return a.statut !== 'Archivé'; });
+  _serviceAgents = await DB.getAgents();
   _serviceLogements = await DB.getServiceLogements();
 
   if (!_serviceLogements.length) {
@@ -4789,22 +4719,6 @@ async function deleteUnitGS(id, code) {
   toast('Division supprimée.', 'info');
   renderGlobalSettings();
 }
-async function purgeAllArchives() {
-  toast('La page Archives est desactivee.', 'info');
-  return;
-  var archived = await DB.getArchivedAgents('');
-  if (!archived.length) { toast('Aucune archive à purger.', 'info'); return; }
-  if (!confirm('Supprimer définitivement les ' + archived.length + ' agent(s) archivé(s) ?\n\nCette action est IRRÉVERSIBLE.')) return;
-  var errors = [];
-  for (var i = 0; i < archived.length; i++) {
-    var r = await DB.deleteAgent(archived[i].id);
-    if (r.error) errors.push(archived[i].nom);
-  }
-  if (errors.length) toast('Erreur sur : ' + errors.join(', '), 'error');
-  else toast('Toutes les archives ont été supprimées.', 'success');
-  renderGlobalSettings();
-}
-
 // ══ SETTINGS ══════════════════════════════════════════════════════
 async function renderSettings() {
   var appUsers = isAdmin() ? await DB.getAppUsers() : [];
@@ -7029,7 +6943,7 @@ async function renderPointeuseHistorique() {
     if (!_pointeuseCorrectionsMissing) throw e;
   }
   var activeAgentIds = new Set(actives.map(function(p){ return p.agent_id; }));
-  rosterAgents = visibleRosterAgents(rosterAgents || []).sort(function(a, b) {
+  rosterAgents = (rosterAgents || []).sort(function(a, b) {
     return parseInt(a.matricule || 999) - parseInt(b.matricule || 999);
   });
 
