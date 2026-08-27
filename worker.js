@@ -8699,7 +8699,7 @@ export default {
       // Slash command /plainte
       // Attestation de test de residus de poudre. Le formulaire est prerempli
       // avec la fiche de l'agent et la date du jour pour limiter la saisie.
-      if (interaction.type === 2 && interaction.data.name === "test") {
+      if (interaction.type === 2 && interaction.data.name === "testpoudre") {
         const userId = interaction.member?.user?.id || interaction.user?.id;
         let matricule = "";
         try {
