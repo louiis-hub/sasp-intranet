@@ -3834,9 +3834,16 @@ async function getTicketCommandChannel(env, interaction) {
   return channel;
 }
 
-async function sendTicketCommandLog(env, channelId, content) {
+// Annonce publique dans le salon du ticket. En embed, pour la distinguer
+// des messages des agents. Les mentions restent affichees mais ne pingent pas.
+async function sendTicketCommandLog(env, channelId, embed) {
   await discordRequest(env, "POST", `/channels/${channelId}/messages`, {
-    content,
+    embeds: [{
+      color: 0x2c3e50,
+      ...embed,
+      footer: { text: "SASP Intranet" },
+      timestamp: new Date().toISOString()
+    }],
     allowed_mentions: { parse: [] }
   });
 }
@@ -3849,14 +3856,22 @@ async function addTicketMember(env, interaction, targetId) {
     deny: "0"
   });
   const actorId = interaction.member?.user?.id || interaction.user?.id;
-  await sendTicketCommandLog(env, channel.id, `<@${targetId}> a ete ajoute au ticket par <@${actorId}>.`);
+  await sendTicketCommandLog(env, channel.id, {
+    title: "Membre ajouté",
+    description: `<@${targetId}> a été ajouté au ticket par <@${actorId}>.`,
+    color: 0x27ae60
+  });
 }
 
 async function removeTicketMember(env, interaction, targetId) {
   const channel = await getTicketCommandChannel(env, interaction);
   await discordRequest(env, "DELETE", `/channels/${channel.id}/permissions/${targetId}`);
   const actorId = interaction.member?.user?.id || interaction.user?.id;
-  await sendTicketCommandLog(env, channel.id, `<@${targetId}> a ete retire du ticket par <@${actorId}>.`);
+  await sendTicketCommandLog(env, channel.id, {
+    title: "Membre retiré",
+    description: `<@${targetId}> a été retiré du ticket par <@${actorId}>.`,
+    color: 0xe74c3c
+  });
 }
 
 async function renameTicketChannel(env, interaction, rawName) {
@@ -3869,7 +3884,11 @@ async function renameTicketChannel(env, interaction, rawName) {
   }
   await discordRequest(env, "PATCH", `/channels/${channel.id}`, { name: name.slice(0, 95) });
   const actorId = interaction.member?.user?.id || interaction.user?.id;
-  await sendTicketCommandLog(env, channel.id, `Ticket renomme en **${name}** par <@${actorId}>.`);
+  await sendTicketCommandLog(env, channel.id, {
+    title: "Ticket renommé",
+    description: `Nouveau nom : **#${name}**\nRenommé par <@${actorId}>.`,
+    color: 0x3498db
+  });
   return name;
 }
 
@@ -7243,7 +7262,13 @@ export default {
         try {
           await claimTicketDb(env, interaction, ticketId);
           const userId = interaction.member?.user?.id || interaction.user?.id;
-          return json({ type: 4, data: { content: `Ticket pris en charge par <@${userId}>.` } });
+          return json({ type: 4, data: { embeds: [{
+            title: "Ticket pris en charge",
+            description: `<@${userId}> s'occupe de ce ticket.`,
+            color: 0xf39c12,
+            footer: { text: "SASP Intranet" },
+            timestamp: new Date().toISOString()
+          }], allowed_mentions: { parse: [] } } });
         } catch (e) {
           return json({ type: 4, data: { content: `Erreur prise en charge : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
         }
@@ -7253,7 +7278,13 @@ export default {
         const [, ticketId, requesterId] = interaction.data.custom_id.split("|");
         try {
           await closeTicketDb(env, interaction, ticketId, requesterId);
-          return json({ type: 4, data: { content: "Ticket ferme." } });
+          return json({ type: 4, data: { embeds: [{
+            title: "Ticket fermé",
+            description: "Ce ticket est clos. Le salon va être archivé.",
+            color: 0x95a5a6,
+            footer: { text: "SASP Intranet" },
+            timestamp: new Date().toISOString()
+          }] } });
         } catch (e) {
           return json({ type: 4, data: { content: `Erreur fermeture : ${String(e.message || e).slice(0, 1500)}`, flags: 64 } });
         }
