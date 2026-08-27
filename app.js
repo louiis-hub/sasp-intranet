@@ -337,6 +337,28 @@ var PAGE_TITLES = {
   cid:'CID', ftf:'FTF', 'ftf-dossier':'Dossier FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
 };
 
+// Lien profond depuis l'exterieur : #page, ou #page/identifiant pour ouvrir
+// directement un element. Les droits d'acces restent appliques par navigate().
+function routeDepuisHash() {
+  var brut = String(window.location.hash || '').replace(/^#/, '');
+  if (!brut) return null;
+  var morceaux = decodeURIComponent(brut).split('/');
+  var page = morceaux[0];
+  if (!page || !PAGE_TITLES[page]) return null;
+  return { page: page, id: morceaux[1] || null };
+}
+
+// Ouvre la page demandee, sinon le tableau de bord.
+async function allerVersRouteInitiale() {
+  var cible = routeDepuisHash();
+  if (!cible) { await navigate('dashboard'); return; }
+  await navigate(cible.page, cible.id ? { id: cible.id } : {});
+  // Une attestation designee par son numero s'ouvre directement en apercu.
+  if (cible.page === 'tests-poudre' && cible.id && typeof tpApercu === 'function') {
+    try { await tpApercu(cible.id); } catch (e) {}
+  }
+}
+
 // ── Boot ───────────────────────────────────────────────────────────
 (async function boot() {
   if (isAuthDisabled()) {
@@ -454,7 +476,7 @@ async function afterLogin(user, session) {
     _units  = await DB.getUnits();
     await loadWikiSections();
     showApp();
-    await navigate('dashboard');
+    await allerVersRouteInitiale();
   } catch(err) {
     console.error('[auth] afterLogin failed:', err);
     showLogin();

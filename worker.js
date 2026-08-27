@@ -268,6 +268,7 @@ const DIVISION_LABELS = {
   IA:   "Affaires Internes"
 };
 
+const SITE_BASE_URL = "https://louiis-hub.github.io/sasp-intranet/";
 const SUD_SITE_GUILD_ID = "1500975724750704661";
 const NORD_SITE_GUILD_ID = "1516510943318642950";
 
@@ -8758,10 +8759,14 @@ export default {
           if (cree && cree[0]) testId = cree[0].id;
         } catch {}
 
+        // Le PNG officiel se recupere sur le site : le Worker ne sait pas le produire.
+        const lienAttestation = testId
+          ? `\n\n**[Ouvrir l'attestation officielle](${SITE_BASE_URL}#tests-poudre/${testId})**`
+          : "";
         const embed = {
           title: "Attestation de test de résidus de poudre" + (testId ? ` — N° ${testId}` : ""),
           color: 0x1B3A63,
-          description: "**RÉSULTAT : POSITIF**\nDes résidus de poudre compatibles avec un tir d'arme à feu ont été détectés sur la personne testée.",
+          description: "**RÉSULTAT : POSITIF**\nDes résidus de poudre compatibles avec un tir d'arme à feu ont été détectés sur la personne testée." + lienAttestation,
           fields: [
             { name: "Personne testée", value: personneNom || "—", inline: false },
             { name: "Date de naissance", value: personneNaissance || "—", inline: true },
