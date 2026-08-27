@@ -151,6 +151,13 @@ var DB = {
     return data || [];
   },
   async updatePlainte(id, data) { return getDb().from('plaintes').update(data).eq('id', id); },
+
+  // ── Tests de résidus de poudre ───────────────────────────────
+  async getTestsPoudre() {
+    var { data } = await getDb().from('tests_poudre').select('*').order('created_at', { ascending: false });
+    return data || [];
+  },
+  async deleteTestPoudre(id) { return getDb().from('tests_poudre').delete().eq('id', id); },
   async deletePlainte(id) { return getDb().from('plaintes').delete().eq('id', id); },
   async updateUnit(id, data) { return getDb().from('units').update(data).eq('id', id); },
   async deleteUnit(id) { return getDb().from('units').delete().eq('id', id); },

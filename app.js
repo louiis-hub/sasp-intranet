@@ -319,6 +319,7 @@ var NAV = [
   { id: 'ticketing', icon: '🎫', img: 'ticketing', label: 'Tickets Discord', adminOnly: true, hidden: true },
   { divider: true, commandOnly: true },
   { id: 'plaintes',  icon: '⚖️', img: 'plaintes', label: 'Plaintes', commandOnly: true },
+  { id: 'tests-poudre', icon: '🧪', img: 'tests-poudre', label: 'Tests de poudre', staffOnly: true },
   { id: 'ceremonie', icon: '🎖️', img: 'grades', label: 'Montées en grade', ceremonyOnly: true },
 ];
 
@@ -329,7 +330,7 @@ var PAGE_TITLES = {
   grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', 'pointeuse-historique':'Historique pointages', mdt:'Guide MDT', vehicles:'Véhicules', cartes:'Cartes',
   faq:'FAQ',
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
-  ceremonie:'Prépa Cérémonie', completude:'Complétude fiches', plaintes:'Plaintes',
+  ceremonie:'Prépa Cérémonie', completude:'Complétude fiches', plaintes:'Plaintes', 'tests-poudre':'Tests de poudre',
   'global-settings':'Réglages globaux',
   'service-logements':'Logements de service',
   ticketing:'Tickets Discord',
@@ -515,9 +516,10 @@ function buildNav() {
   var isVisiteur = S.role === 'visiteur';
   var isFtfOnly = S.role === 'ftf';
   var VISITEUR_NAV = ['dashboard', 'pointeuse', 'faq', 'cartes'];
-  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'recap', 'ceremonie', 'completude', 'plaintes'];
+  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'recap', 'ceremonie', 'completude', 'plaintes', 'tests-poudre'];
   // Academie : FAQ, tableau de bord et Ressources humaines, pointeuse exclue.
   var ACADEMY_NAV = ['faq', 'dashboard', 'recap', 'completude', 'agents', 'grades', 'units', 'cartes'];
+  // L'academie ne traite pas de tests de poudre.
   var html = '';
   NAV.forEach(function(item) {
     if (item.hidden) return;
@@ -622,7 +624,7 @@ async function navigate(page, pd) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au Command Staff et aux Superviseurs.</div></div>');
     return;
   }
-  var RH_ALLOWED = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'recap', 'ceremonie', 'completude', 'plaintes'];
+  var RH_ALLOWED = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'recap', 'ceremonie', 'completude', 'plaintes', 'tests-poudre'];
   if (S.role === 'rh' && page !== 'ftf' && RH_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée aux administrateurs.</div></div>');
     return;
@@ -660,6 +662,7 @@ async function navigate(page, pd) {
       ceremonie:      renderCeremonie,
       completude:     renderCompletude,
       plaintes:       renderPlaintes,
+      'tests-poudre': renderTestsPoudre,
       'global-settings': renderGlobalSettings,
       'service-logements': renderServiceLogements,
       ticketing: renderTicketing,
@@ -3260,6 +3263,179 @@ function buildSerialInventory(agentWeapons, cidWeapons) {
   rows.forEach(function(r) { if (r.serial_key) counts[r.serial_key] = (counts[r.serial_key] || 0) + 1; });
   rows.forEach(function(r) { r.duplicate = !!r.serial_key && counts[r.serial_key] > 1; });
   return rows;
+}
+
+// ══ TESTS DE RESIDUS DE POUDRE ════════════════════════════════════
+// Les tests sont saisis via la commande Discord /test. Le site les liste et
+// redessine l'attestation officielle, que le Worker ne peut pas produire :
+// il n'a ni canvas ni moteur de police.
+var TP_LARGEUR = 1240, TP_HAUTEUR = 1754;
+var TP_MARINE = '#12315C', TP_OR = '#C9A84C', TP_FOND = '#F4F6FA', TP_TRAIT = '#8FA3BF';
+
+function tpLigne(ctx, x1, y, x2, couleur, epaisseur) {
+  ctx.strokeStyle = couleur || TP_TRAIT;
+  ctx.lineWidth = epaisseur || 1.5;
+  ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
+}
+
+// Un champ = un libelle gras, puis la valeur posee sur un trait de saisie.
+function tpChamp(ctx, x, y, libelle, valeur, finTrait) {
+  ctx.fillStyle = TP_MARINE;
+  ctx.font = '700 25px Arial, Helvetica, sans-serif';
+  ctx.fillText(libelle, x, y);
+  var debut = x + ctx.measureText(libelle).width + 14;
+  tpLigne(ctx, debut, y + 9, finTrait);
+  ctx.font = '400 26px Georgia, "Times New Roman", serif';
+  ctx.fillText(valeur || '', debut + 8, y - 2);
+}
+
+async function tpDessiner(t) {
+  var canvas = document.createElement('canvas');
+  canvas.width = TP_LARGEUR; canvas.height = TP_HAUTEUR;
+  var ctx = canvas.getContext('2d');
+  ctx.textBaseline = 'alphabetic';
+
+  ctx.fillStyle = TP_FOND;
+  ctx.fillRect(0, 0, TP_LARGEUR, TP_HAUTEUR);
+  ctx.strokeStyle = TP_MARINE; ctx.lineWidth = 3;
+  ctx.strokeRect(14, 14, TP_LARGEUR - 28, TP_HAUTEUR - 28);
+
+  // Le logo est facultatif : le document reste valable s'il ne charge pas.
+  try {
+    var logo = await loadFtfImage('assets/sasp-sud-logo.png');
+    ctx.drawImage(logo, TP_LARGEUR / 2 - 68, 46, 136, 136);
+  } catch (e) {}
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = TP_MARINE;
+  ctx.font = '700 60px Arial, Helvetica, sans-serif';
+  ctx.fillText('SAN ANDREAS STATE POLICE', TP_LARGEUR / 2, 250);
+  ctx.font = '700 27px Arial, Helvetica, sans-serif';
+  ctx.fillText("SASP — SERVICE DE POLICE D'ÉTAT", TP_LARGEUR / 2, 296);
+  tpLigne(ctx, 180, 287, 420, TP_OR, 3);
+  tpLigne(ctx, 820, 287, 1060, TP_OR, 3);
+
+  ctx.font = '700 48px Arial, Helvetica, sans-serif';
+  ctx.fillText('ATTESTATION DE TEST DE RÉSIDUS DE POUDRE', TP_LARGEUR / 2, 372);
+  tpLigne(ctx, 80, 396, TP_LARGEUR - 80, TP_MARINE, 3);
+  ctx.fillStyle = '#5A6B80';
+  ctx.font = '400 25px Arial, Helvetica, sans-serif';
+  ctx.fillText('Document de constatation — Usage interne', TP_LARGEUR / 2, 438);
+
+  ctx.textAlign = 'left';
+  tpChamp(ctx, 85, 520, 'Nom et prénom de la personne testée :', t.personne_nom, TP_LARGEUR - 85);
+  tpChamp(ctx, 85, 592, 'Date de naissance :', t.personne_naissance, 640);
+  tpChamp(ctx, 85, 664, 'Date du test :', t.date_test, 560);
+  tpChamp(ctx, 85, 736, 'Heure du test :', t.heure_test, 470);
+
+  // Encadre du resultat.
+  ctx.fillStyle = '#E4ECF8';
+  ctx.fillRect(85, 800, TP_LARGEUR - 170, 210);
+  ctx.strokeStyle = TP_MARINE; ctx.lineWidth = 3;
+  ctx.strokeRect(85, 800, TP_LARGEUR - 170, 210);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = TP_MARINE;
+  ctx.font = '700 34px Arial, Helvetica, sans-serif';
+  ctx.fillText('RÉSULTAT DU TEST', TP_LARGEUR / 2, 858);
+  tpLigne(ctx, 470, 874, 770, TP_MARINE, 2);
+  ctx.textAlign = 'left';
+  ctx.strokeRect(128, 906, 30, 30);
+  ctx.beginPath(); ctx.moveTo(128, 906); ctx.lineTo(158, 936);
+  ctx.moveTo(158, 906); ctx.lineTo(128, 936); ctx.stroke();
+  ctx.font = '700 30px Arial, Helvetica, sans-serif';
+  ctx.fillText('POSITIF', 186, 932);
+  ctx.font = '400 25px Arial, Helvetica, sans-serif';
+  ctx.fillText("— Des résidus de poudre compatibles avec un tir d'arme à feu ont été", 310, 932);
+  ctx.fillText('détectés sur la personne testée.', 186, 976);
+
+  // Bloc agent.
+  ctx.textAlign = 'center';
+  ctx.font = '700 30px Arial, Helvetica, sans-serif';
+  ctx.fillText('AGENT AYANT EFFECTUÉ LE TEST', TP_LARGEUR / 2, 1110);
+  tpLigne(ctx, 85, 1100, 380, TP_MARINE, 2);
+  tpLigne(ctx, 860, 1100, TP_LARGEUR - 85, TP_MARINE, 2);
+  ctx.textAlign = 'left';
+  tpChamp(ctx, 85, 1180, 'Nom et prénom :', t.agent_nom, TP_LARGEUR - 85);
+  tpChamp(ctx, 85, 1248, 'Matricule :', t.agent_matricule, 560);
+  tpChamp(ctx, 85, 1316, "Signature de l'agent :", t.agent_nom, 780);
+  tpChamp(ctx, 830, 1316, 'Date :', t.date_test, TP_LARGEUR - 85);
+
+  // Mention de bas de page.
+  ctx.strokeStyle = TP_MARINE; ctx.lineWidth = 2;
+  ctx.strokeRect(85, 1400, TP_LARGEUR - 170, 118);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = TP_MARINE;
+  ctx.font = '400 24px Georgia, "Times New Roman", serif';
+  ctx.fillText('Cette attestation consigne uniquement le résultat du test effectué.', TP_LARGEUR / 2, 1444);
+  ctx.fillText('Elle doit être jointe au rapport ou au dossier de preuves correspondant.', TP_LARGEUR / 2, 1486);
+
+  tpLigne(ctx, 85, 1580, TP_LARGEUR - 85, TP_MARINE, 3);
+  ctx.font = '700 26px Arial, Helvetica, sans-serif';
+  ctx.fillText('SAN ANDREAS STATE POLICE — SASP', TP_LARGEUR / 2, 1626);
+  ctx.fillStyle = '#5A6B80';
+  ctx.font = '400 23px Arial, Helvetica, sans-serif';
+  ctx.fillText('DOCUMENT RP — ÉTAT DE SAN ANDREAS', TP_LARGEUR / 2, 1664);
+
+  return canvas.toDataURL('image/png');
+}
+
+var _testsPoudre = [];
+
+async function renderTestsPoudre() {
+  _testsPoudre = await DB.getTestsPoudre();
+  var rows = _testsPoudre.length ? _testsPoudre.map(function(t) {
+    return '<tr>' +
+      '<td class="mono text-gold">N° ' + esc(t.id) + '</td>' +
+      '<td style="font-weight:600;color:var(--t0)">' + esc(t.personne_nom || '—') + '</td>' +
+      '<td>' + esc(t.personne_naissance || '—') + '</td>' +
+      '<td style="white-space:nowrap">' + esc((t.date_test || '—') + ' à ' + (t.heure_test || '—')) + '</td>' +
+      '<td class="text-muted" style="font-size:.78rem">' + esc(t.agent_nom || '—') + (t.agent_matricule ? ' (' + esc(t.agent_matricule) + ')' : '') + '</td>' +
+      '<td style="white-space:nowrap">' +
+        '<button class="btn btn-ghost btn-sm" onclick="tpApercu(' + t.id + ')">Aperçu</button> ' +
+        '<button class="btn btn-outline btn-sm" onclick="tpTelecharger(' + t.id + ')">Télécharger</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="6"><div class="empty-state" style="padding:30px"><div class="empty-title">Aucun test enregistré</div><div class="empty-sub">Les tests effectués via la commande Discord <b>/test</b> apparaîtront ici.</div></div></td></tr>';
+
+  setContent(
+    '<div class="flex-between mb-20 flex-wrap gap-8">' +
+      '<div>' +
+        '<h2 style="font-size:1.15rem;font-weight:700;color:var(--t0);margin:0">Tests de résidus de poudre</h2>' +
+        '<p class="text-muted" style="font-size:.82rem;margin-top:3px">' + _testsPoudre.length + ' attestation(s) — saisies via la commande Discord /test</p>' +
+      '</div>' +
+    '</div>' +
+    '<div class="table-wrap"><table>' +
+      '<thead><tr><th>N°</th><th>Personne testée</th><th>Naissance</th><th>Date du test</th><th>Agent</th><th>Attestation</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table></div>'
+  );
+}
+
+function tpTrouver(id) {
+  return _testsPoudre.filter(function(t){ return String(t.id) === String(id); })[0];
+}
+
+async function tpApercu(id) {
+  var t = tpTrouver(id);
+  if (!t) return;
+  var url = await tpDessiner(t);
+  openModal({
+    eyebrow: 'ATTESTATION N° ' + esc(t.id),
+    title: esc(t.personne_nom || 'Test de résidus de poudre'),
+    body: '<img src="' + url + '" alt="Attestation" style="width:100%;border-radius:var(--rMd);border:1px solid var(--border0)">',
+    footer: '<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>' +
+            '<button class="btn btn-primary" onclick="tpTelecharger(' + t.id + ')">Télécharger</button>'
+  });
+}
+
+async function tpTelecharger(id) {
+  var t = tpTrouver(id);
+  if (!t) return;
+  var url = await tpDessiner(t);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'attestation-poudre-' + t.id + '.png';
+  document.body.appendChild(a); a.click(); a.remove();
 }
 
 // ══ PLAINTES ══════════════════════════════════════════════════════

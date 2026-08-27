@@ -8696,6 +8696,106 @@ export default {
       }
 
       // Slash command /plainte
+      // Attestation de test de residus de poudre. Le formulaire est prerempli
+      // avec la fiche de l'agent et la date du jour pour limiter la saisie.
+      if (interaction.type === 2 && interaction.data.name === "test") {
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        let matricule = "";
+        try {
+          const agent = await getAgentByDiscordId(env, userId);
+          if (agent) matricule = agent.matricule || "";
+        } catch {}
+        const now = new Date();
+        const deuxChiffres = (v) => String(v).padStart(2, "0");
+        const dateDuJour = `${deuxChiffres(now.getDate())}/${deuxChiffres(now.getMonth() + 1)}/${now.getFullYear()}`;
+        const heureDuJour = `${deuxChiffres(now.getHours())}:${deuxChiffres(now.getMinutes())}`;
+        return json({
+          type: 9,
+          data: {
+            custom_id: "test_poudre_modal",
+            title: "Test de residus de poudre",
+            components: [
+              { type: 1, components: [{ type: 4, custom_id: "personne_nom", label: "Personne testee - Nom Prenom", style: 1, required: true, placeholder: "Ex : James Morrison", min_length: 2, max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "personne_naissance", label: "Date de naissance", style: 1, required: true, placeholder: "JJ/MM/AAAA", max_length: 20 }] },
+              { type: 1, components: [{ type: 4, custom_id: "date_test", label: "Date du test", style: 1, required: true, value: dateDuJour, max_length: 20 }] },
+              { type: 1, components: [{ type: 4, custom_id: "heure_test", label: "Heure du test", style: 1, required: true, value: heureDuJour, max_length: 10 }] },
+              { type: 1, components: [{ type: 4, custom_id: "agent_matricule", label: "Matricule de l'agent", style: 1, required: true, value: matricule, max_length: 10 }] }
+            ]
+          }
+        });
+      }
+
+      // Enregistrement du test et publication dans le salon courant.
+      if (interaction.type === 5 && interaction.data.custom_id === "test_poudre_modal") {
+        const lire = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
+        const personneNom       = lire("personne_nom");
+        const personneNaissance = lire("personne_naissance");
+        const dateTest          = lire("date_test");
+        const heureTest         = lire("heure_test");
+        const agentMatricule    = lire("agent_matricule");
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+        const channelId = interaction.channel_id;
+
+        let agentNom = interaction.member?.nick || interaction.member?.user?.username || "";
+        try {
+          const agent = await getAgentByDiscordId(env, userId);
+          if (agent) agentNom = `${agent.prenom || ""} ${agent.nom || ""}`.trim() || agentNom;
+        } catch {}
+
+        let testId = null;
+        try {
+          const cree = await sb(env, "POST", "/tests_poudre", {
+            created_at: new Date().toISOString(),
+            personne_nom: personneNom,
+            personne_naissance: personneNaissance,
+            date_test: dateTest,
+            heure_test: heureTest,
+            agent_nom: agentNom,
+            agent_matricule: agentMatricule,
+            agent_discord_id: userId || null,
+            discord_channel_id: channelId || null
+          });
+          if (cree && cree[0]) testId = cree[0].id;
+        } catch {}
+
+        const embed = {
+          title: "Attestation de test de résidus de poudre" + (testId ? ` — N° ${testId}` : ""),
+          color: 0x1B3A63,
+          description: "**RÉSULTAT : POSITIF**\nDes résidus de poudre compatibles avec un tir d'arme à feu ont été détectés sur la personne testée.",
+          fields: [
+            { name: "Personne testée", value: personneNom || "—", inline: false },
+            { name: "Date de naissance", value: personneNaissance || "—", inline: true },
+            { name: "Date et heure du test", value: `${dateTest} à ${heureTest}`, inline: true },
+            { name: "Agent ayant effectué le test", value: `${agentNom}${agentMatricule ? ` (${agentMatricule})` : ""}`, inline: false }
+          ],
+          footer: { text: "SAN ANDREAS STATE POLICE — Document RP" },
+          timestamp: new Date().toISOString()
+        };
+
+        const envoi = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [embed], allowed_mentions: { parse: [] } })
+        });
+
+        if (testId) {
+          try {
+            const poste = await envoi.json();
+            await sb(env, "PATCH", `/tests_poudre?id=eq.${testId}`, { discord_message_id: poste && poste.id ? poste.id : null });
+          } catch {}
+        }
+
+        return json({
+          type: 4,
+          data: {
+            content: testId
+              ? `Attestation n° ${testId} enregistrée. L'attestation officielle est téléchargeable depuis la page **Tests de poudre** de l'intranet.`
+              : "Attestation publiée, mais l'enregistrement en base a échoué : la migration tests-poudre.sql n'a peut-être pas été passée.",
+            flags: 64
+          }
+        });
+      }
+
       if (interaction.type === 2 && interaction.data.name === "plainte") {
         return json({
           type: 9,
