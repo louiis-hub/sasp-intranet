@@ -3,6 +3,8 @@ main = "worker.js"
 compatibility_date = "2024-01-01"
 
 [vars]
+# Synchro Discord -> intranet sur le cron 15 min. Mettre "0" pour la couper.
+AUTO_ROLE_SYNC = "1"
 POINTEUSE_CHANNEL_ID = "1519525957390827711"
 POINTEUSE_MESSAGE_ID = "1541207524492181505"
 PLAINTESASP_CHANNEL_ID = "1538289329917534328"
