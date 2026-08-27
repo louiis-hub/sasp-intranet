@@ -143,6 +143,15 @@ var DB = {
     return data || [];
   },
   async createUnit(data) { return getDb().from('units').insert(data).select().single(); },
+
+  // ── Plaintes ─────────────────────────────────────────────────
+  // Alimentees par la commande Discord /plainte, consultees depuis le site.
+  async getPlaintes() {
+    var { data } = await getDb().from('plaintes').select('*').order('created_at', { ascending: false });
+    return data || [];
+  },
+  async updatePlainte(id, data) { return getDb().from('plaintes').update(data).eq('id', id); },
+  async deletePlainte(id) { return getDb().from('plaintes').delete().eq('id', id); },
   async updateUnit(id, data) { return getDb().from('units').update(data).eq('id', id); },
   async deleteUnit(id) { return getDb().from('units').delete().eq('id', id); },
 

@@ -166,6 +166,7 @@ td{padding:11px 14px;color:var(--t1);vertical-align:middle}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:.7rem;font-weight:600;letter-spacing:.5px;white-space:nowrap;border:1px solid}
 .badge-green{background:var(--greenDim);color:var(--green);border-color:rgba(76,175,80,.25)}
 .badge-red{background:var(--redDim);color:var(--red);border-color:rgba(231,76,60,.25)}
+.badge-formation{display:inline-block;vertical-align:middle;margin-left:5px;padding:2px 7px;border-radius:999px;font-family:'Share Tech Mono',monospace;font-size:.55rem;letter-spacing:1.3px;white-space:nowrap;background:rgba(59,130,246,.13);color:#6BA5F5;border:1px solid rgba(59,130,246,.28)}
 .fiche-check{display:flex;align-items:center;gap:10px;padding:11px 15px;border-radius:var(--rMd);border:1px solid;font-size:.85rem;margin-bottom:18px}
 .fiche-check-ico{flex-shrink:0;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700}
 .fiche-check-ok{background:var(--greenDim);border-color:rgba(76,175,80,.25);color:var(--green)}

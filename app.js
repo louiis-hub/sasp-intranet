@@ -317,7 +317,8 @@ var NAV = [
   { id: 'stats',           icon: '📈', img: 'stats', label: 'Statistiques',       staffOnly: true },
   { id: 'service-logements', icon: '🏠', img: 'logements', label: 'Logements service', adminOnly: true },
   { id: 'ticketing', icon: '🎫', img: 'ticketing', label: 'Tickets Discord', adminOnly: true, hidden: true },
-  { divider: true, ceremonyOnly: true },
+  { divider: true, commandOnly: true },
+  { id: 'plaintes',  icon: '⚖️', img: 'plaintes', label: 'Plaintes', commandOnly: true },
   { id: 'ceremonie', icon: '🎖️', img: 'grades', label: 'Montées en grade', ceremonyOnly: true },
 ];
 
@@ -328,7 +329,7 @@ var PAGE_TITLES = {
   grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', 'pointeuse-historique':'Historique pointages', mdt:'Guide MDT', vehicles:'Véhicules', cartes:'Cartes',
   faq:'FAQ',
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
-  ceremonie:'Prépa Cérémonie', completude:'Complétude fiches',
+  ceremonie:'Prépa Cérémonie', completude:'Complétude fiches', plaintes:'Plaintes',
   'global-settings':'Réglages globaux',
   'service-logements':'Logements de service',
   ticketing:'Tickets Discord',
@@ -507,11 +508,14 @@ function showApp() {
 // ── Navigation ─────────────────────────────────────────────────────
 function buildNav() {
   var isStaff = S.role === 'admin' || S.role === 'academy' || S.role === 'rh';
-  var isCeremony = S.role === 'admin' || S.role === 'rh';
+  // Command Staff et Supervisor Team. Les plaintes mettent en cause des agents :
+  // on les reserve au meme cercle que les montees en grade.
+  var isCommand = S.role === 'admin' || S.role === 'rh';
+  var isCeremony = isCommand;
   var isVisiteur = S.role === 'visiteur';
   var isFtfOnly = S.role === 'ftf';
   var VISITEUR_NAV = ['dashboard', 'pointeuse', 'faq', 'cartes'];
-  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'recap', 'ceremonie', 'completude'];
+  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'recap', 'ceremonie', 'completude', 'plaintes'];
   // Academie : FAQ, tableau de bord et Ressources humaines, pointeuse exclue.
   var ACADEMY_NAV = ['faq', 'dashboard', 'recap', 'completude', 'agents', 'grades', 'units', 'cartes'];
   var html = '';
@@ -523,6 +527,7 @@ function buildNav() {
     if (item.adminOnly && !isAdmin()) return;
     if (item.staffOnly && !isStaff) return;
     if (item.ceremonyOnly && !isCeremony) return;
+    if (item.commandOnly && !isCommand) return;
     if (isVisiteur && item.id && !item.ftfOnly && !item.cidOnly && VISITEUR_NAV.indexOf(item.id) === -1) return;
     if (S.role === 'rh' && item.id && !item.ftfOnly && !item.cidOnly && RH_NAV.indexOf(item.id) === -1) return;
     if (S.role === 'academy') {
@@ -617,7 +622,7 @@ async function navigate(page, pd) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au Command Staff et aux Superviseurs.</div></div>');
     return;
   }
-  var RH_ALLOWED = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'recap', 'ceremonie'];
+  var RH_ALLOWED = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'recap', 'ceremonie', 'completude', 'plaintes'];
   if (S.role === 'rh' && page !== 'ftf' && RH_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée aux administrateurs.</div></div>');
     return;
@@ -654,6 +659,7 @@ async function navigate(page, pd) {
       cid:                     renderCID3,
       ceremonie:      renderCeremonie,
       completude:     renderCompletude,
+      plaintes:       renderPlaintes,
       'global-settings': renderGlobalSettings,
       'service-logements': renderServiceLogements,
       ticketing: renderTicketing,
@@ -791,8 +797,13 @@ function statusBadge(s) {
 }
 function gradeBadge(g) {
   g = gradeLabel(g);
-  var pastille = (g === 'Rookie' || g === 'Trooper I') ? ' <span title="En formation" style="font-size:1.4em;vertical-align:middle">🎓</span>' : '';
-  return '<span class="badge badge-gold">' + esc(g) + pastille + '</span>';
+  var badge = '<span class="badge badge-gold">' + esc(g) + '</span>';
+  // Rookie et Trooper I sont en formation. Un libelle sobre a cote du grade se
+  // lit mieux qu'un pictogramme glisse dans le badge lui-meme.
+  if (g === 'Rookie' || g === 'Trooper I') {
+    badge += ' <span class="badge-formation" title="Agent en formation">EN FORMATION</span>';
+  }
+  return badge;
 }
 function unitBadge(u) {
   return '<span class="badge badge-blue">' + esc(u) + '</span>';
@@ -3249,6 +3260,133 @@ function buildSerialInventory(agentWeapons, cidWeapons) {
   rows.forEach(function(r) { if (r.serial_key) counts[r.serial_key] = (counts[r.serial_key] || 0) + 1; });
   rows.forEach(function(r) { r.duplicate = !!r.serial_key && counts[r.serial_key] > 1; });
   return rows;
+}
+
+// ══ PLAINTES ══════════════════════════════════════════════════════
+// Archive des depots faits via la commande Discord /plainte. Le bot ecrit
+// en base au moment du depot ; le site ne fait que consulter et suivre.
+var PLAINTE_STATUTS = ['Nouvelle', 'En cours', 'Traitée', 'Classée sans suite'];
+var _plaintesStatut = '';
+var _plaintesSearch = '';
+var _plaintesCache = [];
+
+function plainteStatutBadge(s) {
+  var map = { 'Nouvelle':'badge-red', 'En cours':'badge-orange', 'Traitée':'badge-green', 'Classée sans suite':'badge-gray' };
+  var v = s || 'Nouvelle';
+  return '<span class="badge ' + (map[v] || 'badge-gray') + '">' + esc(v) + '</span>';
+}
+
+function fmtPlainteDate(v) {
+  if (!v) return '—';
+  var d = new Date(v);
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('fr-FR') + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function plaintesSetStatut(v) { _plaintesStatut = v || ''; renderPlaintes(); }
+var _plaintesSearchTimer;
+function plaintesSearch(v) {
+  clearTimeout(_plaintesSearchTimer);
+  _plaintesSearchTimer = setTimeout(function(){ _plaintesSearch = v; renderPlaintes(); }, 260);
+}
+
+async function renderPlaintes() {
+  _plaintesCache = await DB.getPlaintes();
+  var q = _plaintesSearch.trim().toLowerCase();
+  var liste = _plaintesCache.filter(function(p) {
+    if (_plaintesStatut && (p.statut || 'Nouvelle') !== _plaintesStatut) return false;
+    if (!q) return true;
+    return [p.id, p.plaignant, p.mis_en_cause, p.motif, p.resume, p.agent_nom]
+      .map(function(x){ return String(x == null ? '' : x).toLowerCase(); })
+      .some(function(x){ return x.indexOf(q) !== -1; });
+  });
+
+  var parStatut = {};
+  _plaintesCache.forEach(function(p){ var s = p.statut || 'Nouvelle'; parStatut[s] = (parStatut[s] || 0) + 1; });
+
+  var options = '<option value="">Tous les statuts</option>' + PLAINTE_STATUTS.map(function(s) {
+    return '<option value="' + esc(s) + '"' + (_plaintesStatut === s ? ' selected' : '') + '>' + esc(s) + ' (' + (parStatut[s] || 0) + ')</option>';
+  }).join('');
+
+  var rows = liste.length ? liste.map(function(p) {
+    return '<tr onclick="openPlainteModal(' + p.id + ')" style="cursor:pointer">' +
+      '<td class="mono text-gold">#' + esc(p.id) + '</td>' +
+      '<td style="white-space:nowrap">' + esc(fmtPlainteDate(p.created_at)) + '</td>' +
+      '<td style="font-weight:600;color:var(--t0)">' + esc(p.plaignant || '—') + '</td>' +
+      '<td>' + esc(p.mis_en_cause || '—') + '</td>' +
+      '<td>' + esc(p.motif || '—') + '</td>' +
+      '<td class="text-muted" style="font-size:.78rem">' + esc(p.agent_nom || '—') + '</td>' +
+      '<td>' + plainteStatutBadge(p.statut) + '</td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="7"><div class="empty-state" style="padding:30px"><div class="empty-title">Aucune plainte</div><div class="empty-sub">' + (_plaintesCache.length ? 'Aucune plainte ne correspond au filtre.' : 'Les plaintes déposées via la commande Discord /plainte apparaîtront ici.') + '</div></div></td></tr>';
+
+  setContent(
+    '<div class="flex-between mb-20 flex-wrap gap-8">' +
+      '<div>' +
+        '<h2 style="font-size:1.15rem;font-weight:700;color:var(--t0);margin:0">Plaintes</h2>' +
+        '<p class="text-muted" style="font-size:.82rem;margin-top:3px">' + _plaintesCache.length + ' plainte(s) déposée(s) via Discord</p>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+        '<input class="form-control search-input" placeholder="Plaignant, mis en cause, motif…" value="' + esc(_plaintesSearch) + '" oninput="plaintesSearch(this.value)">' +
+        '<select class="form-control" onchange="plaintesSetStatut(this.value)">' + options + '</select>' +
+      '</div>' +
+    '</div>' +
+    '<div class="table-wrap"><table>' +
+      '<thead><tr><th>N°</th><th>Date</th><th>Plaignant</th><th>Mis en cause</th><th>Motif</th><th>Enregistrée par</th><th>Statut</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table></div>'
+  );
+}
+
+function openPlainteModal(id) {
+  var p = _plaintesCache.filter(function(x){ return String(x.id) === String(id); })[0];
+  if (!p) return;
+  var lien = p.discord_channel_id && p.discord_message_id
+    ? '<a href="https://discord.com/channels/' + esc(GUILD_ID) + '/' + esc(p.discord_channel_id) + '/' + esc(p.discord_message_id) + '" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Voir sur Discord</a>'
+    : '';
+  var statutOpts = PLAINTE_STATUTS.map(function(s) {
+    return '<option value="' + esc(s) + '"' + ((p.statut || 'Nouvelle') === s ? ' selected' : '') + '>' + esc(s) + '</option>';
+  }).join('');
+  openModal({
+    eyebrow: 'PLAINTE #' + esc(p.id),
+    title: esc(p.motif || 'Plainte'),
+    body:
+      infoRow('Déposée le', fmtPlainteDate(p.created_at)) +
+      infoRow('Plaignant', p.plaignant || '—') +
+      infoRow('Mis en cause', p.mis_en_cause || '—') +
+      infoRow('Téléphone', p.telephone || '—') +
+      infoRow('Enregistrée par', p.agent_nom || '—') +
+      '<div class="form-group mt-14"><label class="form-label">Résumé des faits</label>' +
+        '<div style="background:var(--bg2);border:1px solid var(--border0);border-radius:var(--rMd);padding:11px 13px;font-size:.85rem;white-space:pre-wrap">' + esc(p.resume || '—') + '</div>' +
+      '</div>' +
+      (canWrite() ?
+        '<div class="form-grid2">' +
+          '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="plainteStatut">' + statutOpts + '</select></div>' +
+        '</div>' +
+        '<div class="form-group"><label class="form-label">Notes internes</label><textarea class="form-control" id="plainteNotes" rows="3" placeholder="Suivi, décision, suites données…">' + esc(p.notes || '') + '</textarea></div>'
+        : ''),
+    footer:
+      lien +
+      '<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>' +
+      (canWrite() ? '<button class="btn btn-primary" onclick="savePlainte(' + p.id + ')">Enregistrer</button>' : '')
+  });
+}
+
+async function savePlainte(id) {
+  var statut = document.getElementById('plainteStatut').value;
+  var notes = document.getElementById('plainteNotes').value.trim() || null;
+  var patch = { statut: statut, notes: notes, updated_at: new Date().toISOString() };
+  // On horodate le traitement au moment ou la plainte quitte l'etat Nouvelle.
+  if (statut !== 'Nouvelle') { patch.traite_par = _whoAmI(); patch.traite_at = new Date().toISOString(); }
+  var r = await DB.updatePlainte(id, patch);
+  if (r.error) { toast(r.error.message, 'error'); return; }
+  closeModal();
+  toast('Plainte mise à jour.', 'success');
+  sendLog('⚖️ Plainte #' + id + ' mise à jour', 0xe67e22, [
+    { name: 'Statut', value: statut, inline: true },
+    { name: 'Par', value: _whoAmI(), inline: true }
+  ]);
+  await renderPlaintes();
 }
 
 async function renderCompletude() {

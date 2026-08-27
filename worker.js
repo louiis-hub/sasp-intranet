@@ -8619,11 +8619,30 @@ export default {
           if (agent) agentDisplay = `${agent.grade} ${agent.prenom} ${agent.nom}`;
         } catch {}
 
+        // La plainte est archivee en base pour etre consultable depuis le site ;
+        // l'embed Discord reste le canal de notification.
         let plainteId = "?";
         try {
-          const idData = await sb(env, "POST", "/plaintes", { created_at: now.toISOString() });
+          const idData = await sb(env, "POST", "/plaintes", {
+            created_at: now.toISOString(),
+            plaignant,
+            mis_en_cause: misenCause,
+            telephone: telMisenCause || null,
+            motif,
+            resume,
+            agent_discord_id: userId || null,
+            agent_nom: agentDisplay,
+            statut: "Nouvelle"
+          });
           if (idData && idData[0]) plainteId = idData[0].id;
-        } catch {}
+        } catch {
+          // Colonnes absentes : la migration plaintes-archives.sql n'a pas ete
+          // passee. On garde au moins le numero, comme avant l'archivage.
+          try {
+            const idData = await sb(env, "POST", "/plaintes", { created_at: now.toISOString() });
+            if (idData && idData[0]) plainteId = idData[0].id;
+          } catch {}
+        }
 
         const misenCauseVal = misenCause;
         const fields = [
@@ -8647,6 +8666,17 @@ export default {
         if (!postRes.ok) {
           const err = await postRes.text();
           return json({ type: 4, data: { content: `âŒ Erreur Discord (${postRes.status}): ${err}`, flags: 64 } });
+        }
+
+        // Lien retour vers le message, pour que le site puisse y renvoyer.
+        if (plainteId !== "?") {
+          try {
+            const posted = await postRes.json();
+            await sb(env, "PATCH", `/plaintes?id=eq.${plainteId}`, {
+              discord_channel_id: STICKY_PLAINTE_CHANNEL,
+              discord_message_id: posted && posted.id ? posted.id : null
+            });
+          } catch {}
         }
 
         // Supprime l'ancien sticky puis le renvoie
@@ -8693,6 +8723,20 @@ export default {
         const origEmbed = origMsg.embeds?.[0] || {};
         const origTitle = origEmbed.title || `ðŸ“‹ Plainte â€” SASP`;
         const origGetField = (kw) => (origEmbed.fields || []).find(f => f.name.includes(kw))?.value || "";
+        // Le numero de la plainte est dans le titre de l'embed : "Plainte #12 - SASP".
+        const editedId = (origTitle.match(/#(\d+)/) || [])[1] || null;
+        if (editedId) {
+          try {
+            await sb(env, "PATCH", `/plaintes?id=eq.${editedId}`, {
+              plaignant,
+              mis_en_cause: misenCause,
+              telephone: telMisenCause || null,
+              motif,
+              resume,
+              updated_at: new Date().toISOString()
+            });
+          } catch {}
+        }
         const agentStr = origGetField("Agent");
         const dateStr  = origGetField("Date");
 
