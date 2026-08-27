@@ -548,7 +548,8 @@ function buildNav() {
     if (item.hidden) return;
     if (item.ftfOnly && !canAccessFTF()) return;
     if (item.cidOnly && !canAccessCID()) return;
-    if (isFtfOnly && item.id && item.id !== 'ftf') return;
+    if (isFtfOnly && item.id && item.id !== 'ftf' &&
+        !(item.id === 'tests-poudre' && canAccessTestsPoudre())) return;
     if (item.adminOnly && !isAdmin()) return;
     if (item.staffOnly && !isStaff) return;
     if (item.ceremonyOnly && !isCeremony) return;
@@ -644,7 +645,8 @@ async function navigate(page, pd) {
     setContent(renderFtfAccessGate());
     await wait(2400);
   }
-  if (S.role === 'ftf' && page !== 'ftf') {
+  if (S.role === 'ftf' && page !== 'ftf' &&
+      !(page === 'tests-poudre' && canAccessTestsPoudre())) {
     await navigate('ftf');
     return;
   }
