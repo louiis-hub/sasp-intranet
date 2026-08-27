@@ -29,22 +29,6 @@
   </div>
 </div>
 
-<!-- ══ PIN ACCESS ════════════════════════════════════════════════ -->
-<div id="pinView" class="login-page" style="display:none">
-  <div class="login-card">
-    <div class="login-star"><img src="assets/sasp-sud-logo.png" alt="SASP" style="width:70px;height:70px;object-fit:contain"></div>
-    <div class="login-eyebrow">SAN ANDREAS STATE TROOPER</div>
-    <h1 class="login-title">Code d'accès</h1>
-    <p class="login-sub">Entrez le PIN transmis par le Command Staff</p>
-    <div class="login-err" id="pinErr"></div>
-    <form onsubmit="event.preventDefault();submitAccessPin()">
-      <input class="form-control pin-input" id="sitePinInput" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="PIN" maxlength="12">
-      <button class="btn btn-primary btn-full" id="pinBtn" type="submit">Accéder au site</button>
-    </form>
-    <p class="login-footer">SASP SUD - ACCÈS PAR PIN</p>
-  </div>
-</div>
-
 <!-- ══ APP SHELL ══════════════════════════════════════════════════ -->
 <div id="appView" style="display:none">
   <aside class="sidebar" id="sidebar">

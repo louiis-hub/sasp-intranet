@@ -2478,87 +2478,7 @@ async function upsertFtfDossier(env, dossier) {
   return data;
 }
 
-const SITE_ACCESS_PIN_SETTING_ID = "__site_access_pin_sud";
-const SITE_ACCESS_COMMAND_ROLE_ID = "1500975725153620033";
-const SITE_ACCESS_PIN_LOG_CHANNEL_ID = "1518640738559197284";
-const SITE_ACCESS_PIN_EXTRA_LOG_CHANNEL_ID = "1528384664883171438";
-const SITE_ACCESS_PIN_NOTIFY_ROLE_ID = "1518631032167993534";
 const INFO_COMMAND_EXTRA_ROLE_ID = "1518631032167993534";
-
-async function sha256Hex(value) {
-  const input = new TextEncoder().encode(String(value || ""));
-  const hash = await crypto.subtle.digest("SHA-256", input);
-  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
-async function getSiteAccessSetting(env) {
-  const rows = await sb(env, "GET", `/ftf_dossiers?id=eq.${encodeURIComponent(SITE_ACCESS_PIN_SETTING_ID)}&select=id,data,updated_at&limit=1`).catch(() => []);
-  if (Array.isArray(rows) && rows.length && rows[0].data) return rows[0].data;
-  const defaultPin = env.SITE_ACCESS_DEFAULT_PIN || "2026";
-  return {
-    pin_hash: await sha256Hex(defaultPin),
-    version: "default",
-    updated_at: null,
-    updated_by: "system"
-  };
-}
-
-async function setSiteAccessPin(env, pin, updatedBy = "Command Staff") {
-  const cleanPin = String(pin || "").replace(/\D/g, "");
-  if (cleanPin.length < 4 || cleanPin.length > 12) throw new Error("Le PIN doit contenir entre 4 et 12 chiffres.");
-  const now = new Date().toISOString();
-  const setting = {
-    pin_hash: await sha256Hex(cleanPin),
-    version: await sha256Hex(`${cleanPin}:${now}`),
-    updated_at: now,
-    updated_by: updatedBy
-  };
-  await sb(env, "POST", "/ftf_dossiers?on_conflict=id", {
-    id: SITE_ACCESS_PIN_SETTING_ID,
-    data: setting,
-    updated_at: now
-  });
-  return setting;
-}
-
-async function sendSiteAccessPinLog(env, pin, updatedBy, updatedByUserId = "") {
-  const cleanPin = String(pin || "").replace(/\D/g, "");
-  const content = [
-    `<@&${SITE_ACCESS_PIN_NOTIFY_ROLE_ID}>`,
-    "🔐 **PIN du site modifié**",
-    `Nouveau PIN : \`${cleanPin}\``,
-    `Modifié par : ${updatedBy || "Command Staff"}`
-  ].join("\n");
-  const allowedUsers = [updatedByUserId].filter(Boolean).map(String);
-  const channelIds = [SITE_ACCESS_PIN_LOG_CHANNEL_ID, SITE_ACCESS_PIN_EXTRA_LOG_CHANNEL_ID].filter(Boolean);
-  const sent = [];
-  for (const channelId of channelIds) {
-    const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        content,
-        allowed_mentions: { parse: [], users: allowedUsers, roles: [SITE_ACCESS_PIN_NOTIFY_ROLE_ID] }
-      })
-    });
-    if (!res.ok) throw new Error(`Message log PIN impossible (${res.status}) dans ${channelId}`);
-    sent.push(await res.json().catch(() => ({ channel_id: channelId })));
-  }
-  return { ok: true, sent };
-}
-
-async function verifySiteAccessPin(env, pin) {
-  const setting = await getSiteAccessSetting(env);
-  const hash = await sha256Hex(String(pin || "").replace(/\D/g, ""));
-  return {
-    ok: !!setting.pin_hash && hash === setting.pin_hash,
-    version: setting.version || "default",
-    updated_at: setting.updated_at || null
-  };
-}
 
 async function getAgentByDiscordId(env, discordId, siteKey = "sud") {
   const data = await sbForSite(env, "GET", `/agents?discord_id=eq.${discordId}&select=id,nom,prenom,matricule,discord_id,grade,iban&limit=1`, null, siteKey);
@@ -4609,37 +4529,6 @@ export default {
       });
     }
 
-    if (url.pathname === "/site-access/status" && request.method === "GET") {
-      try {
-        const setting = await getSiteAccessSetting(env);
-        return json({ ok: true, enabled: true, version: setting.version || "default", updated_at: setting.updated_at || null });
-      } catch (e) {
-        return json({ ok: false, error: e.message }, 500);
-      }
-    }
-
-    if (url.pathname === "/site-access/check-pin" && request.method === "POST") {
-      try {
-        const body = await request.json().catch(() => ({}));
-        const result = await verifySiteAccessPin(env, body.pin);
-        return json(result.ok ? { ok: true, version: result.version } : { ok: false, error: "PIN invalide" }, result.ok ? 200 : 401);
-      } catch (e) {
-        return json({ ok: false, error: e.message }, 500);
-      }
-    }
-
-    if (url.pathname === "/admin/set-site-access-pin" && request.method === "POST") {
-      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
-      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
-      try {
-        const body = await request.json().catch(() => ({}));
-        const setting = await setSiteAccessPin(env, body.pin, body.updated_by || "admin endpoint");
-        return json({ ok: true, version: setting.version, updated_at: setting.updated_at });
-      } catch (e) {
-        return json({ ok: false, error: e.message }, 400);
-      }
-    }
-
     if (url.pathname === "/admin/backup-site" && request.method === "GET") {
       const token = request.headers.get("x-log-token") || url.searchParams.get("token");
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
@@ -5364,11 +5253,16 @@ export default {
         const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${userId}`, {
           headers: { authorization: `Bot ${env.DISCORD_BOT_TOKEN}` }
         });
-        if (!res.ok) return json({ roles: [] });
+        // 404 = le membre n'est pas sur le serveur : reponse legitime, aucun role.
+        if (res.status === 404) return json({ ok: true, roles: [] });
+        // Toute autre panne (token revoque, Discord indisponible) ne doit surtout pas
+        // se faire passer pour "aucun role" : le site refuserait alors tout le monde.
+        // Le front bascule sur le role connu dans app_users quand la reponse n'est pas ok.
+        if (!res.ok) return json({ ok: false, error: `Discord ${res.status}`, roles: [] }, 503);
         const member = await res.json();
-        return json({ roles: member.roles || [] });
+        return json({ ok: true, roles: member.roles || [] });
       } catch (e) {
-        return json({ error: e.message }, 500);
+        return json({ ok: false, error: e.message, roles: [] }, 503);
       }
     }
 
@@ -6582,51 +6476,6 @@ export default {
         return json({ ok: false, error: e.message }, 500);
       }
     }
-    if (url.pathname === "/admin/install-acces-command" && request.method === "GET") {
-      try {
-        const token = request.headers.get("x-log-token") || url.searchParams.get("token");
-        if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
-        const guildId = url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
-        const appId = env.DISCORD_APPLICATION_ID;
-        if (!appId) return json({ ok: false, error: "DISCORD_APPLICATION_ID manquant" }, 400);
-        const reset = url.searchParams.get("reset") === "1";
-        const resetDeleted = [];
-        if (reset) {
-          const listRes = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
-            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
-          });
-          const commands = await listRes.json();
-          if (!listRes.ok) return json({ ok: false, step: "list", data: commands }, listRes.status);
-          for (const command of commands.filter(c => c.name === "acces")) {
-            const delRes = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands/${command.id}`, {
-              method: "DELETE",
-              headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
-            });
-            resetDeleted.push({ id: command.id, ok: delRes.status === 204, status: delRes.status });
-          }
-        }
-        const res = await discordFetch(`${DISCORD_API}/applications/${appId}/guilds/${guildId}/commands`, {
-          method: "POST",
-          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: "acces",
-            description: "Changer le PIN d'accès au site SASP",
-            options: [{
-              type: 3,
-              name: "pin",
-              description: "Nouveau PIN du site, chiffres uniquement",
-              required: true,
-              min_length: 4,
-              max_length: 12
-            }]
-          })
-        });
-        const data = await res.json();
-        return json({ ok: res.ok, reset, resetDeleted, data }, res.ok ? 200 : res.status);
-      } catch (e) {
-        return json({ ok: false, error: e.message }, 500);
-      }
-    }
     if (url.pathname === "/admin/install-info-command" && request.method === "GET") {
       try {
         const token = request.headers.get("x-log-token") || url.searchParams.get("token");
@@ -7212,29 +7061,6 @@ export default {
 
       // Ping
       if (interaction.type === 1) return json({ type: 1 });
-
-      if (interaction.type === 2 && interaction.data.name === "acces") {
-        const roles = interaction.member?.roles || [];
-        if (!roles.includes(SITE_ACCESS_COMMAND_ROLE_ID)) {
-          return json({ type: 4, data: { content: "❌ Commande réservée au Command Staff.", flags: 64 } });
-        }
-        const pin = String((interaction.data.options || []).find(o => o.name === "pin")?.value || "").replace(/\D/g, "");
-        try {
-          const staffId = interaction.member?.user?.id || interaction.user?.id || "";
-          const updatedBy = staffId ? `<@${staffId}>` : "Command Staff";
-          await setSiteAccessPin(env, pin, updatedBy);
-          await sendSiteAccessPinLog(env, pin, updatedBy, staffId);
-          return json({
-            type: 4,
-            data: {
-              content: `✅ PIN d'accès au site mis à jour.\nLes anciennes sessions devront saisir le nouveau PIN.`,
-              flags: 64
-            }
-          });
-        } catch (e) {
-          return json({ type: 4, data: { content: `❌ ${e.message || e}`, flags: 64 } });
-        }
-      }
 
       if (interaction.type === 2 && interaction.data.name === "info") {
         try {

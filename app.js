@@ -304,117 +304,14 @@ var PAGE_TITLES = {
   cid:'CID', ftf:'FTF', 'ftf-dossier':'Dossier FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
 };
 
-var ACCESS_PIN_STORAGE_KEY = 'sasp_site_access_pin_version';
-var _pendingPinBoot = null;
-var CEREMONIE_PIN = '7826';
-var CEREMONIE_PIN_STORAGE_KEY = 'sasp_ceremonie_pin_ok';
-
-async function getAccessPinStatus() {
-  var res = await fetch(WORKER_BASE + '/site-access/status', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Verification PIN indisponible.');
-  var data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'Verification PIN indisponible.');
-  return data;
-}
-
-async function ensureSiteAccessPin() {
-  var status = await getAccessPinStatus();
-  var saved = '';
-  try { saved = localStorage.getItem(ACCESS_PIN_STORAGE_KEY) || ''; } catch(e) {}
-  if (saved && saved === String(status.version || '')) return true;
-  _pendingPinBoot = status;
-  showPinGate();
-  return false;
-}
-
-function showPinGate(message) {
-  var login = document.getElementById('loginView');
-  var pin = document.getElementById('pinView');
-  var app = document.getElementById('appView');
-  if (login) login.style.display = 'none';
-  if (app) app.style.display = 'none';
-  if (pin) pin.style.display = '';
-  var err = document.getElementById('pinErr');
-  if (err) {
-    err.textContent = message || '';
-    err.classList.toggle('show', !!message);
-  }
-  setTimeout(function() {
-    var input = document.getElementById('sitePinInput');
-    if (input) input.focus();
-  }, 50);
-}
-
-function hasCeremoniePinAccess() {
-  try { return sessionStorage.getItem(CEREMONIE_PIN_STORAGE_KEY) === '1'; } catch(e) { return false; }
-}
-
-function renderCeremoniePinGate(message) {
-  setContent(
-    '<div class="empty-state" style="max-width:460px;margin:70px auto">' +
-      '<div class="empty-icon">🔐</div>' +
-      '<div class="empty-title">Accès Montées en grade</div>' +
-      '<div class="empty-sub">Entre le PIN pour afficher les votes et les archives.</div>' +
-      '<div style="display:flex;gap:8px;margin-top:18px;justify-content:center">' +
-        '<input class="form-control" id="ceremoniePinInput" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" style="max-width:160px;text-align:center" onkeydown="if(event.key===\'Enter\') submitCeremoniePin()">' +
-        '<button class="btn btn-primary" onclick="submitCeremoniePin()">Valider</button>' +
-      '</div>' +
-      (message ? '<div style="color:#e74c3c;font-size:.82rem;margin-top:12px">' + esc(message) + '</div>' : '') +
-    '</div>'
-  );
-  setTimeout(function() {
-    var input = document.getElementById('ceremoniePinInput');
-    if (input) input.focus();
-  }, 50);
-}
-
-async function submitCeremoniePin() {
-  var input = document.getElementById('ceremoniePinInput');
-  var pin = input ? input.value.trim() : '';
-  if (pin !== CEREMONIE_PIN) {
-    renderCeremoniePinGate('PIN incorrect.');
-    return;
-  }
-  try { sessionStorage.setItem(CEREMONIE_PIN_STORAGE_KEY, '1'); } catch(e) {}
-  await navigate('ceremonie');
-}
-
-async function submitAccessPin() {
-  var input = document.getElementById('sitePinInput');
-  var btn = document.getElementById('pinBtn');
-  var err = document.getElementById('pinErr');
-  var pin = input ? input.value.trim() : '';
-  if (err) err.classList.remove('show');
-  if (!pin) { showPinGate('Entre le PIN du site.'); return; }
-  if (btn) { btn.disabled = true; btn.textContent = 'Verification...'; }
-  try {
-    var res = await fetch(WORKER_BASE + '/site-access/check-pin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin: pin })
-    });
-    var data = await res.json().catch(function(){ return {}; });
-    if (!res.ok || !data.ok) throw new Error(data.error || 'PIN invalide.');
-    localStorage.setItem(ACCESS_PIN_STORAGE_KEY, String(data.version || ''));
-    var pinView = document.getElementById('pinView');
-    if (pinView) pinView.style.display = 'none';
-    await startOpenAccess();
-  } catch(e) {
-    showPinGate(e.message || 'PIN invalide.');
-    if (input) { input.value = ''; input.focus(); }
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Accéder au site'; }
-  }
-}
-
 // ── Boot ───────────────────────────────────────────────────────────
 (async function boot() {
   if (isAuthDisabled()) {
     try {
-      if (await ensureSiteAccessPin()) await startOpenAccess();
+      await startOpenAccess();
     } catch(e) {
       console.error('[auth] open access failed:', e);
-      showPinGate('Erreur acces site: ' + (e.message || e));
+      showLogin();
     }
     return;
   }
@@ -476,12 +373,14 @@ async function getDiscordRole(discordUserId) {
     var roles = data.roles || [];
     if (data.is_owner) return { role: 'admin', apiOk: true, roles: roles };
     if (ROLE_ADMIN_IDS.some(function(r){ return roles.indexOf(r) !== -1; })) return { role: 'admin', apiOk: true, roles: roles };
+    // Ordre volontaire : les roles d'encadrement priment sur le grade, et le role
+    // FTF prime aussi, sinon un agent FTF gradé obtiendrait l'acces complet.
+    if (typeof ROLE_RH_ID !== 'undefined' && ROLE_RH_ID && roles.indexOf(ROLE_RH_ID) !== -1) return { role: 'rh', apiOk: true, roles: roles };
+    if (typeof FTF_ROLE_ID !== 'undefined' && FTF_ROLE_ID && FTF_ROLE_ID !== 'ID_DU_ROLE_ICI' && roles.indexOf(FTF_ROLE_ID) !== -1) return { role: 'ftf', apiOk: true, roles: roles };
     if (roles.indexOf(ROLE_ACADEMY_ID) !== -1) return { role: 'academy', apiOk: true, roles: roles };
     if ((typeof ROLE_AGENT_IDS !== 'undefined' ? ROLE_AGENT_IDS : [ROLE_AGENT_ID]).some(function(r){ return roles.indexOf(r) !== -1; })) return { role: 'agent', apiOk: true, roles: roles };
-    if (typeof ROLE_RH_ID !== 'undefined' && ROLE_RH_ID && roles.indexOf(ROLE_RH_ID) !== -1) return { role: 'rh', apiOk: true, roles: roles };
     if (typeof ROLE_VISITEUR_ID !== 'undefined' && ROLE_VISITEUR_ID && roles.indexOf(ROLE_VISITEUR_ID) !== -1) return { role: 'visiteur', apiOk: true, roles: roles };
     if (typeof CID_ROLE_ID !== 'undefined' && CID_ROLE_ID && roles.indexOf(CID_ROLE_ID) !== -1) return { role: 'cid', apiOk: true, roles: roles };
-    if (typeof FTF_ROLE_ID !== 'undefined' && FTF_ROLE_ID && FTF_ROLE_ID !== 'ID_DU_ROLE_ICI' && roles.indexOf(FTF_ROLE_ID) !== -1) return { role: 'ftf', apiOk: true, roles: roles };
     return { role: null, apiOk: true, roles: roles };
   } catch(e) { console.error('[auth] error:', e); return { role: null, apiOk: false, roles: [] }; }
 }
@@ -550,11 +449,7 @@ async function loadWikiSections() {
 }
 
 async function doLogout() {
-  if (isAuthDisabled()) {
-    try { localStorage.removeItem(ACCESS_PIN_STORAGE_KEY); } catch(e) {}
-    showPinGate();
-    return;
-  }
+
   await DB.logout();
   S.user = null; S.appUser = null; S.role = 'agent'; S.discordRoles = []; S.discordUserId = null;
   showLogin();
@@ -562,8 +457,7 @@ async function doLogout() {
 
 function showLogin() {
   document.getElementById('loginView').style.display = '';
-  var pinView = document.getElementById('pinView');
-  if (pinView) pinView.style.display = 'none';
+
   document.getElementById('appView').style.display = 'none';
   document.getElementById('loginBtnTxt').textContent = 'Se connecter avec Discord';
   document.getElementById('loginBtn').disabled = false;
@@ -573,8 +467,7 @@ function showLogin() {
 
 function showApp() {
   document.getElementById('loginView').style.display = 'none';
-  var pinView = document.getElementById('pinView');
-  if (pinView) pinView.style.display = 'none';
+
   document.getElementById('appView').style.display = '';
   buildNav();
   updateUserUI();
@@ -677,7 +570,7 @@ async function navigate(page, pd) {
     await navigate('ftf');
     return;
   }
-  if ((S.role === 'agent' || S.role === 'academy' || S.role === 'visiteur') && page === 'ceremonie') {
+  if (page === 'ceremonie' && S.role !== 'admin' && S.role !== 'rh') {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au Command Staff et aux Superviseurs.</div></div>');
     return;
   }
@@ -699,10 +592,7 @@ async function navigate(page, pd) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée aux administrateurs.</div></div>');
     return;
   }
-  if (page === 'ceremonie' && !hasCeremoniePinAccess()) {
-    renderCeremoniePinGate();
-    return;
-  }
+
   try {
     var renderers = {
       dashboard:      renderDashboard,
@@ -806,7 +696,7 @@ function toastLoading(msg) {
 function isAdmin() { return S.role === 'admin'; }
 function canWrite() { return S.role === 'admin' || S.role === 'academy' || S.role === 'rh'; }
 function canAccessFTF() {
-  if (S.role === 'admin') return true;
+  if (S.role === 'admin' || S.role === 'rh') return true;
   return typeof FTF_ROLE_ID !== 'undefined' &&
     FTF_ROLE_ID &&
     FTF_ROLE_ID !== 'ID_DU_ROLE_ICI' &&
