@@ -186,16 +186,36 @@ async function reactToChannelMessages(env, channelId = AUTO_REACTION_CHANNEL_ID,
   return { ok: true, channel_id: channelId, scanned: Array.isArray(messages) ? messages.length : 0, reacted, skipped, errors };
 }
 
-const DIVISION_ROLES = {
-  'CID':  '1518631634524569641',
-  'SWAT': '1504454935645786222',
-  'FTF':  '1528370846908026951',
-  'PA':   '1518631987462668358',
-  'CNU':  '1519495084276715663',
-  'TU':   '1514523508980584528',
-  'SYND': '1519496665499959418',
-  'LP':   '1519688600395055154'
+// Une division est identifiee par ses VRAIS roles Discord.
+// separator = role decoratif "------ [XXX] ------" : purement visuel, jamais suffisant
+//             a lui seul pour considerer un agent comme membre de la division.
+// primary   = role pose sur Discord quand la division est ajoutee depuis le site.
+// roles     = tout role qui vaut appartenance a la division (lead, formateur, etc.).
+const DIVISION_ROLE_SETS = {
+  'CID':  { separator: '1518631634524569641', primary: '1501526844959363114',
+            roles: ['1501526844959363114', '1501526499910746132', '1529286790521819267'] },
+  'SWAT': { separator: '1504454935645786222', primary: '1504449839000326344',
+            roles: ['1504449839000326344', '1504450026393309276'] },
+  'FTF':  { separator: '1528370846908026951', primary: '1528370972153872515',
+            roles: ['1528370972153872515', '1528370954319822949'] },
+  'PA':   { separator: '1518631987462668358', primary: '1518631032167993534',
+            roles: ['1518631032167993534', '1518632035911205168', '1523753182457495653', '1527820344558354613'] },
+  'CNU':  { separator: '1519495084276715663', primary: '1519495087963246733',
+            roles: ['1519495087963246733', '1519495585487388773', '1519495618060619877', '1519495090798858322'] },
+  'TU':   { separator: '1514523508980584528', primary: '1501525276813955253',
+            roles: ['1501525276813955253', '1501525793640022017', '1501525992605487275', '1501522839717679185', '1501525042037788772'] },
+  'SYND': { separator: '1519496665499959418', primary: '1519496680397869147',
+            roles: ['1519496680397869147', '1519496676539109486'] },
+  'K9':   { separator: '1535392069865046086', primary: '1535392448187072632',
+            roles: ['1535392448187072632', '1535392294570692628', '1535392140140748820', '1535392215889870869'] },
+  'IA':   { separator: '1504453500481048676', primary: '1514523559127548016',
+            roles: ['1514523559127548016', '1524117754725007422'] },
+  'LP':   { separator: null, primary: '1519688600395055154',
+            roles: ['1519688600395055154'] }
 };
+const DIVISION_ROLES = Object.fromEntries(
+  Object.entries(DIVISION_ROLE_SETS).map(([code, set]) => [code, set.primary])
+);
 const ROLE_TO_DIVISION = Object.fromEntries(Object.entries(DIVISION_ROLES).map(([k,v]) => [v,k]));
 
 function agentMentionLine(agent, text) {
@@ -234,6 +254,9 @@ const NORD_SITE_GUILD_ID = "1516510943318642950";
 const NORD_DIVISION_ROLES = {
   'PA': '1519012732886585526'
 };
+const NORD_DIVISION_ROLE_SETS = Object.fromEntries(
+  Object.entries(NORD_DIVISION_ROLES).map(([code, id]) => [code, { separator: null, primary: id, roles: [id] }])
+);
 const NORD_PPA_ROLES = {};
 const NORD_GRADE_ROLES = {
   'Commandant':          '1516510943453122565',
@@ -270,16 +293,36 @@ function roleConfigForGuild(guildId) {
   if (String(guildId || "") === NORD_SITE_GUILD_ID) {
     return {
       divisions: NORD_DIVISION_ROLES,
+      divisionSets: NORD_DIVISION_ROLE_SETS,
       ppa: NORD_PPA_ROLES,
       grades: NORD_GRADE_ROLES
     };
   }
-  return { divisions: DIVISION_ROLES, ppa: PPA_ROLES, grades: GRADE_ROLES };
+  return { divisions: DIVISION_ROLES, divisionSets: DIVISION_ROLE_SETS, ppa: PPA_ROLES, grades: GRADE_ROLES };
 }
 
 function roleToDivisionForGuild(guildId) {
   const divisions = roleConfigForGuild(guildId).divisions;
   return Object.fromEntries(Object.entries(divisions).map(([k, v]) => [v, k]));
+}
+
+// Divisions deduites des roles Discord d'un membre.
+// Le role separateur seul ne compte pas : il faut au moins un vrai role de la division.
+function divisionsFromRoles(roles, guildId) {
+  const sets = roleConfigForGuild(guildId).divisionSets || {};
+  const held = new Set((roles || []).map(String));
+  return Object.entries(sets)
+    .filter(([, set]) => (set.roles || []).some(id => held.has(String(id))))
+    .map(([code]) => code);
+}
+
+// Roles Discord a poser / retirer pour une division donnee (sens site -> Discord).
+function divisionRoleIds(code, guildId) {
+  const set = (roleConfigForGuild(guildId).divisionSets || {})[code];
+  if (!set) return { add: [], remove: [] };
+  const add = [set.primary, set.separator].filter(Boolean);
+  const remove = [...(set.roles || []), set.separator].filter(Boolean);
+  return { add, remove };
 }
 
 function gradeFromRolesForGuild(roles, guildId) {
@@ -317,15 +360,139 @@ function parseAgentDisplayName(displayName) {
 
 function memberRoleInfo(member, guildId) {
   const roles = member.roles || [];
-  const roleToDivision = roleToDivisionForGuild(guildId);
   const ppaRoles = roleConfigForGuild(guildId).ppa;
   return {
-    divisions: roles.filter(r => roleToDivision[r]).map(r => roleToDivision[r]),
+    divisions: divisionsFromRoles(roles, guildId),
     ppa1: !!ppaRoles.ppa1 && roles.includes(ppaRoles.ppa1),
     ppa2: !!ppaRoles.ppa2 && roles.includes(ppaRoles.ppa2),
     ppa3: (!!ppaRoles.ppa3a && roles.includes(ppaRoles.ppa3a)) || (!!ppaRoles.ppa3b && roles.includes(ppaRoles.ppa3b)),
     grade: gradeFromRolesForGuild(roles, guildId)
   };
+}
+
+// Synchronisation Discord -> intranet : divisions, PPA et grade.
+// Discord fait autorite. Les unites hors perimetre Discord ne sont jamais touchees.
+// options.dryRun : calcule les changements sans rien ecrire en base.
+async function syncRolesFromDiscord(env, options = {}) {
+  const guildId = options.guildId || SUD_SITE_GUILD_ID;
+  const siteKey = siteKeyFromGuildId(guildId);
+  const dryRun = !!options.dryRun;
+
+  const agents = await sbForSite(
+    env, "GET",
+    `/agents?select=id,matricule,prenom,nom,grade,unites,ppa1,ppa2,ppa3,discord_id&discord_id=not.is.null&statut=neq.Archiv%C3%A9`,
+    null, siteKey
+  );
+  const agentByDiscord = {};
+  for (const a of (agents || [])) {
+    if (a.discord_id) agentByDiscord[String(a.discord_id)] = a;
+  }
+
+  const trackedCodes = Object.keys(roleConfigForGuild(guildId).divisionSets || {});
+  const changes = [];
+  const errors = [];
+  let scanned = 0, unchanged = 0, updated = 0;
+
+  let after = "0";
+  do {
+    const members = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members?limit=1000&after=${after}`, {
+      headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+    }).then(r => r.json()).catch(() => null);
+    if (!Array.isArray(members) || !members.length) break;
+
+    for (const m of members) {
+      const uid = m.user?.id;
+      if (!uid || m.user?.bot) continue;
+      const agent = agentByDiscord[String(uid)];
+      if (!agent) continue;
+      scanned++;
+
+      const info = memberRoleInfo(m, guildId);
+      const patch = {};
+      const diff = [];
+
+      const current = Array.isArray(agent.unites) ? agent.unites : [];
+      const untracked = current.filter(u => !trackedCodes.includes(u));
+      const next = untracked.concat(info.divisions);
+      if (JSON.stringify(next.slice().sort()) !== JSON.stringify(current.slice().sort())) {
+        patch.unites = next;
+        info.divisions.filter(d => !current.includes(d)).forEach(d => diff.push("+" + d));
+        current.filter(d => trackedCodes.includes(d) && !info.divisions.includes(d)).forEach(d => diff.push("-" + d));
+      }
+      for (const key of ["ppa1", "ppa2", "ppa3"]) {
+        if (!!info[key] !== !!agent[key]) {
+          patch[key] = info[key];
+          diff.push((info[key] ? "+" : "-") + key.toUpperCase());
+        }
+      }
+      // Un membre sans role de grade garde le grade de sa fiche : on n'efface jamais.
+      if (info.grade && info.grade !== agent.grade) {
+        patch.grade = info.grade;
+        diff.push(`grade ${agent.grade || "aucun"} -> ${info.grade}`);
+      }
+
+      if (!Object.keys(patch).length) { unchanged++; continue; }
+
+      changes.push({
+        agent_id: agent.id,
+        matricule: agent.matricule || null,
+        nom: `${agent.prenom || ""} ${agent.nom || ""}`.trim(),
+        discord_id: uid,
+        diff
+      });
+
+      if (!dryRun) {
+        try {
+          await sbForSite(env, "PATCH", `/agents?id=eq.${agent.id}`, { ...patch, updated_at: new Date().toISOString() }, siteKey);
+          updated++;
+        } catch (e) {
+          errors.push({ agent_id: agent.id, matricule: agent.matricule || null, error: e.message });
+        }
+      }
+    }
+
+    after = members.length === 1000 ? members[members.length - 1].user.id : null;
+  } while (after);
+
+  return {
+    ok: true,
+    guild_id: guildId,
+    site: siteKey,
+    dry_run: dryRun,
+    agents_with_discord_id: Object.keys(agentByDiscord).length,
+    scanned,
+    unchanged,
+    changed: changes.length,
+    updated,
+    changes,
+    errors
+  };
+}
+
+// Recap Discord de la synchro auto. Silencieux quand rien n'a bouge.
+async function reportRolesSync(env, result) {
+  if (!result || !result.changed || !env.DISCORD_BOT_TOKEN) return;
+  const lines = result.changes
+    .map(c => `**${c.matricule || "—"}** ${c.nom} — ${c.diff.join(", ")}`)
+    .join("\n")
+    .slice(0, 3900);
+  const embed = {
+    title: "Sync auto Discord -> SASP",
+    color: 0x3498db,
+    description: lines || "Aucun detail.",
+    fields: [
+      { name: "Agents verifies", value: String(result.scanned), inline: true },
+      { name: "Fiches mises a jour", value: String(result.updated), inline: true },
+      { name: "Erreurs", value: String((result.errors || []).length), inline: true }
+    ],
+    footer: { text: "SASP Intranet" },
+    timestamp: new Date().toISOString()
+  };
+  await discordFetch(`${DISCORD_API}/channels/${POINTEUSE_LOG_CHANNEL_ID}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ embeds: [embed] })
+  }).catch(() => null);
 }
 
 function gradeFromRoles(roles) {
@@ -4705,20 +4872,32 @@ export default {
       const { discord_id, add_codes, remove_codes, guild_id } = await request.json();
       const guildId = guild_id || url.searchParams.get("guild_id") || env.DISCORD_GUILD_ID || "1500975724750704661";
       const syncableRoles = syncableRolesForGuild(guildId);
+      const divisionSets = roleConfigForGuild(guildId).divisionSets || {};
+      // Une division = plusieurs roles Discord (role principal + separateur decoratif).
+      // Les codes PPA et grades restent sur un seul role.
+      const idsForCode = (code, action) => {
+        if (divisionSets[code]) {
+          const { add, remove } = divisionRoleIds(code, guildId);
+          return action === "add" ? add : remove;
+        }
+        return syncableRoles[code] ? [syncableRoles[code]] : [];
+      };
       const results = [];
       for (const code of (add_codes || [])) {
-        const roleId = syncableRoles[code]; if (!roleId) continue;
-        const r = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
-          method: "PUT", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet â€” sync" }
-        });
-        results.push({ code, action: "add", status: r.status });
+        for (const roleId of idsForCode(code, "add")) {
+          const r = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
+            method: "PUT", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet â€” sync" }
+          });
+          results.push({ code, role_id: roleId, action: "add", status: r.status });
+        }
       }
       for (const code of (remove_codes || [])) {
-        const roleId = syncableRoles[code]; if (!roleId) continue;
-        const r = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
-          method: "DELETE", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet â€” sync" }
-        });
-        results.push({ code, action: "remove", status: r.status });
+        for (const roleId of idsForCode(code, "remove")) {
+          const r = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
+            method: "DELETE", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet â€” sync" }
+          });
+          results.push({ code, role_id: roleId, action: "remove", status: r.status });
+        }
       }
       return json({ ok: true, results });
     }
@@ -4733,6 +4912,64 @@ export default {
         if (!res.ok) throw new Error(`Discord role counts failed: ${res.status}`);
         const roleCounts = await res.json();
         return json({ ok: true, counts: countGradesFromRoleCountsForGuild(roleCounts, guildId), role_counts: roleCounts });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    if (url.pathname === "/admin/roles-inventory" && request.method === "GET") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      const guildId = url.searchParams.get("guild_id") || SUD_SITE_GUILD_ID;
+      const PERMISSION_BITS = [
+        [0, "CREATE_INSTANT_INVITE"], [1, "KICK_MEMBERS"], [2, "BAN_MEMBERS"], [3, "ADMINISTRATOR"],
+        [4, "MANAGE_CHANNELS"], [5, "MANAGE_GUILD"], [6, "ADD_REACTIONS"], [7, "VIEW_AUDIT_LOG"],
+        [8, "PRIORITY_SPEAKER"], [9, "STREAM"], [10, "VIEW_CHANNEL"], [11, "SEND_MESSAGES"],
+        [12, "SEND_TTS_MESSAGES"], [13, "MANAGE_MESSAGES"], [14, "EMBED_LINKS"], [15, "ATTACH_FILES"],
+        [16, "READ_MESSAGE_HISTORY"], [17, "MENTION_EVERYONE"], [18, "USE_EXTERNAL_EMOJIS"],
+        [19, "VIEW_GUILD_INSIGHTS"], [20, "CONNECT"], [21, "SPEAK"], [22, "MUTE_MEMBERS"],
+        [23, "DEAFEN_MEMBERS"], [24, "MOVE_MEMBERS"], [25, "USE_VAD"], [26, "CHANGE_NICKNAME"],
+        [27, "MANAGE_NICKNAMES"], [28, "MANAGE_ROLES"], [29, "MANAGE_WEBHOOKS"],
+        [30, "MANAGE_GUILD_EXPRESSIONS"], [31, "USE_APPLICATION_COMMANDS"], [32, "REQUEST_TO_SPEAK"],
+        [33, "MANAGE_EVENTS"], [34, "MANAGE_THREADS"], [35, "CREATE_PUBLIC_THREADS"],
+        [36, "CREATE_PRIVATE_THREADS"], [37, "USE_EXTERNAL_STICKERS"], [38, "SEND_MESSAGES_IN_THREADS"],
+        [39, "USE_EMBEDDED_ACTIVITIES"], [40, "MODERATE_MEMBERS"], [41, "VIEW_CREATOR_MONETIZATION_ANALYTICS"],
+        [42, "USE_SOUNDBOARD"], [45, "USE_EXTERNAL_SOUNDS"], [46, "SEND_VOICE_MESSAGES"],
+        [50, "SEND_POLLS"], [51, "USE_EXTERNAL_APPS"]
+      ];
+      const decodePerms = (raw) => {
+        let bits;
+        try { bits = BigInt(raw || "0"); } catch (_) { return []; }
+        return PERMISSION_BITS.filter(([bit]) => (bits >> BigInt(bit)) & 1n).map(([, name]) => name);
+      };
+      try {
+        const rolesRes = await discordFetch(`${DISCORD_API}/guilds/${guildId}/roles`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        if (!rolesRes.ok) throw new Error(`Discord roles failed: ${rolesRes.status}`);
+        const roles = await rolesRes.json();
+        let counts = {};
+        try {
+          const countsRes = await discordFetch(`${DISCORD_API}/guilds/${guildId}/roles/member-counts`, {
+            headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+          });
+          if (countsRes.ok) counts = await countsRes.json();
+        } catch (_) {}
+        const inventory = (roles || []).map(r => ({
+          id: r.id,
+          name: r.name,
+          position: r.position,
+          color: r.color ? `#${r.color.toString(16).padStart(6, "0")}` : null,
+          hoist: !!r.hoist,
+          mentionable: !!r.mentionable,
+          managed: !!r.managed,
+          permissions: String(r.permissions || "0"),
+          permission_names: decodePerms(r.permissions),
+          is_admin: decodePerms(r.permissions).includes("ADMINISTRATOR"),
+          tags: r.tags || null,
+          members: Number(counts[r.id] || 0)
+        })).sort((a, b) => b.position - a.position);
+        return json({ ok: true, guild_id: guildId, count: inventory.length, roles: inventory });
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
@@ -4921,9 +5158,8 @@ export default {
       if (!res.ok) return json({ ok: false, error: "Membre non trouvÃ©" }, 404);
       const member = await res.json();
       const roles = member.roles || [];
-      const roleToDivision = roleToDivisionForGuild(guildId);
       const ppaRoles = roleConfigForGuild(guildId).ppa;
-      const divisions = roles.filter(r => roleToDivision[r]).map(r => roleToDivision[r]);
+      const divisions = divisionsFromRoles(roles, guildId);
       return json({
         ok: true,
         divisions,
@@ -4998,10 +5234,9 @@ export default {
           if (!res.ok) continue;
           const m = await res.json();
           const roles = m.roles || [];
-          const roleToDivision = roleToDivisionForGuild(guildId);
           const ppaRoles = roleConfigForGuild(guildId).ppa;
           map[discordId] = {
-            divisions: roles.filter(r => roleToDivision[r]).map(r => roleToDivision[r]),
+            divisions: divisionsFromRoles(roles, guildId),
             ppa1:  !!ppaRoles.ppa1 && roles.includes(ppaRoles.ppa1),
             ppa2:  !!ppaRoles.ppa2 && roles.includes(ppaRoles.ppa2),
             ppa3:  (!!ppaRoles.ppa3a && roles.includes(ppaRoles.ppa3a)) || (!!ppaRoles.ppa3b && roles.includes(ppaRoles.ppa3b)),
@@ -5030,12 +5265,15 @@ export default {
         if (!ag.discord_id) continue;
         const hasDivisions = ag.divisions || [];
         for (const code of allCodes) {
-          const roleId = divisionRoles[code];
-          const method = hasDivisions.includes(code) ? "PUT" : "DELETE";
-          const r = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${ag.discord_id}/roles/${roleId}`, {
-            method, headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet â€” sync global" }
-          });
-          if (r.ok || r.status === 204) ok++; else errors++;
+          const inDivision = hasDivisions.includes(code);
+          const { add, remove } = divisionRoleIds(code, guildId);
+          const method = inDivision ? "PUT" : "DELETE";
+          for (const roleId of (inDivision ? add : remove)) {
+            const r = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${ag.discord_id}/roles/${roleId}`, {
+              method, headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet â€” sync global" }
+            });
+            if (r.ok || r.status === 204) ok++; else errors++;
+          }
         }
       }
       return json({ ok: true, synced: ok, errors });
@@ -9195,6 +9433,22 @@ export default {
       }
     }
 
+    // Sync complete Discord -> intranet (divisions + PPA + grade).
+    // dry_run=1 : rapport seul, aucune ecriture.
+    if (url.pathname === "/admin/sync-roles-from-discord" && request.method === "GET") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const guildId = url.searchParams.get("guild_id") || SUD_SITE_GUILD_ID;
+        const dryRun = url.searchParams.get("dry_run") === "1";
+        const result = await syncRolesFromDiscord(env, { guildId, dryRun });
+        if (!dryRun && url.searchParams.get("silent") !== "1") await reportRolesSync(env, result);
+        return json(result);
+      } catch(e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     if (url.pathname === "/admin/react-channel-check" && request.method === "GET") {
       try {
         const channelId = url.searchParams.get("channel_id") || AUTO_REACTION_CHANNEL_ID;
@@ -9229,6 +9483,16 @@ export default {
         ctx.waitUntil(refreshPointeuseMessage(env, env.POINTEUSE_CHANNEL_ID, env.POINTEUSE_MESSAGE_ID, "sud").catch(() => null));
       }
       ctx.waitUntil(reactToChannelMessages(env).catch(() => null));
+      // Divisions / PPA / grades : Discord fait autorite, rattrapage toutes les 15 min.
+      // Desactive tant que AUTO_ROLE_SYNC n'est pas mis a "1" dans wrangler.toml.
+      if (env.AUTO_ROLE_SYNC === "1") {
+        ctx.waitUntil((async () => {
+          try {
+            const result = await syncRolesFromDiscord(env, { guildId: SUD_SITE_GUILD_ID });
+            await reportRolesSync(env, result);
+          } catch (e) {}
+        })());
+      }
       ctx.waitUntil((async () => {
         const SOURCE_GUILD  = "1500975724750704661";
         const TARGET_GUILD  = "1382167184607940658";

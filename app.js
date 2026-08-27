@@ -85,7 +85,7 @@ function parseMoneyInput(v) {
 var WORKER_BASE = 'https://sasp-intranet-bot.louisleurin.workers.dev';
 var LOG_WORKER  = WORKER_BASE + '/log';
 var LOG_TOKEN   = 'SASPlogs2026!';
-var TRACKED_DIVISIONS = ['CID','SWAT','PA','CNU','TU','SYND','LP','FTF'];
+var TRACKED_DIVISIONS = ['CID','SWAT','PA','CNU','TU','SYND','LP','FTF','K9','IA']; // doit rester aligne sur DIVISION_ROLE_SETS (worker.js)
 
 function refreshAgentList() {
   DB.getAgents({}).then(function(agents) {
