@@ -265,29 +265,31 @@ var _wikiSlug     = null;
 var _wikiSections = [];
 var _ceremonieArchives = [];
 
+// `img` designe une icone 3D de assets/icons ; `icon` sert de secours si
+// l'image ne charge pas.
 var NAV = [
-  { id: 'faq',      icon: '❓', label: 'FAQ' },
-  { id: 'dashboard', icon: '🏛️', label: 'Tableau de bord' },
+  { id: 'faq',      icon: '❓', img: 'faq', label: 'FAQ' },
+  { id: 'dashboard', icon: '🏛️', img: 'dashboard', label: 'Tableau de bord' },
   { divider: true },
   { group: 'RESSOURCES HUMAINES' },
-  { id: 'recap',    icon: '📋', label: 'Récap agents', staffOnly: true },
-  { id: 'completude', icon: '🗂️', label: 'Complétude fiches', staffOnly: true },
-  { id: 'agents',   icon: '👮', label: 'Agents' },
-  { id: 'grades',   icon: '🎖️', label: 'Grades' },
-  { id: 'units',     icon: '🚔', label: 'Divisions' },
-  { id: 'pointeuse', icon: '⏱️', label: 'Pointeuse' },
-  { id: 'cartes',   icon: '🗺️', label: 'Cartes' },
+  { id: 'recap',    icon: '📋', img: 'recap', label: 'Récap agents', staffOnly: true },
+  { id: 'completude', icon: '🗂️', img: 'completude', label: 'Complétude fiches', staffOnly: true },
+  { id: 'agents',   icon: '👮', img: 'agents', label: 'Agents' },
+  { id: 'grades',   icon: '🎖️', img: 'grades', label: 'Grades' },
+  { id: 'units',     icon: '🚔', img: 'units', label: 'Divisions' },
+  { id: 'pointeuse', icon: '⏱️', img: 'pointeuse', label: 'Pointeuse' },
+  { id: 'cartes',   icon: '🗺️', img: 'cartes', label: 'Cartes' },
   { divider: true },
-  { id: 'ftf',      icon: '🎯', label: 'Fugitive Task Force', ftfOnly: true },
+  { id: 'ftf',      icon: '🎯', img: 'ftf', label: 'Fugitive Task Force', ftfOnly: true },
   // wiki sections injected dynamically by loadWikiSections()
   { divider: true, staffOnly: true, _wikiEnd: true },
   { group: 'ADMINISTRATION', staffOnly: true },
-  { id: 'archives',        icon: '🗃️', label: 'Archives',          staffOnly: true, hidden: true },
-  { id: 'stats',           icon: '📈', label: 'Statistiques',       staffOnly: true },
-  { id: 'service-logements', icon: '🏠', label: 'Logements service', adminOnly: true },
-  { id: 'ticketing', icon: '🎫', label: 'Tickets Discord', adminOnly: true, hidden: true },
+  { id: 'archives',        icon: '🗃️', img: 'archives', label: 'Archives',          staffOnly: true, hidden: true },
+  { id: 'stats',           icon: '📈', img: 'stats', label: 'Statistiques',       staffOnly: true },
+  { id: 'service-logements', icon: '🏠', img: 'logements', label: 'Logements service', adminOnly: true },
+  { id: 'ticketing', icon: '🎫', img: 'ticketing', label: 'Tickets Discord', adminOnly: true, hidden: true },
   { divider: true, ceremonyOnly: true },
-  { id: 'ceremonie', icon: '🎖️', label: 'Montées en grade', ceremonyOnly: true },
+  { id: 'ceremonie', icon: '🎖️', img: 'grades', label: 'Montées en grade', ceremonyOnly: true },
 ];
 
 var REMOVED_PAGES = ['cid', 'archives'];
@@ -502,8 +504,12 @@ function buildNav() {
     }
     if (item.divider) { html += '<div class="nav-divider"></div>'; return; }
     if (item.group)   { html += '<div class="nav-group">' + item.group + '</div>'; return; }
+    var navIcon = item.img
+      ? '<img src="assets/icons/' + item.img + '.png" alt="" loading="lazy" ' +
+        'onerror="this.replaceWith(document.createTextNode(\'' + item.icon + '\'))">'
+      : item.icon;
     html += '<div class="nav-item" data-page="' + item.id + '" onclick="navigate(\'' + item.id + '\')">' +
-      '<span class="nav-icon">' + item.icon + '</span>' + esc(item.label) + '</div>';
+      '<span class="nav-icon">' + navIcon + '</span>' + esc(item.label) + '</div>';
   });
   document.getElementById('sidebarNav').innerHTML = html;
 

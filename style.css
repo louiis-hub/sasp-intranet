@@ -80,6 +80,8 @@ a{color:var(--gold);text-decoration:none}
 .nav-item:hover{background:var(--goldGlow);color:var(--t1)}
 .nav-item.active{background:var(--goldGlow);border-color:var(--goldBorder);color:var(--gold);font-weight:600}
 .nav-icon{font-size:1rem;flex-shrink:0;width:20px;text-align:center}
+.nav-icon img{width:20px;height:20px;display:block;margin:0 auto;object-fit:contain;opacity:.82;transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease)}
+.nav-item:hover .nav-icon img,.nav-item.active .nav-icon img{opacity:1;transform:scale(1.1)}
 .nav-divider{height:1px;background:var(--border0);margin:6px 4px}
 .nav-group{font-family:'Share Tech Mono',monospace;font-size:.54rem;color:var(--t3);letter-spacing:2px;padding:8px 10px 3px}
 .sidebar-footer{padding:12px 14px;border-top:1px solid var(--border0);flex-shrink:0}
