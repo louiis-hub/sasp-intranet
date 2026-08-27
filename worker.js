@@ -4780,6 +4780,27 @@ export default {
         }
         return syncableRoles[code] ? [syncableRoles[code]] : [];
       };
+
+      // Un grade mal orthographie cote site ("Trooper  II") ne correspond a aucun
+      // role : son retrait echouait en silence pendant que l'ajout du nouveau
+      // reussissait, laissant deux roles de grade sur le membre — et c'est le plus
+      // eleve qui l'emporte ensuite, ce qui peut annuler une retrogradation.
+      // On se fie donc aux roles reellement portes, pas au libelle stocke.
+      const gradeRoles = roleConfigForGuild(guildId).grades || {};
+      const addedGrade = (add_codes || []).find(code => gradeRoles[code]);
+      let staleGradeRoleIds = [];
+      if (addedGrade) {
+        const memberRes = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}`, {
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+        });
+        if (memberRes.ok) {
+          const member = await memberRes.json();
+          const held = new Set(member.roles || []);
+          const keepId = gradeRoles[addedGrade];
+          staleGradeRoleIds = Object.values(gradeRoles).filter(id => id !== keepId && held.has(id));
+        }
+      }
+
       const results = [];
       for (const code of (add_codes || [])) {
         for (const roleId of idsForCode(code, "add")) {
@@ -4797,7 +4818,16 @@ export default {
           results.push({ code, role_id: roleId, action: "remove", status: r.status });
         }
       }
-      return json({ ok: true, results });
+      // Le nouveau grade est pose avant ce nettoyage : le membre n'est jamais sans grade.
+      for (const roleId of staleGradeRoleIds) {
+        const r = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discord_id}/roles/${roleId}`, {
+          method: "DELETE", headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "X-Audit-Log-Reason": "SASP Intranet â€” ancien grade" }
+        });
+        results.push({ code: "__ancien_grade", role_id: roleId, action: "remove", status: r.status });
+      }
+      const unknownCodes = [...(add_codes || []), ...(remove_codes || [])]
+        .filter(code => !divisionSets[code] && !syncableRoles[code]);
+      return json({ ok: true, results, unknown_codes: unknownCodes });
     }
 
     // Sync divisions Discord â†’ intranet
@@ -9234,10 +9264,13 @@ export default {
     }
 
     if (url.pathname === "/admin/sync-grades-from-discord" && request.method === "GET") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
       const guildId = SUD_SITE_GUILD_ID;
       try {
-        // 1. Tous les agents avec discord_id
-        const agents = await sbForSite(env, "GET", `/agents?select=id,grade,discord_id&discord_id=not.is.null&statut=neq.Arch%C3%A9`, null, "sud");
+        // 1. Tous les agents avec discord_id. Le filtre visait "Archivé" : mal encode,
+        //    il ne correspondait a aucun statut et laissait passer les archives.
+        const agents = await sbForSite(env, "GET", `/agents?select=id,grade,discord_id&discord_id=not.is.null&statut=neq.Archiv%C3%A9`, null, "sud");
         const agentByDiscord = {};
         for (const a of (agents || [])) agentByDiscord[a.discord_id] = a;
 
