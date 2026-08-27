@@ -481,6 +481,8 @@ function buildNav() {
   var isFtfOnly = S.role === 'ftf';
   var VISITEUR_NAV = ['dashboard', 'pointeuse', 'faq', 'cartes'];
   var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'recap', 'ceremonie', 'completude'];
+  // Academie : FAQ, tableau de bord et Ressources humaines, pointeuse exclue.
+  var ACADEMY_NAV = ['faq', 'dashboard', 'recap', 'completude', 'agents', 'grades', 'units', 'cartes'];
   var html = '';
   NAV.forEach(function(item) {
     if (item.hidden) return;
@@ -492,6 +494,12 @@ function buildNav() {
     if (item.ceremonyOnly && !isCeremony) return;
     if (isVisiteur && item.id && !item.ftfOnly && !item.cidOnly && VISITEUR_NAV.indexOf(item.id) === -1) return;
     if (S.role === 'rh' && item.id && !item.ftfOnly && !item.cidOnly && RH_NAV.indexOf(item.id) === -1) return;
+    if (S.role === 'academy') {
+      // L'academie compte comme staff pour voir Recap et Completude, mais la
+      // section Administration n'a rien a lui montrer : on masque son en-tete.
+      if (item.staffOnly && (item.group || item.divider)) return;
+      if (item.id && ACADEMY_NAV.indexOf(item.id) === -1) return;
+    }
     if (item.divider) { html += '<div class="nav-divider"></div>'; return; }
     if (item.group)   { html += '<div class="nav-group">' + item.group + '</div>'; return; }
     html += '<div class="nav-item" data-page="' + item.id + '" onclick="navigate(\'' + item.id + '\')">' +
@@ -549,7 +557,7 @@ async function navigate(page, pd) {
   setContent('<div class="loader-block"><div class="spinner"></div><p>Chargement…</p></div>');
   var _permCfg = {}; try { _permCfg = JSON.parse(localStorage.getItem('sasp_permissions') || '{}'); } catch(e) {}
   var AGENT_ALLOWED   = _permCfg.agentPages   || ['dashboard','agents','agent-profile','grades','units','pointeuse','faq','mdt','vehicles','cartes','info','manuel','tenue','document'];
-  var ACADEMY_ALLOWED = _permCfg.academyPages  || null;
+  var ACADEMY_ALLOWED = _permCfg.academyPages  || ['faq', 'dashboard', 'recap', 'completude', 'agents', 'agent-profile', 'grades', 'units', 'cartes'];
   if (page === 'ftf' && !canAccessFTF()) {
     setContent('<div class="empty-state"><div class="empty-icon">FTF</div><div class="empty-title">AccÃ¨s FTF restreint</div><div class="empty-sub">Cette page est rÃ©servÃ©e aux utilisateurs avec le rÃ´le Discord FTF.</div></div>');
     return;
