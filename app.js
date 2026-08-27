@@ -319,7 +319,7 @@ var NAV = [
   { id: 'ticketing', icon: '🎫', img: 'ticketing', label: 'Tickets Discord', adminOnly: true, hidden: true },
   { divider: true, commandOnly: true },
   { id: 'plaintes',  icon: '⚖️', img: 'plaintes', label: 'Plaintes', commandOnly: true },
-  { id: 'tests-poudre', icon: '🧪', img: 'tests-poudre', label: 'Tests de poudre', staffOnly: true },
+  { id: 'tests-poudre', icon: '🧪', img: 'tests-poudre', label: 'Tests de poudre', poudreOnly: true },
   { id: 'ceremonie', icon: '🎖️', img: 'grades', label: 'Montées en grade', ceremonyOnly: true },
 ];
 
@@ -435,7 +435,8 @@ async function getDiscordRole(discordUserId) {
     if (roles.indexOf(ROLE_ACADEMY_ID) !== -1) return { role: 'academy', apiOk: true, roles: roles };
     if ((typeof ROLE_AGENT_IDS !== 'undefined' ? ROLE_AGENT_IDS : [ROLE_AGENT_ID]).some(function(r){ return roles.indexOf(r) !== -1; })) return { role: 'agent', apiOk: true, roles: roles };
     if (typeof ROLE_VISITEUR_ID !== 'undefined' && ROLE_VISITEUR_ID && roles.indexOf(ROLE_VISITEUR_ID) !== -1) return { role: 'visiteur', apiOk: true, roles: roles };
-    if (typeof CID_ROLE_ID !== 'undefined' && CID_ROLE_ID && roles.indexOf(CID_ROLE_ID) !== -1) return { role: 'cid', apiOk: true, roles: roles };
+    var idsCid = (typeof ROLE_CID_IDS !== 'undefined' && ROLE_CID_IDS.length) ? ROLE_CID_IDS : [CID_ROLE_ID];
+    if (idsCid.some(function(id){ return id && roles.indexOf(id) !== -1; })) return { role: 'cid', apiOk: true, roles: roles };
     return { role: null, apiOk: true, roles: roles };
   } catch(e) { console.error('[auth] error:', e); return { role: null, apiOk: false, roles: [] }; }
 }
@@ -552,6 +553,7 @@ function buildNav() {
     if (item.staffOnly && !isStaff) return;
     if (item.ceremonyOnly && !isCeremony) return;
     if (item.commandOnly && !isCommand) return;
+    if (item.poudreOnly && !canAccessTestsPoudre()) return;
     if (isVisiteur && item.id && !item.ftfOnly && !item.cidOnly && VISITEUR_NAV.indexOf(item.id) === -1) return;
     if (S.role === 'rh' && item.id && !item.ftfOnly && !item.cidOnly && RH_NAV.indexOf(item.id) === -1) return;
     if (S.role === 'academy') {
@@ -626,6 +628,10 @@ async function navigate(page, pd) {
     setContent('<div class="empty-state"><div class="empty-icon">FTF</div><div class="empty-title">AccÃ¨s FTF restreint</div><div class="empty-sub">Cette page est rÃ©servÃ©e aux utilisateurs avec le rÃ´le Discord FTF.</div></div>');
     return;
   }
+  if (page === 'tests-poudre' && !canAccessTestsPoudre()) {
+    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au Command Staff, au Supervisor Team et au CID.</div></div>');
+    return;
+  }
   if (page === 'cid' && !canAccessCID()) {
     setContent('<div class="empty-state"><div class="empty-icon">CID</div><div class="empty-title">Acces CID restreint</div><div class="empty-sub">Cette page est reservee aux utilisateurs avec le role Discord CID.</div></div>');
     return;
@@ -652,15 +658,15 @@ async function navigate(page, pd) {
     return;
   }
   var VISITEUR_ALLOWED = ['dashboard', 'pointeuse', 'faq', 'cartes'];
-  if (S.role === 'visiteur' && page !== 'ftf' && VISITEUR_ALLOWED.indexOf(page) === -1) {
+  if (S.role === 'visiteur' && page !== 'ftf' && page !== 'tests-poudre' && VISITEUR_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Votre rôle ne permet pas d\'accéder à cette section.</div></div>');
     return;
   }
-  if (S.role === 'agent' && page !== 'ftf' && AGENT_ALLOWED.indexOf(page) === -1) {
+  if (S.role === 'agent' && page !== 'ftf' && page !== 'tests-poudre' && AGENT_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au personnel d\'encadrement.</div></div>');
     return;
   }
-  if (S.role === 'academy' && page !== 'ftf' && ACADEMY_ALLOWED && ACADEMY_ALLOWED.indexOf(page) === -1) {
+  if (S.role === 'academy' && page !== 'ftf' && page !== 'tests-poudre' && ACADEMY_ALLOWED && ACADEMY_ALLOWED.indexOf(page) === -1) {
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée aux administrateurs.</div></div>');
     return;
   }
@@ -777,11 +783,21 @@ function canAccessFTF() {
 }
 
 // ── Utils ──────────────────────────────────────────────────────────
+// Porte l'un des roles du CID, separateur ou role reel.
+function hasCidRole() {
+  var ids = (typeof ROLE_CID_IDS !== 'undefined' && ROLE_CID_IDS.length)
+    ? ROLE_CID_IDS
+    : (typeof CID_ROLE_ID !== 'undefined' && CID_ROLE_ID ? [CID_ROLE_ID] : []);
+  var portes = S.discordRoles || [];
+  return ids.some(function(id){ return portes.indexOf(id) !== -1; });
+}
 function canAccessCID() {
   if (S.role === 'admin') return true;
-  return typeof CID_ROLE_ID !== 'undefined' &&
-    CID_ROLE_ID &&
-    (S.discordRoles || []).indexOf(CID_ROLE_ID) !== -1;
+  return hasCidRole();
+}
+// Tests de poudre : encadrement et CID.
+function canAccessTestsPoudre() {
+  return S.role === 'admin' || S.role === 'rh' || hasCidRole();
 }
 function esc(s) {
   if (s == null) return '';
