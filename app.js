@@ -320,6 +320,7 @@ var NAV = [
   { divider: true, commandOnly: true },
   { id: 'plaintes',  icon: '⚖️', img: 'plaintes', label: 'Plaintes', commandOnly: true },
   { id: 'tests-poudre', icon: '🧪', img: 'tests-poudre', label: 'Tests de poudre', poudreOnly: true },
+  { id: 'affaires-internes', icon: '🕵️', img: 'affaires-internes', label: 'Affaires Internes' },
   { id: 'ceremonie', icon: '🎖️', img: 'grades', label: 'Montées en grade', ceremonyOnly: true },
 ];
 
@@ -330,7 +331,7 @@ var PAGE_TITLES = {
   grades:'Grades', units:'Divisions', pointeuse:'Pointeuse', 'pointeuse-historique':'Historique pointages', mdt:'Guide MDT', vehicles:'Véhicules', cartes:'Cartes',
   faq:'FAQ',
   info:'Informations', manuel:'Manuel', tenue:'Tenues', document:'Documents',
-  ceremonie:'Prépa Cérémonie', completude:'Complétude fiches', plaintes:'Plaintes', 'tests-poudre':'Tests de poudre',
+  ceremonie:'Prépa Cérémonie', completude:'Complétude fiches', plaintes:'Plaintes', 'tests-poudre':'Tests de poudre', 'affaires-internes':'Affaires Internes',
   'global-settings':'Réglages globaux',
   'service-logements':'Logements de service',
   ticketing:'Tickets Discord',
@@ -359,6 +360,9 @@ async function allerVersRouteInitiale() {
   }
   if (cible.page === 'plaintes' && cible.id && typeof plainteApercu === 'function') {
     try { await plainteApercu(cible.id); } catch (e) {}
+  }
+  if (cible.page === 'affaires-internes' && cible.id && typeof aiApercu === 'function') {
+    try { await aiApercu(cible.id); } catch (e) {}
   }
 }
 
@@ -709,7 +713,8 @@ async function navigate(page, pd) {
       'cid':          'Cette page est réservée aux membres du CID.',
       'tests-poudre': 'Cette section est réservée au Command Staff, au Supervisor Team et au CID.',
       'ceremonie':    'Cette section est réservée au Command Staff et aux Superviseurs.',
-      'plaintes':     'Cette section est réservée au Command Staff et aux Superviseurs.'
+      'plaintes':     'Cette section est réservée au Command Staff et aux Superviseurs.',
+      'affaires-internes': 'Cette section est réservée aux Affaires Internes et à l\'encadrement.'
     };
     setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">' +
       (motifs[page] || 'Votre rôle ne permet pas d\'accéder à cette section.') + '</div></div>');
@@ -740,6 +745,7 @@ async function navigate(page, pd) {
       completude:     renderCompletude,
       plaintes:       renderPlaintes,
       'tests-poudre': renderTestsPoudre,
+      'affaires-internes': renderAffairesInternes,
       'global-settings': renderGlobalSettings,
       'service-logements': renderServiceLogements,
       ticketing: renderTicketing,
@@ -855,12 +861,13 @@ function canAccessTestsPoudre() {
 // plusieurs les CUMULE. Auparavant un seul rôle l'emportait et les autres
 // étaient ignorés : un agent Police Academy + FTF n'avait que la FTF.
 var PAGES_PAR_PROFIL = {
-  rh:       ['dashboard','agents','agent-profile','grades','units','pointeuse','faq','cartes','stats','recap','ceremonie','completude','plaintes','tests-poudre','ftf'],
+  rh:       ['dashboard','agents','agent-profile','grades','units','pointeuse','faq','cartes','stats','recap','ceremonie','completude','plaintes','tests-poudre','ftf','affaires-internes'],
   academy:  ['faq','dashboard','recap','completude','agents','agent-profile','grades','units','cartes'],
   agent:    ['dashboard','agents','agent-profile','grades','units','pointeuse','faq','mdt','vehicles','cartes','info','manuel','tenue','document'],
   visiteur: ['dashboard','pointeuse','faq','cartes'],
   ftf:      ['ftf'],
-  cid:      ['cid','tests-poudre']
+  cid:      ['cid','tests-poudre'],
+  ai:       ['affaires-internes']
 };
 
 // Tous les profils portés, sans priorité entre eux.
@@ -875,6 +882,7 @@ function profilsUtilisateur() {
   if (porte([typeof FTF_ROLE_ID !== 'undefined' ? FTF_ROLE_ID : ''])) profils.push('ftf');
   if (porte([typeof ROLE_ACADEMY_ID !== 'undefined' ? ROLE_ACADEMY_ID : ''])) profils.push('academy');
   if (hasCidRole()) profils.push('cid');
+  if (porte(typeof ROLE_AI_IDS !== 'undefined' ? ROLE_AI_IDS : [])) profils.push('ai');
   if (porte(typeof ROLE_AGENT_IDS !== 'undefined' ? ROLE_AGENT_IDS : [])) profils.push('agent');
   if (porte([typeof ROLE_VISITEUR_ID !== 'undefined' ? ROLE_VISITEUR_ID : ''])) profils.push('visiteur');
   // Repli : quand Discord est injoignable, S.discordRoles est vide et seul le
@@ -3589,6 +3597,158 @@ async function tpTelecharger(id) {
   document.body.appendChild(a); a.click(); a.remove();
 }
 
+// ══ AFFAIRES INTERNES ═════════════════════════════════════════════
+// Temoignages et plaintes visant un agent du SASP, deposes via la commande
+// Discord /affaires-internes. Le document reprend le meme formulaire que le
+// proces-verbal des plaintes : c'est le formulaire des Affaires Internes.
+var AI_STATUTS = ['Nouvelle', 'En cours', 'Classée', 'Sanction prononcée'];
+var _aiCache = [];
+var _aiStatut = '';
+
+function aiStatutBadge(s) {
+  var map = { 'Nouvelle':'badge-red', 'En cours':'badge-orange', 'Classée':'badge-gray', 'Sanction prononcée':'badge-green' };
+  var v = s || 'Nouvelle';
+  return '<span class="badge ' + (map[v] || 'badge-gray') + '">' + esc(v) + '</span>';
+}
+
+// Adapte un dossier AI aux champs attendus par le document.
+function aiVersDocument(d) {
+  return {
+    id: d.id,
+    created_at: d.created_at,
+    plaignant: d.declarant_nom,
+    telephone: d.declarant_telephone,
+    mis_en_cause: d.agents_concernes,
+    lieu: d.lieu_faits,
+    type_declaration: d.type_declaration,
+    motif: '',
+    resume: d.description,
+    agent_nom: d.agent_nom,
+    statut: d.statut,
+    notes: d.notes
+  };
+}
+
+function aiSetStatut(v) { _aiStatut = v || ''; renderAffairesInternes(); }
+
+async function renderAffairesInternes() {
+  _aiCache = await DB.getPlaintesAI();
+  var liste = _aiCache.filter(function(d) {
+    return !_aiStatut || (d.statut || 'Nouvelle') === _aiStatut;
+  });
+  var compte = {};
+  _aiCache.forEach(function(d){ var s = d.statut || 'Nouvelle'; compte[s] = (compte[s] || 0) + 1; });
+  var options = '<option value="">Tous les statuts</option>' + AI_STATUTS.map(function(s) {
+    return '<option value="' + esc(s) + '"' + (_aiStatut === s ? ' selected' : '') + '>' + esc(s) + ' (' + (compte[s] || 0) + ')</option>';
+  }).join('');
+
+  var rows = liste.length ? liste.map(function(d) {
+    return '<tr>' +
+      '<td class="mono text-gold">N° ' + esc(d.id) + '</td>' +
+      '<td style="white-space:nowrap">' + esc(fmtPlainteDate(d.created_at)) + '</td>' +
+      '<td><span class="badge ' + (d.type_declaration === 'Témoignage' ? 'badge-blue' : 'badge-red') + '">' + esc(d.type_declaration || 'Plainte') + '</span></td>' +
+      '<td style="font-weight:600;color:var(--t0)">' + esc(d.declarant_nom || '—') + '</td>' +
+      '<td>' + esc(d.agents_concernes || '—') + '</td>' +
+      '<td>' + aiStatutBadge(d.statut) + '</td>' +
+      '<td style="white-space:nowrap">' +
+        '<button class="btn btn-ghost btn-sm" onclick="aiDetail(' + d.id + ')">Détail</button> ' +
+        '<button class="btn btn-outline btn-sm" onclick="aiApercu(' + d.id + ')">Formulaire</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="7"><div class="empty-state" style="padding:30px"><div class="empty-title">Aucune déclaration</div><div class="empty-sub">Les témoignages et plaintes déposés via <b>/affaires-internes</b> apparaîtront ici.</div></div></td></tr>';
+
+  setContent(
+    '<div class="flex-between mb-20 flex-wrap gap-8">' +
+      '<div>' +
+        '<h2 style="font-size:1.15rem;font-weight:700;color:var(--t0);margin:0">Affaires Internes</h2>' +
+        '<p class="text-muted" style="font-size:.82rem;margin-top:3px">' + _aiCache.length + ' déclaration(s) visant des agents du SASP</p>' +
+      '</div>' +
+      '<select class="form-control" style="max-width:260px" onchange="aiSetStatut(this.value)">' + options + '</select>' +
+    '</div>' +
+    '<div class="table-wrap"><table>' +
+      '<thead><tr><th>N°</th><th>Déposée le</th><th>Type</th><th>Déclarant</th><th>Agent(s) concerné(s)</th><th>Statut</th><th>Actions</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table></div>'
+  );
+}
+
+function aiTrouver(id) {
+  return _aiCache.filter(function(x){ return String(x.id) === String(id); })[0];
+}
+
+async function aiApercu(id) {
+  var d = aiTrouver(id);
+  if (!d) return;
+  var url = await plainteDessiner(aiVersDocument(d));
+  openModal({
+    eyebrow: 'AFFAIRES INTERNES N° ' + esc(d.id),
+    title: esc(d.declarant_nom || 'Déclaration'),
+    body: '<img src="' + url + '" alt="Formulaire" style="width:100%;border-radius:var(--rMd);border:1px solid var(--border0)">',
+    footer: '<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>' +
+            '<button class="btn btn-primary" onclick="aiTelecharger(' + d.id + ')">Télécharger</button>'
+  });
+}
+
+async function aiTelecharger(id) {
+  var d = aiTrouver(id);
+  if (!d) return;
+  var url = await plainteDessiner(aiVersDocument(d));
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'affaires-internes-' + d.id + '.png';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function aiDetail(id) {
+  var d = aiTrouver(id);
+  if (!d) return;
+  var lien = d.discord_channel_id && d.discord_message_id
+    ? '<a href="https://discord.com/channels/' + esc(GUILD_ID) + '/' + esc(d.discord_channel_id) + '/' + esc(d.discord_message_id) + '" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Voir sur Discord</a>'
+    : '';
+  var statutOpts = AI_STATUTS.map(function(s) {
+    return '<option value="' + esc(s) + '"' + ((d.statut || 'Nouvelle') === s ? ' selected' : '') + '>' + esc(s) + '</option>';
+  }).join('');
+  openModal({
+    eyebrow: (d.type_declaration || 'Plainte').toUpperCase() + ' N° ' + esc(d.id),
+    title: esc(d.agents_concernes || 'Déclaration'),
+    body:
+      infoRow('Déposée le', fmtPlainteDate(d.created_at)) +
+      infoRow('Déclarant', d.declarant_nom || '—') +
+      infoRow('Téléphone', d.declarant_telephone || '—') +
+      infoRow('Agent(s) concerné(s)', d.agents_concernes || '—') +
+      infoRow('Lieu et moment', d.lieu_faits || '—') +
+      infoRow('Enregistrée par', d.agent_nom || '—') +
+      '<div class="form-group mt-14"><label class="form-label">Description des faits</label>' +
+        '<div style="background:var(--bg2);border:1px solid var(--border0);border-radius:var(--rMd);padding:11px 13px;font-size:.85rem;white-space:pre-wrap">' + esc(d.description || '—') + '</div>' +
+      '</div>' +
+      (canWrite() ?
+        '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="aiStatut">' + statutOpts + '</select></div>' +
+        '<div class="form-group"><label class="form-label">Notes internes</label><textarea class="form-control" id="aiNotes" rows="3" placeholder="Suites données, décision…">' + esc(d.notes || '') + '</textarea></div>'
+        : ''),
+    footer:
+      lien +
+      '<button class="btn btn-outline" onclick="aiApercu(' + d.id + ')">Formulaire</button>' +
+      '<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>' +
+      (canWrite() ? '<button class="btn btn-primary" onclick="aiEnregistrer(' + d.id + ')">Enregistrer</button>' : '')
+  });
+}
+
+async function aiEnregistrer(id) {
+  var statut = document.getElementById('aiStatut').value;
+  var notes = document.getElementById('aiNotes').value.trim() || null;
+  var patch = { statut: statut, notes: notes, updated_at: new Date().toISOString() };
+  if (statut !== 'Nouvelle') { patch.traite_par = _whoAmI(); patch.traite_at = new Date().toISOString(); }
+  var r = await DB.updatePlainteAI(id, patch);
+  if (r.error) { toast(r.error.message, 'error'); return; }
+  closeModal();
+  toast('Dossier mis à jour.', 'success');
+  sendLog('🕵️ Affaires Internes n° ' + id, 0x12315C, [
+    { name: 'Statut', value: statut, inline: true },
+    { name: 'Par', value: _whoAmI(), inline: true }
+  ]);
+  await renderAffairesInternes();
+}
+
 // ── Formulaire Affaires Internes ───────────────────────────────────
 var PV_MARGE = 50, PV_LARGE = TP_LARGEUR - 100;
 var PV_BORDURE = '#C3D0E4', PV_FOND_SECTION = '#F7FAFF', PV_BANDEAU = '#DCE6F5', PV_TRAIT = '#9FB0C6';
@@ -3706,12 +3866,13 @@ async function plainteDessiner(p) {
   pvSection(ctx, 368, 212, 'INFORMATIONS SUR LES FAITS');
   pvChamp(ctx, PV_MARGE + 18, 440, 'Date des faits :', dateSeule, PV_MARGE + PV_LARGE - 20);
   pvChamp(ctx, PV_MARGE + 18, 480, 'Heure approximative :', heureSeule, PV_MARGE + PV_LARGE - 20);
-  pvChamp(ctx, PV_MARGE + 18, 520, 'Lieu :', '', PV_MARGE + PV_LARGE - 20);
+  pvChamp(ctx, PV_MARGE + 18, 520, 'Lieu :', p.lieu || '', PV_MARGE + PV_LARGE - 20);
   pvChamp(ctx, PV_MARGE + 18, 560, 'Agent(s) ou personne(s) concerné(e)(s) :', p.mis_en_cause, PV_MARGE + PV_LARGE - 20);
 
   pvSection(ctx, 600, 92, 'TYPE DE DÉCLARATION');
-  pvCase(ctx, PV_MARGE + 22, 668, 'Témoignage', false);
-  pvCase(ctx, PV_MARGE + 300, 668, 'Plainte', true);
+  var estTemoignage = String(p.type_declaration || 'Plainte') === 'Témoignage';
+  pvCase(ctx, PV_MARGE + 22, 668, 'Témoignage', estTemoignage);
+  pvCase(ctx, PV_MARGE + 300, 668, 'Plainte', !estTemoignage);
 
   pvSection(ctx, 712, 336, 'DESCRIPTION DÉTAILLÉE DES FAITS');
   var recit = (p.motif ? 'Motif : ' + p.motif + '. ' : '') + (p.resume || '');

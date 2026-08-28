@@ -274,6 +274,16 @@ const DIVISION_LABELS = {
 
 const SITE_BASE_URL = "https://louiis-hub.github.io/sasp-intranet/";
 
+// Affaires Internes : salon de reception et roles autorises a deposer.
+const AI_CHANNEL_ID = "1543019145271058482";
+const AI_ROLE_IDS = [
+  "1500975725153620033", // Command Staff
+  "1504452141518032956", // Supervisor Team
+  "1504453500481048676", // ------ [AI] ------
+  "1524117754725007422", // Lead IA
+  "1514523559127548016"  // IA
+];
+
 // Peuvent etablir une attestation de test de poudre : le CID, plus
 // l'encadrement. Meme perimetre que la page Tests de poudre du site.
 const TEST_POUDRE_ROLE_IDS = [
@@ -8867,6 +8877,109 @@ export default {
       }
 
       // Slash command /plainte
+      // Affaires Internes : temoignage ou plainte visant un agent du SASP.
+      // Le type est choisi comme option de la commande, le reste dans un
+      // formulaire — un modal Discord est limite a cinq champs.
+      if (interaction.type === 2 && interaction.data.name === "affaires-internes") {
+        const rolesPortes = interaction.member?.roles || [];
+        if (!AI_ROLE_IDS.some(id => rolesPortes.includes(id))) {
+          return json({ type: 4, data: { content: "❌ Commande réservée aux Affaires Internes et à l'encadrement.", flags: 64 } });
+        }
+        const type = (interaction.data.options || []).find(o => o.name === "type")?.value || "Plainte";
+        return json({
+          type: 9,
+          data: {
+            custom_id: `ai_modal|${type}`,
+            title: type === "Témoignage" ? "Témoignage - Affaires Internes" : "Plainte - Affaires Internes",
+            components: [
+              { type: 1, components: [{ type: 4, custom_id: "declarant_nom", label: "Declarant - Nom Prenom", style: 1, required: true, placeholder: "Ex : James Morrison", min_length: 2, max_length: 80 }] },
+              { type: 1, components: [{ type: 4, custom_id: "declarant_tel", label: "Telephone du declarant", style: 1, required: false, placeholder: "Ex : (555) 1234", max_length: 30 }] },
+              { type: 1, components: [{ type: 4, custom_id: "agents_concernes", label: "Agent(s) du SASP concerne(s)", style: 1, required: true, placeholder: "Nom, prenom ou matricule", min_length: 2, max_length: 200 }] },
+              { type: 1, components: [{ type: 4, custom_id: "lieu_faits", label: "Lieu et moment des faits", style: 1, required: true, placeholder: "Ex : Vinewood, hier vers 21h", min_length: 2, max_length: 200 }] },
+              { type: 1, components: [{ type: 4, custom_id: "description", label: "Description detaillee des faits", style: 2, required: true, placeholder: "Decrivez precisement ce qui s'est passe...", min_length: 10, max_length: 2000 }] }
+            ]
+          }
+        });
+      }
+
+      if (interaction.type === 5 && interaction.data.custom_id.startsWith("ai_modal|")) {
+        const type = interaction.data.custom_id.split("|")[1] || "Plainte";
+        const lire = (id) => interaction.data.components?.flatMap(r => r.components)?.find(c => c.custom_id === id)?.value || "";
+        const declarantNom = lire("declarant_nom");
+        const declarantTel = lire("declarant_tel");
+        const agentsConcernes = lire("agents_concernes");
+        const lieuFaits = lire("lieu_faits");
+        const description = lire("description");
+        const userId = interaction.member?.user?.id || interaction.user?.id;
+
+        let agentNom = interaction.member?.nick || interaction.member?.user?.username || "";
+        try {
+          const agent = await getAgentByDiscordId(env, userId);
+          if (agent) agentNom = `${agent.grade || ""} ${agent.prenom || ""} ${agent.nom || ""}`.trim() || agentNom;
+        } catch {}
+
+        let dossierId = null;
+        try {
+          const cree = await sb(env, "POST", "/plaintes_ai", {
+            created_at: new Date().toISOString(),
+            declarant_nom: declarantNom,
+            declarant_telephone: declarantTel || null,
+            type_declaration: type,
+            agents_concernes: agentsConcernes,
+            lieu_faits: lieuFaits,
+            description,
+            agent_nom: agentNom,
+            agent_discord_id: userId || null,
+            statut: "Nouvelle",
+            discord_channel_id: AI_CHANNEL_ID
+          });
+          if (cree && cree[0]) dossierId = cree[0].id;
+        } catch {}
+
+        const lienDossier = dossierId
+          ? `\n\n**[Ouvrir le formulaire](${SITE_BASE_URL}#affaires-internes/${dossierId})**`
+          : "";
+
+        const envoi = await discordFetch(`${DISCORD_API}/channels/${AI_CHANNEL_ID}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            embeds: [{
+              title: `${type} — Affaires Internes${dossierId ? ` · N° ${dossierId}` : ""}`,
+              color: 0x12315C,
+              description: `Déclaration enregistrée par ${agentNom}.${lienDossier}`,
+              fields: [
+                { name: "Déclarant", value: declarantNom || "—", inline: true },
+                { name: "Téléphone", value: declarantTel || "—", inline: true },
+                { name: "Agent(s) concerné(s)", value: agentsConcernes || "—", inline: false },
+                { name: "Lieu et moment des faits", value: lieuFaits || "—", inline: false },
+                { name: "Description", value: description.slice(0, 1024), inline: false }
+              ],
+              footer: { text: "SASP · Affaires Internes" },
+              timestamp: new Date().toISOString()
+            }],
+            allowed_mentions: { parse: [] }
+          })
+        });
+
+        if (dossierId) {
+          try {
+            const poste = await envoi.json();
+            await sb(env, "PATCH", `/plaintes_ai?id=eq.${dossierId}`, { discord_message_id: poste && poste.id ? poste.id : null });
+          } catch {}
+        }
+
+        return json({
+          type: 4,
+          data: {
+            content: dossierId
+              ? `Déclaration n° ${dossierId} transmise aux Affaires Internes.`
+              : "Déclaration transmise, mais l'enregistrement en base a échoué : la migration plaintes-ai.sql n'a peut-être pas été passée.",
+            flags: 64
+          }
+        });
+      }
+
       // Attestation de test de residus de poudre. Le formulaire est prerempli
       // avec la fiche de l'agent et la date du jour pour limiter la saisie.
       if (interaction.type === 2 && interaction.data.name === "testpoudre") {

@@ -10,6 +10,11 @@ var ROLE_ACADEMY_ID  = '1518631032167993534'; // Police Academy
 var ROLE_VISITEUR_ID = '1501250580058870104';
 var FTF_ROLE_ID      = '1528370846908026951';
 var CID_ROLE_ID      = '1518631634524569641'; // separateur [CID], conserve pour compatibilite
+var ROLE_AI_IDS      = [
+  '1504453500481048676', // ------ [AI] ------
+  '1524117754725007422', // Lead IA
+  '1514523559127548016'  // IA
+];
 var ROLE_CID_IDS     = [
   '1518631634524569641', // ------ [CID] ------
   '1501526844959363114', // CID
