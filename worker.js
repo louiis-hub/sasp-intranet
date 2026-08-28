@@ -104,7 +104,7 @@ function getParisClock(date = new Date()) {
 
 async function sendCeremonieReminder(env, options = {}) {
   const clock = getParisClock();
-  if (!options.force && (clock.weekday !== "Sun" || clock.hour !== "12" || clock.minute !== "03")) {
+  if (!options.force && (clock.weekday !== "Sun" || clock.hour !== "14" || clock.minute !== "02")) {
     return { ok: true, skipped: true, reason: "outside_paris_schedule", clock };
   }
 
@@ -126,7 +126,7 @@ async function sendCeremonieReminder(env, options = {}) {
     "",
     "Best regards,",
     "",
-    "<:SASP:1505194044031242381> [99] Commandant",
+    "<:SASP:1533077310121447434> [99] Commandant",
     "San Andreas State Police",
     "",
     CEREMONIE_REMINDER_PLAN_URL
@@ -9759,6 +9759,10 @@ export default {
   async scheduled(event, env, ctx) {
     if (event.cron === '0 18 * * SUN') {
       ctx.waitUntil(autoClockoutAll(env));
+    } else if (event.cron === '2 12 * * SUN' || event.cron === '2 13 * * SUN') {
+      // 14h02 a Paris : 12h02 UTC en heure d'ete, 13h02 en heure d'hiver.
+      // sendCeremonieReminder verifie l'heure de Paris et ignore l'autre reveil.
+      ctx.waitUntil(sendCeremonieReminder(env).catch(() => null));
     } else {
       ctx.waitUntil(processPointeuseConfirmations(env, "sud"));
       if (env.POINTEUSE_CHANNEL_ID && env.POINTEUSE_MESSAGE_ID) {

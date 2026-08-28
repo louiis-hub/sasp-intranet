@@ -10,4 +10,5 @@ POINTEUSE_MESSAGE_ID = "1541207524492181505"
 PLAINTESASP_CHANNEL_ID = "1538289329917534328"
 
 [triggers]
-crons = ["0 18 * * SUN", "*/15 * * * *"]
+# Les deux reveils du dimanche visent 14h02 a Paris, ete comme hiver.
+crons = ["0 18 * * SUN", "2 12 * * SUN", "2 13 * * SUN", "*/15 * * * *"]
