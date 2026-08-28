@@ -3414,9 +3414,9 @@ async function applyPointeuseClaimCorrection(env, interaction, { siteKey, pointa
     await editMessage(env, interaction.channel_id, interaction.message.id, {
       content: "",
       embeds: [{
-        title: "✅ Demande d'heures validée",
+        title: "✅ Les big boss ont validé",
         color: 0x2ecc71,
-        description: `${requesterId ? `<@${requesterId}>` : agentDisplayName(a)} reçoit **${parsedHours}h** créditée(s) sur sa pointeuse.`,
+        description: `${requesterId ? `<@${requesterId}>` : agentDisplayName(a)} récupère **${parsedHours}h** sur sa pointeuse.\nLe Command Staff a tranché — on n'est pas des rats ici. 🐀❌`,
         fields: [
           ...(oldEmbed.fields || []).slice(0, 4),
           { name: "Validé par", value: staffId ? `<@${staffId}>` : "Command Staff", inline: true },
@@ -3433,8 +3433,8 @@ async function applyPointeuseClaimCorrection(env, interaction, { siteKey, pointa
   if (requesterId) {
     await sendUserDM(env, requesterId, {
       embeds: [{
-        title: "✅ Réclamation d'heures validée",
-        description: `Le Command Staff a validé **${parsedHours}h** à créditer sur ta pointeuse.`,
+        title: "✅ Les big boss ont validé",
+        description: `Le Command Staff te crédite **${parsedHours}h**.\nOn n'est pas des rats ici. 🫡`,
         color: 0x2ecc71,
         footer: { text: "SASP · Pointeuse" },
         timestamp: new Date().toISOString()
@@ -3454,8 +3454,8 @@ async function refusePointeuseClaim(env, interaction, customId) {
     await editMessage(env, interaction.channel_id, interaction.message.id, {
       content: "",
       embeds: [{
-        title: "❌ Demande d'heures refusée",
-        description: `${requesterId ? `<@${requesterId}>` : agentDisplayName(a)} — demande refusée par ${staffId ? `<@${staffId}>` : "Command Staff"}.`,
+        title: "❌ Les big boss ont dit non",
+        description: `${requesterId ? `<@${requesterId}>` : agentDisplayName(a)} — refusée par ${staffId ? `<@${staffId}>` : "Command Staff"}. Ça passe pas cette fois. 🚫`,
         color: 0xe74c3c,
         footer: { text: "SASP · Pointeuse" },
         timestamp: new Date().toISOString()
@@ -3466,8 +3466,8 @@ async function refusePointeuseClaim(env, interaction, customId) {
   if (requesterId) {
     await sendUserDM(env, requesterId, {
       embeds: [{
-        title: "❌ Réclamation d'heures refusée",
-        description: "Le Command Staff a refusé ta demande de récupération d'heures.",
+        title: "❌ Les big boss ont dit non",
+        description: "Le Command Staff a refusé ta demande de récupération d'heures. Ça passe pas cette fois. 🚫",
         color: 0xe74c3c,
         footer: { text: "SASP · Pointeuse" },
         timestamp: new Date().toISOString()
