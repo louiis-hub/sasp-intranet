@@ -361,8 +361,8 @@ async function allerVersRouteInitiale() {
   if (cible.page === 'plaintes' && cible.id && typeof plainteApercu === 'function') {
     try { await plainteApercu(cible.id); } catch (e) {}
   }
-  if (cible.page === 'affaires-internes' && cible.id && typeof aiApercu === 'function') {
-    try { await aiApercu(cible.id); } catch (e) {}
+  if (cible.page === 'affaires-internes' && cible.id && typeof aiDetail === 'function') {
+    try { await aiDetail(cible.id); } catch (e) {}
   }
 }
 
@@ -3651,8 +3651,7 @@ async function renderAffairesInternes() {
       '<td>' + esc(d.agents_concernes || '—') + '</td>' +
       '<td>' + aiStatutBadge(d.statut) + '</td>' +
       '<td style="white-space:nowrap">' +
-        '<button class="btn btn-ghost btn-sm" onclick="aiDetail(' + d.id + ')">Détail</button> ' +
-        '<button class="btn btn-outline btn-sm" onclick="aiApercu(' + d.id + ')">Formulaire</button>' +
+        '<button class="btn btn-outline btn-sm" onclick="aiDetail(' + d.id + ')">Ouvrir le dossier</button>' +
       '</td>' +
     '</tr>';
   }).join('') : '<tr><td colspan="7"><div class="empty-state" style="padding:30px"><div class="empty-title">Aucune déclaration</div><div class="empty-sub">Les témoignages et plaintes déposés via <b>/affaires-internes</b> apparaîtront ici.</div></div></td></tr>';
@@ -3699,9 +3698,10 @@ async function aiTelecharger(id) {
   document.body.appendChild(a); a.click(); a.remove();
 }
 
-function aiDetail(id) {
+async function aiDetail(id) {
   var d = aiTrouver(id);
   if (!d) return;
+  var document_url = await plainteDessiner(aiVersDocument(d), 'ai');
   var lien = d.discord_channel_id && d.discord_message_id
     ? '<a href="https://discord.com/channels/' + esc(GUILD_ID) + '/' + esc(d.discord_channel_id) + '/' + esc(d.discord_message_id) + '" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Voir sur Discord</a>'
     : '';
@@ -3712,14 +3712,11 @@ function aiDetail(id) {
     eyebrow: (d.type_declaration || 'Plainte').toUpperCase() + ' N° ' + esc(d.id),
     title: esc(d.agents_concernes || 'Déclaration'),
     body:
-      infoRow('Déposée le', fmtPlainteDate(d.created_at)) +
-      infoRow('Déclarant', d.declarant_nom || '—') +
-      infoRow('Téléphone', d.declarant_telephone || '—') +
-      infoRow('Agent(s) concerné(s)', d.agents_concernes || '—') +
-      infoRow('Lieu et moment', d.lieu_faits || '—') +
-      infoRow('Enregistrée par', d.agent_nom || '—') +
-      '<div class="form-group mt-14"><label class="form-label">Description des faits</label>' +
-        '<div style="background:var(--bg2);border:1px solid var(--border0);border-radius:var(--rMd);padding:11px 13px;font-size:.85rem;white-space:pre-wrap">' + esc(d.description || '—') + '</div>' +
+      '<img src="' + document_url + '" alt="Formulaire" style="width:100%;border-radius:var(--rMd);border:1px solid var(--border0);margin-bottom:16px">' +
+      // Le récit complet sous le formulaire : l'encadré du document est limité
+      // en hauteur, et une déclaration longue y serait tronquée.
+      '<div class="form-group"><label class="form-label">Déclaration intégrale</label>' +
+        '<div style="background:var(--bg2);border:1px solid var(--border0);border-radius:var(--rMd);padding:11px 13px;font-size:.85rem;white-space:pre-wrap;max-height:260px;overflow:auto">' + esc(d.description || '—') + '</div>' +
       '</div>' +
       (canWrite() ?
         '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="aiStatut">' + statutOpts + '</select></div>' +
@@ -3727,7 +3724,7 @@ function aiDetail(id) {
         : ''),
     footer:
       lien +
-      '<button class="btn btn-outline" onclick="aiApercu(' + d.id + ')">Formulaire</button>' +
+      '<button class="btn btn-outline" onclick="aiTelecharger(' + d.id + ')">Télécharger</button>' +
       '<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>' +
       (canWrite() ? '<button class="btn btn-primary" onclick="aiEnregistrer(' + d.id + ')">Enregistrer</button>' : '')
   });
