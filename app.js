@@ -3871,24 +3871,39 @@ var PV_MODELES = {
   }
 };
 
-// Formulaire officiel. Renvoie un tableau de pages : le récit déborde sur
-// autant de feuillets que nécessaire, plutôt que d'être tronqué.
+// Formulaire officiel, rendu en plusieurs feuillets.
+// La description des faits occupe tout le bas de la premiere page d'un seul
+// tenant : c'est la piece maitresse du dossier, elle ne doit pas etre coupee
+// par une section intercalaire. Temoins, declaration sur l'honneur et pave du
+// service passent donc sur un feuillet de cloture.
 async function plainteDessiner(p, modele) {
   var M = PV_MODELES[modele || 'plainte'] || PV_MODELES.plainte;
-  var LIGNES_PAGE1 = 8, LIGNES_SUITE = 34, INTERLIGNE = 34;
+  var INTERLIGNE = 34;
+  var LIGNES_PAGE1 = 25;   // du haut du bloc jusqu'au pied de page
+  var LIGNES_SUITE = 34;   // feuillet entierement consacre au recit
 
   var premiere = pvNouvellePage();
-  var canvas = premiere.canvas, ctx = premiere.ctx;
+  var ctx = premiere.ctx;
   var recit = (p.motif ? 'Motif : ' + p.motif + '.\n\n' : '') + (p.resume || '');
-  var lignesRecit = pvDecouperTexte(ctx, recit);
-  var pagesSuite = Math.ceil(Math.max(0, lignesRecit.length - LIGNES_PAGE1) / LIGNES_SUITE);
-  var total = 1 + pagesSuite;
+  var lignes = pvDecouperTexte(ctx, recit);
+  var reste = Math.max(0, lignes.length - LIGNES_PAGE1);
+  var feuillets = Math.ceil(reste / LIGNES_SUITE);
+  var total = 2 + feuillets;   // premiere page, suites eventuelles, cloture
 
-  pvBandeau(ctx, M);
+  var pied = function(contexte, numero) {
+    contexte.textAlign = 'center';
+    contexte.fillStyle = '#7A8AA0';
+    contexte.font = '400 18px Arial, Helvetica, sans-serif';
+    contexte.fillText('SAN ANDREAS STATE POLICE — ' + (modele === 'ai' ? 'Affaires Internes' : 'Plainte') +
+      ' n° ' + (p.id || '—') + '   ·   page ' + numero + ' / ' + total, TP_LARGEUR / 2, 1712);
+  };
 
   var dateComplete = fmtPlainteDate(p.created_at);
   var dateSeule = dateComplete.split(' à ')[0];
   var heureSeule = dateComplete.split(' à ')[1] || '';
+
+  // ── Page 1 : identité, faits, type, puis le récit ──────────────
+  pvBandeau(ctx, M);
 
   pvSection(ctx, 176, 172, M.declarant);
   pvChamp(ctx, PV_MARGE + 18, 248, 'Nom et prénom :', p.plaignant, PV_MARGE + PV_LARGE - 20);
@@ -3912,54 +3927,46 @@ async function plainteDessiner(p, modele) {
   pvCase(ctx, PV_MARGE + 22, 668, 'Témoignage', estTemoignage);
   pvCase(ctx, PV_MARGE + 300, 668, 'Plainte', !estTemoignage);
 
-  pvSection(ctx, 712, 336, 'DESCRIPTION DÉTAILLÉE DES FAITS' + (total > 1 ? '  (suite page 2)' : ''));
-  pvLignesReglees(ctx, 786, LIGNES_PAGE1, INTERLIGNE, lignesRecit, 0);
-
-  pvSection(ctx, 1064, 128, 'TÉMOINS ÉVENTUELS');
-  pvChamp(ctx, PV_MARGE + 18, 1136, 'Nom(s) et moyen(s) de contact :', '', PV_MARGE + PV_LARGE - 20);
-  ctx.strokeStyle = PV_TRAIT; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(PV_MARGE + 22, 1176); ctx.lineTo(PV_MARGE + PV_LARGE - 22, 1176); ctx.stroke();
-
-  pvSection(ctx, 1208, 92, 'ÉLÉMENTS DE PREUVE');
-  var preuve = pvCase(ctx, PV_MARGE + 22, 1276, 'Photographie(s)', false);
-  preuve = pvCase(ctx, preuve + 34, 1276, 'Vidéo(s)', false);
-  preuve = pvCase(ctx, preuve + 34, 1276, 'Enregistrement(s)', false);
-  preuve = pvCase(ctx, preuve + 34, 1276, 'Document(s)', false);
-  pvCase(ctx, preuve + 34, 1276, 'Aucun', false);
-
-  pvSection(ctx, 1312, 136, "DÉCLARATION SUR L'HONNEUR");
-  ctx.fillStyle = TP_MARINE;
-  ctx.font = '400 20px Arial, Helvetica, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('Je certifie que les informations fournies dans ce document sont exactes et sincères.', PV_MARGE + 18, 1382);
-  pvChamp(ctx, PV_MARGE + 18, 1424, 'Fait le :', dateSeule, PV_MARGE + 330);
-  pvChamp(ctx, PV_MARGE + 380, 1424, 'Signature du déclarant :', p.plaignant, PV_MARGE + PV_LARGE - 20);
-
-  pvSection(ctx, 1462, 210, M.reserve, true);
-  pvChamp(ctx, PV_MARGE + 18, 1540, 'Date de réception :', dateComplete, PV_MARGE + PV_LARGE - 20);
-  pvChamp(ctx, PV_MARGE + 18, 1584, 'Agent chargé du dossier :', p.agent_nom, PV_MARGE + PV_LARGE - 20);
-  pvChamp(ctx, PV_MARGE + 18, 1628, 'Suite donnée :', (p.statut || 'Nouvelle') + (p.notes ? ' — ' + p.notes : ''), PV_MARGE + PV_LARGE - 20);
-
-  var pied = function(contexte, numero) {
-    contexte.textAlign = 'center';
-    contexte.fillStyle = '#7A8AA0';
-    contexte.font = '400 18px Arial, Helvetica, sans-serif';
-    contexte.fillText('SAN ANDREAS STATE POLICE — ' + (modele === 'ai' ? 'Affaires Internes' : 'Plainte') +
-      ' n° ' + (p.id || '—') + '   ·   page ' + numero + ' / ' + total, TP_LARGEUR / 2, 1712);
-  };
+  pvSection(ctx, 712, 978, 'DESCRIPTION DÉTAILLÉE DES FAITS' + (feuillets ? '  (suite page 2)' : ''));
+  pvLignesReglees(ctx, 786, LIGNES_PAGE1, INTERLIGNE, lignes, 0);
   pied(ctx, 1);
 
-  var pages = [canvas.toDataURL('image/png')];
+  var pages = [premiere.canvas.toDataURL('image/png')];
 
-  // Feuillets de suite : le récit reprend là où la première page s'arrête.
-  for (var n = 0; n < pagesSuite; n++) {
-    var suite = pvNouvellePage();
-    pvBandeau(suite.ctx, M, 'SUITE DE LA DÉCLARATION');
-    pvSection(suite.ctx, 176, 1300, 'DESCRIPTION DÉTAILLÉE DES FAITS (SUITE)');
-    pvLignesReglees(suite.ctx, 250, LIGNES_SUITE, INTERLIGNE, lignesRecit, LIGNES_PAGE1 + n * LIGNES_SUITE);
-    pied(suite.ctx, n + 2);
-    pages.push(suite.canvas.toDataURL('image/png'));
+  // ── Feuillets de suite, entierement consacres au recit ─────────
+  for (var n = 0; n < feuillets; n++) {
+    var f = pvNouvellePage();
+    pvBandeau(f.ctx, M, 'SUITE DE LA DÉCLARATION');
+    pvSection(f.ctx, 176, 1300, 'DESCRIPTION DÉTAILLÉE DES FAITS (SUITE)');
+    pvLignesReglees(f.ctx, 250, LIGNES_SUITE, INTERLIGNE, lignes, LIGNES_PAGE1 + n * LIGNES_SUITE);
+    pied(f.ctx, n + 2);
+    pages.push(f.canvas.toDataURL('image/png'));
   }
+
+  // ── Feuillet de cloture ────────────────────────────────────────
+  var c = pvNouvellePage();
+  pvBandeau(c.ctx, M, 'TÉMOINS ET SIGNATURES');
+
+  pvSection(c.ctx, 176, 168, 'TÉMOINS ÉVENTUELS');
+  pvChamp(c.ctx, PV_MARGE + 18, 248, 'Nom(s) et moyen(s) de contact :', '', PV_MARGE + PV_LARGE - 20);
+  c.ctx.strokeStyle = PV_TRAIT; c.ctx.lineWidth = 1;
+  c.ctx.beginPath(); c.ctx.moveTo(PV_MARGE + 22, 296); c.ctx.lineTo(PV_MARGE + PV_LARGE - 22, 296); c.ctx.stroke();
+
+  pvSection(c.ctx, 364, 152, "DÉCLARATION SUR L'HONNEUR");
+  c.ctx.fillStyle = TP_MARINE;
+  c.ctx.font = '400 20px Arial, Helvetica, sans-serif';
+  c.ctx.textAlign = 'left';
+  c.ctx.fillText('Je certifie que les informations fournies dans ce document sont exactes et sincères.', PV_MARGE + 18, 438);
+  pvChamp(c.ctx, PV_MARGE + 18, 486, 'Fait le :', dateSeule, PV_MARGE + 330);
+  pvChamp(c.ctx, PV_MARGE + 380, 486, 'Signature du déclarant :', p.plaignant, PV_MARGE + PV_LARGE - 20);
+
+  pvSection(c.ctx, 564, 232, M.reserve, true);
+  pvChamp(c.ctx, PV_MARGE + 18, 646, 'Date de réception :', dateComplete, PV_MARGE + PV_LARGE - 20);
+  pvChamp(c.ctx, PV_MARGE + 18, 690, 'Agent chargé du dossier :', p.agent_nom, PV_MARGE + PV_LARGE - 20);
+  pvChamp(c.ctx, PV_MARGE + 18, 734, 'Suite donnée :', (p.statut || 'Nouvelle') + (p.notes ? ' — ' + p.notes : ''), PV_MARGE + PV_LARGE - 20);
+
+  pied(c.ctx, total);
+  pages.push(c.canvas.toDataURL('image/png'));
 
   return pages;
 }
