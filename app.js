@@ -2374,7 +2374,7 @@ async function renderAgentProfile() {
           '<div class="profile-actions">' +
             '<button class="btn btn-outline btn-sm" onclick="openAgentModal(\'' + id + '\')">✏️ Modifier</button>' +
             '<button class="btn btn-ghost btn-sm" onclick="syncDiscordToAgent(\'' + id + '\')" title="Sync divisions depuis Discord">🔄 Sync Discord</button>' +
-            (isAdmin() ? '<button class="btn btn-danger btn-sm" onclick="deleteAgentDirect(\'' + id + '\')">Supprimer</button>' : '') +
+            (canWrite() ? '<button class="btn btn-danger btn-sm" onclick="deleteAgentDirect(\'' + id + '\')">Supprimer</button>' : '') +
           '</div>' : '') +
     '</div>' +
 
@@ -2402,7 +2402,7 @@ async function renderAgentProfile() {
         '<div class="card">' +
           '<div class="flex-between mb-10">' +
             '<div class="card-head" style="margin:0"><div class="card-icon">📚</div><div><div class="card-title">Formations PPA</div></div></div>' +
-            (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="openPPAModal(\'' + id + '\')">✏️ PPA</button>' : '') +
+            (canWrite() ? '<button class="btn btn-ghost btn-sm" onclick="openPPAModal(\'' + id + '\')">✏️ PPA</button>' : '') +
           '</div>' +
           '<div class="ppa-grid">' + ppaHtml + '</div>' +
           (function(){
@@ -2410,7 +2410,7 @@ async function renderAgentProfile() {
             return '<div style="margin-top:14px;border-top:1px solid var(--border0);padding-top:12px">' +
               '<div class="flex-between" style="margin-bottom:8px">' +
                 '<div style="font-size:.72rem;color:var(--red);font-weight:700;letter-spacing:.8px">⚠️ BLÂMES</div>' +
-                (isAdmin() ? '<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:2px 8px" onclick="openBlameModal(\'' + id + '\')">✏️ Blâmes</button>' : '') +
+                (canWrite() ? '<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:2px 8px" onclick="openBlameModal(\'' + id + '\')">✏️ Blâmes</button>' : '') +
               '</div>' +
               '<div style="display:flex;gap:8px">' +
                 [1,2,3].map(function(n){
@@ -2431,7 +2431,7 @@ async function renderAgentProfile() {
           '<div style="margin-top:14px;border-top:1px solid var(--border0);padding-top:12px">' +
             '<div class="flex-between" style="margin-bottom:8px">' +
               '<div style="font-size:.72rem;color:var(--blue);font-weight:700;letter-spacing:.8px">📋 FORMATIONS</div>' +
-              (isAdmin() ? '<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:2px 8px" onclick="openFormationsModal(\'' + id + '\')">✏️ Formations</button>' : '') +
+              (canWrite() ? '<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:2px 8px" onclick="openFormationsModal(\'' + id + '\')">✏️ Formations</button>' : '') +
             '</div>' +
             '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
               (function(){
