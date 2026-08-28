@@ -1,18 +1,20 @@
-name = "sasp-intranet-bot"
-main = "worker.js"
-compatibility_date = "2024-01-01"
-
-[vars]
-# Synchro Discord -> intranet sur le cron 15 min. Mettre "0" pour la couper.
-AUTO_ROLE_SYNC = "1"
+name = "sasp-intranet-bot"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+# Synchro Discord -> intranet sur le cron 15 min. Mettre "0" pour la couper.
+AUTO_ROLE_SYNC = "1"
 # Salon et message de la pointeuse. Les deux vont de pair : le message doit
 # exister dans ce salon, sinon le rafraichissement toutes les 15 min echoue.
 POINTEUSE_CHANNEL_ID = "1515025043472650281"
 POINTEUSE_MESSAGE_ID = "1542935975431249921"
 # Salon ou le Command Staff recoit les demandes de recuperation d heures.
 POINTEUSE_CLAIM_CHANNEL_ID = "1533451858209931477"
-PLAINTESASP_CHANNEL_ID = "1538289329917534328"
-
+PLAINTESASP_CHANNEL_ID = "1538289329917534328"
+
 [triggers]
-# Les deux reveils du dimanche visent 14h02 a Paris, ete comme hiver.
-crons = ["0 18 * * SUN", "2 12 * * SUN", "2 13 * * SUN", "*/15 * * * *"]
+# Cloudflare limite le nombre de declencheurs cron. On s en tient a deux :
+# l annonce de ceremonie s appuie sur celui des 15 minutes, qui tombe pile
+# a l heure ronde.
+crons = ["0 18 * * SUN", "*/15 * * * *"]

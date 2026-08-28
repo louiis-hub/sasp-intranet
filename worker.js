@@ -108,7 +108,7 @@ function getParisClock(date = new Date()) {
 
 async function sendCeremonieReminder(env, options = {}) {
   const clock = getParisClock();
-  if (!options.force && (clock.weekday !== "Sun" || clock.hour !== "14" || clock.minute !== "02")) {
+  if (!options.force && (clock.weekday !== "Sun" || clock.hour !== "14" || clock.minute !== "00")) {
     return { ok: true, skipped: true, reason: "outside_paris_schedule", clock };
   }
 
@@ -9984,16 +9984,15 @@ export default {
   async scheduled(event, env, ctx) {
     if (event.cron === '0 18 * * SUN') {
       ctx.waitUntil(autoClockoutAll(env));
-    } else if (event.cron === '2 12 * * SUN' || event.cron === '2 13 * * SUN') {
-      // 14h02 a Paris : 12h02 UTC en heure d'ete, 13h02 en heure d'hiver.
-      // sendCeremonieReminder verifie l'heure de Paris et ignore l'autre reveil.
-      ctx.waitUntil(sendCeremonieReminder(env).catch(() => null));
     } else {
       ctx.waitUntil(processPointeuseConfirmations(env, "sud"));
       if (env.POINTEUSE_CHANNEL_ID && env.POINTEUSE_MESSAGE_ID) {
         ctx.waitUntil(refreshPointeuseMessage(env, env.POINTEUSE_CHANNEL_ID, env.POINTEUSE_MESSAGE_ID, "sud").catch(() => null));
       }
       ctx.waitUntil(reactToChannelMessages(env).catch(() => null));
+      // Annonce de ceremonie : la fonction ne fait rien tant qu il n est pas
+      // dimanche 14h00 a Paris, changement d heure compris.
+      ctx.waitUntil(sendCeremonieReminder(env).catch(() => null));
       // Divisions / PPA / grades : Discord fait autorite, rattrapage toutes les 15 min.
       // Desactive tant que AUTO_ROLE_SYNC n'est pas mis a "1" dans wrangler.toml.
       if (env.AUTO_ROLE_SYNC === "1") {
