@@ -3679,7 +3679,7 @@ function aiTrouver(id) {
 async function aiApercu(id) {
   var d = aiTrouver(id);
   if (!d) return;
-  var url = await plainteDessiner(aiVersDocument(d));
+  var url = await plainteDessiner(aiVersDocument(d), 'ai');
   openModal({
     eyebrow: 'AFFAIRES INTERNES N° ' + esc(d.id),
     title: esc(d.declarant_nom || 'Déclaration'),
@@ -3692,7 +3692,7 @@ async function aiApercu(id) {
 async function aiTelecharger(id) {
   var d = aiTrouver(id);
   if (!d) return;
-  var url = await plainteDessiner(aiVersDocument(d));
+  var url = await plainteDessiner(aiVersDocument(d), 'ai');
   var a = document.createElement('a');
   a.href = url;
   a.download = 'affaires-internes-' + d.id + '.png';
@@ -3825,8 +3825,27 @@ function pvLignesReglees(ctx, y, nombre, interligne, texte) {
   }
 }
 
-// Procès-verbal de plainte, sur la maquette du formulaire Affaires Internes.
-async function plainteDessiner(p) {
+// Libellés propres à chaque service. Le gabarit, lui, est commun.
+var PV_MODELES = {
+  plainte: {
+    titre: 'DÉPÔT DE PLAINTE',
+    sousTitre: 'SAN ANDREAS STATE POLICE — SERVICE DES PLAINTES',
+    declarant: 'INFORMATIONS DU PLAIGNANT',
+    concernes: 'Personne(s) mise(s) en cause :',
+    reserve: 'Réservé au service des plaintes'
+  },
+  ai: {
+    titre: 'AFFAIRES INTERNES',
+    sousTitre: 'FORMULAIRE DE TÉMOIGNAGE / PLAINTE',
+    declarant: 'INFORMATIONS DU DÉCLARANT',
+    concernes: 'Agent(s) ou personne(s) concerné(e)(s) :',
+    reserve: 'Réservé aux Affaires Internes'
+  }
+};
+
+// Formulaire officiel. `modele` choisit les libellés du service concerné.
+async function plainteDessiner(p, modele) {
+  var M = PV_MODELES[modele || 'plainte'] || PV_MODELES.plainte;
   var canvas = document.createElement('canvas');
   canvas.width = TP_LARGEUR; canvas.height = TP_HAUTEUR;
   var ctx = canvas.getContext('2d');
@@ -3843,16 +3862,16 @@ async function plainteDessiner(p) {
   ctx.textAlign = 'center';
   ctx.fillStyle = '#FFFFFF';
   ctx.font = '700 58px Arial, Helvetica, sans-serif';
-  ctx.fillText('AFFAIRES INTERNES', TP_LARGEUR / 2, 96);
+  ctx.fillText(M.titre, TP_LARGEUR / 2, 96);
   ctx.fillStyle = '#C9A84C';
-  ctx.font = '700 26px Arial, Helvetica, sans-serif';
-  ctx.fillText('FORMULAIRE DE TÉMOIGNAGE / PLAINTE', TP_LARGEUR / 2, 132);
+  ctx.font = '700 24px Arial, Helvetica, sans-serif';
+  ctx.fillText(M.sousTitre, TP_LARGEUR / 2, 132);
 
   var dateComplete = fmtPlainteDate(p.created_at);
   var dateSeule = dateComplete.split(' à ')[0];
   var heureSeule = dateComplete.split(' à ')[1] || '';
 
-  pvSection(ctx, 176, 172, 'INFORMATIONS DU DÉCLARANT');
+  pvSection(ctx, 176, 172, M.declarant);
   pvChamp(ctx, PV_MARGE + 18, 248, 'Nom et prénom :', p.plaignant, PV_MARGE + PV_LARGE - 20);
   pvChamp(ctx, PV_MARGE + 18, 288, 'Numéro de téléphone :', p.telephone, PV_MARGE + PV_LARGE - 20);
   ctx.fillStyle = TP_MARINE;
@@ -3867,7 +3886,7 @@ async function plainteDessiner(p) {
   pvChamp(ctx, PV_MARGE + 18, 440, 'Date des faits :', dateSeule, PV_MARGE + PV_LARGE - 20);
   pvChamp(ctx, PV_MARGE + 18, 480, 'Heure approximative :', heureSeule, PV_MARGE + PV_LARGE - 20);
   pvChamp(ctx, PV_MARGE + 18, 520, 'Lieu :', p.lieu || '', PV_MARGE + PV_LARGE - 20);
-  pvChamp(ctx, PV_MARGE + 18, 560, 'Agent(s) ou personne(s) concerné(e)(s) :', p.mis_en_cause, PV_MARGE + PV_LARGE - 20);
+  pvChamp(ctx, PV_MARGE + 18, 560, M.concernes, p.mis_en_cause, PV_MARGE + PV_LARGE - 20);
 
   pvSection(ctx, 600, 92, 'TYPE DE DÉCLARATION');
   var estTemoignage = String(p.type_declaration || 'Plainte') === 'Témoignage';
@@ -3898,7 +3917,7 @@ async function plainteDessiner(p) {
   pvChamp(ctx, PV_MARGE + 18, 1424, 'Fait le :', dateSeule, PV_MARGE + 330);
   pvChamp(ctx, PV_MARGE + 380, 1424, 'Signature du déclarant :', p.plaignant, PV_MARGE + PV_LARGE - 20);
 
-  pvSection(ctx, 1462, 210, 'Réservé aux Affaires Internes', true);
+  pvSection(ctx, 1462, 210, M.reserve, true);
   pvChamp(ctx, PV_MARGE + 18, 1540, 'Date de réception :', dateComplete, PV_MARGE + PV_LARGE - 20);
   pvChamp(ctx, PV_MARGE + 18, 1584, 'Agent chargé du dossier :', p.agent_nom, PV_MARGE + PV_LARGE - 20);
   pvChamp(ctx, PV_MARGE + 18, 1628, 'Suite donnée :', (p.statut || 'Nouvelle') + (p.notes ? ' — ' + p.notes : ''), PV_MARGE + PV_LARGE - 20);
@@ -3906,7 +3925,7 @@ async function plainteDessiner(p) {
   ctx.textAlign = 'center';
   ctx.fillStyle = '#7A8AA0';
   ctx.font = '400 18px Arial, Helvetica, sans-serif';
-  ctx.fillText('SAN ANDREAS STATE POLICE — Plainte n° ' + (p.id || '—'), TP_LARGEUR / 2, 1712);
+  ctx.fillText('SAN ANDREAS STATE POLICE — ' + (modele === 'ai' ? 'Affaires Internes' : 'Plainte') + ' n° ' + (p.id || '—'), TP_LARGEUR / 2, 1712);
 
   return canvas.toDataURL('image/png');
 }
