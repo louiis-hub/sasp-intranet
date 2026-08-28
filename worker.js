@@ -2955,9 +2955,51 @@ const SERVICE_CONFIRMED_END_PENALTY_MS = 1 * 60 * 60 * 1000;
 const POINTEUSE_LOG_CHANNEL_ID = "1519525957390827711";
 const POINTEUSE_CLAIM_CHANNEL_ID = "1519525957390827711";
 
+// La duree est acceptee sous les formes que les agents utilisent reellement :
+// 1.5, 1,5, 1h30, 1:30, 4h, 90m. Le message d'origine affichant "1h39", refuser
+// cette saisie n'avait aucun sens.
 function parsePositiveHours(value) {
-  const n = Number(String(value || "").replace(",", "."));
-  return Number.isFinite(n) && n > 0 ? Math.min(n, 24) : 0;
+  const brut = String(value || "").trim().toLowerCase().replace(",", ".");
+  if (!brut) return 0;
+  let heures;
+  const heuresMinutes = brut.match(/^(\d+)\s*[h:]\s*(\d{1,2})$/);
+  const heuresSeules  = brut.match(/^(\d+(?:\.\d+)?)\s*h$/);
+  const minutes       = brut.match(/^(\d+)\s*(?:m|min|mn)$/);
+  if (heuresMinutes)     heures = Number(heuresMinutes[1]) + Number(heuresMinutes[2]) / 60;
+  else if (heuresSeules) heures = Number(heuresSeules[1]);
+  else if (minutes)      heures = Number(minutes[1]) / 60;
+  else                   heures = Number(brut);
+  if (!Number.isFinite(heures) || heures <= 0) return 0;
+  return Math.min(Math.round(heures * 100) / 100, 24);
+}
+
+// La reclamation reste ouverte 48h apres la fin du service.
+const CLAIM_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+// Neutralise le bouton de reclamation du message d'origine : une seule demande
+// par service, et plus rien a cliquer une fois le delai passe.
+async function disablePointeuseClaimButton(env, channelId, messageId, libelle) {
+  if (!channelId || !messageId) return;
+  try {
+    const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
+      headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+    });
+    if (!res.ok) return;
+    const message = await res.json();
+    const rangees = (message.components || []).map(rangee => ({
+      ...rangee,
+      components: (rangee.components || []).map(bouton =>
+        String(bouton.custom_id || "").startsWith("pointeuse_claim")
+          ? { ...bouton, disabled: true, label: libelle || bouton.label }
+          : bouton
+      )
+    }));
+    await discordFetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
+      method: "PATCH",
+      headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ components: rangees })
+    });
+  } catch {}
 }
 
 function weekInfoFromIso(iso) {
@@ -3264,16 +3306,24 @@ function modalValue(interaction, id) {
 }
 
 async function sendPointeuseClaimToStaff(env, interaction, customId) {
-  const [, siteToken, pointageId] = customId.split("|");
+  const [, siteToken, pointageId, messageId, channelId] = customId.split("|");
   const siteKey = siteToken === "nord" ? "nord" : "sud";
   const pointage = await getPointageById(env, pointageId, siteKey);
   const hours = parsePositiveHours(modalValue(interaction, "claim_hours"));
   const reason = modalValue(interaction, "claim_reason");
-  if (!pointage || !hours) {
+  if (!pointage) {
+    return { type: 4, data: { content: "❌ Service introuvable : il a peut-être été supprimé.", flags: 64 } };
+  }
+  if (!hours) {
     return {
       type: 4,
-      data: { content: "❌ Demande invalide ou service introuvable.", flags: 64 }
+      data: { content: "❌ Durée non comprise. Formats acceptés : `1.5`, `1h30`, `4h`, `90m`.", flags: 64 }
     };
+  }
+  const finDeService = pointage.clock_out ? new Date(pointage.clock_out).getTime() : 0;
+  if (finDeService && Date.now() - finDeService > CLAIM_WINDOW_MS) {
+    await disablePointeuseClaimButton(env, channelId, messageId, "Délai dépassé");
+    return { type: 4, data: { content: "❌ Le délai de réclamation de 48h est dépassé.", flags: 64 } };
   }
 
   const a = pointage.agents || {};
@@ -3310,6 +3360,9 @@ async function sendPointeuseClaimToStaff(env, interaction, customId) {
       }]
     })
   });
+
+  // Demande partie : le bouton n'a plus lieu d'etre sur ce service.
+  await disablePointeuseClaimButton(env, channelId, messageId, "Demande envoyée");
 
   return {
     type: 4,
@@ -8980,7 +9033,7 @@ export default {
         return json({ type: 4, data: { content: "âœ… Plainte modifiÃ©e.", flags: 64 } });
       }
 
-      if (interaction.type === 5 && interaction.data.custom_id.startsWith("pointeuse_claim_modal|")) {
+      if (interaction.type === 5 && (interaction.data.custom_id.startsWith("pointeuse_claim_modal|") || interaction.data.custom_id.startsWith("pcm|"))) {
         return json(await sendPointeuseClaimToStaff(env, interaction, interaction.data.custom_id));
       }
 
@@ -9008,7 +9061,20 @@ export default {
 
         if (customId.startsWith("pointeuse_claim|")) {
           const parts = customId.split("|");
-          return json(pointeuseClaimModal(`pointeuse_claim_modal|${parts[1] || "sud"}|${parts[2] || ""}`));
+          const siteKey = parts[1] === "nord" ? "nord" : "sud";
+          const pointageId = parts[2] || "";
+          const pointage = await getPointageById(env, pointageId, siteKey);
+          if (!pointage) {
+            return json({ type: 4, data: { content: "❌ Service introuvable : il a peut-être été supprimé.", flags: 64 } });
+          }
+          const fin = pointage.clock_out ? new Date(pointage.clock_out).getTime() : 0;
+          if (fin && Date.now() - fin > CLAIM_WINDOW_MS) {
+            await disablePointeuseClaimButton(env, interaction.channel_id, interaction.message?.id, "Délai dépassé");
+            return json({ type: 4, data: { content: "❌ Le délai de réclamation de 48h est dépassé. Adressez-vous directement au Command Staff.", flags: 64 } });
+          }
+          // pcm = pointeuse claim modal. Forme courte : le custom_id doit tenir
+          // en 100 caracteres avec l'identifiant du message et celui du salon.
+          return json(pointeuseClaimModal(`pcm|${siteKey}|${pointageId}|${interaction.message?.id || ""}|${interaction.channel_id || ""}`));
         }
 
         if (customId.startsWith("pointeuse_claim_accept|")) {
