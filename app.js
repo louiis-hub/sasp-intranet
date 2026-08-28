@@ -3945,13 +3945,42 @@ async function pickMatricule(mat) {
 async function deleteAgentDirect(id) {
   var agent = await DB.getAgent(id);
   if (!agent) { toast('Fiche agent introuvable.', 'error'); return; }
-  if (!confirm('Supprimer definitivement la fiche de ' + agent.prenom + ' ' + agent.nom + ' ?\n\nCette action est irreversible.')) return;
+  var avertissement = 'Supprimer definitivement la fiche de ' + agent.prenom + ' ' + agent.nom + ' ?\n\n' +
+    'Cette action est irreversible.';
+  if (agent.discord_id) {
+    avertissement += '\n\nTous ses roles Discord seront egalement retires, a l exception de Civil.';
+  }
+  if (!confirm(avertissement)) return;
+
+  // Les roles partent avant la fiche : si Discord refuse, on n a pas encore
+  // efface le dossier et l operation reste rattrapable.
+  var rolesRetires = null;
+  if (agent.discord_id) {
+    try {
+      var res = await fetch(WORKER_BASE + '/strip-member-roles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+        body: JSON.stringify({ discord_id: agent.discord_id })
+      });
+      var data = await res.json().catch(function(){ return {}; });
+      if (!data.ok) {
+        if (!confirm('Les roles Discord n ont pas pu etre retires :\n' + (data.error || 'erreur inconnue') +
+                     '\n\nSupprimer quand meme la fiche ?')) return;
+      } else if (!data.ignore) {
+        rolesRetires = (data.retires || []).length;
+      }
+    } catch(e) {
+      if (!confirm('Discord injoignable : ' + e.message + '\n\nSupprimer quand meme la fiche ?')) return;
+    }
+  }
+
   var r = await DB.deleteAgent(id);
   if (r.error) { toast(r.error.message, 'error'); return; }
   toast('Fiche agent supprimee.', 'info');
   sendLog('Agent supprime', 0xe74c3c, [
     { name: 'Agent', value: agent.prenom + ' ' + agent.nom + ' - ' + agent.matricule, inline: true },
-    { name: 'Par', value: _whoAmI(), inline: true }
+    { name: 'Par', value: _whoAmI(), inline: true },
+    { name: 'Roles Discord retires', value: rolesRetires === null ? 'aucun' : String(rolesRetires), inline: true }
   ]);
   refreshAgentList();
   navigate('agents');

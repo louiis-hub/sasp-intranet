@@ -2570,6 +2570,54 @@ async function getGuildRoleMap(env, guildId) {
   return new Map((Array.isArray(roles) ? roles : []).map(role => [String(role.id), role]));
 }
 
+// Roles conserves quand une fiche agent est supprimee : la personne quitte la
+// police mais reste membre du serveur.
+const ROLES_CONSERVES_SUPPRESSION = [
+  "1504455837790507148", // ---------------- [AUTRES] ----------------
+  "1500975724750704665"  // Civil
+];
+
+// Retire tous les roles Discord d'un membre, sauf ceux ci-dessus.
+// Un seul PATCH plutot qu'un DELETE par role : c'est atomique, et ca evite
+// de laisser le membre a moitie depouille si un appel echoue en cours de route.
+async function stripMemberRoles(env, guildId, discordId) {
+  if (!discordId) return { ok: false, error: "discord_id manquant" };
+  const res = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
+    headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}` }
+  });
+  if (res.status === 404) return { ok: true, ignore: true, raison: "membre absent du serveur" };
+  if (!res.ok) return { ok: false, error: `Discord ${res.status}` };
+  const membre = await res.json();
+  const portes = (membre.roles || []).map(String);
+
+  // Les roles geres par une integration (bots, boost du serveur) ne peuvent pas
+  // etre retires par l'API : les omettre ferait echouer la requete entiere.
+  const catalogue = await getGuildRoleMap(env, guildId);
+  const conserves = portes.filter(id =>
+    ROLES_CONSERVES_SUPPRESSION.includes(id) || (catalogue.get(id) || {}).managed
+  );
+  const retires = portes.filter(id => !conserves.includes(id));
+  if (!retires.length) return { ok: true, retires: [], conserves };
+
+  const patch = await discordFetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
+    method: "PATCH",
+    headers: {
+      "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`,
+      "Content-Type": "application/json",
+      "X-Audit-Log-Reason": "SASP Intranet - fiche agent supprimee"
+    },
+    body: JSON.stringify({ roles: conserves })
+  });
+  if (!patch.ok) {
+    return { ok: false, status: patch.status, error: await patch.text().catch(() => "") };
+  }
+  return {
+    ok: true,
+    retires: retires.map(id => (catalogue.get(id) || {}).name || id),
+    conserves: conserves.map(id => (catalogue.get(id) || {}).name || id)
+  };
+}
+
 async function buildInfoCommandResponse(env, interaction) {
   const member = interaction.member || {};
   const memberRoles = member.roles || [];
@@ -5061,6 +5109,19 @@ export default {
           })),
           erreurs
         });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    // Depouille un membre de ses roles a la suppression de sa fiche agent.
+    if (url.pathname === "/strip-member-roles" && request.method === "POST") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const corps = await request.json().catch(() => ({}));
+        const guildId = corps.guild_id || envGuildId(env);
+        return json(await stripMemberRoles(env, guildId, String(corps.discord_id || "").replace(/\D/g, "")));
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
