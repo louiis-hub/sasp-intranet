@@ -3280,7 +3280,7 @@ function pointeuseClaimModal(customId) {
       title: "Réclamation d'heures",
       custom_id: customId,
       components: [
-        { type: 1, components: [{ type: 4, custom_id: "claim_hours", label: "Nombre d'heures demandées", style: 1, required: true, placeholder: "Ex : 1.5", min_length: 1, max_length: 8 }] },
+        { type: 1, components: [{ type: 4, custom_id: "claim_hours", label: "Nombre d'heures demandées", style: 1, required: true, placeholder: "1h30, 4h, 1.5 ou 90m", min_length: 1, max_length: 8 }] },
         { type: 1, components: [{ type: 4, custom_id: "claim_reason", label: "Raison de la demande", style: 2, required: true, placeholder: "Explique ce qui s'est passé avec la pointeuse.", min_length: 5, max_length: 1000 }] }
       ]
     }
@@ -3294,7 +3294,7 @@ function staffClaimHoursModal(customId, defaultHours = "") {
       title: "Saisir les heures validées",
       custom_id: customId,
       components: [
-        { type: 1, components: [{ type: 4, custom_id: "staff_hours", label: "Heures à créditer", style: 1, required: true, value: String(defaultHours || ""), placeholder: "Ex : 1.5", min_length: 1, max_length: 8 }] },
+        { type: 1, components: [{ type: 4, custom_id: "staff_hours", label: "Heures à créditer", style: 1, required: true, value: String(defaultHours || ""), placeholder: "1h30, 4h, 1.5 ou 90m", min_length: 1, max_length: 8 }] },
         { type: 1, components: [{ type: 4, custom_id: "staff_note", label: "Note staff", style: 2, required: false, placeholder: "Optionnel : raison de l'ajustement.", max_length: 500 }] }
       ]
     }
