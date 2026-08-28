@@ -85,7 +85,11 @@ async function sendUserDM(env, userId, payload) {
 const AUTO_REACTION_CHANNEL_ID = "1500994818543849723";
 const AUTO_REACTION_EMOJI = "%E2%9C%85";
 const CEREMONIE_REMINDER_CHANNEL_ID = "1500975725803606024";
-const CEREMONIE_REMINDER_PLAN_URL = "https://louiis-hub.github.io/sasp-intranet/assets/ceremonie-salle.png";
+// Lien Discord fourni par le Command Staff. Attention : les adresses de pieces
+// jointes Discord sont signees (ex, is, hm) et finissent par expirer. Si le plan
+// cesse de s'afficher, basculer sur la copie hebergee :
+// https://louiis-hub.github.io/sasp-intranet/assets/ceremonie-salle.webp
+const CEREMONIE_REMINDER_PLAN_URL = "https://media.discordapp.net/attachments/1500975725803606024/1541055143645151344/p8wwrvb.png?ex=6a92ca71&is=6a9178f1&hm=aab421b1c91167d6c7c6e25207cfe876e563373dc72ebf001869a0baed8cbef7&=&format=webp&quality=lossless&width=2048&height=889";
 
 function getParisClock(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-US", {
