@@ -351,7 +351,7 @@ function routeDepuisHash() {
 // Ouvre la page demandee, sinon le tableau de bord.
 async function allerVersRouteInitiale() {
   var cible = routeDepuisHash();
-  if (!cible) { await navigate('dashboard'); return; }
+  if (!cible) { await navigate(pageDAccueil()); return; }
   await navigate(cible.page, cible.id ? { id: cible.id } : {});
   // Une attestation designee par son numero s'ouvre directement en apercu.
   if (cible.page === 'tests-poudre' && cible.id && typeof tpApercu === 'function') {
@@ -531,37 +531,23 @@ function showApp() {
 
 // ── Navigation ─────────────────────────────────────────────────────
 function buildNav() {
-  var isStaff = S.role === 'admin' || S.role === 'academy' || S.role === 'rh';
-  // Command Staff et Supervisor Team. Les plaintes mettent en cause des agents :
-  // on les reserve au meme cercle que les montees en grade.
-  var isCommand = S.role === 'admin' || S.role === 'rh';
-  var isCeremony = isCommand;
-  var isVisiteur = S.role === 'visiteur';
-  var isFtfOnly = S.role === 'ftf';
-  var VISITEUR_NAV = ['dashboard', 'pointeuse', 'faq', 'cartes'];
-  var RH_NAV = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'recap', 'ceremonie', 'completude', 'plaintes', 'tests-poudre'];
-  // Academie : FAQ, tableau de bord et Ressources humaines, pointeuse exclue.
-  var ACADEMY_NAV = ['faq', 'dashboard', 'recap', 'completude', 'agents', 'grades', 'units', 'cartes'];
-  // L'academie ne traite pas de tests de poudre.
+  var profils = profilsUtilisateur();
+  var estAdmin = profils.indexOf('admin') !== -1;
+  var isCommand = estAdmin || profils.indexOf('rh') !== -1;
+  var isStaff = isCommand || profils.indexOf('academy') !== -1;
   var html = '';
   NAV.forEach(function(item) {
     if (item.hidden) return;
-    if (item.ftfOnly && !canAccessFTF()) return;
-    if (item.cidOnly && !canAccessCID()) return;
-    if (isFtfOnly && item.id && item.id !== 'ftf' &&
-        !(item.id === 'tests-poudre' && canAccessTestsPoudre())) return;
-    if (item.adminOnly && !isAdmin()) return;
-    if (item.staffOnly && !isStaff) return;
-    if (item.ceremonyOnly && !isCeremony) return;
-    if (item.commandOnly && !isCommand) return;
-    if (item.poudreOnly && !canAccessTestsPoudre()) return;
-    if (isVisiteur && item.id && !item.ftfOnly && !item.cidOnly && VISITEUR_NAV.indexOf(item.id) === -1) return;
-    if (S.role === 'rh' && item.id && !item.ftfOnly && !item.cidOnly && RH_NAV.indexOf(item.id) === -1) return;
-    if (S.role === 'academy') {
-      // L'academie compte comme staff pour voir Recap et Completude, mais la
-      // section Administration n'a rien a lui montrer : on masque son en-tete.
-      if (item.staffOnly && (item.group || item.divider)) return;
-      if (item.id && ACADEMY_NAV.indexOf(item.id) === -1) return;
+    if (item.adminOnly && !estAdmin) return;
+    if (item.id) {
+      // Une entrée s'affiche si sa page est accessible, quel que soit le rôle
+      // qui l'ouvre : les périmètres se cumulent.
+      if (!canAccessPage(item.id)) return;
+    } else {
+      // Séparateurs et titres de section : masqués si la section est vide.
+      if (item.staffOnly && !isStaff) return;
+      if (item.ceremonyOnly && !isCommand) return;
+      if (item.commandOnly && !isCommand) return;
     }
     if (item.divider) { html += '<div class="nav-divider"></div>'; return; }
     if (item.group)   { html += '<div class="nav-group">' + item.group + '</div>'; return; }
@@ -622,55 +608,25 @@ async function navigate(page, pd) {
   _charts = {};
   _quill = null;
   setContent('<div class="loader-block"><div class="spinner"></div><p>Chargement…</p></div>');
-  var _permCfg = {}; try { _permCfg = JSON.parse(localStorage.getItem('sasp_permissions') || '{}'); } catch(e) {}
-  var AGENT_ALLOWED   = _permCfg.agentPages   || ['dashboard','agents','agent-profile','grades','units','pointeuse','faq','mdt','vehicles','cartes','info','manuel','tenue','document'];
-  var ACADEMY_ALLOWED = _permCfg.academyPages  || ['faq', 'dashboard', 'recap', 'completude', 'agents', 'agent-profile', 'grades', 'units', 'cartes'];
-  if (page === 'ftf' && !canAccessFTF()) {
-    setContent('<div class="empty-state"><div class="empty-icon">FTF</div><div class="empty-title">AccÃ¨s FTF restreint</div><div class="empty-sub">Cette page est rÃ©servÃ©e aux utilisateurs avec le rÃ´le Discord FTF.</div></div>');
-    return;
-  }
-  if (page === 'tests-poudre' && !canAccessTestsPoudre()) {
-    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au Command Staff, au Supervisor Team et au CID.</div></div>');
-    return;
-  }
-  if (page === 'cid' && !canAccessCID()) {
-    setContent('<div class="empty-state"><div class="empty-icon">CID</div><div class="empty-title">Acces CID restreint</div><div class="empty-sub">Cette page est reservee aux utilisateurs avec le role Discord CID.</div></div>');
-    return;
-  }
   if ((page === 'service-logements' || page === 'ticketing') && !isAdmin()) {
-    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès réservé aux administrateurs</div><div class="empty-sub">La gestion des logements de service est réservée au Command Staff.</div></div>');
+    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès réservé aux administrateurs</div><div class="empty-sub">Cette section est réservée au Command Staff.</div></div>');
+    return;
+  }
+  if (!canAccessPage(page)) {
+    var motifs = {
+      'ftf':          'Cette page est réservée aux membres de la FTF, au Command Staff et au Supervisor Team.',
+      'cid':          'Cette page est réservée aux membres du CID.',
+      'tests-poudre': 'Cette section est réservée au Command Staff, au Supervisor Team et au CID.',
+      'ceremonie':    'Cette section est réservée au Command Staff et aux Superviseurs.',
+      'plaintes':     'Cette section est réservée au Command Staff et aux Superviseurs.'
+    };
+    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">' +
+      (motifs[page] || 'Votre rôle ne permet pas d\'accéder à cette section.') + '</div></div>');
     return;
   }
   if (page === 'ftf') {
     setContent(renderFtfAccessGate());
     await wait(2400);
-  }
-  if (S.role === 'ftf' && page !== 'ftf' &&
-      !(page === 'tests-poudre' && canAccessTestsPoudre())) {
-    await navigate('ftf');
-    return;
-  }
-  if (page === 'ceremonie' && S.role !== 'admin' && S.role !== 'rh') {
-    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au Command Staff et aux Superviseurs.</div></div>');
-    return;
-  }
-  var RH_ALLOWED = ['dashboard', 'agents', 'agent-profile', 'grades', 'units', 'pointeuse', 'faq', 'cartes', 'stats', 'recap', 'ceremonie', 'completude', 'plaintes', 'tests-poudre'];
-  if (S.role === 'rh' && page !== 'ftf' && RH_ALLOWED.indexOf(page) === -1) {
-    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée aux administrateurs.</div></div>');
-    return;
-  }
-  var VISITEUR_ALLOWED = ['dashboard', 'pointeuse', 'faq', 'cartes'];
-  if (S.role === 'visiteur' && page !== 'ftf' && page !== 'tests-poudre' && VISITEUR_ALLOWED.indexOf(page) === -1) {
-    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Votre rôle ne permet pas d\'accéder à cette section.</div></div>');
-    return;
-  }
-  if (S.role === 'agent' && page !== 'ftf' && page !== 'tests-poudre' && AGENT_ALLOWED.indexOf(page) === -1) {
-    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée au personnel d\'encadrement.</div></div>');
-    return;
-  }
-  if (S.role === 'academy' && page !== 'ftf' && page !== 'tests-poudre' && ACADEMY_ALLOWED && ACADEMY_ALLOWED.indexOf(page) === -1) {
-    setContent('<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Accès restreint</div><div class="empty-sub">Cette section est réservée aux administrateurs.</div></div>');
-    return;
   }
 
   try {
@@ -777,7 +733,7 @@ function toastLoading(msg) {
 function isAdmin() { return S.role === 'admin'; }
 function canWrite() { return S.role === 'admin' || S.role === 'academy' || S.role === 'rh'; }
 function canAccessFTF() {
-  if (S.role === 'admin' || S.role === 'rh') return true;
+  if (canAccessPage('ftf')) return true;
   return typeof FTF_ROLE_ID !== 'undefined' &&
     FTF_ROLE_ID &&
     FTF_ROLE_ID !== 'ID_DU_ROLE_ICI' &&
@@ -799,7 +755,71 @@ function canAccessCID() {
 }
 // Tests de poudre : encadrement et CID.
 function canAccessTestsPoudre() {
-  return S.role === 'admin' || S.role === 'rh' || hasCidRole();
+  return canAccessPage('tests-poudre');
+}
+
+// ── Périmètres d'accès ─────────────────────────────────────────────
+// Chaque rôle Discord ouvre un ensemble de pages, et un agent qui en porte
+// plusieurs les CUMULE. Auparavant un seul rôle l'emportait et les autres
+// étaient ignorés : un agent Police Academy + FTF n'avait que la FTF.
+var PAGES_PAR_PROFIL = {
+  rh:       ['dashboard','agents','agent-profile','grades','units','pointeuse','faq','cartes','stats','recap','ceremonie','completude','plaintes','tests-poudre','ftf'],
+  academy:  ['faq','dashboard','recap','completude','agents','agent-profile','grades','units','cartes'],
+  agent:    ['dashboard','agents','agent-profile','grades','units','pointeuse','faq','mdt','vehicles','cartes','info','manuel','tenue','document'],
+  visiteur: ['dashboard','pointeuse','faq','cartes'],
+  ftf:      ['ftf'],
+  cid:      ['cid','tests-poudre']
+};
+
+// Tous les profils portés, sans priorité entre eux.
+function profilsUtilisateur() {
+  var portes = S.discordRoles || [];
+  var porte = function(ids) {
+    return (ids || []).some(function(id){ return id && portes.indexOf(id) !== -1; });
+  };
+  var profils = [];
+  if (porte(typeof ROLE_ADMIN_IDS !== 'undefined' ? ROLE_ADMIN_IDS : [])) profils.push('admin');
+  if (porte([typeof ROLE_RH_ID !== 'undefined' ? ROLE_RH_ID : ''])) profils.push('rh');
+  if (porte([typeof FTF_ROLE_ID !== 'undefined' ? FTF_ROLE_ID : ''])) profils.push('ftf');
+  if (porte([typeof ROLE_ACADEMY_ID !== 'undefined' ? ROLE_ACADEMY_ID : ''])) profils.push('academy');
+  if (hasCidRole()) profils.push('cid');
+  if (porte(typeof ROLE_AGENT_IDS !== 'undefined' ? ROLE_AGENT_IDS : [])) profils.push('agent');
+  if (porte([typeof ROLE_VISITEUR_ID !== 'undefined' ? ROLE_VISITEUR_ID : ''])) profils.push('visiteur');
+  // Repli : quand Discord est injoignable, S.discordRoles est vide et seul le
+  // rôle mémorisé dans app_users est connu.
+  if (!profils.length && S.role) profils.push(S.role);
+  return profils;
+}
+
+// Union des pages ouvertes par les profils portés. null = aucune restriction.
+function pagesAutorisees() {
+  var profils = profilsUtilisateur();
+  if (profils.indexOf('admin') !== -1) return null;
+  var cfg = {}; try { cfg = JSON.parse(localStorage.getItem('sasp_permissions') || '{}'); } catch(e) {}
+  var pages = {};
+  profils.forEach(function(profil) {
+    var liste = PAGES_PAR_PROFIL[profil] || [];
+    if (profil === 'agent' && cfg.agentPages) liste = cfg.agentPages;
+    if (profil === 'academy' && cfg.academyPages) liste = cfg.academyPages;
+    liste.forEach(function(p){ pages[p] = true; });
+  });
+  return pages;
+}
+
+function canAccessPage(page) {
+  var pages = pagesAutorisees();
+  return !pages || !!pages[page];
+}
+
+// Première page accessible : un agent FTF seul n'a rien à faire sur le
+// tableau de bord.
+function pageDAccueil() {
+  if (canAccessPage('dashboard')) return 'dashboard';
+  var ordre = ['ftf', 'tests-poudre', 'cid', 'faq', 'pointeuse', 'agents'];
+  for (var i = 0; i < ordre.length; i++) {
+    if (canAccessPage(ordre[i])) return ordre[i];
+  }
+  return 'dashboard';
 }
 function esc(s) {
   if (s == null) return '';
