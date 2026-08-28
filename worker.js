@@ -5166,6 +5166,29 @@ export default {
       }
     }
 
+    // Enregistre un dossier Affaires Internes recueilli hors de Discord.
+    if (url.pathname === "/admin/plaintes-ai" && request.method === "POST") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const c = await request.json();
+        const cree = await sb(env, "POST", "/plaintes_ai", {
+          created_at: c.created_at || new Date().toISOString(),
+          declarant_nom: c.declarant_nom || null,
+          declarant_telephone: c.declarant_telephone || null,
+          type_declaration: c.type_declaration || "Plainte",
+          agents_concernes: c.agents_concernes || null,
+          lieu_faits: c.lieu_faits || null,
+          description: c.description || null,
+          agent_nom: c.agent_nom || null,
+          statut: c.statut || "Nouvelle"
+        });
+        return json({ ok: true, dossier: cree && cree[0] ? cree[0] : null });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     // Depouille un membre de ses roles a la suppression de sa fiche agent.
     if (url.pathname === "/strip-member-roles" && request.method === "POST") {
       const token = request.headers.get("x-log-token") || url.searchParams.get("token");
