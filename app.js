@@ -476,6 +476,13 @@ async function afterLogin(user, session) {
     _grades = await DB.getGrades();
     _units  = await DB.getUnits();
     await loadWikiSections();
+    // La date de revocation connue est figee a la connexion : toute date plus
+    // recente signifie qu une reconnexion a ete demandee depuis.
+    try {
+      var epoch = await lireSessionEpoch();
+      if (epoch !== null) localStorage.setItem(SESSION_EPOCH_KEY, String(epoch));
+    } catch(e) {}
+    demarrerRevalidation();
     showApp();
     await allerVersRouteInitiale();
   } catch(err) {
@@ -573,6 +580,7 @@ function buildNav() {
     '<div class="sidebar-user">' +
       '<div class="sidebar-avatar">' + initials + '</div>' +
       '<div><div class="sidebar-uname">' + esc(n) + '</div><div class="sidebar-urole">' + roleLabel + '</div></div>' +
+      (estAdmin ? '<button class="sidebar-logout" onclick="forcerReconnexionGenerale()" title="Forcer la reconnexion de tous les utilisateurs">🔒</button>' : '') +
       '<button class="sidebar-logout" onclick="doLogout()" title="Déconnexion">⏻</button>' +
     '</div>';
 
@@ -598,6 +606,81 @@ function updateUserUI() {
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+
+// ── Revocation des sessions ────────────────────────────────────────
+// Les roles Discord ne sont lus qu'a la connexion : quelqu'un dont on retire
+// les roles garde son acces tant que son onglet reste ouvert. On revalide donc
+// periodiquement, et le Command Staff peut forcer tout le monde a se reconnecter.
+var SESSION_EPOCH_KEY = 'sasp_session_epoch';
+var _revalidationTimer = null;
+
+async function lireSessionEpoch() {
+  var res = await fetch(WORKER_BASE + '/auth/session-epoch?t=' + Date.now(), { cache: 'no-store' });
+  var data = await res.json();
+  return data && data.ok ? Number(data.epoch) || 0 : null;
+}
+
+async function deconnexionForcee(motif) {
+  if (_revalidationTimer) { clearInterval(_revalidationTimer); _revalidationTimer = null; }
+  try { localStorage.removeItem(SESSION_EPOCH_KEY); } catch(e) {}
+  try { await DB.logout(); } catch(e) {}
+  S.user = null; S.appUser = null; S.discordRoles = []; S.discordUserId = null;
+  showLogin();
+  var el = document.getElementById('loginErr');
+  if (el) { el.textContent = motif; el.classList.add('show'); }
+}
+
+// Deux controles : la date de revocation, et les roles Discord reellement portes.
+async function revaliderSession() {
+  try {
+    var epoch = await lireSessionEpoch();
+    if (epoch !== null) {
+      var connu = 0;
+      try { connu = Number(localStorage.getItem(SESSION_EPOCH_KEY)) || 0; } catch(e) {}
+      if (epoch > connu) {
+        await deconnexionForcee('Le Command Staff a demandé une reconnexion de tous les utilisateurs.');
+        return;
+      }
+    }
+    if (!S.discordUserId) return;
+    var res = await fetch(WORKER_URL + '/auth/check-roles?user_id=' + encodeURIComponent(S.discordUserId) + '&t=' + Date.now(), { cache: 'no-store' });
+    // Une panne Discord renvoie 503 : on ne deconnecte personne sur un doute.
+    if (!res.ok) return;
+    var data = await res.json();
+    S.discordRoles = data.roles || [];
+    if (!profilsUtilisateur().length) {
+      await deconnexionForcee('Vos rôles Discord ne vous donnent plus accès au site.');
+      return;
+    }
+    buildNav();
+  } catch(e) {}
+}
+
+function demarrerRevalidation() {
+  if (_revalidationTimer) clearInterval(_revalidationTimer);
+  _revalidationTimer = setInterval(revaliderSession, 120000);
+}
+
+async function forcerReconnexionGenerale() {
+  if (!isAdmin()) { toast('Action réservée au Command Staff.', 'error'); return; }
+  if (!confirm('Déconnecter tout le monde du site ?\n\n' +
+               'Chaque utilisateur devra se reconnecter avec Discord, ce qui revérifie ses rôles. ' +
+               'À utiliser après un licenciement pour couper immédiatement un accès.')) return;
+  try {
+    var res = await fetch(WORKER_BASE + '/admin/force-reauth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-log-token': LOG_TOKEN },
+      body: JSON.stringify({ par: _whoAmI() })
+    });
+    var data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Erreur inconnue');
+    sendLog('🔒 Reconnexion générale forcée', 0xe67e22, [
+      { name: 'Par', value: _whoAmI(), inline: true }
+    ]);
+    toast('Tout le monde devra se reconnecter.', 'success');
+    await deconnexionForcee('Reconnexion demandée. Reconnectez-vous avec Discord.');
+  } catch(e) { toast('Erreur : ' + e.message, 'error'); }
 }
 
 // ── Router ─────────────────────────────────────────────────────────

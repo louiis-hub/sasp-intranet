@@ -2618,6 +2618,26 @@ async function stripMemberRoles(env, guildId, discordId) {
   };
 }
 
+// Horodatage de revocation des sessions. Tout site ouvert avant cette date
+// doit se reconnecter, et donc refaire verifier ses roles Discord.
+const SESSION_EPOCH_ID = "__session_epoch_sud";
+
+async function getSessionEpoch(env) {
+  const rows = await sb(env, "GET", `/ftf_dossiers?id=eq.${SESSION_EPOCH_ID}&select=data&limit=1`).catch(() => []);
+  const data = Array.isArray(rows) && rows.length ? rows[0].data : null;
+  return (data && Number(data.epoch)) || 0;
+}
+
+async function setSessionEpoch(env, par) {
+  const epoch = Date.now();
+  await sb(env, "POST", "/ftf_dossiers?on_conflict=id", {
+    id: SESSION_EPOCH_ID,
+    data: { epoch, par: par || "Command Staff", le: new Date().toISOString() },
+    updated_at: new Date().toISOString()
+  });
+  return epoch;
+}
+
 async function buildInfoCommandResponse(env, interaction) {
   const member = interaction.member || {};
   const memberRoles = member.roles || [];
@@ -5109,6 +5129,28 @@ export default {
           })),
           erreurs
         });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    // Date de revocation courante. Publique : ce n'est qu'un nombre, et le site
+    // doit pouvoir la lire sans etre authentifie aupres du worker.
+    if (url.pathname === "/auth/session-epoch" && request.method === "GET") {
+      try {
+        return json({ ok: true, epoch: await getSessionEpoch(env) });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    // Force tout le monde a se reconnecter.
+    if (url.pathname === "/admin/force-reauth" && request.method === "POST") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const corps = await request.json().catch(() => ({}));
+        return json({ ok: true, epoch: await setSessionEpoch(env, corps.par) });
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
