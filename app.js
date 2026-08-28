@@ -563,7 +563,12 @@ function buildNav() {
   var discordName = S.user && S.user.user_metadata && (S.user.user_metadata.full_name || S.user.user_metadata.name || S.user.user_metadata.user_name);
   var n = discordName || (S.appUser ? (S.appUser.prenom + ' ' + S.appUser.nom).trim() : S.user.email);
   var initials = n.split(' ').map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
-  var roleLabel = { admin:'ADMIN', academy:'SCA', agent:'AGENT', rh:'RH', visiteur:'VISITEUR', ftf:'FTF', cid:'CID' }[S.role] || S.role.toUpperCase();
+  var etiquettes = { admin:'ADMIN', rh:'RH', academy:'SCA', cid:'CID', ftf:'FTF', agent:'AGENT', visiteur:'VISITEUR' };
+  // Le badge affiche tous les profils portes, dans l'ordre d'importance.
+  var roleLabel = Object.keys(etiquettes)
+    .filter(function(p){ return profils.indexOf(p) !== -1; })
+    .map(function(p){ return etiquettes[p]; })
+    .join(' · ') || String(S.role || '').toUpperCase();
   document.getElementById('sidebarFooter').innerHTML =
     '<div class="sidebar-user">' +
       '<div class="sidebar-avatar">' + initials + '</div>' +
@@ -730,8 +735,10 @@ function toastLoading(msg) {
 }
 
 // ── Permissions ────────────────────────────────────────────────────
-function isAdmin() { return S.role === 'admin'; }
-function canWrite() { return S.role === 'admin' || S.role === 'academy' || S.role === 'rh'; }
+// Un profil suffit : les roles se cumulent, ils ne s'excluent pas.
+function aLeProfil(profil) { return profilsUtilisateur().indexOf(profil) !== -1; }
+function isAdmin() { return aLeProfil('admin'); }
+function canWrite() { return aLeProfil('admin') || aLeProfil('academy') || aLeProfil('rh'); }
 function canAccessFTF() {
   if (canAccessPage('ftf')) return true;
   return typeof FTF_ROLE_ID !== 'undefined' &&
@@ -750,8 +757,7 @@ function hasCidRole() {
   return ids.some(function(id){ return portes.indexOf(id) !== -1; });
 }
 function canAccessCID() {
-  if (S.role === 'admin') return true;
-  return hasCidRole();
+  return canAccessPage('cid');
 }
 // Tests de poudre : encadrement et CID.
 function canAccessTestsPoudre() {
@@ -5452,7 +5458,7 @@ async function renderCeremonie() {
     votesByAgent[v.agent_id].push(v);
   });
   var myId = ceremonieVoterId();
-  var isCmd = S.role === 'admin';
+  var isCmd = isAdmin();
   _ceremonieArchives = archives || [];
 
   var sorted = agents.slice().sort(function(a, b) {
