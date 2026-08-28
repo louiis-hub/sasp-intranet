@@ -3589,106 +3589,166 @@ async function tpTelecharger(id) {
   document.body.appendChild(a); a.click(); a.remove();
 }
 
-// Découpe un texte en lignes tenant dans la largeur donnée, en respectant
-// les retours à la ligne saisis par l'agent.
-function tpParagraphe(ctx, texte, x, y, largeurMax, interligne, maxLignes) {
-  var lignes = [];
-  String(texte || '').split(/\r?\n/).forEach(function(bloc) {
-    var courante = '';
-    bloc.split(/\s+/).forEach(function(mot) {
-      if (!mot) return;
-      var essai = courante ? courante + ' ' + mot : mot;
-      if (ctx.measureText(essai).width > largeurMax && courante) { lignes.push(courante); courante = mot; }
-      else courante = essai;
-    });
-    lignes.push(courante);
-  });
-  if (maxLignes && lignes.length > maxLignes) {
-    lignes = lignes.slice(0, maxLignes);
-    lignes[maxLignes - 1] = lignes[maxLignes - 1].slice(0, 90) + '…';
-  }
-  lignes.forEach(function(l, i) { ctx.fillText(l, x, y + i * interligne); });
-  return lignes.length;
+// ── Formulaire Affaires Internes ───────────────────────────────────
+var PV_MARGE = 50, PV_LARGE = TP_LARGEUR - 100;
+var PV_BORDURE = '#C3D0E4', PV_FOND_SECTION = '#F7FAFF', PV_BANDEAU = '#DCE6F5', PV_TRAIT = '#9FB0C6';
+
+// Une section encadrée, avec son bandeau de titre.
+function pvSection(ctx, y, hauteur, titre, sombre) {
+  ctx.fillStyle = PV_FOND_SECTION;
+  ctx.fillRect(PV_MARGE, y, PV_LARGE, hauteur);
+  ctx.strokeStyle = PV_BORDURE; ctx.lineWidth = 2;
+  ctx.strokeRect(PV_MARGE, y, PV_LARGE, hauteur);
+  ctx.fillStyle = sombre ? TP_MARINE : PV_BANDEAU;
+  ctx.fillRect(PV_MARGE, y, PV_LARGE, 38);
+  ctx.strokeRect(PV_MARGE, y, PV_LARGE, 38);
+  ctx.fillStyle = sombre ? '#FFFFFF' : TP_MARINE;
+  ctx.font = '700 23px Arial, Helvetica, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(titre, PV_MARGE + 16, y + 26);
+  return y + hauteur;
 }
 
-// Procès-verbal de plainte, même gabarit que l'attestation de poudre.
+// Un libellé suivi d'un trait de saisie, la valeur posée dessus.
+function pvChamp(ctx, x, y, libelle, valeur, finLigne) {
+  ctx.fillStyle = TP_MARINE;
+  ctx.font = '400 21px Arial, Helvetica, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(libelle, x, y);
+  var depart = x + ctx.measureText(libelle).width + 12;
+  ctx.strokeStyle = PV_TRAIT; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(depart, y + 7); ctx.lineTo(finLigne, y + 7); ctx.stroke();
+  if (valeur) {
+    ctx.font = '400 21px Georgia, "Times New Roman", serif';
+    ctx.fillText(String(valeur).slice(0, 70), depart + 8, y);
+  }
+}
+
+// Une case à cocher suivie de son libellé. Renvoie l'abscisse de fin.
+function pvCase(ctx, x, y, libelle, cochee) {
+  ctx.strokeStyle = TP_MARINE; ctx.lineWidth = 2;
+  ctx.strokeRect(x, y - 15, 17, 17);
+  if (cochee) {
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y - 7); ctx.lineTo(x + 7, y - 2); ctx.lineTo(x + 14, y - 12);
+    ctx.stroke();
+  }
+  ctx.fillStyle = TP_MARINE;
+  ctx.font = '400 21px Arial, Helvetica, sans-serif';
+  ctx.fillText(libelle, x + 27, y);
+  return x + 27 + ctx.measureText(libelle).width;
+}
+
+// Lignes réglées d'un bloc de texte libre, remplies avec le contenu.
+function pvLignesReglees(ctx, y, nombre, interligne, texte) {
+  ctx.font = '400 20px Georgia, "Times New Roman", serif';
+  var mots = String(texte || '').replace(/\s+/g, ' ').trim().split(' ');
+  var largeur = PV_LARGE - 60;
+  var lignes = [], courante = '';
+  mots.forEach(function(mot) {
+    if (!mot) return;
+    var essai = courante ? courante + ' ' + mot : mot;
+    if (ctx.measureText(essai).width > largeur && courante) { lignes.push(courante); courante = mot; }
+    else courante = essai;
+  });
+  if (courante) lignes.push(courante);
+  for (var i = 0; i < nombre; i++) {
+    var ligneY = y + i * interligne;
+    ctx.strokeStyle = PV_TRAIT; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PV_MARGE + 22, ligneY + 6); ctx.lineTo(PV_MARGE + PV_LARGE - 22, ligneY + 6); ctx.stroke();
+    if (lignes[i]) {
+      ctx.fillStyle = TP_MARINE;
+      var contenu = (i === nombre - 1 && lignes.length > nombre) ? lignes[i].slice(0, 95) + '…' : lignes[i];
+      ctx.fillText(contenu, PV_MARGE + 28, ligneY);
+    }
+  }
+}
+
+// Procès-verbal de plainte, sur la maquette du formulaire Affaires Internes.
 async function plainteDessiner(p) {
   var canvas = document.createElement('canvas');
   canvas.width = TP_LARGEUR; canvas.height = TP_HAUTEUR;
   var ctx = canvas.getContext('2d');
   ctx.textBaseline = 'alphabetic';
 
-  ctx.fillStyle = TP_FOND;
+  ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, TP_LARGEUR, TP_HAUTEUR);
-  ctx.strokeStyle = TP_MARINE; ctx.lineWidth = 3;
-  ctx.strokeRect(14, 14, TP_LARGEUR - 28, TP_HAUTEUR - 28);
 
-  try {
-    var logo = await loadFtfImage('assets/sasp-sud-logo.png');
-    ctx.drawImage(logo, TP_LARGEUR / 2 - 68, 46, 136, 136);
-  } catch (e) {}
-
-  ctx.textAlign = 'center';
+  // Bandeau de titre.
   ctx.fillStyle = TP_MARINE;
-  ctx.font = '700 60px Arial, Helvetica, sans-serif';
-  ctx.fillText('SAN ANDREAS STATE POLICE', TP_LARGEUR / 2, 250);
-  ctx.font = '700 27px Arial, Helvetica, sans-serif';
-  ctx.fillText("SASP — SERVICE DE POLICE D'ÉTAT", TP_LARGEUR / 2, 296);
-
-  ctx.font = '700 52px Arial, Helvetica, sans-serif';
-  ctx.fillText('PROCÈS-VERBAL DE PLAINTE', TP_LARGEUR / 2, 372);
-  tpLigne(ctx, 80, 396, TP_LARGEUR - 80, TP_MARINE, 3);
-  ctx.fillStyle = '#5A6B80';
-  ctx.font = '400 25px Arial, Helvetica, sans-serif';
-  ctx.fillText('Document de constatation — Usage interne', TP_LARGEUR / 2, 438);
-
-  ctx.textAlign = 'left';
-  tpChamp(ctx, 85, 516, 'Plainte n° :', String(p.id || ''), 460);
-  tpChamp(ctx, 620, 516, 'Déposée le :', fmtPlainteDate(p.created_at), TP_LARGEUR - 85);
-  tpChamp(ctx, 85, 584, 'Plaignant :', p.plaignant, TP_LARGEUR - 85);
-  tpChamp(ctx, 85, 652, 'Mis en cause :', p.mis_en_cause, TP_LARGEUR - 85);
-  tpChamp(ctx, 85, 720, 'Téléphone :', p.telephone, 600);
-  tpChamp(ctx, 85, 788, 'Motif :', p.motif, TP_LARGEUR - 85);
-
-  // Exposé des faits, dans un encadré comme le résultat du test de poudre.
-  ctx.fillStyle = '#E4ECF8';
-  ctx.fillRect(85, 840, TP_LARGEUR - 170, 420);
-  ctx.strokeStyle = TP_MARINE; ctx.lineWidth = 3;
-  ctx.strokeRect(85, 840, TP_LARGEUR - 170, 420);
+  ctx.fillRect(PV_MARGE, 34, PV_LARGE, 112);
+  ctx.fillStyle = '#C9A84C';
+  ctx.fillRect(PV_MARGE, 146, PV_LARGE, 6);
   ctx.textAlign = 'center';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '700 58px Arial, Helvetica, sans-serif';
+  ctx.fillText('AFFAIRES INTERNES', TP_LARGEUR / 2, 96);
+  ctx.fillStyle = '#C9A84C';
+  ctx.font = '700 26px Arial, Helvetica, sans-serif';
+  ctx.fillText('FORMULAIRE DE TÉMOIGNAGE / PLAINTE', TP_LARGEUR / 2, 132);
+
+  var dateComplete = fmtPlainteDate(p.created_at);
+  var dateSeule = dateComplete.split(' à ')[0];
+  var heureSeule = dateComplete.split(' à ')[1] || '';
+
+  pvSection(ctx, 176, 172, 'INFORMATIONS DU DÉCLARANT');
+  pvChamp(ctx, PV_MARGE + 18, 248, 'Nom et prénom :', p.plaignant, PV_MARGE + PV_LARGE - 20);
+  pvChamp(ctx, PV_MARGE + 18, 288, 'Numéro de téléphone :', p.telephone, PV_MARGE + PV_LARGE - 20);
   ctx.fillStyle = TP_MARINE;
-  ctx.font = '700 32px Arial, Helvetica, sans-serif';
-  ctx.fillText('EXPOSÉ DES FAITS', TP_LARGEUR / 2, 894);
-  tpLigne(ctx, 490, 910, 750, TP_MARINE, 2);
+  ctx.font = '400 21px Arial, Helvetica, sans-serif';
   ctx.textAlign = 'left';
-  ctx.font = '400 24px Georgia, "Times New Roman", serif';
-  tpParagraphe(ctx, p.resume, 120, 960, TP_LARGEUR - 240, 34, 8);
+  ctx.fillText('Statut :', PV_MARGE + 18, 330);
+  var suite = pvCase(ctx, PV_MARGE + 150, 330, 'Agent du SASP', false);
+  suite = pvCase(ctx, suite + 60, 330, 'Civil', false);
+  pvCase(ctx, suite + 60, 330, 'Autre', false);
 
-  ctx.textAlign = 'center';
-  ctx.font = '700 30px Arial, Helvetica, sans-serif';
-  ctx.fillText('AGENT AYANT ENREGISTRÉ LA PLAINTE', TP_LARGEUR / 2, 1360);
-  tpLigne(ctx, 85, 1350, 300, TP_MARINE, 2);
-  tpLigne(ctx, 940, 1350, TP_LARGEUR - 85, TP_MARINE, 2);
-  ctx.textAlign = 'left';
-  tpChamp(ctx, 85, 1430, 'Nom et grade :', p.agent_nom, TP_LARGEUR - 85);
-  tpChamp(ctx, 85, 1498, 'Signature :', p.agent_nom, 780);
-  tpChamp(ctx, 830, 1498, 'Date :', fmtPlainteDate(p.created_at).split(' à ')[0], TP_LARGEUR - 85);
+  pvSection(ctx, 368, 212, 'INFORMATIONS SUR LES FAITS');
+  pvChamp(ctx, PV_MARGE + 18, 440, 'Date des faits :', dateSeule, PV_MARGE + PV_LARGE - 20);
+  pvChamp(ctx, PV_MARGE + 18, 480, 'Heure approximative :', heureSeule, PV_MARGE + PV_LARGE - 20);
+  pvChamp(ctx, PV_MARGE + 18, 520, 'Lieu :', '', PV_MARGE + PV_LARGE - 20);
+  pvChamp(ctx, PV_MARGE + 18, 560, 'Agent(s) ou personne(s) concerné(e)(s) :', p.mis_en_cause, PV_MARGE + PV_LARGE - 20);
 
-  ctx.strokeStyle = TP_MARINE; ctx.lineWidth = 2;
-  ctx.strokeRect(85, 1552, TP_LARGEUR - 170, 78);
-  ctx.textAlign = 'center';
+  pvSection(ctx, 600, 92, 'TYPE DE DÉCLARATION');
+  pvCase(ctx, PV_MARGE + 22, 668, 'Témoignage', false);
+  pvCase(ctx, PV_MARGE + 300, 668, 'Plainte', true);
+
+  pvSection(ctx, 712, 336, 'DESCRIPTION DÉTAILLÉE DES FAITS');
+  var recit = (p.motif ? 'Motif : ' + p.motif + '. ' : '') + (p.resume || '');
+  pvLignesReglees(ctx, 786, 8, 34, recit);
+
+  pvSection(ctx, 1064, 128, 'TÉMOINS ÉVENTUELS');
+  pvChamp(ctx, PV_MARGE + 18, 1136, 'Nom(s) et moyen(s) de contact :', '', PV_MARGE + PV_LARGE - 20);
+  ctx.strokeStyle = PV_TRAIT; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PV_MARGE + 22, 1176); ctx.lineTo(PV_MARGE + PV_LARGE - 22, 1176); ctx.stroke();
+
+  pvSection(ctx, 1208, 92, 'ÉLÉMENTS DE PREUVE');
+  var preuve = pvCase(ctx, PV_MARGE + 22, 1276, 'Photographie(s)', false);
+  preuve = pvCase(ctx, preuve + 34, 1276, 'Vidéo(s)', false);
+  preuve = pvCase(ctx, preuve + 34, 1276, 'Enregistrement(s)', false);
+  preuve = pvCase(ctx, preuve + 34, 1276, 'Document(s)', false);
+  pvCase(ctx, preuve + 34, 1276, 'Aucun', false);
+
+  pvSection(ctx, 1312, 136, "DÉCLARATION SUR L'HONNEUR");
   ctx.fillStyle = TP_MARINE;
-  ctx.font = '400 23px Georgia, "Times New Roman", serif';
-  ctx.fillText('Ce procès-verbal consigne la déclaration du plaignant.', TP_LARGEUR / 2, 1585);
-  ctx.fillText('Il ne préjuge en rien des suites données à la procédure.', TP_LARGEUR / 2, 1615);
+  ctx.font = '400 20px Arial, Helvetica, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Je certifie que les informations fournies dans ce document sont exactes et sincères.', PV_MARGE + 18, 1382);
+  pvChamp(ctx, PV_MARGE + 18, 1424, 'Fait le :', dateSeule, PV_MARGE + 330);
+  pvChamp(ctx, PV_MARGE + 380, 1424, 'Signature du déclarant :', p.plaignant, PV_MARGE + PV_LARGE - 20);
 
-  tpLigne(ctx, 85, 1668, TP_LARGEUR - 85, TP_MARINE, 3);
-  ctx.font = '700 24px Arial, Helvetica, sans-serif';
-  ctx.fillText('SAN ANDREAS STATE POLICE — SASP', TP_LARGEUR / 2, 1702);
+  pvSection(ctx, 1462, 210, 'Réservé aux Affaires Internes', true);
+  pvChamp(ctx, PV_MARGE + 18, 1540, 'Date de réception :', dateComplete, PV_MARGE + PV_LARGE - 20);
+  pvChamp(ctx, PV_MARGE + 18, 1584, 'Agent chargé du dossier :', p.agent_nom, PV_MARGE + PV_LARGE - 20);
+  pvChamp(ctx, PV_MARGE + 18, 1628, 'Suite donnée :', (p.statut || 'Nouvelle') + (p.notes ? ' — ' + p.notes : ''), PV_MARGE + PV_LARGE - 20);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#7A8AA0';
+  ctx.font = '400 18px Arial, Helvetica, sans-serif';
+  ctx.fillText('SAN ANDREAS STATE POLICE — Plainte n° ' + (p.id || '—'), TP_LARGEUR / 2, 1712);
 
   return canvas.toDataURL('image/png');
 }
-
 async function plainteApercu(id) {
   var p = _plaintesCache.filter(function(x){ return String(x.id) === String(id); })[0];
   if (!p) return;
