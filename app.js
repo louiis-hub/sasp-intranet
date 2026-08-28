@@ -2126,8 +2126,8 @@ async function renderAgents() {
       '<div class="flex gap-8">' +
         (canWrite() ? '<button class="btn btn-primary btn-sm" onclick="openAgentModal(null)">+ Ajouter un agent</button>' : '') +
         '<button class="btn btn-ghost btn-sm" onclick="showMatriculesDispos()">🔢 Matricules dispo</button>' +
-        (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="syncAgentsFromDiscord()">🔄 Sync Discord</button>' : '') +
-        (isAdmin() ? '<button class="btn btn-ghost btn-sm" id="syncGradesBtn" onclick="syncGradesFromDiscord(this)">⬇️ Grades Discord</button>' : '') +
+        (canWrite() ? '<button class="btn btn-ghost btn-sm" onclick="syncAgentsFromDiscord()">🔄 Sync Discord</button>' : '') +
+        (canWrite() ? '<button class="btn btn-ghost btn-sm" id="syncGradesBtn" onclick="syncGradesFromDiscord(this)">⬇️ Grades Discord</button>' : '') +
         (canWrite() ? '<button class="btn btn-ghost btn-sm" onclick="navigate(\'completude\')">🗂️ Complétude</button>' : '') +
       '</div>' +
     '</div>' +
@@ -3676,7 +3676,7 @@ async function renderCompletude() {
         '</div>' +
       '</div>' +
       '<div style="display:flex;gap:8px">' +
-        (isAdmin() ? '<button class="btn btn-ghost btn-sm" onclick="syncGradesFromDiscord(this)">⬇️ Grades Discord</button>' : '') +
+        (canWrite() ? '<button class="btn btn-ghost btn-sm" onclick="syncGradesFromDiscord(this)">⬇️ Grades Discord</button>' : '') +
         (canWrite() ? '<button class="btn btn-ghost btn-sm" onclick="postCompletudDiscord(this)">📤 Envoyer sur Discord</button>' : '') +
         '<button class="btn btn-ghost btn-sm" onclick="navigate(\'agents\')">← Retour agents</button>' +
       '</div>' +
