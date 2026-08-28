@@ -269,6 +269,16 @@ const DIVISION_LABELS = {
 };
 
 const SITE_BASE_URL = "https://louiis-hub.github.io/sasp-intranet/";
+
+// Peuvent etablir une attestation de test de poudre : le CID, plus
+// l'encadrement. Meme perimetre que la page Tests de poudre du site.
+const TEST_POUDRE_ROLE_IDS = [
+  "1500975725153620033", // Command Staff
+  "1504452141518032956", // Supervisor Team
+  "1518631634524569641", // ------ [CID] ------
+  "1501526844959363114", // CID
+  "1501526499910746132"  // Lead CID
+];
 const SUD_SITE_GUILD_ID = "1500975724750704661";
 const NORD_SITE_GUILD_ID = "1516510943318642950";
 
@@ -8753,6 +8763,10 @@ export default {
       // Attestation de test de residus de poudre. Le formulaire est prerempli
       // avec la fiche de l'agent et la date du jour pour limiter la saisie.
       if (interaction.type === 2 && interaction.data.name === "testpoudre") {
+        const rolesPortes = interaction.member?.roles || [];
+        if (!TEST_POUDRE_ROLE_IDS.some(id => rolesPortes.includes(id))) {
+          return json({ type: 4, data: { content: "❌ Commande réservée au CID et à l'encadrement.", flags: 64 } });
+        }
         const userId = interaction.member?.user?.id || interaction.user?.id;
         let matricule = "";
         try {
