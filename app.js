@@ -3678,11 +3678,11 @@ function aiTrouver(id) {
 async function aiApercu(id) {
   var d = aiTrouver(id);
   if (!d) return;
-  var url = await plainteDessiner(aiVersDocument(d), 'ai');
+  var pages = await plainteDessiner(aiVersDocument(d), 'ai');
   openModal({
-    eyebrow: 'AFFAIRES INTERNES N° ' + esc(d.id),
+    eyebrow: 'AFFAIRES INTERNES N° ' + esc(d.id) + (pages.length > 1 ? ' · ' + pages.length + ' pages' : ''),
     title: esc(d.declarant_nom || 'Déclaration'),
-    body: '<img src="' + url + '" alt="Formulaire" style="width:100%;border-radius:var(--rMd);border:1px solid var(--border0)">',
+    body: pvPagesHtml(pages),
     footer: '<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>' +
             '<button class="btn btn-primary" onclick="aiTelecharger(' + d.id + ')">Télécharger</button>'
   });
@@ -3691,17 +3691,13 @@ async function aiApercu(id) {
 async function aiTelecharger(id) {
   var d = aiTrouver(id);
   if (!d) return;
-  var url = await plainteDessiner(aiVersDocument(d), 'ai');
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'affaires-internes-' + d.id + '.png';
-  document.body.appendChild(a); a.click(); a.remove();
+  pvTelecharger(await plainteDessiner(aiVersDocument(d), 'ai'), 'affaires-internes-' + d.id);
 }
 
 async function aiDetail(id) {
   var d = aiTrouver(id);
   if (!d) return;
-  var document_url = await plainteDessiner(aiVersDocument(d), 'ai');
+  var pagesDossier = await plainteDessiner(aiVersDocument(d), 'ai');
   var lien = d.discord_channel_id && d.discord_message_id
     ? '<a href="https://discord.com/channels/' + esc(GUILD_ID) + '/' + esc(d.discord_channel_id) + '/' + esc(d.discord_message_id) + '" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Voir sur Discord</a>'
     : '';
@@ -3712,7 +3708,7 @@ async function aiDetail(id) {
     eyebrow: (d.type_declaration || 'Plainte').toUpperCase() + ' N° ' + esc(d.id),
     title: esc(d.agents_concernes || 'Déclaration'),
     body:
-      '<img src="' + document_url + '" alt="Formulaire" style="width:100%;border-radius:var(--rMd);border:1px solid var(--border0);margin-bottom:16px">' +
+      pvPagesHtml(pagesDossier) +
       // Le récit complet sous le formulaire : l'encadré du document est limité
       // en hauteur, et une déclaration longue y serait tronquée.
       '<div class="form-group"><label class="form-label">Déclaration intégrale</label>' +
@@ -3797,29 +3793,64 @@ function pvCase(ctx, x, y, libelle, cochee) {
   return x + 27 + ctx.measureText(libelle).width;
 }
 
-// Lignes réglées d'un bloc de texte libre, remplies avec le contenu.
-function pvLignesReglees(ctx, y, nombre, interligne, texte) {
+// Découpe un texte en lignes tenant dans la largeur du bloc réglé.
+// Les retours à la ligne saisis par le déclarant sont conservés.
+function pvDecouperTexte(ctx, texte) {
   ctx.font = '400 20px Georgia, "Times New Roman", serif';
-  var mots = String(texte || '').replace(/\s+/g, ' ').trim().split(' ');
   var largeur = PV_LARGE - 60;
-  var lignes = [], courante = '';
-  mots.forEach(function(mot) {
-    if (!mot) return;
-    var essai = courante ? courante + ' ' + mot : mot;
-    if (ctx.measureText(essai).width > largeur && courante) { lignes.push(courante); courante = mot; }
-    else courante = essai;
+  var lignes = [];
+  String(texte || '').split(/\r?\n/).forEach(function(bloc) {
+    if (!bloc.trim()) { lignes.push(''); return; }
+    var courante = '';
+    bloc.trim().split(/\s+/).forEach(function(mot) {
+      var essai = courante ? courante + ' ' + mot : mot;
+      if (ctx.measureText(essai).width > largeur && courante) { lignes.push(courante); courante = mot; }
+      else courante = essai;
+    });
+    if (courante) lignes.push(courante);
   });
-  if (courante) lignes.push(courante);
+  return lignes;
+}
+
+// Trace des lignes réglées et y pose le texte déjà découpé.
+function pvLignesReglees(ctx, y, nombre, interligne, lignes, decalage) {
+  ctx.font = '400 20px Georgia, "Times New Roman", serif';
   for (var i = 0; i < nombre; i++) {
     var ligneY = y + i * interligne;
     ctx.strokeStyle = PV_TRAIT; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(PV_MARGE + 22, ligneY + 6); ctx.lineTo(PV_MARGE + PV_LARGE - 22, ligneY + 6); ctx.stroke();
-    if (lignes[i]) {
+    var contenu = (lignes || [])[(decalage || 0) + i];
+    if (contenu) {
       ctx.fillStyle = TP_MARINE;
-      var contenu = (i === nombre - 1 && lignes.length > nombre) ? lignes[i].slice(0, 95) + '…' : lignes[i];
       ctx.fillText(contenu, PV_MARGE + 28, ligneY);
     }
   }
+}
+
+// Bandeau de titre, commun à toutes les pages.
+function pvBandeau(ctx, M, mention) {
+  ctx.fillStyle = TP_MARINE;
+  ctx.fillRect(PV_MARGE, 34, PV_LARGE, 112);
+  ctx.fillStyle = '#C9A84C';
+  ctx.fillRect(PV_MARGE, 146, PV_LARGE, 6);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '700 58px Arial, Helvetica, sans-serif';
+  ctx.fillText(M.titre, TP_LARGEUR / 2, 96);
+  ctx.fillStyle = '#C9A84C';
+  ctx.font = '700 24px Arial, Helvetica, sans-serif';
+  ctx.fillText(mention || M.sousTitre, TP_LARGEUR / 2, 132);
+}
+
+// Une page vierge au format du document.
+function pvNouvellePage() {
+  var canvas = document.createElement('canvas');
+  canvas.width = TP_LARGEUR; canvas.height = TP_HAUTEUR;
+  var ctx = canvas.getContext('2d');
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, TP_LARGEUR, TP_HAUTEUR);
+  return { canvas: canvas, ctx: ctx };
 }
 
 // Libellés propres à chaque service. Le gabarit, lui, est commun.
@@ -3840,29 +3871,20 @@ var PV_MODELES = {
   }
 };
 
-// Formulaire officiel. `modele` choisit les libellés du service concerné.
+// Formulaire officiel. Renvoie un tableau de pages : le récit déborde sur
+// autant de feuillets que nécessaire, plutôt que d'être tronqué.
 async function plainteDessiner(p, modele) {
   var M = PV_MODELES[modele || 'plainte'] || PV_MODELES.plainte;
-  var canvas = document.createElement('canvas');
-  canvas.width = TP_LARGEUR; canvas.height = TP_HAUTEUR;
-  var ctx = canvas.getContext('2d');
-  ctx.textBaseline = 'alphabetic';
+  var LIGNES_PAGE1 = 8, LIGNES_SUITE = 34, INTERLIGNE = 34;
 
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, TP_LARGEUR, TP_HAUTEUR);
+  var premiere = pvNouvellePage();
+  var canvas = premiere.canvas, ctx = premiere.ctx;
+  var recit = (p.motif ? 'Motif : ' + p.motif + '.\n\n' : '') + (p.resume || '');
+  var lignesRecit = pvDecouperTexte(ctx, recit);
+  var pagesSuite = Math.ceil(Math.max(0, lignesRecit.length - LIGNES_PAGE1) / LIGNES_SUITE);
+  var total = 1 + pagesSuite;
 
-  // Bandeau de titre.
-  ctx.fillStyle = TP_MARINE;
-  ctx.fillRect(PV_MARGE, 34, PV_LARGE, 112);
-  ctx.fillStyle = '#C9A84C';
-  ctx.fillRect(PV_MARGE, 146, PV_LARGE, 6);
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = '700 58px Arial, Helvetica, sans-serif';
-  ctx.fillText(M.titre, TP_LARGEUR / 2, 96);
-  ctx.fillStyle = '#C9A84C';
-  ctx.font = '700 24px Arial, Helvetica, sans-serif';
-  ctx.fillText(M.sousTitre, TP_LARGEUR / 2, 132);
+  pvBandeau(ctx, M);
 
   var dateComplete = fmtPlainteDate(p.created_at);
   var dateSeule = dateComplete.split(' à ')[0];
@@ -3890,9 +3912,8 @@ async function plainteDessiner(p, modele) {
   pvCase(ctx, PV_MARGE + 22, 668, 'Témoignage', estTemoignage);
   pvCase(ctx, PV_MARGE + 300, 668, 'Plainte', !estTemoignage);
 
-  pvSection(ctx, 712, 336, 'DESCRIPTION DÉTAILLÉE DES FAITS');
-  var recit = (p.motif ? 'Motif : ' + p.motif + '. ' : '') + (p.resume || '');
-  pvLignesReglees(ctx, 786, 8, 34, recit);
+  pvSection(ctx, 712, 336, 'DESCRIPTION DÉTAILLÉE DES FAITS' + (total > 1 ? '  (suite page 2)' : ''));
+  pvLignesReglees(ctx, 786, LIGNES_PAGE1, INTERLIGNE, lignesRecit, 0);
 
   pvSection(ctx, 1064, 128, 'TÉMOINS ÉVENTUELS');
   pvChamp(ctx, PV_MARGE + 18, 1136, 'Nom(s) et moyen(s) de contact :', '', PV_MARGE + PV_LARGE - 20);
@@ -3919,21 +3940,54 @@ async function plainteDessiner(p, modele) {
   pvChamp(ctx, PV_MARGE + 18, 1584, 'Agent chargé du dossier :', p.agent_nom, PV_MARGE + PV_LARGE - 20);
   pvChamp(ctx, PV_MARGE + 18, 1628, 'Suite donnée :', (p.statut || 'Nouvelle') + (p.notes ? ' — ' + p.notes : ''), PV_MARGE + PV_LARGE - 20);
 
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#7A8AA0';
-  ctx.font = '400 18px Arial, Helvetica, sans-serif';
-  ctx.fillText('SAN ANDREAS STATE POLICE — ' + (modele === 'ai' ? 'Affaires Internes' : 'Plainte') + ' n° ' + (p.id || '—'), TP_LARGEUR / 2, 1712);
+  var pied = function(contexte, numero) {
+    contexte.textAlign = 'center';
+    contexte.fillStyle = '#7A8AA0';
+    contexte.font = '400 18px Arial, Helvetica, sans-serif';
+    contexte.fillText('SAN ANDREAS STATE POLICE — ' + (modele === 'ai' ? 'Affaires Internes' : 'Plainte') +
+      ' n° ' + (p.id || '—') + '   ·   page ' + numero + ' / ' + total, TP_LARGEUR / 2, 1712);
+  };
+  pied(ctx, 1);
 
-  return canvas.toDataURL('image/png');
+  var pages = [canvas.toDataURL('image/png')];
+
+  // Feuillets de suite : le récit reprend là où la première page s'arrête.
+  for (var n = 0; n < pagesSuite; n++) {
+    var suite = pvNouvellePage();
+    pvBandeau(suite.ctx, M, 'SUITE DE LA DÉCLARATION');
+    pvSection(suite.ctx, 176, 1300, 'DESCRIPTION DÉTAILLÉE DES FAITS (SUITE)');
+    pvLignesReglees(suite.ctx, 250, LIGNES_SUITE, INTERLIGNE, lignesRecit, LIGNES_PAGE1 + n * LIGNES_SUITE);
+    pied(suite.ctx, n + 2);
+    pages.push(suite.canvas.toDataURL('image/png'));
+  }
+
+  return pages;
 }
+// Empile les pages du document dans une fenêtre.
+function pvPagesHtml(pages) {
+  return pages.map(function(url) {
+    return '<img src="' + url + '" alt="Formulaire" style="width:100%;border-radius:var(--rMd);border:1px solid var(--border0);margin-bottom:12px">';
+  }).join('');
+}
+
+// Enregistre chaque page, numérotée quand il y en a plusieurs.
+function pvTelecharger(pages, prefixe) {
+  pages.forEach(function(url, i) {
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = prefixe + (pages.length > 1 ? '-page' + (i + 1) : '') + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+}
+
 async function plainteApercu(id) {
   var p = _plaintesCache.filter(function(x){ return String(x.id) === String(id); })[0];
   if (!p) return;
-  var url = await plainteDessiner(p);
+  var pages = await plainteDessiner(p);
   openModal({
-    eyebrow: 'PLAINTE #' + esc(p.id),
+    eyebrow: 'PLAINTE #' + esc(p.id) + (pages.length > 1 ? ' · ' + pages.length + ' pages' : ''),
     title: esc(p.motif || 'Procès-verbal'),
-    body: '<img src="' + url + '" alt="Procès-verbal" style="width:100%;border-radius:var(--rMd);border:1px solid var(--border0)">',
+    body: pvPagesHtml(pages),
     footer: '<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>' +
             '<button class="btn btn-primary" onclick="plainteTelecharger(' + p.id + ')">Télécharger</button>'
   });
@@ -3942,11 +3996,7 @@ async function plainteApercu(id) {
 async function plainteTelecharger(id) {
   var p = _plaintesCache.filter(function(x){ return String(x.id) === String(id); })[0];
   if (!p) return;
-  var url = await plainteDessiner(p);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'plainte-' + p.id + '.png';
-  document.body.appendChild(a); a.click(); a.remove();
+  pvTelecharger(await plainteDessiner(p), 'plainte-' + p.id);
 }
 
 // ══ PLAINTES ══════════════════════════════════════════════════════
