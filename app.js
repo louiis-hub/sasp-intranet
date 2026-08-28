@@ -357,6 +357,9 @@ async function allerVersRouteInitiale() {
   if (cible.page === 'tests-poudre' && cible.id && typeof tpApercu === 'function') {
     try { await tpApercu(cible.id); } catch (e) {}
   }
+  if (cible.page === 'plaintes' && cible.id && typeof plainteApercu === 'function') {
+    try { await plainteApercu(cible.id); } catch (e) {}
+  }
 }
 
 // ── Boot ───────────────────────────────────────────────────────────
@@ -3586,6 +3589,129 @@ async function tpTelecharger(id) {
   document.body.appendChild(a); a.click(); a.remove();
 }
 
+// Découpe un texte en lignes tenant dans la largeur donnée, en respectant
+// les retours à la ligne saisis par l'agent.
+function tpParagraphe(ctx, texte, x, y, largeurMax, interligne, maxLignes) {
+  var lignes = [];
+  String(texte || '').split(/\r?\n/).forEach(function(bloc) {
+    var courante = '';
+    bloc.split(/\s+/).forEach(function(mot) {
+      if (!mot) return;
+      var essai = courante ? courante + ' ' + mot : mot;
+      if (ctx.measureText(essai).width > largeurMax && courante) { lignes.push(courante); courante = mot; }
+      else courante = essai;
+    });
+    lignes.push(courante);
+  });
+  if (maxLignes && lignes.length > maxLignes) {
+    lignes = lignes.slice(0, maxLignes);
+    lignes[maxLignes - 1] = lignes[maxLignes - 1].slice(0, 90) + '…';
+  }
+  lignes.forEach(function(l, i) { ctx.fillText(l, x, y + i * interligne); });
+  return lignes.length;
+}
+
+// Procès-verbal de plainte, même gabarit que l'attestation de poudre.
+async function plainteDessiner(p) {
+  var canvas = document.createElement('canvas');
+  canvas.width = TP_LARGEUR; canvas.height = TP_HAUTEUR;
+  var ctx = canvas.getContext('2d');
+  ctx.textBaseline = 'alphabetic';
+
+  ctx.fillStyle = TP_FOND;
+  ctx.fillRect(0, 0, TP_LARGEUR, TP_HAUTEUR);
+  ctx.strokeStyle = TP_MARINE; ctx.lineWidth = 3;
+  ctx.strokeRect(14, 14, TP_LARGEUR - 28, TP_HAUTEUR - 28);
+
+  try {
+    var logo = await loadFtfImage('assets/sasp-sud-logo.png');
+    ctx.drawImage(logo, TP_LARGEUR / 2 - 68, 46, 136, 136);
+  } catch (e) {}
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = TP_MARINE;
+  ctx.font = '700 60px Arial, Helvetica, sans-serif';
+  ctx.fillText('SAN ANDREAS STATE POLICE', TP_LARGEUR / 2, 250);
+  ctx.font = '700 27px Arial, Helvetica, sans-serif';
+  ctx.fillText("SASP — SERVICE DE POLICE D'ÉTAT", TP_LARGEUR / 2, 296);
+
+  ctx.font = '700 52px Arial, Helvetica, sans-serif';
+  ctx.fillText('PROCÈS-VERBAL DE PLAINTE', TP_LARGEUR / 2, 372);
+  tpLigne(ctx, 80, 396, TP_LARGEUR - 80, TP_MARINE, 3);
+  ctx.fillStyle = '#5A6B80';
+  ctx.font = '400 25px Arial, Helvetica, sans-serif';
+  ctx.fillText('Document de constatation — Usage interne', TP_LARGEUR / 2, 438);
+
+  ctx.textAlign = 'left';
+  tpChamp(ctx, 85, 516, 'Plainte n° :', String(p.id || ''), 460);
+  tpChamp(ctx, 620, 516, 'Déposée le :', fmtPlainteDate(p.created_at), TP_LARGEUR - 85);
+  tpChamp(ctx, 85, 584, 'Plaignant :', p.plaignant, TP_LARGEUR - 85);
+  tpChamp(ctx, 85, 652, 'Mis en cause :', p.mis_en_cause, TP_LARGEUR - 85);
+  tpChamp(ctx, 85, 720, 'Téléphone :', p.telephone, 600);
+  tpChamp(ctx, 85, 788, 'Motif :', p.motif, TP_LARGEUR - 85);
+
+  // Exposé des faits, dans un encadré comme le résultat du test de poudre.
+  ctx.fillStyle = '#E4ECF8';
+  ctx.fillRect(85, 840, TP_LARGEUR - 170, 420);
+  ctx.strokeStyle = TP_MARINE; ctx.lineWidth = 3;
+  ctx.strokeRect(85, 840, TP_LARGEUR - 170, 420);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = TP_MARINE;
+  ctx.font = '700 32px Arial, Helvetica, sans-serif';
+  ctx.fillText('EXPOSÉ DES FAITS', TP_LARGEUR / 2, 894);
+  tpLigne(ctx, 490, 910, 750, TP_MARINE, 2);
+  ctx.textAlign = 'left';
+  ctx.font = '400 24px Georgia, "Times New Roman", serif';
+  tpParagraphe(ctx, p.resume, 120, 960, TP_LARGEUR - 240, 34, 8);
+
+  ctx.textAlign = 'center';
+  ctx.font = '700 30px Arial, Helvetica, sans-serif';
+  ctx.fillText('AGENT AYANT ENREGISTRÉ LA PLAINTE', TP_LARGEUR / 2, 1360);
+  tpLigne(ctx, 85, 1350, 300, TP_MARINE, 2);
+  tpLigne(ctx, 940, 1350, TP_LARGEUR - 85, TP_MARINE, 2);
+  ctx.textAlign = 'left';
+  tpChamp(ctx, 85, 1430, 'Nom et grade :', p.agent_nom, TP_LARGEUR - 85);
+  tpChamp(ctx, 85, 1498, 'Signature :', p.agent_nom, 780);
+  tpChamp(ctx, 830, 1498, 'Date :', fmtPlainteDate(p.created_at).split(' à ')[0], TP_LARGEUR - 85);
+
+  ctx.strokeStyle = TP_MARINE; ctx.lineWidth = 2;
+  ctx.strokeRect(85, 1552, TP_LARGEUR - 170, 78);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = TP_MARINE;
+  ctx.font = '400 23px Georgia, "Times New Roman", serif';
+  ctx.fillText('Ce procès-verbal consigne la déclaration du plaignant.', TP_LARGEUR / 2, 1585);
+  ctx.fillText('Il ne préjuge en rien des suites données à la procédure.', TP_LARGEUR / 2, 1615);
+
+  tpLigne(ctx, 85, 1668, TP_LARGEUR - 85, TP_MARINE, 3);
+  ctx.font = '700 24px Arial, Helvetica, sans-serif';
+  ctx.fillText('SAN ANDREAS STATE POLICE — SASP', TP_LARGEUR / 2, 1702);
+
+  return canvas.toDataURL('image/png');
+}
+
+async function plainteApercu(id) {
+  var p = _plaintesCache.filter(function(x){ return String(x.id) === String(id); })[0];
+  if (!p) return;
+  var url = await plainteDessiner(p);
+  openModal({
+    eyebrow: 'PLAINTE #' + esc(p.id),
+    title: esc(p.motif || 'Procès-verbal'),
+    body: '<img src="' + url + '" alt="Procès-verbal" style="width:100%;border-radius:var(--rMd);border:1px solid var(--border0)">',
+    footer: '<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>' +
+            '<button class="btn btn-primary" onclick="plainteTelecharger(' + p.id + ')">Télécharger</button>'
+  });
+}
+
+async function plainteTelecharger(id) {
+  var p = _plaintesCache.filter(function(x){ return String(x.id) === String(id); })[0];
+  if (!p) return;
+  var url = await plainteDessiner(p);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'plainte-' + p.id + '.png';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
 // ══ PLAINTES ══════════════════════════════════════════════════════
 // Archive des depots faits via la commande Discord /plainte. Le bot ecrit
 // en base au moment du depot ; le site ne fait que consulter et suivre.
@@ -3641,8 +3767,12 @@ async function renderPlaintes() {
       '<td>' + esc(p.motif || '—') + '</td>' +
       '<td class="text-muted" style="font-size:.78rem">' + esc(p.agent_nom || '—') + '</td>' +
       '<td>' + plainteStatutBadge(p.statut) + '</td>' +
+      '<td onclick="event.stopPropagation()" style="white-space:nowrap">' +
+        '<button class="btn btn-ghost btn-sm" onclick="plainteApercu(' + p.id + ')">Aperçu</button> ' +
+        '<button class="btn btn-outline btn-sm" onclick="plainteTelecharger(' + p.id + ')">PNG</button>' +
+      '</td>' +
     '</tr>';
-  }).join('') : '<tr><td colspan="7"><div class="empty-state" style="padding:30px"><div class="empty-title">Aucune plainte</div><div class="empty-sub">' + (_plaintesCache.length ? 'Aucune plainte ne correspond au filtre.' : 'Les plaintes déposées via la commande Discord /plainte apparaîtront ici.') + '</div></div></td></tr>';
+  }).join('') : '<tr><td colspan="8"><div class="empty-state" style="padding:30px"><div class="empty-title">Aucune plainte</div><div class="empty-sub">' + (_plaintesCache.length ? 'Aucune plainte ne correspond au filtre.' : 'Les plaintes déposées via la commande Discord /plainte apparaîtront ici.') + '</div></div></td></tr>';
 
   setContent(
     '<div class="flex-between mb-20 flex-wrap gap-8">' +
@@ -3656,7 +3786,7 @@ async function renderPlaintes() {
       '</div>' +
     '</div>' +
     '<div class="table-wrap"><table>' +
-      '<thead><tr><th>N°</th><th>Date</th><th>Plaignant</th><th>Mis en cause</th><th>Motif</th><th>Enregistrée par</th><th>Statut</th></tr></thead>' +
+      '<thead><tr><th>N°</th><th>Date</th><th>Plaignant</th><th>Mis en cause</th><th>Motif</th><th>Enregistrée par</th><th>Statut</th><th>Procès-verbal</th></tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
     '</table></div>'
   );
@@ -3691,6 +3821,7 @@ function openPlainteModal(id) {
         : ''),
     footer:
       lien +
+      '<button class="btn btn-outline" onclick="plainteApercu(' + p.id + ')">Procès-verbal</button>' +
       '<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>' +
       (canWrite() ? '<button class="btn btn-primary" onclick="savePlainte(' + p.id + ')">Enregistrer</button>' : '')
   });

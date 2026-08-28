@@ -9035,6 +9035,11 @@ export default {
           } catch {}
         }
 
+        // Le proces-verbal se recupere sur le site : le Worker ne sait pas le
+        // produire, il n'a ni canvas ni moteur de police.
+        const lienProcesVerbal = plainteId !== "?"
+          ? `**[Ouvrir le procès-verbal](${SITE_BASE_URL}#plaintes/${plainteId})**`
+          : "";
         const misenCauseVal = misenCause;
         const fields = [
           { name: "ðŸ“… Date & Heure",      value: `${dateStr} Ã  ${heureStr}`, inline: true },
@@ -9050,7 +9055,7 @@ export default {
           method: "POST",
           headers: { "Authorization": `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            embeds: [{ title: `ðŸ“‹ Plainte #${plainteId} â€” SASP`, color: 0xc0392b, fields, footer: { text: "SASP â€¢ Service des plaintes" }, timestamp: now.toISOString() }],
+            embeds: [{ title: `ðŸ“‹ Plainte #${plainteId} â€” SASP`, color: 0xc0392b, description: lienProcesVerbal, fields, footer: { text: "SASP â€¢ Service des plaintes" }, timestamp: now.toISOString() }],
             components: [{ type: 1, components: [{ type: 2, style: 2, label: "âœï¸ Modifier", custom_id: `edit_plainte|${userId}` }] }]
           })
         });
