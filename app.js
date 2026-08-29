@@ -3691,7 +3691,7 @@ async function aiApercu(id) {
 async function aiTelecharger(id) {
   var d = aiTrouver(id);
   if (!d) return;
-  pvTelecharger(await plainteDessiner(aiVersDocument(d), 'ai'), 'affaires-internes-' + d.id);
+  await pvTelecharger(await plainteDessiner(aiVersDocument(d), 'ai'), 'affaires-internes-' + d.id);
 }
 
 async function aiDetail(id) {
@@ -3973,13 +3973,17 @@ function pvPagesHtml(pages) {
 }
 
 // Enregistre chaque page, numérotée quand il y en a plusieurs.
-function pvTelecharger(pages, prefixe) {
-  pages.forEach(function(url, i) {
+// Enregistre chaque page. Les navigateurs ignorent les telechargements
+// declenches coup sur coup : on les espace, sinon seule la premiere arrive.
+async function pvTelecharger(pages, prefixe) {
+  for (var i = 0; i < pages.length; i++) {
     var a = document.createElement('a');
-    a.href = url;
+    a.href = pages[i];
     a.download = prefixe + (pages.length > 1 ? '-page' + (i + 1) : '') + '.png';
     document.body.appendChild(a); a.click(); a.remove();
-  });
+    if (i < pages.length - 1) await new Promise(function(r){ setTimeout(r, 400); });
+  }
+  if (pages.length > 1) toast(pages.length + ' pages téléchargées.', 'success');
 }
 
 async function plainteApercu(id) {
@@ -3998,7 +4002,7 @@ async function plainteApercu(id) {
 async function plainteTelecharger(id) {
   var p = _plaintesCache.filter(function(x){ return String(x.id) === String(id); })[0];
   if (!p) return;
-  pvTelecharger(await plainteDessiner(p), 'plainte-' + p.id);
+  await pvTelecharger(await plainteDessiner(p), 'plainte-' + p.id);
 }
 
 // ══ PLAINTES ══════════════════════════════════════════════════════
