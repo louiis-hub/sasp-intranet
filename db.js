@@ -165,6 +165,7 @@ var DB = {
     return data || [];
   },
   async updatePlainteAI(id, data) { return getDb().from('plaintes_ai').update(data).eq('id', id); },
+  async deletePlainteAI(id) { return getDb().from('plaintes_ai').delete().eq('id', id); },
   async deletePlainte(id) { return getDb().from('plaintes').delete().eq('id', id); },
   async updateUnit(id, data) { return getDb().from('units').update(data).eq('id', id); },
   async deleteUnit(id) { return getDb().from('units').delete().eq('id', id); },

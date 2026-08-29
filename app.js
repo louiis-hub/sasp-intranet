@@ -3722,8 +3722,27 @@ async function aiDetail(id) {
       lien +
       '<button class="btn btn-outline" onclick="aiTelecharger(' + d.id + ')">Télécharger</button>' +
       '<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>' +
+      (canWrite() ? '<button class="btn btn-danger" onclick="aiSupprimer(' + d.id + ')">Supprimer</button>' : '') +
       (canWrite() ? '<button class="btn btn-primary" onclick="aiEnregistrer(' + d.id + ')">Enregistrer</button>' : '')
   });
+}
+
+async function aiSupprimer(id) {
+  var d = aiTrouver(id);
+  if (!d) return;
+  if (!confirm('Supprimer définitivement le dossier n° ' + id + ' ?\n\n' +
+               'Déclarant : ' + (d.declarant_nom || '—') + '\n' +
+               'Agent(s) concerné(s) : ' + (d.agents_concernes || '—') + '\n\n' +
+               'Cette action est irréversible.')) return;
+  var r = await DB.deletePlainteAI(id);
+  if (r.error) { toast(r.error.message, 'error'); return; }
+  closeModal();
+  toast('Dossier supprimé.', 'info');
+  sendLog('🗑️ Affaires Internes n° ' + id + ' supprimé', 0xe74c3c, [
+    { name: 'Déclarant', value: d.declarant_nom || '—', inline: true },
+    { name: 'Par', value: _whoAmI(), inline: true }
+  ]);
+  await renderAffairesInternes();
 }
 
 async function aiEnregistrer(id) {
@@ -4109,8 +4128,29 @@ function openPlainteModal(id) {
       lien +
       '<button class="btn btn-outline" onclick="plainteApercu(' + p.id + ')">Procès-verbal</button>' +
       '<button class="btn btn-ghost" onclick="closeModal()">Fermer</button>' +
+      (canWrite() ? '<button class="btn btn-danger" onclick="supprimerPlainte(' + p.id + ')">Supprimer</button>' : '') +
       (canWrite() ? '<button class="btn btn-primary" onclick="savePlainte(' + p.id + ')">Enregistrer</button>' : '')
   });
+}
+
+// Supprimer une plainte est definitif : le dossier disparait du site, seul
+// l embed Discord d origine subsiste.
+async function supprimerPlainte(id) {
+  var p = _plaintesCache.filter(function(x){ return String(x.id) === String(id); })[0];
+  if (!p) return;
+  if (!confirm('Supprimer définitivement la plainte #' + id + ' ?\n\n' +
+               'Plaignant : ' + (p.plaignant || '—') + '\n' +
+               'Motif : ' + (p.motif || '—') + '\n\n' +
+               'Cette action est irréversible.')) return;
+  var r = await DB.deletePlainte(id);
+  if (r.error) { toast(r.error.message, 'error'); return; }
+  closeModal();
+  toast('Plainte supprimée.', 'info');
+  sendLog('🗑️ Plainte #' + id + ' supprimée', 0xe74c3c, [
+    { name: 'Plaignant', value: p.plaignant || '—', inline: true },
+    { name: 'Par', value: _whoAmI(), inline: true }
+  ]);
+  await renderPlaintes();
 }
 
 async function savePlainte(id) {
