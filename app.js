@@ -3879,7 +3879,7 @@ var PV_MODELES = {
 async function plainteDessiner(p, modele) {
   var M = PV_MODELES[modele || 'plainte'] || PV_MODELES.plainte;
   var INTERLIGNE = 34;
-  var LIGNES_PAGE1 = 25;   // du haut du bloc jusqu'au pied de page
+  var LIGNES_PAGE1 = 27;   // du haut du bloc jusqu'au pied de page
   var LIGNES_SUITE = 34;   // feuillet entierement consacre au recit
 
   var premiere = pvNouvellePage();
@@ -3905,30 +3905,23 @@ async function plainteDessiner(p, modele) {
   // ── Page 1 : identité, faits, type, puis le récit ──────────────
   pvBandeau(ctx, M);
 
-  pvSection(ctx, 176, 172, M.declarant);
+  pvSection(ctx, 176, 130, M.declarant);
   pvChamp(ctx, PV_MARGE + 18, 248, 'Nom et prénom :', p.plaignant, PV_MARGE + PV_LARGE - 20);
   pvChamp(ctx, PV_MARGE + 18, 288, 'Numéro de téléphone :', p.telephone, PV_MARGE + PV_LARGE - 20);
-  ctx.fillStyle = TP_MARINE;
-  ctx.font = '400 21px Arial, Helvetica, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('Statut :', PV_MARGE + 18, 330);
-  var suite = pvCase(ctx, PV_MARGE + 150, 330, 'Agent du SASP', false);
-  suite = pvCase(ctx, suite + 60, 330, 'Civil', false);
-  pvCase(ctx, suite + 60, 330, 'Autre', false);
 
-  pvSection(ctx, 368, 212, 'INFORMATIONS SUR LES FAITS');
-  pvChamp(ctx, PV_MARGE + 18, 440, 'Date des faits :', dateSeule, PV_MARGE + PV_LARGE - 20);
-  pvChamp(ctx, PV_MARGE + 18, 480, 'Heure approximative :', heureSeule, PV_MARGE + PV_LARGE - 20);
-  pvChamp(ctx, PV_MARGE + 18, 520, 'Lieu :', p.lieu || '', PV_MARGE + PV_LARGE - 20);
-  pvChamp(ctx, PV_MARGE + 18, 560, M.concernes, p.mis_en_cause, PV_MARGE + PV_LARGE - 20);
+  pvSection(ctx, 326, 212, 'INFORMATIONS SUR LES FAITS');
+  pvChamp(ctx, PV_MARGE + 18, 398, 'Date des faits :', dateSeule, PV_MARGE + PV_LARGE - 20);
+  pvChamp(ctx, PV_MARGE + 18, 438, 'Heure approximative :', heureSeule, PV_MARGE + PV_LARGE - 20);
+  pvChamp(ctx, PV_MARGE + 18, 478, 'Lieu :', p.lieu || '', PV_MARGE + PV_LARGE - 20);
+  pvChamp(ctx, PV_MARGE + 18, 518, M.concernes, p.mis_en_cause, PV_MARGE + PV_LARGE - 20);
 
-  pvSection(ctx, 600, 92, 'TYPE DE DÉCLARATION');
+  pvSection(ctx, 558, 92, 'TYPE DE DÉCLARATION');
   var estTemoignage = String(p.type_declaration || 'Plainte') === 'Témoignage';
-  pvCase(ctx, PV_MARGE + 22, 668, 'Témoignage', estTemoignage);
-  pvCase(ctx, PV_MARGE + 300, 668, 'Plainte', !estTemoignage);
+  pvCase(ctx, PV_MARGE + 22, 626, 'Témoignage', estTemoignage);
+  pvCase(ctx, PV_MARGE + 300, 626, 'Plainte', !estTemoignage);
 
-  pvSection(ctx, 712, 978, 'DESCRIPTION DÉTAILLÉE DES FAITS' + (feuillets ? '  (suite page 2)' : ''));
-  pvLignesReglees(ctx, 786, LIGNES_PAGE1, INTERLIGNE, lignes, 0);
+  pvSection(ctx, 670, 1020, 'DESCRIPTION DÉTAILLÉE DES FAITS' + (feuillets ? '  (suite page 2)' : ''));
+  pvLignesReglees(ctx, 744, LIGNES_PAGE1, INTERLIGNE, lignes, 0);
   pied(ctx, 1);
 
   var pages = [premiere.canvas.toDataURL('image/png')];
