@@ -5176,7 +5176,7 @@ export default {
         if (c.id) {
           const champs = {};
           ["declarant_nom", "declarant_telephone", "type_declaration", "agents_concernes",
-           "lieu_faits", "description", "temoins", "agent_nom", "statut", "notes"]
+           "lieu_faits", "description", "agent_nom", "statut", "notes"]
             .forEach(k => { if (c[k] !== undefined) champs[k] = c[k]; });
           champs.updated_at = new Date().toISOString();
           await sb(env, "PATCH", `/plaintes_ai?id=eq.${c.id}`, champs);
@@ -5190,7 +5190,6 @@ export default {
           agents_concernes: c.agents_concernes || null,
           lieu_faits: c.lieu_faits || null,
           description: c.description || null,
-          temoins: c.temoins || null,
           agent_nom: c.agent_nom || null,
           statut: c.statut || "Nouvelle"
         });

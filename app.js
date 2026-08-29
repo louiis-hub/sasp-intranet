@@ -3620,7 +3620,6 @@ function aiVersDocument(d) {
     telephone: d.declarant_telephone,
     mis_en_cause: d.agents_concernes,
     lieu: d.lieu_faits,
-    temoins: d.temoins,
     type_declaration: d.type_declaration,
     motif: '',
     resume: d.description,
@@ -3716,7 +3715,6 @@ async function aiDetail(id) {
         '<div style="background:var(--bg2);border:1px solid var(--border0);border-radius:var(--rMd);padding:11px 13px;font-size:.85rem;white-space:pre-wrap;max-height:260px;overflow:auto">' + esc(d.description || '—') + '</div>' +
       '</div>' +
       (canWrite() ?
-        '<div class="form-group"><label class="form-label">Témoin(s)</label><input class="form-control" id="aiTemoins" value="' + esc(d.temoins || '') + '" placeholder="Nom(s) et moyen(s) de contact"></div>' +
         '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="aiStatut">' + statutOpts + '</select></div>' +
         '<div class="form-group"><label class="form-label">Notes internes</label><textarea class="form-control" id="aiNotes" rows="3" placeholder="Suites données, décision…">' + esc(d.notes || '') + '</textarea></div>'
         : ''),
@@ -3731,8 +3729,7 @@ async function aiDetail(id) {
 async function aiEnregistrer(id) {
   var statut = document.getElementById('aiStatut').value;
   var notes = document.getElementById('aiNotes').value.trim() || null;
-  var temoins = document.getElementById('aiTemoins').value.trim() || null;
-  var patch = { statut: statut, notes: notes, temoins: temoins, updated_at: new Date().toISOString() };
+  var patch = { statut: statut, notes: notes, updated_at: new Date().toISOString() };
   if (statut !== 'Nouvelle') { patch.traite_par = _whoAmI(); patch.traite_at = new Date().toISOString(); }
   var r = await DB.updatePlainteAI(id, patch);
   if (r.error) { toast(r.error.message, 'error'); return; }
@@ -3877,7 +3874,7 @@ var PV_MODELES = {
 // Formulaire officiel, rendu en plusieurs feuillets.
 // La description des faits occupe tout le bas de la premiere page d'un seul
 // tenant : c'est la piece maitresse du dossier, elle ne doit pas etre coupee
-// par une section intercalaire. Temoins, declaration sur l'honneur et pave du
+// par une section intercalaire. La declaration sur l'honneur et le pave du
 // service passent donc sur un feuillet de cloture.
 async function plainteDessiner(p, modele) {
   var M = PV_MODELES[modele || 'plainte'] || PV_MODELES.plainte;
@@ -3948,25 +3945,20 @@ async function plainteDessiner(p, modele) {
 
   // ── Feuillet de cloture ────────────────────────────────────────
   var c = pvNouvellePage();
-  pvBandeau(c.ctx, M, 'TÉMOINS ET SIGNATURES');
+  pvBandeau(c.ctx, M, 'SIGNATURES ET SUIVI');
 
-  pvSection(c.ctx, 176, 168, 'TÉMOINS ÉVENTUELS');
-  pvChamp(c.ctx, PV_MARGE + 18, 248, 'Nom(s) et moyen(s) de contact :', p.temoins, PV_MARGE + PV_LARGE - 20);
-  c.ctx.strokeStyle = PV_TRAIT; c.ctx.lineWidth = 1;
-  c.ctx.beginPath(); c.ctx.moveTo(PV_MARGE + 22, 296); c.ctx.lineTo(PV_MARGE + PV_LARGE - 22, 296); c.ctx.stroke();
-
-  pvSection(c.ctx, 364, 152, "DÉCLARATION SUR L'HONNEUR");
+  pvSection(c.ctx, 176, 152, "DÉCLARATION SUR L'HONNEUR");
   c.ctx.fillStyle = TP_MARINE;
   c.ctx.font = '400 20px Arial, Helvetica, sans-serif';
   c.ctx.textAlign = 'left';
-  c.ctx.fillText('Je certifie que les informations fournies dans ce document sont exactes et sincères.', PV_MARGE + 18, 438);
-  pvChamp(c.ctx, PV_MARGE + 18, 486, 'Fait le :', dateSeule, PV_MARGE + 330);
-  pvChamp(c.ctx, PV_MARGE + 380, 486, 'Signature du déclarant :', p.plaignant, PV_MARGE + PV_LARGE - 20);
+  c.ctx.fillText('Je certifie que les informations fournies dans ce document sont exactes et sincères.', PV_MARGE + 18, 250);
+  pvChamp(c.ctx, PV_MARGE + 18, 298, 'Fait le :', dateSeule, PV_MARGE + 330);
+  pvChamp(c.ctx, PV_MARGE + 380, 298, 'Signature du déclarant :', p.plaignant, PV_MARGE + PV_LARGE - 20);
 
-  pvSection(c.ctx, 564, 232, M.reserve, true);
-  pvChamp(c.ctx, PV_MARGE + 18, 646, 'Date de réception :', dateComplete, PV_MARGE + PV_LARGE - 20);
-  pvChamp(c.ctx, PV_MARGE + 18, 690, 'Agent chargé du dossier :', p.agent_nom, PV_MARGE + PV_LARGE - 20);
-  pvChamp(c.ctx, PV_MARGE + 18, 734, 'Suite donnée :', (p.statut || 'Nouvelle') + (p.notes ? ' — ' + p.notes : ''), PV_MARGE + PV_LARGE - 20);
+  pvSection(c.ctx, 376, 232, M.reserve, true);
+  pvChamp(c.ctx, PV_MARGE + 18, 458, 'Date de réception :', dateComplete, PV_MARGE + PV_LARGE - 20);
+  pvChamp(c.ctx, PV_MARGE + 18, 502, 'Agent chargé du dossier :', p.agent_nom, PV_MARGE + PV_LARGE - 20);
+  pvChamp(c.ctx, PV_MARGE + 18, 546, 'Suite donnée :', (p.statut || 'Nouvelle') + (p.notes ? ' — ' + p.notes : ''), PV_MARGE + PV_LARGE - 20);
 
   pied(c.ctx, total);
   pages.push(c.canvas.toDataURL('image/png'));

@@ -47,7 +47,7 @@ ALTER TABLE plaintes_ai ADD COLUMN IF NOT EXISTS type_declaration    TEXT DEFAUL
 ALTER TABLE plaintes_ai ADD COLUMN IF NOT EXISTS agents_concernes    TEXT;
 ALTER TABLE plaintes_ai ADD COLUMN IF NOT EXISTS lieu_faits          TEXT;
 ALTER TABLE plaintes_ai ADD COLUMN IF NOT EXISTS description         TEXT;
-ALTER TABLE plaintes_ai ADD COLUMN IF NOT EXISTS temoins             TEXT;
+
 ALTER TABLE plaintes_ai ADD COLUMN IF NOT EXISTS agent_nom           TEXT;
 ALTER TABLE plaintes_ai ADD COLUMN IF NOT EXISTS agent_discord_id    TEXT;
 ALTER TABLE plaintes_ai ADD COLUMN IF NOT EXISTS statut              TEXT DEFAULT 'Nouvelle';
