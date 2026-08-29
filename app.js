@@ -3620,6 +3620,7 @@ function aiVersDocument(d) {
     telephone: d.declarant_telephone,
     mis_en_cause: d.agents_concernes,
     lieu: d.lieu_faits,
+    temoins: d.temoins,
     type_declaration: d.type_declaration,
     motif: '',
     resume: d.description,
@@ -3715,6 +3716,7 @@ async function aiDetail(id) {
         '<div style="background:var(--bg2);border:1px solid var(--border0);border-radius:var(--rMd);padding:11px 13px;font-size:.85rem;white-space:pre-wrap;max-height:260px;overflow:auto">' + esc(d.description || '—') + '</div>' +
       '</div>' +
       (canWrite() ?
+        '<div class="form-group"><label class="form-label">Témoin(s)</label><input class="form-control" id="aiTemoins" value="' + esc(d.temoins || '') + '" placeholder="Nom(s) et moyen(s) de contact"></div>' +
         '<div class="form-group"><label class="form-label">Statut</label><select class="form-control" id="aiStatut">' + statutOpts + '</select></div>' +
         '<div class="form-group"><label class="form-label">Notes internes</label><textarea class="form-control" id="aiNotes" rows="3" placeholder="Suites données, décision…">' + esc(d.notes || '') + '</textarea></div>'
         : ''),
@@ -3729,7 +3731,8 @@ async function aiDetail(id) {
 async function aiEnregistrer(id) {
   var statut = document.getElementById('aiStatut').value;
   var notes = document.getElementById('aiNotes').value.trim() || null;
-  var patch = { statut: statut, notes: notes, updated_at: new Date().toISOString() };
+  var temoins = document.getElementById('aiTemoins').value.trim() || null;
+  var patch = { statut: statut, notes: notes, temoins: temoins, updated_at: new Date().toISOString() };
   if (statut !== 'Nouvelle') { patch.traite_par = _whoAmI(); patch.traite_at = new Date().toISOString(); }
   var r = await DB.updatePlainteAI(id, patch);
   if (r.error) { toast(r.error.message, 'error'); return; }
@@ -3948,7 +3951,7 @@ async function plainteDessiner(p, modele) {
   pvBandeau(c.ctx, M, 'TÉMOINS ET SIGNATURES');
 
   pvSection(c.ctx, 176, 168, 'TÉMOINS ÉVENTUELS');
-  pvChamp(c.ctx, PV_MARGE + 18, 248, 'Nom(s) et moyen(s) de contact :', '', PV_MARGE + PV_LARGE - 20);
+  pvChamp(c.ctx, PV_MARGE + 18, 248, 'Nom(s) et moyen(s) de contact :', p.temoins, PV_MARGE + PV_LARGE - 20);
   c.ctx.strokeStyle = PV_TRAIT; c.ctx.lineWidth = 1;
   c.ctx.beginPath(); c.ctx.moveTo(PV_MARGE + 22, 296); c.ctx.lineTo(PV_MARGE + PV_LARGE - 22, 296); c.ctx.stroke();
 

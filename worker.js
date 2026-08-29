@@ -5172,6 +5172,16 @@ export default {
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
       try {
         const c = await request.json();
+        // Un identifiant fourni signifie une mise a jour, pas une creation.
+        if (c.id) {
+          const champs = {};
+          ["declarant_nom", "declarant_telephone", "type_declaration", "agents_concernes",
+           "lieu_faits", "description", "temoins", "agent_nom", "statut", "notes"]
+            .forEach(k => { if (c[k] !== undefined) champs[k] = c[k]; });
+          champs.updated_at = new Date().toISOString();
+          await sb(env, "PATCH", `/plaintes_ai?id=eq.${c.id}`, champs);
+          return json({ ok: true, mis_a_jour: c.id, champs: Object.keys(champs) });
+        }
         const cree = await sb(env, "POST", "/plaintes_ai", {
           created_at: c.created_at || new Date().toISOString(),
           declarant_nom: c.declarant_nom || null,
@@ -5180,6 +5190,7 @@ export default {
           agents_concernes: c.agents_concernes || null,
           lieu_faits: c.lieu_faits || null,
           description: c.description || null,
+          temoins: c.temoins || null,
           agent_nom: c.agent_nom || null,
           statut: c.statut || "Nouvelle"
         });
