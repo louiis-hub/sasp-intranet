@@ -3861,11 +3861,17 @@ function pvBandeau(ctx, M, mention) {
   ctx.fillText(mention || M.sousTitre, TP_LARGEUR / 2, 132);
 }
 
-// Une page vierge au format du document.
+// Le document est rendu au double de ses dimensions, soit environ 300 dpi
+// pour une A4 : en 150 dpi le texte etait illisible une fois agrandi.
+// Le dessin garde ses coordonnees d'origine, ctx.scale fait la conversion.
+var PV_ECHELLE = 2;
+
 function pvNouvellePage() {
   var canvas = document.createElement('canvas');
-  canvas.width = TP_LARGEUR; canvas.height = TP_HAUTEUR;
+  canvas.width = TP_LARGEUR * PV_ECHELLE;
+  canvas.height = TP_HAUTEUR * PV_ECHELLE;
   var ctx = canvas.getContext('2d');
+  ctx.scale(PV_ECHELLE, PV_ECHELLE);
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, TP_LARGEUR, TP_HAUTEUR);
@@ -3985,17 +3991,93 @@ function pvPagesHtml(pages) {
 }
 
 // Enregistre chaque page, numérotée quand il y en a plusieurs.
-// Enregistre chaque page. Les navigateurs ignorent les telechargements
-// declenches coup sur coup : on les espace, sinon seule la premiere arrive.
-async function pvTelecharger(pages, prefixe) {
-  for (var i = 0; i < pages.length; i++) {
-    var a = document.createElement('a');
-    a.href = pages[i];
-    a.download = prefixe + (pages.length > 1 ? '-page' + (i + 1) : '') + '.png';
-    document.body.appendChild(a); a.click(); a.remove();
-    if (i < pages.length - 1) await new Promise(function(r){ setTimeout(r, 400); });
+// ── Archive ZIP ────────────────────────────────────────────────────
+// Ecrite a la main plutot que d'ajouter une bibliotheque : les PNG sont deja
+// compresses, la methode STORE suffit et evite d'embarquer un compresseur.
+var PV_TABLE_CRC = (function() {
+  var t = new Uint32Array(256);
+  for (var n = 0; n < 256; n++) {
+    var c = n;
+    for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
   }
-  if (pages.length > 1) toast(pages.length + ' pages téléchargées.', 'success');
+  return t;
+})();
+
+function pvCrc32(octets) {
+  var c = 0xFFFFFFFF;
+  for (var i = 0; i < octets.length; i++) c = PV_TABLE_CRC[(c ^ octets[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function pvConstruireZip(fichiers) {
+  var morceaux = [], entrees = [], offset = 0;
+  var e = function(n) { var b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, n, true); return b; };
+  var c = function(n) { var b = new Uint8Array(2); new DataView(b.buffer).setUint16(0, n, true); return b; };
+
+  fichiers.forEach(function(f) {
+    var nom = new TextEncoder().encode(f.nom);
+    var somme = pvCrc32(f.octets);
+    [e(0x04034b50), c(20), c(0), c(0), c(0), c(0), e(somme), e(f.octets.length),
+     e(f.octets.length), c(nom.length), c(0), nom].forEach(function(m){ morceaux.push(m); });
+    morceaux.push(f.octets);
+    entrees.push({ nom: nom, somme: somme, taille: f.octets.length, offset: offset });
+    offset += 30 + nom.length + f.octets.length;
+  });
+
+  var debutCentral = offset, central = [];
+  entrees.forEach(function(x) {
+    [e(0x02014b50), c(20), c(20), c(0), c(0), c(0), c(0), e(x.somme), e(x.taille),
+     e(x.taille), c(x.nom.length), c(0), c(0), c(0), c(0), e(0), e(x.offset), x.nom]
+      .forEach(function(m){ central.push(m); });
+    offset += 46 + x.nom.length;
+  });
+
+  var fin = [e(0x06054b50), c(0), c(0), c(entrees.length), c(entrees.length),
+             e(offset - debutCentral), e(debutCentral), c(0)];
+
+  var tout = morceaux.concat(central).concat(fin);
+  var total = tout.reduce(function(n, m){ return n + m.length; }, 0);
+  var sortie = new Uint8Array(total), p = 0;
+  tout.forEach(function(m){ sortie.set(m, p); p += m.length; });
+  return sortie;
+}
+
+function pvOctetsDepuisDataUrl(url) {
+  var base64 = url.split(',')[1];
+  var brut = atob(base64);
+  var octets = new Uint8Array(brut.length);
+  for (var i = 0; i < brut.length; i++) octets[i] = brut.charCodeAt(i);
+  return octets;
+}
+
+// Une seule page part telle quelle ; plusieurs sont regroupees en archive,
+// ce qui evite aussi le blocage des telechargements successifs.
+async function pvTelecharger(pages, prefixe) {
+  var enregistrer = function(href, nom) {
+    var a = document.createElement('a');
+    a.href = href; a.download = nom;
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+
+  if (pages.length === 1) { enregistrer(pages[0], prefixe + '.png'); return; }
+
+  try {
+    var zip = pvConstruireZip(pages.map(function(url, i) {
+      return { nom: prefixe + '-page' + (i + 1) + '.png', octets: pvOctetsDepuisDataUrl(url) };
+    }));
+    var lien = URL.createObjectURL(new Blob([zip], { type: 'application/zip' }));
+    enregistrer(lien, prefixe + '.zip');
+    setTimeout(function(){ URL.revokeObjectURL(lien); }, 10000);
+    toast('Archive de ' + pages.length + ' pages téléchargée.', 'success');
+  } catch(e) {
+    // Repli : les pages une par une, espacees pour ne pas etre bloquees.
+    for (var i = 0; i < pages.length; i++) {
+      enregistrer(pages[i], prefixe + '-page' + (i + 1) + '.png');
+      if (i < pages.length - 1) await new Promise(function(r){ setTimeout(r, 400); });
+    }
+    toast(pages.length + ' pages téléchargées.', 'success');
+  }
 }
 
 async function plainteApercu(id) {
