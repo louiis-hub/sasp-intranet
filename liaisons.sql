@@ -66,3 +66,13 @@ SELECT setval(
   pg_get_serial_sequence('liaisons_tableaux', 'id'),
   GREATEST((SELECT COALESCE(MAX(id), 1) FROM liaisons_tableaux), 1)
 );
+
+-- ── Accès nominatifs par défaut ─────────────────────────────────────
+-- Ces deux comptes portent déjà le rôle Command Staff : la ligne ci-dessous
+-- ne leur ouvre rien de plus aujourd'hui, elle sert de filet si le rôle
+-- Discord venait à leur être retiré. Réexécuter ce fichier est sans effet.
+INSERT INTO liaisons_acces (discord_id, nom, peut_ecrire, ajoute_par) VALUES
+  ('473597541456412672', 'Léo Arras',    true, 'Mise en place'),
+  ('228533707865194496', 'Boris Miller', true, 'Mise en place')
+ON CONFLICT (discord_id) DO UPDATE
+  SET nom = EXCLUDED.nom, peut_ecrire = EXCLUDED.peut_ecrire;

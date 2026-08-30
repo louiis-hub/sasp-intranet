@@ -455,21 +455,43 @@ async function getDiscordRole(discordUserId) {
 // donnee du tableau et n en recevrait aucune sans autorisation.
 var LIAISONS_API = 'https://sasp-intranet-bot.louisleurin.workers.dev';
 
+var LIAISONS_ROLES_FRONT = ['1500975725153620033', '1501526499910746132'];
+
+function ouvrirLeLogoLiaisons(logo, origine) {
+  logo.classList.add('logo-liaisons-ouvert');
+  logo.title = 'Ouvrir le tableau de liaisons';
+  logo.style.cursor = 'pointer';
+  logo.onclick = function() { window.location.href = 'sasp/liaisons/'; };
+  console.log('[liaisons] lien actif (' + origine + ')');
+}
+
 async function activerLienLiaisons() {
   var logo = document.getElementById('logoLiaisons');
-  if (!logo) return;
+  if (!logo) { console.warn('[liaisons] logo introuvable : page en cache, forcez Ctrl+Shift+R.'); return; }
+  var session = null;
+  try { session = (await DB.getSession()).data.session; } catch(e) {}
+  if (!session) { console.warn('[liaisons] aucune session Supabase.'); return; }
   try {
-    var session = (await DB.getSession()).data.session;
-    if (!session) return;
     var r = await fetch(LIAISONS_API + '/api/sasp/acces', {
       headers: { authorization: 'Bearer ' + session.access_token }
     });
-    if (!r.ok) return;
-    logo.classList.add('logo-liaisons-ouvert');
-    logo.title = 'Ouvrir le tableau de liaisons';
-    logo.style.cursor = 'pointer';
-    logo.onclick = function() { window.location.href = 'sasp/liaisons/'; };
-  } catch(e) { /* acces non confirme : le logo reste inerte. */ }
+    if (r.ok) { ouvrirLeLogoLiaisons(logo, 'confirme par le serveur'); return; }
+    // 401 et 403 sont des refus nets : le serveur a tranche, on n insiste pas.
+    if (r.status === 401 || r.status === 403) {
+      console.log('[liaisons] acces refuse par le serveur (HTTP ' + r.status + ').');
+      return;
+    }
+    console.warn('[liaisons] reponse inattendue : HTTP ' + r.status);
+  } catch(e) {
+    console.warn('[liaisons] serveur injoignable :', e && e.message);
+  }
+  // Repli : le serveur n a pas pu repondre. Afficher le lien ne donne
+  // acces a rien, c est l API qui garde les donnees ; on evite juste que
+  // le tableau devienne introuvable a cause d une panne reseau.
+  var roles = (S && S.discordRoles) || [];
+  if (roles.some(function(x) { return LIAISONS_ROLES_FRONT.indexOf(x) !== -1; })) {
+    ouvrirLeLogoLiaisons(logo, 'repli sur les roles Discord');
+  }
 }
 
 async function afterLogin(user, session) {
