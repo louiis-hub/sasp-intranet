@@ -4816,13 +4816,18 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    // Ce gestionnaire precede toutes les routes : c est lui qui repond a
+    // tous les preflights. Authorization y est indispensable, sinon le
+    // navigateur bloque les appels du tableau de liaisons avant meme de
+    // les envoyer. PUT y figure pour l enregistrement du tableau.
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
         headers: {
           "access-control-allow-origin": "*",
-          "access-control-allow-headers": "content-type, x-log-token",
-          "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS"
+          "access-control-allow-headers": "authorization, content-type, x-log-token",
+          "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+          "access-control-max-age": "86400"
         }
       });
     }
@@ -5782,16 +5787,7 @@ export default {
     //  moindre donnee avant que les roles Discord aient ete verifies.
     // ════════════════════════════════════════════════════════════════
     if (url.pathname.startsWith("/api/sasp/")) {
-      // Le navigateur envoie un preflight des qu'il y a un entete Authorization.
-      if (request.method === "OPTIONS") {
-        return new Response(null, { status: 204, headers: {
-          "access-control-allow-origin": "*",
-          "access-control-allow-methods": "GET, PUT, POST, DELETE, OPTIONS",
-          "access-control-allow-headers": "authorization, content-type",
-          "access-control-max-age": "86400"
-        }});
-      }
-
+      // Les preflights sont traites plus haut, avant toute route.
       const qui = await liaisonsIdentifier(env, request);
       if (!qui.autorise) return liaisonsRefus(qui);
 
