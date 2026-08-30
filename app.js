@@ -448,6 +448,30 @@ async function getDiscordRole(discordUserId) {
   } catch(e) { console.error('[auth] error:', e); return { role: null, apiOk: false, roles: [] }; }
 }
 
+// ── Tableau de liaisons ──────────────────────────────────────────
+// Le logo de la barre laterale ouvre le tableau d enquete, mais
+// seulement pour qui y a droit. C est le Worker qui tranche : le
+// front se contente d afficher ou non le lien, il ne detient aucune
+// donnee du tableau et n en recevrait aucune sans autorisation.
+var LIAISONS_API = 'https://sasp-intranet-bot.louisleurin.workers.dev';
+
+async function activerLienLiaisons() {
+  var logo = document.getElementById('logoLiaisons');
+  if (!logo) return;
+  try {
+    var session = (await DB.getSession()).data.session;
+    if (!session) return;
+    var r = await fetch(LIAISONS_API + '/api/sasp/acces', {
+      headers: { authorization: 'Bearer ' + session.access_token }
+    });
+    if (!r.ok) return;
+    logo.classList.add('logo-liaisons-ouvert');
+    logo.title = 'Ouvrir le tableau de liaisons';
+    logo.style.cursor = 'pointer';
+    logo.onclick = function() { window.location.href = 'sasp/liaisons/'; };
+  } catch(e) { /* acces non confirme : le logo reste inerte. */ }
+}
+
 async function afterLogin(user, session) {
   try {
     S.user = user;
@@ -491,6 +515,7 @@ async function afterLogin(user, session) {
     } catch(e) {}
     demarrerRevalidation();
     showApp();
+    activerLienLiaisons();
     await allerVersRouteInitiale();
   } catch(err) {
     console.error('[auth] afterLogin failed:', err);

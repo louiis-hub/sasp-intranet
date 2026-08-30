@@ -305,6 +305,110 @@ function envGuildId(env) {
   return /^\d{17,20}$/.test(raw) ? raw : SUD_SITE_GUILD_ID;
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  Tableau de liaisons — controle d'acces
+//
+//  Le site est statique : personne ne peut empecher le telechargement de
+//  la page. La protection porte donc sur les DONNEES, verifiees ici a
+//  chaque requete. Une page servie a un visiteur non autorise reste vide.
+// ════════════════════════════════════════════════════════════════════
+
+// Command Staff et Lead CID : ces deux roles ouvrent le tableau et
+// permettent d'ouvrir des acces nominatifs a d'autres personnes.
+const LIAISONS_ROLES = [
+  { id: "1500975725153620033", nom: "Command Staff" },
+  { id: "1501526499910746132", nom: "Lead CID" }
+];
+
+// Identifie l'appelant a partir de sa session Supabase, puis lit ses roles
+// Discord en direct. Aucune information n'est tiree du corps de la requete :
+// le client ne peut pas se declarer autorise.
+async function liaisonsIdentifier(env, request) {
+  const entete = request.headers.get("authorization") || "";
+  const jeton = entete.startsWith("Bearer ") ? entete.slice(7).trim() : "";
+  if (!jeton) return { autorise: false, motif: "non-connecte" };
+
+  // 1. Supabase seul peut dire si ce jeton correspond a une session valide.
+  let compte;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { apikey: env.SUPABASE_SERVICE_KEY, authorization: `Bearer ${jeton}` }
+    });
+    if (!res.ok) return { autorise: false, motif: "non-connecte" };
+    compte = await res.json();
+  } catch (e) {
+    return { autorise: false, motif: "non-connecte" };
+  }
+
+  const meta = compte.user_metadata || {};
+  const discordId = String(meta.provider_id || meta.sub || "").trim();
+  const nom = meta.full_name || meta.global_name || meta.name || meta.user_name || "Utilisateur";
+  if (!/^\d{17,20}$/.test(discordId)) return { autorise: false, motif: "non-connecte", nom };
+
+  // 2. Les roles Discord, relus a chaque appel : retirer le role sur Discord
+  //    ferme l'acces immediatement, sans attendre une reconnexion.
+  let roles = null;
+  try {
+    const res = await discordFetch(`${DISCORD_API}/guilds/${envGuildId(env)}/members/${discordId}`, {
+      headers: { authorization: `Bot ${env.DISCORD_BOT_TOKEN}` }
+    });
+    if (res.ok) roles = (await res.json()).roles || [];
+    else if (res.status === 404) roles = [];
+  } catch (e) { /* Discord injoignable : on se rabat sur les acces nominatifs. */ }
+
+  const porte = roles ? LIAISONS_ROLES.filter(r => roles.includes(r.id)) : [];
+  if (porte.length) {
+    return { autorise: true, peutGerer: true, ecriture: true,
+             discordId, nom, role: porte.map(r => r.nom).join(" + ") };
+  }
+
+  // 3. Acces nominatif ouvert par le Command Staff.
+  try {
+    const lignes = await sb(env, "GET", `/liaisons_acces?discord_id=eq.${encodeURIComponent(discordId)}&select=*`);
+    const acces = lignes && lignes[0];
+    if (acces) {
+      return { autorise: true, peutGerer: false, ecriture: acces.peut_ecrire !== false,
+               discordId, nom: acces.nom || nom, role: "Acces nominatif" };
+    }
+  } catch (e) { /* table absente : aucun acces nominatif. */ }
+
+  if (roles === null) return { autorise: false, motif: "verification-impossible", nom, discordId };
+  return { autorise: false, motif: "role-manquant", nom, discordId };
+}
+
+// Une entree de journal. Les echecs d'ecriture ne bloquent jamais l'action
+// en cours : le tableau doit rester utilisable meme si le journal tombe.
+async function liaisonsJournaliser(env, request, qui, tableauId, action, cible) {
+  try {
+    await sb(env, "POST", "/liaisons_journal", {
+      tableau_id: tableauId || null,
+      discord_id: qui.discordId || null,
+      utilisateur: qui.nom || null,
+      role: qui.role || null,
+      action: String(action || "").slice(0, 200),
+      cible: String(cible || "").slice(0, 500),
+      ip: request.headers.get("cf-connecting-ip") || null
+    });
+  } catch (e) {}
+}
+
+// Reponse unique pour tous les refus : jamais de donnees, jamais de detail
+// exploitable sur ce qui existe de l'autre cote.
+function liaisonsRefus(qui) {
+  const motifs = {
+    "non-connecte": "Connectez-vous avec Discord pour acceder au tableau.",
+    "role-manquant": "Votre compte n'a pas acces au tableau de liaisons.",
+    "verification-impossible": "Verification des roles impossible pour le moment."
+  };
+  return json({
+    ok: false,
+    autorise: false,
+    motif: qui.motif || "role-manquant",
+    message: motifs[qui.motif] || motifs["role-manquant"],
+    nom: qui.nom || null
+  }, qui.motif === "non-connecte" ? 401 : 403);
+}
+
 const NORD_DIVISION_ROLES = {
   'PA': '1519012732886585526'
 };
@@ -5671,6 +5775,160 @@ export default {
     }
 
     if (url.pathname === "/health") return json({ ok: true });
+
+    // ════════════════════════════════════════════════════════════════
+    //  API du tableau de liaisons
+    //  Tout passe par liaisonsIdentifier : aucune route ne renvoie la
+    //  moindre donnee avant que les roles Discord aient ete verifies.
+    // ════════════════════════════════════════════════════════════════
+    if (url.pathname.startsWith("/api/sasp/")) {
+      // Le navigateur envoie un preflight des qu'il y a un entete Authorization.
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: {
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, PUT, POST, DELETE, OPTIONS",
+          "access-control-allow-headers": "authorization, content-type",
+          "access-control-max-age": "86400"
+        }});
+      }
+
+      const qui = await liaisonsIdentifier(env, request);
+      if (!qui.autorise) return liaisonsRefus(qui);
+
+      try {
+        const idTableau = (url.pathname.match(/^\/api\/sasp\/board\/(\d+)$/) || [])[1];
+
+        // Etat d'acces : le site s'en sert pour decider s'il affiche le lien.
+        if (url.pathname === "/api/sasp/acces" && request.method === "GET") {
+          return json({ ok: true, autorise: true, nom: qui.nom, role: qui.role,
+                        peutGerer: !!qui.peutGerer, ecriture: !!qui.ecriture });
+        }
+
+        // ── Dossiers ────────────────────────────────────────────────
+        if (url.pathname === "/api/sasp/tableaux" && request.method === "GET") {
+          const rows = await sb(env, "GET",
+            "/liaisons_tableaux?select=id,nom,dossier,updated_at,updated_by&order=id.asc");
+          return json({ ok: true, tableaux: rows || [] });
+        }
+
+        if (url.pathname === "/api/sasp/tableaux" && request.method === "POST") {
+          if (!qui.ecriture) return json({ ok: false, error: "Acces en lecture seule." }, 403);
+          const corps = await request.json().catch(() => ({}));
+          const cree = await sb(env, "POST", "/liaisons_tableaux", {
+            nom: String(corps.nom || "Nouveau dossier").slice(0, 120),
+            dossier: corps.dossier ? String(corps.dossier).slice(0, 60) : null,
+            updated_by: qui.nom
+          });
+          const t = cree && cree[0];
+          await liaisonsJournaliser(env, request, qui, t && t.id, "Creation de dossier", t ? t.nom : "");
+          return json({ ok: true, tableau: t });
+        }
+
+        // ── Lecture d'un tableau ────────────────────────────────────
+        if (idTableau && request.method === "GET") {
+          const rows = await sb(env, "GET", `/liaisons_tableaux?id=eq.${idTableau}&select=*`);
+          const t = rows && rows[0];
+          if (!t) return json({ ok: false, error: "Dossier introuvable." }, 404);
+          await liaisonsJournaliser(env, request, qui, t.id, "Ouverture du tableau", t.nom);
+          return json({ ok: true, id: t.id, nom: t.nom, dossier: t.dossier,
+                        nodes: t.nodes || [], edges: t.edges || [], seq: t.seq || 100,
+                        version: t.version || 1, updated_at: t.updated_at,
+                        updated_by: t.updated_by, ecriture: !!qui.ecriture,
+                        peutGerer: !!qui.peutGerer, nom_agent: qui.nom, role: qui.role });
+        }
+
+        // ── Enregistrement ──────────────────────────────────────────
+        if (idTableau && request.method === "PUT") {
+          if (!qui.ecriture) return json({ ok: false, error: "Acces en lecture seule." }, 403);
+          const corps = await request.json().catch(() => null);
+          if (!corps || !Array.isArray(corps.nodes) || !Array.isArray(corps.edges)) {
+            return json({ ok: false, error: "Corps de requete invalide." }, 400);
+          }
+
+          // Verrou optimiste : deux personnes sur le meme dossier ne
+          // s'ecrasent pas en silence, la version en retard est prevenue.
+          const rows = await sb(env, "GET",
+            `/liaisons_tableaux?id=eq.${idTableau}&select=version,updated_by,updated_at`);
+          const actuel = rows && rows[0];
+          if (!actuel) return json({ ok: false, error: "Dossier introuvable." }, 404);
+          if (corps.version && Number(corps.version) !== Number(actuel.version)) {
+            return json({ ok: false, conflit: true, version: actuel.version,
+                          updated_by: actuel.updated_by, updated_at: actuel.updated_at,
+                          error: "Le dossier a ete modifie ailleurs entre-temps." }, 409);
+          }
+
+          const maintenant = new Date().toISOString();
+          await sb(env, "PATCH", `/liaisons_tableaux?id=eq.${idTableau}`, {
+            nodes: corps.nodes, edges: corps.edges,
+            seq: Number(corps.seq) || 100,
+            version: Number(actuel.version) + 1,
+            updated_at: maintenant, updated_by: qui.nom
+          });
+
+          // Les actions accumulees cote client depuis le dernier envoi.
+          if (Array.isArray(corps.journal)) {
+            for (const e of corps.journal.slice(0, 20)) {
+              await liaisonsJournaliser(env, request, qui, idTableau, e.action, e.cible);
+            }
+          }
+          return json({ ok: true, version: Number(actuel.version) + 1, updated_at: maintenant });
+        }
+
+        // ── Journal ─────────────────────────────────────────────────
+        if (url.pathname === "/api/sasp/journal" && request.method === "GET") {
+          const t = url.searchParams.get("tableau") || "";
+          const filtre = /^\d+$/.test(t) ? `tableau_id=eq.${t}&` : "";
+          const rows = await sb(env, "GET",
+            `/liaisons_journal?${filtre}select=*&order=created_at.desc&limit=200`);
+          return json({ ok: true, journal: rows || [] });
+        }
+
+        if (url.pathname === "/api/sasp/journal" && request.method === "POST") {
+          const c = await request.json().catch(() => ({}));
+          await liaisonsJournaliser(env, request, qui, c.tableau, c.action, c.cible);
+          return json({ ok: true });
+        }
+
+        // ── Acces nominatifs (Command Staff et Lead CID) ────────────
+        if (url.pathname === "/api/sasp/comptes") {
+          if (!qui.peutGerer) {
+            return json({ ok: false, error: "Reserve au Command Staff et au Lead CID." }, 403);
+          }
+          if (request.method === "GET") {
+            const rows = await sb(env, "GET", "/liaisons_acces?select=*&order=created_at.desc");
+            return json({ ok: true, comptes: rows || [] });
+          }
+          if (request.method === "POST") {
+            const c = await request.json().catch(() => ({}));
+            const id = String(c.discord_id || "").trim();
+            if (!/^\d{17,20}$/.test(id)) {
+              return json({ ok: false, error: "Identifiant Discord invalide." }, 400);
+            }
+            await sb(env, "POST", "/liaisons_acces?on_conflict=discord_id", {
+              discord_id: id,
+              nom: String(c.nom || "").slice(0, 120) || null,
+              peut_ecrire: c.peut_ecrire !== false,
+              ajoute_par: qui.nom
+            });
+            await liaisonsJournaliser(env, request, qui, null, "Ouverture d'un acces", c.nom || id);
+            return json({ ok: true });
+          }
+          if (request.method === "DELETE") {
+            const id = String(url.searchParams.get("discord_id") || "").trim();
+            if (!/^\d{17,20}$/.test(id)) {
+              return json({ ok: false, error: "Identifiant Discord invalide." }, 400);
+            }
+            await sb(env, "DELETE", `/liaisons_acces?discord_id=eq.${id}`);
+            await liaisonsJournaliser(env, request, qui, null, "Retrait d'un acces", id);
+            return json({ ok: true });
+          }
+        }
+
+        return json({ ok: false, error: "Route inconnue." }, 404);
+      } catch (e) {
+        return json({ ok: false, error: e.message || "Erreur serveur." }, 500);
+      }
+    }
 
     // Auth check-roles (intranet web)
     if (url.pathname === "/auth/check-roles" && request.method === "GET") {

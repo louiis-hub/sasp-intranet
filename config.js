@@ -37,3 +37,13 @@ var ROLE_AGENT_IDS  = [
   '1500975724750704668', // Trooper I
   '1500975724750704667'  // Rookie
 ];
+
+// ── Tableau de liaisons ──────────────────────────────────────────
+// Les identifiants qui ouvrent le tableau ne sont PAS ici : le front
+// ne decide de rien, il demande au Worker (/api/sasp/acces) et se
+// contente d afficher ou non le lien. La liste fait autorite dans
+// worker.js, constante LIAISONS_ROLES :
+//   1500975725153620033  Command Staff
+//   1501526499910746132  Lead CID
+// Les acces nominatifs supplementaires vivent dans la table
+// liaisons_acces et se gerent depuis la page Administration.

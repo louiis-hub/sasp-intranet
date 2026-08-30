@@ -1,0 +1,1935 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tableau de liaisons — SASP SUD</title>
+<link rel="icon" href="../../assets/sasp-sud-logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Special+Elite&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{
+  /* liège et bois */
+  --cork:#C79B62; --cork-d:#A87C46; --wood:#6B4423; --wood-d:#3E2612; --wood-l:#8B5E34;
+  /* papiers */
+  --paper:#FBF6E9; --paper2:#F1E9D6; --manila:#E6D6AE; --manila-d:#D7C295; --kraft:#CDB58B;
+  /* encres */
+  --ink:#241F19; --ink2:#4A4038; --ink3:#7A6E5C; --ink4:#9C8E78;
+  --line:#D9CDB2; --line2:#C4B492; --line3:#A8926B;
+  /* accents */
+  --red:#A8221B; --red-d:#7C1712; --amber:#C0761A; --green:#3E7A4E; --blue:#1E5C8C;
+  --steel:#1E5C8C;
+  --rad:2px;
+  --f-ui:"Special Elite","Courier New",monospace;
+  --f-hand:"Caveat","Bradley Hand",cursive;
+  --f-body:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#2A1B0E;color:var(--ink);font-family:var(--f-body);font-size:13px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;overflow:hidden}
+::selection{background:#F2D98A;color:#241F19}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--red);outline-offset:1px}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--manila-d)}
+::-webkit-scrollbar-thumb{background:var(--kraft);border:2px solid var(--manila-d);border-radius:5px}
+::-webkit-scrollbar-thumb:hover{background:#B79C6E}
+
+/* ---------- bandeaux ---------- */
+.clsbar{position:fixed;left:0;right:0;height:20px;z-index:60;display:flex;align-items:center;justify-content:center;
+  font-family:var(--f-ui);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:#F0D9A8;
+  background:linear-gradient(180deg,#4A2E15,#33200E);border-bottom:1px solid #23150A;
+  box-shadow:0 1px 0 rgba(255,220,170,.12) inset}
+.clsbar.bot{bottom:0;top:auto;border-bottom:0;border-top:1px solid #23150A}
+.clsbar .dot{width:5px;height:5px;border-radius:50%;background:#C0392B;margin:0 10px;animation:pulse 2.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ---------- barre du haut (bois) ---------- */
+.topbar{position:fixed;top:20px;left:0;right:0;height:52px;z-index:40;display:flex;align-items:center;gap:14px;padding:0 14px;
+  background:linear-gradient(180deg,#7A5029,#5A3A1C 60%,#4A2E15);
+  border-bottom:2px solid #2E1C0C;box-shadow:0 3px 12px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,214,160,.22)}
+.brand{display:flex;gap:10px;align-items:center;padding-right:14px;border-right:1px solid rgba(255,220,170,.2);
+  text-decoration:none}
+.brand img{width:30px;height:30px;object-fit:contain;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+.brand b{display:block;font-family:var(--f-ui);font-size:15px;letter-spacing:.1em;color:#FBEBCD;line-height:1.1}
+.brand span{display:block;font-family:var(--f-mono);font-size:8.5px;letter-spacing:.13em;color:#C9A876;text-transform:uppercase}
+.dossier{display:flex;flex-direction:column;min-width:0}
+.dossier b{font-family:var(--f-ui);font-size:15px;color:#FBEBCD;line-height:1.2;white-space:nowrap}
+.dossier span{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.11em;color:#C9A876;text-transform:uppercase}
+.tsearch{margin-left:auto;position:relative;width:min(300px,30vw)}
+.tsearch input{width:100%;background:var(--paper);border:1px solid #8A6A3E;border-radius:var(--rad);padding:6px 10px 6px 29px;
+  font-family:var(--f-mono);font-size:11.5px;color:var(--ink);box-shadow:inset 0 1px 3px rgba(90,60,20,.25)}
+.tsearch input::placeholder{color:var(--ink4)}
+.tsearch input:focus{outline:none;border-color:var(--red);background:#fff}
+.tsearch .ic{position:absolute;left:9px;top:7px;color:var(--ink4)}
+.sugg{position:absolute;top:34px;left:0;right:0;background:var(--paper);border:1px solid #9C7A48;border-radius:var(--rad);
+  box-shadow:0 16px 34px rgba(0,0,0,.5);max-height:300px;overflow:auto;z-index:50;display:none}
+.sugg div{display:flex;gap:8px;align-items:center;padding:6px 10px;cursor:pointer;font-size:12.5px;color:var(--ink)}
+.sugg div:hover{background:#F2D98A}
+.sugg .m{margin-left:auto;font-family:var(--f-mono);font-size:10px;color:var(--ink3)}
+.me{display:flex;align-items:center;gap:9px;padding-left:12px;border-left:1px solid rgba(255,220,170,.2);white-space:nowrap}
+.me .av{width:28px;height:28px;border-radius:2px;background:#8B5E34;display:grid;place-items:center;
+  font-family:var(--f-ui);font-size:11px;color:#FBEBCD;border:1px solid #A87C46;overflow:hidden}
+.me .av img{width:100%;height:100%;object-fit:cover}
+.me i{font-style:normal;display:block;font-family:var(--f-ui);font-size:12.5px;color:#FBEBCD;line-height:1.15}
+.me s{text-decoration:none;display:block;font-family:var(--f-mono);font-size:9px;color:#C9A876;letter-spacing:.1em;text-transform:uppercase}
+
+/* ---------- boutons ---------- */
+.btn{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(180deg,#FBF6E9,#EDE2C9);
+  border:1px solid #A68B5B;color:var(--ink);
+  padding:6px 11px;border-radius:var(--rad);font-family:var(--f-ui);font-size:12px;cursor:pointer;
+  box-shadow:0 2px 4px rgba(50,30,8,.3);transition:transform .08s,box-shadow .12s,background .12s;white-space:nowrap}
+.btn:hover{background:linear-gradient(180deg,#fff,#F3E9D2);box-shadow:0 3px 7px rgba(50,30,8,.36)}
+.btn:active{transform:translateY(1px);box-shadow:0 1px 2px rgba(50,30,8,.3)}
+.btn.pri{background:linear-gradient(180deg,#B8322A,#8E1F19);border-color:#6E140F;color:#FBEBCD}
+.btn.pri:hover{background:linear-gradient(180deg,#C63A31,#9B241D)}
+.btn.dgr{background:linear-gradient(180deg,#5E3A1B,#42260E);border-color:#2E1A08;color:#F0D9A8}
+.btn.sm{padding:4px 8px;font-size:11px}
+.btn.on{background:linear-gradient(180deg,#F2D98A,#E0C167);border-color:#A68B5B}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.tbtn{width:30px;height:30px;display:grid;place-items:center;background:transparent;border:1px solid transparent;
+  border-radius:var(--rad);cursor:pointer;color:#C9A876}
+.tbtn:hover{background:rgba(255,230,190,.14);color:#FBEBCD;border-color:rgba(255,220,170,.28)}
+.kbd{font-family:var(--f-mono);font-size:9.5px;color:var(--ink2);border:1px solid var(--line2);border-bottom-width:2px;
+  border-radius:3px;padding:1px 5px;background:var(--paper2)}
+.lbl{font-family:var(--f-ui);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.mono{font-family:var(--f-mono)}
+.muted{color:var(--ink3)}
+.tag{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-mono);font-size:9.5px;letter-spacing:.1em;
+  text-transform:uppercase;padding:2px 6px;border-radius:2px;border:1px solid;white-space:nowrap}
+.t-red{color:#7C1712;background:#F3D6D2;border-color:#C08079}
+.t-amb{color:#7A4A0C;background:#F6E5C4;border-color:#C9A96A}
+.t-grn{color:#245234;background:#D8EBD8;border-color:#8DBB96}
+.t-gry{color:var(--ink3);background:var(--paper2);border-color:var(--line2)}
+.meter{height:5px;background:var(--paper2);border-radius:2px;overflow:hidden;border:1px solid var(--line2)}
+.meter i{display:block;height:100%;background:var(--blue)}
+.meter i.r{background:var(--red)}.meter i.a{background:var(--amber)}.meter i.g{background:var(--green)}
+
+/* ---------- panneau de liège ---------- */
+#board{position:fixed;top:72px;left:0;right:0;bottom:20px;overflow:hidden;
+  background-color:var(--cork);
+  background-image:
+    radial-gradient(rgba(92,58,24,.20) 1.1px, transparent 1.3px),
+    radial-gradient(rgba(158,110,58,.34) 1.7px, transparent 2px),
+    radial-gradient(rgba(70,44,18,.13) 2.5px, transparent 2.9px),
+    radial-gradient(rgba(210,168,112,.25) 1.3px, transparent 1.6px);
+  background-size:13px 13px,23px 23px,37px 37px,53px 53px;
+  background-position:0 0,7px 11px,19px 5px,31px 27px}
+#board:fullscreen{top:0;bottom:0;left:0}
+.frame{position:absolute;inset:0;pointer-events:none;z-index:7;
+  border:16px solid #6B4423;
+  border-image:linear-gradient(140deg,#A87244,#5E3A1B 32%,#8B5E34 58%,#452A11) 1;
+  box-shadow:inset 0 0 0 1px rgba(255,225,180,.22), inset 0 0 70px rgba(60,34,8,.45),
+             inset 0 0 0 17px rgba(0,0,0,.25)}
+.frame:before{content:"";position:absolute;inset:-16px;border:16px solid transparent;
+  box-shadow:inset 0 3px 6px rgba(255,220,170,.18), inset 0 -3px 8px rgba(0,0,0,.4)}
+#gworld{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+#gedges{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+
+/* ---------- fiches épinglées ---------- */
+.node{position:absolute;width:176px;transform:translate(-50%,-50%) rotate(var(--rot,0deg));
+  background:var(--paper);color:var(--ink);border-radius:1px;cursor:grab;user-select:none;padding:9px 9px 8px;
+  box-shadow:0 7px 14px rgba(50,28,6,.38), 0 2px 3px rgba(0,0,0,.25);
+  transition:box-shadow .14s,filter .14s}
+.node:hover{box-shadow:0 11px 22px rgba(50,28,6,.45), 0 2px 3px rgba(0,0,0,.3)}
+.node.sel{transform:translate(-50%,-50%) rotate(0deg) scale(1.03);z-index:20;
+  box-shadow:0 0 0 2px var(--red), 0 16px 30px rgba(50,28,6,.5)}
+.node.dim{opacity:.4;filter:saturate(.45)}
+.node.hit{box-shadow:0 0 0 3px #F2C230, 0 10px 22px rgba(50,28,6,.45)}
+.node .pin{position:absolute;left:50%;top:-9px;width:17px;height:17px;margin-left:-8.5px;border-radius:50%;
+  background:radial-gradient(circle at 33% 30%, #fff 0 12%, var(--pc,#C0392B) 42%, rgba(0,0,0,.5) 100%);
+  box-shadow:0 3px 4px rgba(40,20,4,.5), inset 0 -1px 2px rgba(0,0,0,.35);z-index:3}
+.node .tape{position:absolute;top:-8px;left:50%;width:52px;height:17px;margin-left:-26px;
+  background:linear-gradient(180deg,rgba(255,250,225,.62),rgba(232,216,176,.5));
+  border-left:1px dashed rgba(160,140,100,.4);border-right:1px dashed rgba(160,140,100,.4);
+  transform:rotate(-2.5deg);box-shadow:0 1px 2px rgba(60,40,10,.18);z-index:2}
+.node .ph{display:none;background:#4A4640;border:1px solid #2E2B27;margin-bottom:7px;
+  align-items:center;justify-content:center;color:#8C877E;
+  background-image:linear-gradient(150deg,#5A554E,#3C3833 60%,#514C45)}
+.node .ttl{font-family:var(--f-ui);font-size:13px;color:var(--ink);line-height:1.22;word-break:break-word;letter-spacing:.01em}
+.node .tlab{font-family:var(--f-hand);font-size:14px;line-height:1;margin-bottom:3px}
+.node .kv{display:flex;gap:5px;font-family:var(--f-mono);font-size:9.5px;color:var(--ink3);margin-top:3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.node .kv b{color:var(--ink4);font-weight:400}
+.node .risk{display:flex;gap:2px;margin-top:6px}
+.node .risk i{width:13px;height:3px;background:rgba(120,100,70,.28);border-radius:1px}
+.node .risk i.on{background:var(--amber)}
+.node .risk i.hi{background:var(--red)}
+
+/* variantes de support */
+.p-polaroid{background:#FDFDFB;padding:9px 9px 7px}
+.p-polaroid .ph{display:flex;aspect-ratio:1/1}
+.p-polaroid .ttl{font-family:var(--f-hand);font-size:19px;line-height:1.05;text-align:center;margin-top:4px}
+.p-polaroid .tlab{text-align:center;font-size:12px;color:var(--ink4)}
+.p-polaroid .kv{justify-content:center}
+.p-polaroid .risk{justify-content:center}
+.p-photo{background:#FDFDFB;padding:8px 8px 7px;width:192px}
+.p-photo .ph{display:flex;aspect-ratio:16/10}
+.p-photo .ttl{font-family:var(--f-mono);font-size:13px;letter-spacing:.09em;margin-top:5px;text-align:center}
+.p-photo .tlab{text-align:center;font-size:12px;color:var(--ink4)}
+.p-photo .kv{justify-content:center}
+.p-photo .risk{justify-content:center}
+.p-sticky{width:158px;padding:11px 11px 9px;background:var(--sticky,#F6E38B);
+  box-shadow:0 7px 12px rgba(50,28,6,.32), inset 0 -18px 22px -18px rgba(0,0,0,.18)}
+.p-sticky .ttl{font-family:var(--f-hand);font-size:20px;line-height:1.1}
+.p-sticky .tlab{font-size:12px;color:rgba(40,32,20,.55)}
+.p-sticky .kv{color:rgba(40,32,20,.62);font-size:9.5px}
+.p-sticky .kv b{color:rgba(40,32,20,.42)}
+.p-sticky:after{content:"";position:absolute;right:0;bottom:0;border-width:0 0 15px 15px;border-style:solid;
+  border-color:transparent transparent rgba(0,0,0,.14) transparent}
+.p-sheet{background:linear-gradient(180deg,#FDFAF1,#F5EEDC);padding:11px 11px 9px}
+.p-sheet .tlab{font-family:var(--f-ui);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+  border-bottom:1px solid var(--line2);padding-bottom:4px;margin-bottom:5px}
+.p-sheet .ttl{font-family:var(--f-ui);font-size:12.5px}
+.p-card{background:#FCFAF2;padding:0 0 9px;overflow:hidden}
+.p-card .topline{height:7px;background:var(--tc,#A8221B);margin-bottom:7px}
+.p-card .inner{padding:0 11px}
+.p-card .tlab{font-family:var(--f-ui);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink4)}
+.p-card .ttl{font-family:var(--f-ui);font-size:12.5px}
+#board.linkmode .node{cursor:crosshair}
+
+/* ---------- ficelle ---------- */
+.edge{stroke:#A8241C;stroke-width:3.4;fill:none;stroke-linecap:round}
+.edge.cool{stroke:#245278}
+.edge.warm{stroke:#C0761A}
+.edge.hot{stroke:#B01810;stroke-width:4}
+.edge.dashed{stroke-dasharray:9 7}
+.edge.sel{stroke:#E0341F;stroke-width:4.5}
+.edge.dim{opacity:.2}
+.eshadow{stroke:rgba(58,32,8,.26);fill:none;stroke-linecap:round}
+.elabel{font-family:var(--f-hand);font-size:14px;fill:#3A2A18;paint-order:stroke;stroke:rgba(250,242,222,.95);
+  stroke-width:4px;stroke-linejoin:round;cursor:pointer}
+.elabel.sel{fill:#A8221B}
+.elabel.dim{opacity:.14}
+
+/* ---------- outils flottants ---------- */
+.gtools{position:absolute;top:22px;left:24px;display:flex;gap:6px;flex-wrap:wrap;z-index:6}
+.gright{position:absolute;top:22px;right:24px;display:flex;gap:6px;z-index:6;transition:right .22s cubic-bezier(.4,0,.2,1)}
+#board.inspecting .gright{right:372px}
+.gzoom{position:absolute;left:24px;bottom:24px;display:flex;flex-direction:column;gap:4px;z-index:6}
+.gzoom .btn{width:32px;height:29px;justify-content:center;padding:0}
+.legend{position:absolute;left:66px;bottom:24px;background:linear-gradient(180deg,#FBF6E9,#F0E6CE);
+  border:1px solid #A68B5B;border-radius:var(--rad);padding:9px 11px;max-width:350px;z-index:6;
+  box-shadow:0 8px 18px rgba(50,28,6,.4);transform:rotate(-.5deg)}
+.legend .lgHead{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+.legend .lgN{font-family:var(--f-mono);font-size:9.5px;color:var(--ink4)}
+.legend .lgBtn{margin-left:auto;width:22px;height:20px;display:grid;place-items:center;background:rgba(255,255,255,.5);
+  border:1px solid var(--line2);border-radius:2px;cursor:pointer;color:var(--ink2);transition:transform .18s,background .12s}
+.legend .lgBtn:hover{background:#F2D98A}
+.legend .lgBody{overflow:hidden;transition:max-height .22s ease,opacity .18s,margin .22s;max-height:340px;opacity:1;margin-top:7px}
+.legend.min{padding:7px 11px}
+.legend.min .lgBody{max-height:0;opacity:0;margin-top:0}
+.legend.min .lgBtn{transform:rotate(-90deg)}
+.legend .row{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.legend .lg{display:flex;align-items:center;gap:4px;font-family:var(--f-mono);font-size:9.5px;color:var(--ink2);cursor:pointer;
+  border:1px solid var(--line2);padding:1px 5px;border-radius:2px;background:rgba(255,255,255,.5)}
+.legend .lg:hover{background:#F2D98A}
+.legend .lg.off{opacity:.4;text-decoration:line-through}
+.legend .lg b{width:8px;height:8px;border-radius:2px;display:block}
+.gstat{position:absolute;right:24px;bottom:24px;font-family:var(--f-mono);font-size:9.5px;color:#4A3A22;
+  background:rgba(251,246,233,.9);border:1px solid #A68B5B;padding:4px 9px;border-radius:2px;z-index:5;
+  transition:right .22s cubic-bezier(.4,0,.2,1)}
+#board.inspecting .gstat{right:372px}
+
+/* ---------- chemise (panneau latéral) ---------- */
+.inspect{position:absolute;top:0;right:0;bottom:0;width:358px;z-index:8;
+  background:linear-gradient(180deg,#E9DAB4,#DFCEA4);border-left:3px solid #B8975E;
+  transform:translateX(100%);transition:transform .22s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;
+  box-shadow:-16px 0 34px rgba(40,22,4,.45)}
+.inspect.open{transform:none}
+.inspect>header{padding:12px 14px;border-bottom:2px solid #C0A472;display:flex;gap:9px;align-items:center;
+  background:linear-gradient(180deg,#D9C08A,#CDB27A)}
+.inspect .body{flex:1;overflow-y:auto;padding:14px}
+.inspect>footer{padding:11px 14px;border-top:2px solid #C0A472;display:flex;gap:7px;background:rgba(255,255,255,.22)}
+.isec{font-family:var(--f-ui);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#6B5A3A;
+  margin:16px 0 9px;padding-bottom:5px;border-bottom:1px solid #C0A472;display:flex}
+.isec span{margin-left:auto;color:var(--red)}
+.f{margin-bottom:9px}
+.f>label{display:block;font-family:var(--f-mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:#7A6746;
+  margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.f input,.f select,.f textarea{width:100%;background:var(--paper);border:1px solid #B39A6A;border-radius:var(--rad);
+  padding:6px 8px;font-size:12.5px;color:var(--ink);font-family:var(--f-body);
+  box-shadow:inset 0 1px 2px rgba(120,90,40,.14)}
+.f input.mono,.f textarea.mono{font-family:var(--f-mono)}
+.f textarea{min-height:64px;resize:vertical;line-height:1.55}
+.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--red);background:#fff}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:end}
+.rangeRow{display:flex;align-items:center;gap:9px}
+.rangeRow input[type=range]{flex:1;accent-color:var(--red)}
+.rangeRow b{font-family:var(--f-mono);font-size:12px;color:var(--ink);width:26px;text-align:right}
+.relrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #C9B383;cursor:pointer}
+.relrow:hover .rn{color:var(--red)}
+.relrow .rv{font-family:var(--f-mono);font-size:9.5px;color:#7A6746;white-space:nowrap}
+.relrow .rn{font-size:12.5px;color:var(--ink);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.relrow .del{opacity:0;color:#8A7550}
+.relrow:hover .del{opacity:1}
+.relrow .del:hover{color:var(--red)}
+
+/* ---------- fenêtres ---------- */
+.scrim{position:fixed;inset:0;background:rgba(30,16,4,.72);z-index:80;display:grid;place-items:center;padding:24px;animation:fade .16s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal{width:min(620px,100%);max-height:86vh;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#F7F0DC,#EDE2C6);border:1px solid #9C7A48;border-radius:var(--rad);
+  box-shadow:0 26px 60px rgba(0,0,0,.6);animation:rise .18s cubic-bezier(.3,1.2,.5,1)}
+@keyframes rise{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+.modal>header{display:flex;align-items:center;gap:10px;padding:12px 15px;border-bottom:2px solid #C0A472;
+  background:linear-gradient(180deg,#D9C08A,#CDB27A)}
+.modal>header h3{margin:0;font-family:var(--f-ui);font-size:15px;color:#3A2A14}
+.modal .bd{padding:15px;overflow-y:auto}
+.modal>footer{display:flex;gap:8px;justify-content:flex-end;padding:12px 15px;border-top:2px solid #C0A472;background:rgba(255,255,255,.3)}
+.typegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
+.typegrid button{display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 4px;background:var(--paper);
+  border:1px solid #C0A472;border-radius:var(--rad);cursor:pointer;font-family:var(--f-mono);font-size:9px;
+  letter-spacing:.05em;text-transform:uppercase;color:var(--ink2);text-align:center;line-height:1.25;transition:.12s}
+.typegrid button:hover{border-color:#8A6A3E;background:#fff}
+.typegrid button.on{background:#F2D98A;border-color:var(--red);color:var(--ink)}
+.tgroup{grid-column:1/-1;font-family:var(--f-ui);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink3);border-bottom:1px solid var(--line2);padding-bottom:3px;margin:6px 0 1px}
+#toasts{position:fixed;right:16px;bottom:32px;z-index:95;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.toast{display:flex;gap:9px;align-items:flex-start;background:linear-gradient(180deg,#F7F0DC,#ECE0C2);
+  border:1px solid #A68B5B;border-left:3px solid var(--red);border-radius:var(--rad);padding:9px 12px;
+  min-width:240px;max-width:330px;box-shadow:0 10px 26px rgba(0,0,0,.45);animation:slidein .2s;color:var(--ink)}
+.toast.ok{border-left-color:var(--green)}.toast.err{border-left-color:var(--red)}.toast.warn{border-left-color:var(--amber)}
+.toast b{display:block;font-family:var(--f-ui);font-size:12.5px;color:var(--ink)}
+.toast span{font-size:12px;color:var(--ink3)}
+@keyframes slidein{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+#ctx{position:fixed;z-index:90;background:linear-gradient(180deg,#F7F0DC,#ECE0C2);border:1px solid #9C7A48;
+  border-radius:var(--rad);padding:4px;min-width:212px;box-shadow:0 14px 30px rgba(0,0,0,.5);display:none}
+#ctx button{display:flex;width:100%;align-items:center;gap:9px;background:none;border:0;text-align:left;padding:5px 9px;
+  border-radius:2px;font-size:12.5px;color:var(--ink);cursor:pointer;font-family:var(--f-body)}
+#ctx button:hover{background:#F2D98A}
+#ctx button.dgr:hover{background:#EFCFC9;color:var(--red-d)}
+#ctx hr{border:0;border-top:1px solid #C9B383;margin:4px 0}
+#ctx .hd{font-family:var(--f-ui);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#7A6746;
+  padding:5px 9px 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty{padding:26px;text-align:center;color:var(--ink3)}
+.empty b{display:block;font-family:var(--f-ui);font-size:15px;color:var(--ink2);margin-bottom:4px}
+
+/* ---------- barre latérale ---------- */
+:root{--sb:214px}
+.sidebar{position:fixed;top:72px;left:0;bottom:20px;width:var(--sb);z-index:30;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#5A3A1C,#42280F 60%,#33200E);border-right:2px solid #2A1808;
+  box-shadow:3px 0 14px rgba(0,0,0,.45)}
+.nav{flex:1;overflow-y:auto;padding:12px 0 16px}
+.nav h6{font-family:var(--f-ui);font-size:9px;letter-spacing:.2em;color:#B08F5E;text-transform:uppercase;
+  margin:14px 0 7px;padding:0 14px}
+.nav a{display:flex;align-items:center;gap:10px;margin:2px 8px;padding:7px 9px;color:#EBD9B6;font-family:var(--f-ui);
+  font-size:12.5px;border-radius:2px;text-decoration:none;position:relative;
+  background:rgba(255,235,200,.05);border:1px solid rgba(255,225,180,.1);transition:background .13s,transform .09s}
+.nav a svg{flex:none;opacity:.7}
+.nav a:hover{background:rgba(255,235,200,.13);transform:translateX(2px)}
+.nav a.on{background:linear-gradient(180deg,#F3EBD5,#E4D6B4);color:#2E2113;border-color:#8A6A3E;
+  box-shadow:0 2px 5px rgba(0,0,0,.35);transform:rotate(-.5deg)}
+.nav a.on svg{opacity:1;color:#A8221B}
+.nav a.on:before{content:"";position:absolute;left:-3px;top:50%;width:9px;height:9px;margin-top:-4.5px;border-radius:50%;
+  background:radial-gradient(circle at 33% 30%,#fff 0 12%,#C0392B 45%,rgba(0,0,0,.5) 100%);box-shadow:0 1px 2px rgba(0,0,0,.5)}
+.nav a .cnt{margin-left:auto;font-family:var(--f-mono);font-size:9.5px;color:#C9A876;background:rgba(0,0,0,.28);
+  padding:0 5px;border-radius:2px}
+.nav a.on .cnt{background:#C9B383;color:#3A2A14}
+.sfoot{padding:10px 14px;border-top:1px solid rgba(255,225,180,.15);font-family:var(--f-mono);font-size:9px;
+  color:#B08F5E;letter-spacing:.05em;line-height:1.6}
+.sfoot b{color:#8FBF8F;font-weight:400}
+
+/* ---------- zone principale ---------- */
+#board{left:var(--sb)}
+#page{position:fixed;top:72px;left:var(--sb);right:0;bottom:20px;z-index:20;overflow-y:auto;display:none;
+  background-color:#7A5A33;
+  background-image:
+    linear-gradient(rgba(30,16,4,.28),rgba(30,16,4,.28)),
+    repeating-linear-gradient(94deg,rgba(255,225,180,.05) 0 3px,transparent 3px 9px),
+    repeating-linear-gradient(0deg,rgba(0,0,0,.06) 0 22px,transparent 22px 44px)}
+body.onpage #board{display:none}
+body.onpage #page{display:block}
+.pwrap{max-width:1180px;margin:0 auto;padding:24px 26px 60px}
+.phead{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.phead h1{font-family:var(--f-ui);font-size:26px;color:#FBEBCD;margin:0;letter-spacing:.01em;
+  text-shadow:0 2px 4px rgba(0,0,0,.5)}
+.phead p{margin:5px 0 0;color:#E2CBA0;font-size:13px;max-width:66ch}
+.phead .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.sheet{background:linear-gradient(180deg,#FBF6E9,#F2EAD6);border:1px solid #A68B5B;border-radius:2px;
+  box-shadow:0 8px 20px rgba(20,10,0,.4);margin-bottom:16px;overflow:hidden}
+.sheet>header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:2px solid #C0A472;
+  background:linear-gradient(180deg,#E4D3A6,#D6C08C)}
+.sheet>header h3{margin:0;font-family:var(--f-ui);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#3A2A14}
+.sheet>header .r{margin-left:auto;display:flex;gap:7px;align-items:center}
+.sheet .bd{padding:14px}
+.sheet .bd.tight{padding:0}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g32{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+.stat{position:relative;background:linear-gradient(180deg,#FBF6E9,#F0E6CE);border:1px solid #A68B5B;border-radius:2px;
+  padding:12px 13px;box-shadow:0 6px 14px rgba(20,10,0,.34);cursor:pointer;transition:transform .1s,box-shadow .12s;
+  transform:rotate(var(--r,0deg))}
+.stat:hover{transform:rotate(0deg) translateY(-2px);box-shadow:0 10px 20px rgba(20,10,0,.4)}
+.stat .pin{position:absolute;left:50%;top:-8px;width:15px;height:15px;margin-left:-7.5px;border-radius:50%;
+  background:radial-gradient(circle at 33% 30%,#fff 0 12%,var(--pc,#C0392B) 45%,rgba(0,0,0,.5) 100%);
+  box-shadow:0 2px 3px rgba(40,20,4,.5)}
+.stat .k{display:flex;align-items:center;gap:7px;font-family:var(--f-ui);font-size:9.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink3)}
+.stat .v{font-family:var(--f-ui);font-size:30px;color:var(--ink);line-height:1.05;margin:6px 0 2px}
+.stat .d{font-family:var(--f-mono);font-size:10.5px;color:var(--ink4)}
+table.pt{width:100%;border-collapse:collapse;font-size:13px}
+table.pt thead th{font-family:var(--f-ui);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:#6B5A3A;
+  text-align:left;padding:8px 12px;border-bottom:1px solid #C0A472;background:#EFE4C8;white-space:nowrap}
+table.pt tbody td{padding:8px 12px;border-bottom:1px solid #DDD0AF;vertical-align:middle}
+table.pt tbody tr:last-child td{border-bottom:0}
+table.pt tbody tr.clk{cursor:pointer}
+table.pt tbody tr:hover{background:#F6EBC9}
+.ttl{font-family:var(--f-ui);font-size:13px;color:var(--ink)}
+.tblwrap{overflow-x:auto}
+.feed{list-style:none;margin:0;padding:0}
+.feed li{display:flex;gap:10px;padding:8px 14px;border-bottom:1px solid #DDD0AF;align-items:flex-start}
+.feed li:last-child{border-bottom:0}
+.feed .ico{width:22px;height:22px;flex:none;display:grid;place-items:center;border-radius:2px;
+  background:#EFE4C8;border:1px solid #C9B383;color:#7A6746}
+.feed .tx{flex:1;min-width:0;font-size:12.5px;color:var(--ink2)}
+.feed .tx b{color:var(--ink);font-weight:600}
+.feed .tm{font-family:var(--f-mono);font-size:10px;color:var(--ink4);white-space:nowrap}
+.dchip{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.dchip button{font-family:var(--f-mono);font-size:10.5px;padding:4px 9px;border:1px solid #A68B5B;border-radius:11px;
+  background:rgba(255,246,225,.85);color:var(--ink2);cursor:pointer}
+.dchip button:hover{background:#fff}
+.dchip button.on{background:#B8322A;border-color:#7C1712;color:#FBEBCD}
+.dcard{background:#FBF6E9;border:1px solid #A68B5B;border-radius:2px;cursor:pointer;overflow:hidden;
+  box-shadow:0 6px 14px rgba(20,10,0,.32);transition:transform .1s,box-shadow .12s}
+.dcard:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(20,10,0,.4)}
+.dcTop{display:flex;align-items:center;gap:7px;padding:6px 11px;border-bottom:1px solid}
+.dcBody{padding:11px}
+.dcBody .nm{font-family:var(--f-ui);font-size:14px;color:var(--ink);line-height:1.2}
+.dcBody .sb{font-size:11.5px;color:var(--ink3);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dcFoot{display:flex;align-items:center;gap:6px;padding:7px 11px;border-top:1px solid #DDD0AF;background:#F1E7CC;
+  font-family:var(--f-mono);font-size:10.5px;color:var(--ink4)}
+.dcFoot b{color:var(--red)}
+.rgroup{grid-column:1/-1;display:flex;align-items:center;gap:9px;margin:6px 0 -4px}
+.rgroup b{font-family:var(--f-ui);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:#FBEBCD;
+  text-shadow:0 1px 3px rgba(0,0,0,.55)}
+.rgroup i{flex:1;height:1px;background:rgba(255,225,180,.28)}
+.rgroup .n{font-family:var(--f-mono);font-size:10px;color:#E2CBA0}
+.permtab td{text-align:center}
+.permtab td:first-child{text-align:left}
+#burger{display:none}
+
+/* ---------- écrans d'accès ---------- */
+#gate{position:fixed;inset:0;z-index:100;display:none;place-items:center;padding:24px;
+  background:#2A1B0E url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='2' cy='2' r='1.2' fill='%23000' opacity='.16'/%3E%3C/svg%3E") repeat}
+#gate.on{display:grid}
+.gcard{width:min(430px,100%);background:linear-gradient(180deg,#F7F0DC,#EBDFC0);border:1px solid #9C7A48;
+  border-radius:3px;box-shadow:0 30px 70px rgba(0,0,0,.65);padding:30px 28px;text-align:center}
+.gcard img{width:64px;height:64px;object-fit:contain;margin-bottom:14px}
+.gcard h2{font-family:var(--f-ui);font-size:19px;color:#3A2A14;margin:0 0 8px}
+.gcard p{margin:0 0 18px;font-size:13px;color:var(--ink2);line-height:1.6}
+.gcard .gid{font-family:var(--f-mono);font-size:10.5px;color:var(--ink4);margin-top:16px;
+  border-top:1px solid var(--line2);padding-top:12px}
+.gspin{width:26px;height:26px;margin:0 auto 14px;border:3px solid #C9B383;border-top-color:var(--red);
+  border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media (max-width:900px){
+  .brand span,.me i,.me s{display:none}
+  .dossier b{font-size:12.5px}
+  .inspect{width:100%}
+  #board.inspecting .gright,#board.inspecting .gstat{right:24px}
+  .typegrid{grid-template-columns:repeat(3,1fr)}
+  .gtools{max-width:calc(100% - 40px)}
+  .legend{max-width:calc(100% - 90px)}
+  :root{--sb:0px}
+  .sidebar{width:230px;transform:translateX(-100%);transition:transform .2s}
+  .sidebar.open{transform:none}
+  #burger{display:grid}
+  .g4,.g3,.g2,.g32{grid-template-columns:1fr}
+  table.pt{min-width:640px}
+}
+@media print{.topbar,.clsbar,.gtools,.gright,.gzoom,.legend,.inspect,.gstat,.sidebar{display:none}#board{position:static;height:auto;left:0}}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+</head>
+<body>
+
+<div class="clsbar" id="clsTop"><span class="dot"></span>SECRET · ACCÈS AUTORISÉ UNIQUEMENT<span class="dot"></span></div>
+
+<aside class="sidebar" id="sidebar">
+  <nav class="nav" id="nav"></nav>
+  <div class="sfoot">SESSION <b>VÉRIFIÉE</b><br><span id="sfootWho">—</span> · <span id="clock">--:--:--</span></div>
+</aside>
+<div class="topbar">
+  <button class="tbtn" id="burger" title="Menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+  <a class="brand" href="../../index.html" title="Retour à l'intranet SASP SUD">
+    <img src="../../assets/sasp-sud-logo.png" alt="SASP SUD">
+    <div><b>SASP</b><span>Tableau de liaisons</span></div>
+  </a>
+  <div class="dossier"><b id="dosT">—</b><span id="dosN">Chargement…</span></div>
+  <div class="tsearch">
+    <span class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+    <input id="q" placeholder="Rechercher sur le tableau…" autocomplete="off">
+    <div class="sugg" id="sugg"></div>
+  </div>
+  <button class="tbtn" id="help" title="Raccourcis clavier"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 2-2.8 2.4-2.8 4"/><path d="M12 17.4h.01"/></svg></button>
+  <div class="me"><div class="av" id="meAv">—</div><div><i id="meNom">—</i><s id="meRole">—</s></div></div>
+</div>
+
+<div id="page"></div>
+<div id="board">
+  <div class="frame"></div>
+  <div id="gworld">
+    <svg id="gedges"><g id="glinks"></g><g id="glabels"></g></svg>
+    <div id="gnodes"></div>
+  </div>
+  <div class="gtools" id="gtools"></div>
+  <div class="gright" id="gright"></div>
+  <div class="gzoom" id="gzoom"></div>
+  <div class="legend" id="legend">
+    <div class="lgHead" id="lgHead"><span class="lbl">Types affichés</span>
+      <span class="lgN" id="lgN"></span>
+      <button class="lgBtn" id="lgToggle" title="Masquer la légende" aria-expanded="true">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
+    <div class="lgBody"><span class="lbl" style="font-size:9px">Cliquer sur un type pour le masquer du tableau</span>
+      <div class="row" id="legrow"></div></div>
+  </div>
+  <div class="gstat"><span id="saveState">—</span> · <span id="counts"></span> · <span id="zoomv">100%</span></div>
+  <aside class="inspect" id="inspect"></aside>
+</div>
+
+<div class="clsbar bot"><span class="dot"></span>SASP SUD · TOUTE MODIFICATION DU TABLEAU EST JOURNALISÉE<span class="dot"></span></div>
+<div id="toasts"></div>
+<div id="ctx"></div>
+<div id="modalRoot"></div>
+<div id="gate"><div class="gcard" id="gcard"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../../config.js?v=20260830-liaisons"></script>
+<script>
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const el=(t,c,h)=>{const n=document.createElement(t);if(c)n.className=c;if(h!==undefined)n.innerHTML=h;return n};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const svg=(p,s=15,w=1.7)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+
+const I={
+ person:'<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.6-4 3.8-6 7.5-6s6.9 2 7.5 6"/>',
+ suspect:'<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.6-4 3.8-6 7.5-6s6.9 2 7.5 6"/><path d="M17 4.5h5M19.5 2v5"/>',
+ victim:'<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.6-4 3.8-6 7.5-6s6.9 2 7.5 6"/><path d="M2.5 4.5 5 7M5 4.5 2.5 7"/>',
+ witness:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/>',
+ shield:'<path d="M12 3 20 6v6c0 4.5-3.3 8-8 9.5C7.3 20 4 16.5 4 12V6l8-3Z"/><path d="m9.4 12.2 1.9 1.9 3.6-3.9"/>',
+ org:'<path d="M3 21h18"/><path d="M5 21V6l7-3 7 3v15"/><path d="M9.5 10h1M13.5 10h1M9.5 14h1M13.5 14h1"/>',
+ gang:'<circle cx="8" cy="8" r="2.6"/><circle cx="16" cy="8" r="2.6"/><path d="M3 19c.5-3 2.4-4.6 5-4.6s4.5 1.6 5 4.6M13 19c.5-3 2.4-4.6 5-4.6 1.2 0 2.2.3 3 .9"/>',
+ car:'<path d="M5 16h14"/><path d="M6.5 16v2H4v-2"/><path d="M20 18h-2.5v-2"/><path d="M3.5 16v-4l2-5h13l2 5v4"/><path d="M6.5 12h11"/>',
+ house:'<path d="M4 11 12 4l8 7"/><path d="M6 10v10h12V10"/><path d="M10 20v-6h4v6"/>',
+ phone:'<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M10.5 18.5h3"/>',
+ bank:'<path d="M3 10h18"/><path d="M4 10 12 4l8 6"/><path d="M6 10v8M10 10v8M14 10v8M18 10v8"/><path d="M3 21h18"/>',
+ gun:'<path d="M3 9h13l3 3h2v3h-6l-2 3H8l-1-3H3z"/><path d="M9 12h4"/>',
+ evid:'<path d="M20 8.5 12 4 4 8.5v7L12 20l8-4.5v-7Z"/><path d="M4 8.5 12 13l8-4.5M12 13v7"/>',
+ photo:'<path d="M3 6h18v13H3z"/><circle cx="9" cy="11" r="2"/><path d="m4 18 5-4 3.5 3 3-2.5L21 18"/>',
+ doc:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h6"/>',
+ event:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5.2l3.2 1.9"/>',
+ place:'<path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"/><circle cx="12" cy="10" r="2.4"/>',
+ case:'<path d="M4 7h16v13H4z"/><path d="M9 7V4h6v3"/><path d="M4 12h16"/>',
+ warrant:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h7M9 17h5"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>', x:'<path d="M6 6l12 12M18 6 6 18"/>',
+ link:'<path d="M10 13.5a4 4 0 0 0 5.7 0l3-3a4 4 0 1 0-5.7-5.7L11.4 6.4"/><path d="M14 10.5a4 4 0 0 0-5.7 0l-3 3a4 4 0 1 0 5.7 5.7l1.6-1.6"/>',
+ trash:'<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7v13h12V7"/><path d="M10 11v6M14 11v6"/>',
+ eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/>',
+ filt:'<path d="M3 5h18l-7 8v6l-4 2v-8z"/>', grp:'<circle cx="7" cy="7" r="3"/><circle cx="17" cy="7" r="3"/><circle cx="12" cy="17" r="3"/>',
+ max:'<path d="M4 9V4h5M20 15v5h-5M15 4h5v5M9 20H4v-5"/>',
+ zin:'<circle cx="11" cy="11" r="6.5"/><path d="M11 8.5v5M8.5 11h5M20 20l-4.4-4.4"/>',
+ zout:'<circle cx="11" cy="11" r="6.5"/><path d="M8.5 11h5M20 20l-4.4-4.4"/>',
+ fit:'<path d="M4 8V4h4M20 16v4h-4M16 4h4v4M8 20H4v-4"/><circle cx="12" cy="12" r="3"/>',
+ dl:'<path d="M12 3v12"/><path d="m7.5 11 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/>',
+ print:'<path d="M7 9V3h10v6"/><path d="M7 18H4v-7h16v7h-3"/><path d="M7 15h10v6H7z"/>',
+ alert:'<path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4M12 17h.01"/>',
+ chk:'<path d="m5 12.5 4.5 4.5L19 7"/>', copy:'<rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M16 8V5.5a1.5 1.5 0 0 0-1.5-1.5H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/>',
+ undo:'<path d="M4 9h11a5 5 0 0 1 0 10H9"/><path d="m8 5-4 4 4 4"/>',
+ speech:'<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12.5h5"/>',
+ gavel:'<path d="m13.5 3.5 7 7-2.5 2.5-7-7z"/><path d="m10.5 6.5 7 7"/><path d="M9 12.5 3.5 18a2.1 2.1 0 0 0 3 3L12 15.5z"/>',
+ scale:'<path d="M12 4v16M7 20h10"/><path d="M4 8h16"/><path d="m4 8-2 5h4zM20 8l-2 5h4z"/>',
+ swap:'<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+ chart:'<path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/>',
+ web:'<circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="8" r="2.4"/><circle cx="10" cy="18" r="2.4"/><path d="M8 7.2 16 8M7.4 8.1 9 15.7M16.6 10 11.6 16.3"/>',
+ book:'<path d="M5 4h13a1 1 0 0 1 1 1v15H6a1 1 0 0 1-1-1z"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/>',
+ route:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H14a3.5 3.5 0 0 1 0 7h-4a3.5 3.5 0 0 0 0 7h5.5"/>',
+ edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14.5 5.5 4 4"/>',
+ key:'<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v4M15 12v3"/>'
+};
+
+/* ============================================================
+   SCHÉMA : champs propres à chaque type d'élément
+   La clé "g" classe le type dans une famille ; elle ne touche
+   à aucun champ existant.
+   ============================================================ */
+const SEL=(...v)=>v;
+const NOTE={k:'notes',l:'Notes d\'enquête',t:'ta'};
+const SCHEMA={
+ personne:{l:'Personne',g:'Personnes',c:'#8CB8E4',i:I.person,title:d=>[d.prenom,d.nom].filter(Boolean).join(' ')||'Personne',
+  card:d=>[['STATUT',d.statut],['PROFESSION',d.profession]],
+  f:[{k:'prenom',l:'Prénom',t:'t'},{k:'nom',l:'Nom',t:'t'},{k:'alias',l:'Alias',t:'t'},{k:'naissance',l:'Date de naissance',t:'d'},
+     {k:'nationalite',l:'Nationalité',t:'t'},{k:'profession',l:'Profession',t:'t'},
+     {k:'statut',l:'Statut dans l\'enquête',t:'s',o:SEL('Inconnu','Témoin','Victime','Personne d\'intérêt','Suspect','Recherché')},
+     {k:'taille',l:'Taille',t:'t'},{k:'corpulence',l:'Corpulence',t:'s',o:SEL('Mince','Normale','Athlétique','Forte')},
+     {k:'signes',l:'Signes distinctifs',t:'ta',full:1},NOTE]},
+ suspect:{l:'Suspect',g:'Personnes',c:'#D9584A',i:I.suspect,title:d=>[d.prenom,d.nom].filter(Boolean).join(' ')||'Suspect',
+  card:d=>[['SITUATION',d.situation],['ALIAS',d.alias]],
+  f:[{k:'prenom',l:'Prénom',t:'t'},{k:'nom',l:'Nom',t:'t'},{k:'alias',l:'Alias',t:'t'},{k:'naissance',l:'Date de naissance',t:'d'},
+     {k:'nationalite',l:'Nationalité',t:'t'},
+     {k:'situation',l:'Situation',t:'s',o:SEL('Libre','Recherché','En fuite','Garde à vue','Écroué','Contrôle judiciaire')},
+     {k:'arme',l:'Port d\'arme signalé',t:'s',o:SEL('Non','Probable','Confirmé')},
+     {k:'dangerosite',l:'Comportement signalé',t:'s',o:SEL('Coopératif','Fuyant','Agressif','Violent')},
+     {k:'mo',l:'Mode opératoire',t:'ta',full:1},{k:'signes',l:'Signes distinctifs',t:'ta',full:1},NOTE]},
+ victime:{l:'Victime',g:'Personnes',c:'#C77FBE',i:I.victim,title:d=>[d.prenom,d.nom].filter(Boolean).join(' ')||'Victime',
+  card:d=>[['ÉTAT',d.etat],['ITT',d.itt]],
+  f:[{k:'prenom',l:'Prénom',t:'t'},{k:'nom',l:'Nom',t:'t'},{k:'naissance',l:'Date de naissance',t:'d'},
+     {k:'nationalite',l:'Nationalité',t:'t'},
+     {k:'etat',l:'État',t:'s',o:SEL('Indemne','Blessé léger','Blessé grave','Décédé')},
+     {k:'itt',l:'ITT constatée',t:'t'},
+     {k:'suivi',l:'Suivi',t:'s',o:SEL('Aucun','Médical','Psychologique','Protection')},NOTE]},
+ temoin:{l:'Témoin',g:'Personnes',c:'#5FB8A6',i:I.witness,title:d=>[d.prenom,d.nom].filter(Boolean).join(' ')||'Témoin',
+  card:d=>[['FIABILITÉ',d.fiabilite],['PROTECTION',d.protection]],
+  f:[{k:'prenom',l:'Prénom',t:'t'},{k:'nom',l:'Nom',t:'t'},{k:'naissance',l:'Date de naissance',t:'d'},
+     {k:'fiabilite',l:'Fiabilité générale',t:'s',o:SEL('À évaluer','Faible','Moyenne','Élevée')},
+     {k:'protection',l:'Mesure de protection',t:'s',o:SEL('Aucune','Anonymat','Protection rapprochée')},
+     {k:'disponibilite',l:'Disponibilité',t:'s',o:SEL('Joignable','Difficile à joindre','Injoignable','A quitté la zone')},NOTE]},
+ agent:{l:'Agent',g:'Personnes',c:'#4E86C4',i:I.shield,title:d=>[d.prenom,d.nom].filter(Boolean).join(' ')||'Agent',
+  card:d=>[['MATRICULE',d.matricule],['HABIL.',d.habilitation]],
+  f:[{k:'prenom',l:'Prénom',t:'t'},{k:'nom',l:'Nom',t:'t'},{k:'matricule',l:'Matricule',t:'t',mono:1},
+     {k:'grade',l:'Grade',t:'s',o:SEL('Agent invité','Analyste','Enquêteur','Superviseur','Direction','Administrateur')},
+     {k:'division',l:'Division',t:'t'},{k:'habilitation',l:'Habilitation',t:'s',o:SEL('D-5','D-4','D-3','D-2','D-1','D-0')},NOTE]},
+ organisation:{l:'Organisation',g:'Organisations',c:'#C9A227',i:I.org,title:d=>d.nom||'Organisation',
+  card:d=>[['FORME',d.forme],['SECTEUR',d.secteur]],
+  f:[{k:'nom',l:'Raison sociale',t:'t',full:1},
+     {k:'forme',l:'Forme',t:'s',o:SEL('Société','Société écran','Association','Établissement','Fondation')},
+     {k:'secteur',l:'Secteur d\'activité',t:'t'},{k:'immat',l:'N° d\'immatriculation',t:'t',mono:1},
+     {k:'creation',l:'Date de création',t:'d'},{k:'effectif',l:'Effectif déclaré',t:'n'},
+     {k:'ca',l:'CA déclaré (annuel)',t:'t'},
+     {k:'statut',l:'Statut',t:'s',o:SEL('Néant','Sous surveillance','Perquisitionnée','Dissoute')},NOTE]},
+ groupe:{l:'Groupe criminel',g:'Organisations',c:'#E0762A',i:I.gang,title:d=>d.nom||'Groupe criminel',
+  card:d=>[['ZONE',d.zone],['EFFECTIF',d.effectif]],
+  f:[{k:'nom',l:'Dénomination',t:'t',full:1},{k:'zone',l:'Zone d\'influence',t:'t'},{k:'effectif',l:'Effectif présumé',t:'n'},
+     {k:'structure',l:'Structure',t:'s',o:SEL('Pyramidale','Cellulaire','Horizontale','Familiale')},
+     {k:'activite',l:'Activités principales',t:'ta',full:1},
+     {k:'signes',l:'Signes de reconnaissance',t:'ta',full:1},
+     {k:'statut',l:'Statut',t:'s',o:SEL('Actif','Sous surveillance','En reconstitution','Démantelé')},NOTE]},
+ vehicule:{l:'Véhicule',g:'Biens et objets',c:'#6FA8DC',i:I.car,title:d=>d.plaque||'Véhicule',plate:1,
+  card:d=>[[null,[d.marque,d.modele].filter(Boolean).join(' ')],['ÉTAT',d.etat]],
+  f:[{k:'plaque',l:'Immatriculation',t:'t',mono:1},{k:'marque',l:'Marque',t:'t'},{k:'modele',l:'Modèle',t:'t'},
+     {k:'type',l:'Type',t:'s',o:SEL('Berline','Break','SUV','Pick-up','Utilitaire','Sportive','Moto','Poids lourd','Blindé')},
+     {k:'couleur',l:'Couleur',t:'t'},{k:'annee',l:'Année',t:'n'},{k:'vin',l:'N° de série (VIN)',t:'t',mono:1},
+     {k:'etat',l:'État du fichier',t:'s',o:SEL('Néant','Fiché','Sous surveillance','Recherché','Volé','Saisi','Détruit')},
+     {k:'assurance',l:'Assurance',t:'s',o:SEL('Valide','Expirée','Inconnue')},
+     {k:'balise',l:'Géolocalisation',t:'s',o:SEL('Aucune','Balise posée','Suivi désactivé')},
+     {k:'signes',l:'Signes distinctifs',t:'ta',full:1},NOTE]},
+ propriete:{l:'Propriété',g:'Biens et objets',c:'#9C8B6E',i:I.house,title:d=>d.designation||'Propriété',
+  card:d=>[['TYPE',d.type],['QUARTIER',d.quartier]],
+  f:[{k:'designation',l:'Désignation',t:'t',full:1},
+     {k:'type',l:'Type de bien',t:'s',o:SEL('Maison','Appartement','Entrepôt','Commerce','Garage','Terrain','Bureau')},
+     {k:'adresse',l:'Adresse',t:'t',full:1},{k:'quartier',l:'Quartier',t:'t'},{k:'superficie',l:'Superficie',t:'t'},
+     {k:'etages',l:'Niveaux / accès',t:'t'},
+     {k:'acces',l:'Contrôle d\'accès',t:'s',o:SEL('Libre','Portail','Vidéosurveillance','Gardiennage')},
+     {k:'statut',l:'Statut',t:'s',o:SEL('Néant','Point de rencontre','Sous surveillance','Perquisitionnée','Scellée')},NOTE]},
+ lieu:{l:'Lieu',g:'Biens et objets',c:'#66A88F',i:I.place,title:d=>d.nom||'Lieu',
+  card:d=>[['TYPE',d.type],['STATUT',d.statut]],
+  f:[{k:'nom',l:'Désignation',t:'t',full:1},
+     {k:'type',l:'Type',t:'s',o:SEL('Adresse','Établissement','Zone portuaire','Zone industrielle','Voie publique','Parking','Hébergement')},
+     {k:'adresse',l:'Adresse',t:'t',full:1},{k:'quartier',l:'Quartier / secteur',t:'t'},{k:'coord',l:'Coordonnées',t:'t',mono:1},
+     {k:'frequentation',l:'Fréquentation observée',t:'t'},
+     {k:'statut',l:'Statut',t:'s',o:SEL('Néant','Point de rencontre','Sous surveillance','Scène de crime','Périmètre bouclé')},
+     {k:'video',l:'Vidéosurveillance',t:'s',o:SEL('Aucune','Présente','Exploitée')},NOTE]},
+ arme:{l:'Arme',g:'Biens et objets',c:'#D14B3C',i:I.gun,title:d=>[d.marque,d.modele].filter(Boolean).join(' ')||d.type||'Arme',
+  card:d=>[['CALIBRE',d.calibre],['ÉTAT',d.etat]],
+  f:[{k:'type',l:'Catégorie',t:'s',o:SEL('Pistolet','Revolver','Fusil à pompe','Fusil d\'assaut','Fusil de précision','Arme blanche','Explosif')},
+     {k:'marque',l:'Marque',t:'t'},{k:'modele',l:'Modèle',t:'t'},{k:'calibre',l:'Calibre',t:'t'},
+     {k:'serie',l:'N° de série',t:'t',mono:1},{k:'scelle',l:'N° de scellé',t:'t',mono:1},
+     {k:'etat',l:'État',t:'s',o:SEL('Non localisée','Recherchée','Saisie','Sous analyse','Détruite')},
+     {k:'balistique',l:'Analyse balistique',t:'s',o:SEL('Non demandée','En cours','Concordance','Sans concordance')},
+     {k:'munitions',l:'Munitions retrouvées',t:'t'},NOTE]},
+ telephone:{l:'Téléphone',g:'Communications et finances',c:'#7FCBD1',i:I.phone,title:d=>d.numero||'Numéro',
+  card:d=>[['OPÉRATEUR',d.operateur],['STATUT',d.statut]],
+  f:[{k:'numero',l:'Numéro',t:'t',mono:1},{k:'operateur',l:'Opérateur',t:'t'},
+     {k:'type',l:'Type de ligne',t:'s',o:SEL('Abonnement','Prépayée','Professionnelle','Chiffrée')},
+     {k:'imei',l:'IMEI',t:'t',mono:1},{k:'modele',l:'Modèle d\'appareil',t:'t'},
+     {k:'activation',l:'Date d\'activation',t:'d'},{k:'appels',l:'Appels relevés (30 j)',t:'n'},
+     {k:'bornage',l:'Bornage dominant',t:'t',full:1},
+     {k:'statut',l:'Statut',t:'s',o:SEL('Active','Inactive','Sur écoute','Saisie')},NOTE]},
+ compte:{l:'Compte bancaire',g:'Communications et finances',c:'#79B77A',i:I.bank,title:d=>d.numero||'Compte',
+  card:d=>[['BANQUE',d.banque],['STATUT',d.statut]],
+  f:[{k:'numero',l:'N° de compte / IBAN',t:'t',mono:1,full:1},{k:'banque',l:'Établissement',t:'t'},
+     {k:'type',l:'Type de compte',t:'s',o:SEL('Courant','Épargne','Professionnel','Offshore','Crypto')},
+     {k:'ouverture',l:'Date d\'ouverture',t:'d'},{k:'devise',l:'Devise',t:'t'},
+     {k:'juridiction',l:'Juridiction de domiciliation',t:'t'},
+     {k:'statut',l:'Statut',t:'s',o:SEL('Actif','Sous réquisition','Gelé','Clôturé')},NOTE]},
+ transaction:{l:'Transaction',g:'Communications et finances',c:'#8FC26B',i:I.swap,title:d=>d.montant?d.montant+' '+(d.devise||''):'Transaction',
+  card:d=>[['SENS',d.sens],['DATE',d.date]],
+  f:[{k:'reference',l:'Référence',t:'t',mono:1},{k:'montant',l:'Montant',t:'t',mono:1},{k:'devise',l:'Devise',t:'t'},
+     {k:'sens',l:'Sens',t:'s',o:SEL('Entrant','Sortant','Interne')},
+     {k:'moyen',l:'Moyen',t:'s',o:SEL('Virement','Espèces','Chèque','Crypto-actif','Mandat','Compensation')},
+     {k:'date',l:'Date d\'exécution',t:'d'},{k:'motif',l:'Motif déclaré',t:'t',full:1},
+     {k:'statut',l:'Statut',t:'s',o:SEL('Relevée','Justifiée','Suspecte','Signalée','Gelée')},NOTE]},
+ evenement:{l:'Événement',g:'Faits',c:'#E2B44F',i:I.event,title:d=>d.intitule||'Événement',
+  card:d=>[['QUAND',d.debut],['TYPE',d.type]],
+  f:[{k:'intitule',l:'Intitulé',t:'t',full:1},
+     {k:'type',l:'Type',t:'s',o:SEL('Rencontre','Appel','Livraison','Transaction','Altercation','Interpellation','Perquisition','Surveillance')},
+     {k:'debut',l:'Date et heure',t:'t',mono:1},{k:'duree',l:'Durée',t:'t'},
+     {k:'source',l:'Source de l\'information',t:'s',o:SEL('Constatation directe','Surveillance','Témoignage','Écoute','Vidéo','Informateur')},
+     {k:'fiabilite',l:'Fiabilité',t:'s',o:SEL('À évaluer','Faible','Moyenne','Élevée','Certaine')},
+     {k:'deroule',l:'Déroulé',t:'ta',full:1},NOTE]},
+ infraction:{l:'Infraction',g:'Faits',c:'#E06A50',i:I.scale,title:d=>d.qualification||'Infraction',
+  card:d=>[['GRAVITÉ',d.gravite],['STATUT',d.statut]],
+  f:[{k:'qualification',l:'Qualification',t:'t',full:1},
+     {k:'categorie',l:'Catégorie',t:'s',o:SEL('Stupéfiants','Atteinte aux personnes','Atteinte aux biens','Financier','Armes','Faux','Autre')},
+     {k:'gravite',l:'Gravité',t:'s',o:SEL('Contravention','Délit','Crime')},
+     {k:'date_faits',l:'Date des faits',t:'d'},{k:'circonstances',l:'Circonstances aggravantes',t:'t'},
+     {k:'peine_encourue',l:'Peine encourue',t:'t'},
+     {k:'statut',l:'Statut',t:'s',o:SEL('Présumée','Établie','Requalifiée','Classée sans suite','Prescrite')},NOTE]},
+ condamnation:{l:'Condamnation',g:'Faits',c:'#B5495F',i:I.gavel,title:d=>d.qualification||'Condamnation',
+  card:d=>[['JUGEMENT',d.date_jugement],['PEINE',d.peine]],
+  f:[{k:'reference',l:'Référence',t:'t',mono:1},{k:'qualification',l:'Qualification retenue',t:'t',full:1},
+     {k:'categorie',l:'Catégorie',t:'s',o:SEL('Stupéfiants','Atteinte aux personnes','Atteinte aux biens','Financier','Armes','Faux','Autre')},
+     {k:'date_faits',l:'Date des faits',t:'d'},{k:'date_jugement',l:'Date du jugement',t:'d'},
+     {k:'juridiction',l:'Juridiction',t:'t'},{k:'peine',l:'Peine prononcée',t:'t'},
+     {k:'statut',l:'Statut',t:'s',o:SEL('Définitive','En appel','Purgée','Sursis','Amnistiée')},NOTE]},
+ enquete:{l:'Enquête',g:'Dossier et pièces',c:'#5B8FC7',i:I.case,title:d=>d.intitule||d.numero||'Enquête',
+  card:d=>[['DOSSIER',d.numero],['STATUT',d.statut]],
+  f:[{k:'numero',l:'N° de dossier',t:'t',mono:1},{k:'intitule',l:'Intitulé',t:'t',full:1},
+     {k:'priorite',l:'Priorité',t:'s',o:SEL('Basse','Moyenne','Haute','Critique')},
+     {k:'classification',l:'Confidentialité',t:'s',o:SEL('Restreint','Confidentiel','Secret')},
+     {k:'statut',l:'Statut',t:'s',o:SEL('Brouillon','Ouverte','Active','Suspendue','Classée','Archivée')},
+     {k:'ouverture',l:'Date d\'ouverture',t:'d'},{k:'division',l:'Service responsable',t:'t'},
+     {k:'cadre',l:'Cadre juridique',t:'s',o:SEL('Enquête préliminaire','Flagrance','Information judiciaire','Renseignement')},
+     {k:'resume',l:'Résumé des faits',t:'ta',full:1},NOTE]},
+ preuve:{l:'Preuve',g:'Dossier et pièces',c:'#B9A6E0',i:I.evid,title:d=>d.intitule||d.scelle||'Preuve',
+  card:d=>[['SCELLÉ',d.scelle],['ANALYSE',d.analyse]],
+  f:[{k:'scelle',l:'N° de scellé',t:'t',mono:1},
+     {k:'categorie',l:'Catégorie',t:'s',o:SEL('Trace biologique','Empreinte','Support numérique','Stupéfiants','Document','Objet','Vidéo')},
+     {k:'intitule',l:'Intitulé',t:'t',full:1},{k:'decouverte',l:'Date et heure de découverte',t:'t',mono:1},
+     {k:'quantite',l:'Quantité / poids',t:'t'},{k:'stockage',l:'Emplacement de stockage',t:'t'},
+     {k:'analyse',l:'Statut d\'analyse',t:'s',o:SEL('En attente','En cours','Terminée','Sans résultat')},
+     {k:'scelle_etat',l:'Intégrité du scellé',t:'s',o:SEL('Intact','Ouvert sous contrôle','Rompu')},
+     {k:'conservation',l:'Conditions de conservation',t:'s',o:SEL('Ambiante','Réfrigérée','Sous coffre','Isolement électronique')},NOTE]},
+ photo:{l:'Photo',g:'Dossier et pièces',c:'#A0AEC0',i:I.photo,title:d=>d.reference||'Photo',
+  card:d=>[['SOURCE',d.source],['DATE',d.date]],
+  f:[{k:'reference',l:'Référence',t:'t',mono:1},
+     {k:'source',l:'Source',t:'s',o:SEL('Caméra de surveillance','Téléphone','Surveillance physique','Photo signalétique','Réseaux sociaux')},
+     {k:'date',l:'Date de prise de vue',t:'t',mono:1},{k:'resolution',l:'Définition',t:'t'},
+     {k:'qualite',l:'Qualité d\'exploitation',t:'s',o:SEL('Faible','Correcte','Bonne','Excellente')},
+     {k:'horodatage',l:'Horodatage vérifié',t:'s',o:SEL('Oui','Non','À vérifier')},NOTE]},
+ document:{l:'Document',g:'Dossier et pièces',c:'#9AA7B8',i:I.doc,title:d=>d.intitule||d.reference||'Document',
+  card:d=>[['TYPE',d.type],['DATE',d.date]],
+  f:[{k:'reference',l:'Référence',t:'t',mono:1},{k:'intitule',l:'Intitulé',t:'t',full:1},
+     {k:'type',l:'Nature',t:'s',o:SEL('Contrat','Relevé bancaire','Registre','Facture','Pièce d\'identité','Correspondance','Rapport')},
+     {k:'date',l:'Date du document',t:'d'},{k:'support',l:'Support',t:'s',o:SEL('Papier','Numérique','Copie')},
+     {k:'pages',l:'Nombre de pages',t:'n'},
+     {k:'authenticite',l:'Authenticité',t:'s',o:SEL('Non vérifiée','Authentique','Falsifié','Douteux')},NOTE]},
+ declaration:{l:'Déclaration',g:'Dossier et pièces',c:'#93C5C0',i:I.speech,title:d=>d.reference||d.type||'Déclaration',
+  card:d=>[['TYPE',d.type],['DATE',d.date]],
+  f:[{k:'reference',l:'Référence du procès-verbal',t:'t',mono:1},
+     {k:'type',l:'Type',t:'s',o:SEL('Audition libre','Audition sous garde à vue','Déposition spontanée','Confrontation','Interrogatoire','Appel anonyme','Signalement')},
+     {k:'date',l:'Date et heure',t:'t',mono:1},{k:'duree',l:'Durée',t:'t'},
+     {k:'support',l:'Support',t:'s',o:SEL('PV écrit','Enregistrement audio','Enregistrement vidéo','Manuscrit','Retranscription')},
+     {k:'avocat',l:'Assistance d\'un conseil',t:'s',o:SEL('Sans objet','Non','Oui')},
+     {k:'fiabilite',l:'Fiabilité de la déclaration',t:'s',o:SEL('À évaluer','Faible','Moyenne','Élevée','Corroborée')},
+     {k:'exploitation',l:'Exploitation',t:'s',o:SEL('À exploiter','Exploitée','Contredite','Rétractée')},
+     {k:'resume',l:'Résumé de la déclaration',t:'ta',full:1},NOTE]},
+ mandat:{l:'Mandat',g:'Dossier et pièces',c:'#CF7B4F',i:I.warrant,title:d=>d.reference||'Mandat',
+  card:d=>[['TYPE',d.type],['EXPIRE',d.expiration]],
+  f:[{k:'reference',l:'Référence',t:'t',mono:1},
+     {k:'type',l:'Type d\'acte',t:'s',o:SEL('Mandat d\'arrêt','Mandat de perquisition','Mandat d\'amener','Réquisition bancaire','Autorisation de géolocalisation','Autorisation d\'écoute')},
+     {k:'magistrat',l:'Magistrat signataire',t:'t',full:1},
+     {k:'emission',l:'Date d\'émission',t:'d'},{k:'expiration',l:'Date d\'expiration',t:'d'},
+     {k:'statut',l:'Statut',t:'s',o:SEL('Demandé','En attente de signature','Actif','Exécuté','Expiré','Refusé')},
+     {k:'portee',l:'Portée / périmètre',t:'ta',full:1},NOTE]},
+ mouvement:{l:'Mouvement de scellé',g:'Dossier et pièces',c:'#8A8FB0',i:I.route,title:d=>d.nature||'Mouvement',
+  card:d=>[['QUAND',d.date],['INTÉGRITÉ',d.integrite]],
+  f:[{k:'reference',l:'Référence',t:'t',mono:1},
+     {k:'nature',l:'Nature du mouvement',t:'s',o:SEL('Mise sous scellé','Transport','Dépôt au greffe','Consultation','Transmission au laboratoire','Analyse','Restitution','Destruction')},
+     {k:'date',l:'Date et heure',t:'t',mono:1},{k:'destination',l:'Destination / emplacement',t:'t',full:1},
+     {k:'integrite',l:'Intégrité constatée',t:'s',o:SEL('Intact','Ouvert sous contrôle','Rompu')},
+     {k:'motif',l:'Motif',t:'t',full:1},NOTE]}
+};
+const TYPES=Object.keys(SCHEMA);
+// Familles, dans l'ordre où elles apparaissent dans le schéma.
+const FAMILLES=[...new Set(TYPES.map(t=>SCHEMA[t].g))];
+const REL=['Membre de','Chef de','Employé par','Propriétaire de','Détient','Titulaire de','Utilise la ligne',
+ 'A appelé','A rencontré','A vendu à','A transféré de l\'argent à','Habite à','Domicilié à','Occupe',
+ 'Présent sur les lieux','Véhicule utilisé pendant','Suspecté de','Victime de','Témoin de','Participe à',
+ 'Auteur de la déclaration','Déclaration recueillie par','Porte sur','Contredit','Corrobore',
+ 'Condamné pour','Mis en cause pour','Infraction du dossier',
+ 'Émise depuis','Créditée sur','Mouvement du scellé','Effectué par',
+ 'Preuve retrouvée chez','Découverte à','Saisie par','Rédigé par','Objet du mandat','Rattaché au dossier',
+ 'Associé à','En conflit avec','Protège','Fournit','Référent du dossier'];
+const WEIGHT=[['','Neutre','#3A4B60'],['cool','Vérifié','#5B8FC7'],['warm','À confirmer','#D2811F'],['hot','Critique','#C4392C']];
+
+/* ============================================================
+   ACCÈS ET PERSISTANCE
+   Le tableau ne contient aucune donnée en dur : tout vient de
+   l'API, qui vérifie les rôles Discord à chaque requête. Une
+   page servie à quelqu'un sans accès reste vide.
+   ============================================================ */
+const API_BASE='https://sasp-intranet-bot.louisleurin.workers.dev';
+const VUE_KEY='sasp.liaisons.vue';   // préférence d'affichage, propre au poste
+
+let SB=null, SESSION=null, BOARD_ID=1;
+let MOI={nom:'—',role:'—',ecriture:false,peutGerer:false};
+let ENATTENTE=[];                    // actions à joindre au prochain enregistrement
+
+const S={nodes:[],edges:[],sel:null,selEdge:null,hidden:new Set(),collapsed:new Set(),
+  scale:.72,tx:80,ty:60,linkFrom:null,hits:new Set(),seq:100,version:0,nom:'',dossier:''};
+
+async function api(chemin,opts){
+  opts=opts||{};
+  const h={};
+  if(SESSION&&SESSION.access_token)h.authorization='Bearer '+SESSION.access_token;
+  if(opts.body)h['content-type']='application/json';
+  let r;
+  try{
+    r=await fetch(API_BASE+chemin,{method:opts.method||'GET',headers:h,
+      body:opts.body?JSON.stringify(opts.body):undefined});
+  }catch(e){ return {statut:0,ok:false,data:{error:'Serveur injoignable.'}}; }
+  let d=null; try{ d=await r.json(); }catch(e){}
+  return {statut:r.status,ok:r.ok,data:d||{}};
+}
+
+/* ---------- porte d'entrée ---------- */
+const LOGO='../../assets/sasp-sud-logo.png';
+function porte(etat,info){
+  const g=$('#gate'),c=$('#gcard');
+  if(!etat){g.classList.remove('on');return}
+  g.classList.add('on');
+  const vues={
+    chargement:()=>`<div class="gspin"></div><h2>Vérification de l'accès</h2>
+      <p>Contrôle de la session et des rôles Discord…</p>`,
+    connexion:()=>`<img src="${LOGO}" alt="SASP"><h2>Connexion requise</h2>
+      <p>Le tableau de liaisons est réservé au personnel habilité.
+         Identifiez-vous avec Discord pour continuer.</p>
+      <button class="btn pri" id="gLogin" style="width:100%;justify-content:center">Se connecter avec Discord</button>
+      <div class="gid">Si la connexion échoue, ouvrez d'abord
+        <a href="../../index.html" style="color:var(--red)">l'intranet SASP SUD</a>, puis revenez sur cette page.</div>`,
+    refus:()=>`<img src="${LOGO}" alt="SASP"><h2>Accès refusé</h2>
+      <p>${esc((info&&info.message)||'Votre compte n\'a pas accès au tableau de liaisons.')}</p>
+      <p style="font-size:12px;color:var(--ink3)">L'accès est ouvert au Command Staff et au Lead CID.
+         Ils peuvent également ouvrir un accès nominatif à votre nom.</p>
+      <a class="btn" href="../../index.html" style="width:100%;justify-content:center">Retour à l'intranet</a>
+      <div class="gid">${esc((info&&info.nom)||'')}</div>`,
+    panne:()=>`<img src="${LOGO}" alt="SASP"><h2>Tableau indisponible</h2>
+      <p>${esc((info&&info.error)||'Le serveur n\'a pas répondu.')}</p>
+      <button class="btn pri" id="gRetry" style="width:100%;justify-content:center">Réessayer</button>`
+  };
+  c.innerHTML=vues[etat]();
+  const b=$('#gLogin',c);
+  if(b)b.onclick=async()=>{
+    b.disabled=true;b.textContent='Redirection…';
+    await SB.auth.signInWithOAuth({provider:'discord',options:{redirectTo:location.href.split('#')[0]}});
+  };
+  const rt=$('#gRetry',c); if(rt)rt.onclick=()=>demarrer();
+}
+
+/* ---------- enregistrement ---------- */
+let saveT,enCours=false,rappel=false;
+function etatSave(t){const e=$('#saveState');if(e)e.textContent=t}
+
+// Le débounce d'origine est conservé : la frappe dans une fiche ne
+// déclenche qu'un envoi, une fois la saisie retombée.
+function save(msg){
+  if(!MOI.ecriture){etatSave('Lecture seule');return}
+  etatSave('Enregistrement…');
+  clearTimeout(saveT);
+  saveT=setTimeout(()=>envoyer(msg),600);
+}
+async function envoyer(msg,forcer){
+  if(enCours){rappel=true;return}
+  enCours=true;
+  const lot=ENATTENTE.splice(0,ENATTENTE.length);
+  const corps={nodes:S.nodes,edges:S.edges,seq:S.seq,journal:lot};
+  if(!forcer)corps.version=S.version;
+  const r=await api('/api/sasp/board/'+BOARD_ID,{method:'PUT',body:corps});
+  enCours=false;
+
+  if(r.ok){
+    S.version=r.data.version||S.version+1;
+    etatSave((msg||'Enregistré')+' · '+new Date().toLocaleTimeString('fr-FR'));
+  }else if(r.statut===409){
+    // Quelqu'un d'autre a enregistré entre-temps : on ne décide pas à sa place.
+    ENATTENTE.unshift(...lot);
+    etatSave('Conflit');
+    conflitDlg(r.data);
+  }else{
+    ENATTENTE.unshift(...lot);
+    etatSave('Échec de l\'enregistrement');
+    toast('Enregistrement impossible',r.data.error||'Réessayez dans un instant.','err');
+  }
+  if(rappel){rappel=false;envoyer(msg)}
+}
+function conflitDlg(info){
+  modal({title:'Le dossier a changé',ok:'Écraser avec ma version',
+    body:`<div style="display:flex;gap:12px"><span style="color:var(--amber);flex:none">${svg(I.alert,22,1.6)}</span>
+      <div><p style="margin:0 0 8px;line-height:1.6">Ce tableau a été enregistré par
+      <b>${esc(info.updated_by||'quelqu\'un d\'autre')}</b>
+      ${info.updated_at?'le '+new Date(info.updated_at).toLocaleString('fr-FR'):''} pendant que vous travailliez.</p>
+      <p style="margin:0;line-height:1.6">Recharger reprend sa version et abandonne vos modifications non
+      enregistrées. Écraser impose la vôtre et efface les siennes.</p></div></div>`,
+    foot:`<button class="btn" data-x>Plus tard</button>
+          <button class="btn" id="cRel">Recharger sa version</button>
+          <button class="btn pri" data-ok>Écraser avec ma version</button>`,
+    after:(sc,close)=>{$('#cRel',sc).onclick=()=>{close();demarrer()}},
+    onOk:()=>{envoyer('Enregistré',true)}});
+}
+
+/* ---------- journal ---------- */
+// Chaque action part avec le prochain enregistrement ; le serveur y
+// ajoute l'identité, le rôle, l'IP et l'horodatage.
+function logAct(action,cible){
+  ENATTENTE.push({action:action,cible:cible});
+  if(ENATTENTE.length>40)ENATTENTE.shift();
+}
+
+/* ---------- démarrage ---------- */
+function appliquer(d){
+  S.nodes=d.nodes||[];S.edges=d.edges||[];S.seq=d.seq||100;S.version=d.version||1;
+  S.nom=d.nom||'Tableau';S.dossier=d.dossier||'';
+  MOI={nom:d.nom_agent||'—',role:d.role||'—',ecriture:!!d.ecriture,peutGerer:!!d.peutGerer};
+  let plusGrand=100;
+  S.nodes.concat(S.edges).forEach(x=>{const n=parseInt(String(x.id).slice(1),10);if(n>plusGrand)plusGrand=n});
+  if(S.seq<plusGrand)S.seq=plusGrand;
+  try{const v=JSON.parse(localStorage.getItem(VUE_KEY)||'null');
+    if(v){S.scale=v.s;S.tx=v.x;S.ty=v.y}}catch(e){}
+}
+function sauverVue(){
+  try{localStorage.setItem(VUE_KEY,JSON.stringify({s:S.scale,x:S.tx,y:S.ty}))}catch(e){}
+}
+function majEntete(){
+  $('#dosT').textContent=S.nom||'Tableau';
+  $('#dosN').textContent=(S.dossier?S.dossier+' · ':'')+(MOI.ecriture?'Lecture et écriture':'Lecture seule');
+  $('#meNom').textContent=MOI.nom;
+  $('#meRole').textContent=MOI.role;
+  $('#meAv').textContent=initials(MOI.nom);
+  $('#sfootWho').textContent=MOI.role;
+  etatSave(MOI.ecriture?'À jour':'Lecture seule');
+}
+
+let interfacePrete=false;
+async function demarrer(){
+  porte('chargement');
+  if(!SB){
+    SB=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{detectSessionInUrl:true,flowType:'pkce'}});
+  }
+  try{const {data}=await SB.auth.getSession();SESSION=data.session}catch(e){SESSION=null}
+  if(!SESSION){porte('connexion');return}
+
+  const r=await api('/api/sasp/board/'+BOARD_ID);
+  if(r.statut===401){porte('connexion');return}
+  if(r.statut===403){porte('refus',r.data);return}
+  if(!r.ok){porte('panne',r.data);return}
+
+  appliquer(r.data);
+  majEntete();
+  porte(null);
+  if(!interfacePrete){
+    interfacePrete=true;
+    buildTools();bindBoard();bindSearch();bindClavier();
+    window.addEventListener('hashchange',route);
+    $('#burger').onclick=e=>{e.stopPropagation();$('#sidebar').classList.toggle('open')};
+    document.addEventListener('click',e=>{if(innerWidth<=900&&!e.target.closest('#sidebar')&&!e.target.closest('#burger'))$('#sidebar').classList.remove('open')});
+    setInterval(()=>{const d=new Date(),z=x=>String(x).padStart(2,'0');
+      const c=$('#clock');if(c)c.textContent=`${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`},1000);
+    if(!location.hash)location.hash='#/board';
+  }
+  render();route();
+  let vue=null;try{vue=localStorage.getItem(VUE_KEY)}catch(e){}
+  if(!vue&&S.nodes.length)fitView(true);else applyView();
+  toast('Tableau chargé',S.nom+' · '+S.nodes.length+' élément'+(S.nodes.length>1?'s':''),'ok');
+}
+
+const node=id=>S.nodes.find(n=>n.id===id);
+const sch=t=>SCHEMA[t]||SCHEMA.personne;
+const titleOf=n=>sch(n.t).title(n.d||{})||sch(n.t).l;
+const initials=s=>{const w=String(s||'').replace(/["'«»].*?["'«»]/g,' ').split(/[\s\-·.]+/).filter(x=>x.length>1);
+  return ((w[0]?.[0]||'')+(w.length>1?w[w.length-1][0]:(w[0]?.[1]||''))).toUpperCase()||'—'};
+
+/* ---------- UI utilitaires ---------- */
+function toast(t,m,k='',ms=3400){
+  const n=el('div','toast '+k,`<span style="color:var(--${k==='ok'?'green':k==='err'?'red':k==='warn'?'amber':'steel'})">${svg(k==='ok'?I.chk:I.alert,15)}</span><div><b>${esc(t)}</b>${m?`<span>${esc(m)}</span>`:''}</div>`);
+  $('#toasts').appendChild(n);
+  setTimeout(()=>{n.style.transition='opacity .3s,transform .3s';n.style.opacity=0;n.style.transform='translateX(16px)';setTimeout(()=>n.remove(),320)},ms);
+}
+function modal(o){
+  const scrim=el('div','scrim');
+  scrim.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><header><h3>${esc(o.title)}</h3>
+    <button class="tbtn" data-x style="margin-left:auto">${svg(I.x,15)}</button></header>
+    <div class="bd">${o.body}</div>
+    <footer>${o.foot||`<button class="btn" data-x>Annuler</button><button class="btn pri" data-ok>${esc(o.ok||'Valider')}</button>`}</footer></div>`;
+  $('#modalRoot').appendChild(scrim);
+  const close=()=>{scrim.style.opacity=0;setTimeout(()=>scrim.remove(),140);document.removeEventListener('keydown',esckey)};
+  const esckey=e=>{if(e.key==='Escape')close()};
+  document.addEventListener('keydown',esckey);
+  scrim.addEventListener('click',e=>{if(e.target===scrim)close()});
+  $$('[data-x]',scrim).forEach(b=>b.onclick=close);
+  const ok=$('[data-ok]',scrim); if(ok)ok.onclick=()=>{if(!o.onOk||o.onOk(scrim)!==false)close()};
+  if(o.after)o.after(scrim,close);
+  return {scrim,close};
+}
+function confirmDlg(title,msg,okLabel,onOk,danger){
+  modal({title,body:`<div style="display:flex;gap:12px"><span style="color:var(--${danger?'red':'amber'});flex:none">${svg(I.alert,22,1.6)}</span>
+    <p style="margin:0;font-size:13px;line-height:1.6">${msg}</p></div>`,
+    foot:`<button class="btn" data-x>Annuler</button><button class="btn ${danger?'dgr':'pri'}" data-ok>${esc(okLabel)}</button>`,onOk});
+}
+function ctxMenu(x,y,items){
+  const m=$('#ctx'); m.innerHTML='';
+  items.forEach(it=>{
+    if(it==='-'){m.appendChild(el('hr'));return}
+    if(it.hd){m.appendChild(el('div','hd',esc(it.hd)));return}
+    const b=el('button',it.dgr?'dgr':'',`${it.i?svg(it.i,14):'<span style="width:14px"></span>'}<span>${esc(it.l)}</span>${it.k?`<span class="kbd" style="margin-left:auto">${it.k}</span>`:''}`);
+    b.onclick=()=>{m.style.display='none';it.fn&&it.fn()};
+    m.appendChild(b);
+  });
+  m.style.display='block';
+  m.style.left=Math.min(x,innerWidth-m.offsetWidth-8)+'px';
+  m.style.top=Math.min(y,innerHeight-m.offsetHeight-8)+'px';
+}
+document.addEventListener('click',()=>{$('#ctx').style.display='none'});
+
+/* ---------- champs dynamiques ---------- */
+function fieldHTML(f,val,idp){
+  const v=esc(val??'');
+  const id=idp+f.k;
+  let input;
+  if(f.t==='ta')input=`<textarea id="${id}" data-k="${f.k}">${v}</textarea>`;
+  else if(f.t==='s')input=`<select id="${id}" data-k="${f.k}"><option value=""></option>${f.o.map(o=>`<option ${o===val?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  else if(f.t==='d')input=`<input id="${id}" data-k="${f.k}" type="date" class="mono" value="${v}">`;
+  else if(f.t==='n')input=`<input id="${id}" data-k="${f.k}" type="number" class="mono" value="${v}">`;
+  else input=`<input id="${id}" data-k="${f.k}" class="${f.mono?'mono':''}" value="${v}">`;
+  return `<div class="f${f.full||f.t==='ta'?' full':''}"><label for="${id}">${esc(f.l)}</label>${input}</div>`;
+}
+function fieldsHTML(t,d,idp){
+  const F=sch(t).f;let out='',buf=[];
+  const flush=()=>{if(buf.length){out+=buf.length===2?`<div class="f2">${buf.join('')}</div>`:buf.join('');buf=[]}};
+  F.forEach(f=>{
+    const h=fieldHTML(f,d[f.k],idp);
+    if(f.full||f.t==='ta'){flush();out+=h}
+    else{buf.push(h);if(buf.length===2)flush()}
+  });
+  flush();return out;
+}
+const riskHTML=(v,idp)=>`<div class="f"><label>Niveau de danger / d'importance</label>
+  <div class="rangeRow"><input id="${idp}_risk" type="range" min="0" max="5" value="${v||0}">
+  <b id="${idp}_riskv">${v||0}</b><span class="lbl">/5</span></div>
+  <div class="meter" style="margin-top:6px"><i id="${idp}_riskm" class="${v>=4?'r':v>=3?'a':'g'}" style="width:${(v||0)*20}%"></i></div></div>`;
+
+/* ---------- supports papier, épingles, inclinaison ---------- */
+const PAPER={personne:'polaroid',suspect:'polaroid',victime:'polaroid',temoin:'polaroid',agent:'polaroid',
+ vehicule:'photo',propriete:'photo',lieu:'photo',arme:'photo',photo:'photo',
+ telephone:'sticky',compte:'sticky',transaction:'sticky',evenement:'sticky',mouvement:'sticky',
+ organisation:'card',groupe:'card',infraction:'card',condamnation:'card',
+ preuve:'sheet',document:'sheet',mandat:'sheet',enquete:'sheet',declaration:'sheet'};
+const STICKY={telephone:'#BCE0E6',compte:'#CFE9BE',transaction:'#DCEFC2',evenement:'#F7E389',mouvement:'#DCD9EE'};
+const PINS=['#C0392B','#2E6FA8','#E0A82E','#6B4FA8','#2E8B57','#D95F02','#B03060'];
+function hashOf(id){let h=0;for(let i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))|0;return Math.abs(h)}
+const rotOf=id=>((hashOf(id)%9)-4)*0.9;
+const pinOf=id=>PINS[hashOf(id+'p')%PINS.length];
+const NH={};   /* hauteurs mesurées, pour accrocher la ficelle sur l'épingle */
+
+/* ============================================================
+   RENDU DU TABLEAU
+   ============================================================ */
+const visible=n=>!S.hidden.has(n.t)&&!S.collapsed.has(n.id);
+function render(){
+  const nl=$('#gnodes');
+  nl.innerHTML=S.nodes.filter(visible).map(n=>{
+    const T=sch(n.t),d=n.d||{},kv=(T.card(d)||[]).filter(x=>x&&x[1]);
+    const pp=PAPER[n.t]||'sheet';
+    const st=pp==='sticky'?`--sticky:${STICKY[n.t]||'#F6E38B'};`:'';
+    const body=`
+      <div class="ph">${svg(T.i,pp==='photo'?34:30,1.4)}</div>
+      <div class="tlab" style="color:${pp==='sticky'?'':T.c}">${T.l}</div>
+      <div class="ttl">${esc(titleOf(n))}</div>
+      ${kv.map(([k,v])=>`<div class="kv">${k?`<b>${k}</b>`:''}${esc(v)}</div>`).join('')}
+      <div class="risk">${[0,1,2,3,4].map(i=>`<i class="${i<(n.r||0)?((n.r||0)>=4?'hi':'on'):''}"></i>`).join('')}</div>`;
+    return `<div class="node p-${pp}${S.sel===n.id?' sel':''}${S.hits.has(n.id)?' hit':''}" data-id="${n.id}"
+      style="left:${n.x}px;top:${n.y}px;--rot:${rotOf(n.id)}deg;--pc:${pinOf(n.id)};--tc:${T.c};${st}">
+      ${pp==='sheet'||pp==='photo'?'<span class="tape"></span>':''}
+      <span class="pin"></span>
+      ${pp==='card'?`<div class="topline"></div><div class="inner">${body}</div>`:body}
+    </div>`}).join('');
+  measure();
+  drawEdges();
+  applyView();
+  bindNodes();
+  drawLegend();
+  $('#counts').textContent=`${S.nodes.filter(visible).length} éléments · ${S.edges.length} liaisons`;
+}
+function measure(){
+  $$('#gnodes .node').forEach(nd=>{NH[nd.dataset.id]={w:nd.offsetWidth,h:nd.offsetHeight}});
+}
+const pinPt=n=>({x:n.x,y:n.y-((NH[n.id]?.h||110)/2)+2});
+function drawEdges(){
+  const pos=id=>{const n=node(id);return n&&visible(n)?n:null};
+  let sh='',p='',l='';
+  S.edges.forEach(e=>{
+    const na=pos(e.a),nb=pos(e.b); if(!na||!nb)return;
+    const a=pinPt(na),b=pinPt(nb);
+    const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
+    const sag=Math.min(90,Math.max(20,len*0.16));
+    const cx=(a.x+b.x)/2,cy=(a.y+b.y)/2+sag;
+    const dim=S.sel&&S.sel!==e.a&&S.sel!==e.b?' dim':'';
+    const dpath=`M${a.x} ${a.y} Q${cx} ${cy} ${b.x} ${b.y}`;
+    const wdt=e.w==='hot'?4.4:3.4;
+    sh+=`<path class="eshadow${dim}" d="${dpath}" stroke-width="${wdt+1.2}" transform="translate(2,3)"/>`;
+    p+=`<path class="edge ${e.w||''}${e.dash?' dashed':''}${S.selEdge===e.id?' sel':''}${dim}" d="${dpath}" data-edge="${e.id}" style="pointer-events:stroke;cursor:pointer"/>`;
+    const lx=(a.x+2*cx+b.x)/4,ly=(a.y+2*cy+b.y)/4;
+    const ang=Math.max(-14,Math.min(14,Math.atan2(dy,dx)*180/Math.PI*0.35));
+    l+=`<text class="elabel${S.selEdge===e.id?' sel':''}${dim}" x="${lx}" y="${ly-4}" text-anchor="middle" data-edge="${e.id}" transform="rotate(${ang.toFixed(1)} ${lx} ${ly-4})">${esc(e.l)}</text>`;
+  });
+  $('#glinks').innerHTML=sh+p; $('#glabels').innerHTML=l;
+  $$('[data-edge]').forEach(x=>x.onclick=ev=>{ev.stopPropagation();selectEdge(x.dataset.edge)});
+}
+function bindNodes(){
+  $$('#gnodes .node').forEach(nd=>{
+    let drag=false,sx,sy,ox,oy,moved;
+    nd.addEventListener('mousedown',e=>{
+      if(e.button!==0)return; e.stopPropagation();
+      const n=node(nd.dataset.id);
+      if(S.linkFrom){finishLink(n);return}
+      drag=true;moved=false;sx=e.clientX;sy=e.clientY;ox=n.x;oy=n.y;nd.style.cursor='grabbing';nd.style.zIndex=30;
+      const mv=ev=>{if(!drag)return;
+        const dx=(ev.clientX-sx)/S.scale,dy=(ev.clientY-sy)/S.scale;
+        if(Math.abs(dx)>2||Math.abs(dy)>2)moved=true;
+        n.x=Math.round(ox+dx);n.y=Math.round(oy+dy);
+        nd.style.left=n.x+'px';nd.style.top=n.y+'px';drawEdges()};
+      const up=()=>{drag=false;nd.style.cursor='';nd.style.zIndex='';
+        window.removeEventListener('mousemove',mv);window.removeEventListener('mouseup',up);
+        if(moved)save('Disposition enregistrée');else selectNode(nd.dataset.id)};
+      window.addEventListener('mousemove',mv);window.addEventListener('mouseup',up);
+    });
+    nd.addEventListener('dblclick',e=>{e.stopPropagation();selectNode(nd.dataset.id)});
+    nd.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();nodeMenu(e,node(nd.dataset.id))});
+  });
+}
+function applyView(){
+  $('#gworld').style.transform=`translate(${S.tx}px,${S.ty}px) scale(${S.scale})`;
+  $('#zoomv').textContent=Math.round(S.scale*100)+'%';
+}
+function zoomBy(f){
+  const r=$('#board').getBoundingClientRect(),mx=r.width/2,my=r.height/2;
+  const ns=Math.min(2.6,Math.max(.2,S.scale*f));
+  S.tx=mx-(mx-S.tx)*(ns/S.scale);S.ty=my-(my-S.ty)*(ns/S.scale);S.scale=ns;applyView();sauverVue();
+}
+function fitView(silent){
+  const vis=S.nodes.filter(visible); if(!vis.length)return;
+  const r=$('#board').getBoundingClientRect();
+  const xs=vis.map(n=>n.x),ys=vis.map(n=>n.y);
+  const minx=Math.min(...xs)-130,maxx=Math.max(...xs)+130,miny=Math.min(...ys)-95,maxy=Math.max(...ys)+95;
+  S.scale=Math.max(.2,Math.min(r.width/(maxx-minx),r.height/(maxy-miny),1.3)*.95);
+  S.tx=r.width/2-((minx+maxx)/2)*S.scale;S.ty=r.height/2-((miny+maxy)/2)*S.scale;
+  applyView(); sauverVue();
+}
+function legendToggle(force){
+  const L=$('#legend'); if(!L)return;
+  const min=force!==undefined?force:!L.classList.contains('min');
+  L.classList.toggle('min',min);
+  const b=$('#lgToggle'); if(b){b.setAttribute('aria-expanded',String(!min));b.title=min?'Afficher la légende':'Masquer la légende'}
+  try{localStorage.setItem('sasp.liaisons.legende',min?'min':'open')}catch(e){}
+}
+function drawLegend(){
+  const used=[...new Set(S.nodes.map(n=>n.t))];
+  const n=$('#lgN'); if(n){const off=used.filter(t=>S.hidden.has(t)).length;
+    n.textContent=off?`${used.length-off}/${used.length} affichés`:`${used.length} types`;
+    n.style.color=off?'var(--red)':'';}
+  $('#legrow').innerHTML=used.map(t=>`<span class="lg ${S.hidden.has(t)?'off':''}" data-t="${t}"><b style="background:${sch(t).c}"></b>${sch(t).l}</span>`).join('')
+    ||'<span class="muted" style="font-size:10px">Aucun élément sur le tableau</span>';
+  $$('#legrow .lg').forEach(s=>s.onclick=()=>{const t=s.dataset.t;S.hidden.has(t)?S.hidden.delete(t):S.hidden.add(t);render()});
+}
+
+/* ============================================================
+   SÉLECTION + PANNEAU DE FICHE
+   ============================================================ */
+function deselect(){
+  S.sel=null;S.selEdge=null;
+  $('#inspect').classList.remove('open');$('#board').classList.remove('inspecting');
+  $$('#gnodes .node').forEach(n=>n.classList.remove('sel','dim'));
+  drawEdges();
+}
+function selectNode(id){
+  const n=node(id); if(!n)return;
+  S.sel=id;S.selEdge=null;
+  const nb=new Set([id]); S.edges.forEach(e=>{if(e.a===id)nb.add(e.b);if(e.b===id)nb.add(e.a)});
+  $$('#gnodes .node').forEach(x=>{x.classList.toggle('sel',x.dataset.id===id);x.classList.toggle('dim',!nb.has(x.dataset.id))});
+  drawEdges();
+  const T=sch(n.t),d=n.d||{};
+  const rels=S.edges.filter(e=>e.a===id||e.b===id).map(e=>({e,o:node(e.a===id?e.b:e.a),dir:e.a===id?'→':'←'})).filter(r=>r.o);
+  const p=$('#inspect');
+  p.innerHTML=`
+   <header><span style="color:${T.c}">${svg(T.i,18,1.7)}</span>
+     <div style="flex:1;min-width:0">
+       <div class="ihead" style="font-family:var(--f-ui);font-size:15px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(titleOf(n))}</div>
+       <div class="mono" style="font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:${T.c}">${T.l}</div></div>
+     <button class="tbtn" id="iClose">${svg(I.x,15)}</button></header>
+   <div class="body">
+     <div class="isec">Fiche ${esc(T.l.toLowerCase())}<span id="fSave"></span></div>
+     <p style="margin:-4px 0 10px;font-size:11px;color:#7A6746;line-height:1.45">Rattachements à d'autres éléments : voir Relations ci-dessous.</p>
+     ${riskHTML(n.r,'i_')}
+     <div id="iFields">${fieldsHTML(n.t,d,'i_')}</div>
+     <div class="isec">Relations<span>${rels.length}</span></div>
+     ${rels.map(r=>`<div class="relrow" data-rel="${r.e.id}" data-node="${r.o.id}">
+        <span style="color:${sch(r.o.t).c};flex:none">${svg(sch(r.o.t).i,14)}</span>
+        <span class="rv">${r.dir} ${esc(r.e.l)}</span>
+        <span class="rn">${esc(titleOf(r.o))}</span>
+        <span class="del" title="Modifier la liaison">${svg(I.link,13)}</span></div>`).join('')
+        ||'<span class="muted">Aucune liaison. Utilisez « Créer une liaison ».</span>'}
+     <div class="isec">Actions</div>
+     <div style="display:flex;gap:6px;flex-wrap:wrap">
+       <button class="btn sm" id="iLink">${svg(I.link,12)}Créer une liaison</button>
+       <button class="btn sm" id="iHide">${svg(I.eye,12)}Masquer la branche</button>
+       <button class="btn sm" id="iDup">${svg(I.copy,12)}Dupliquer</button>
+     </div>
+   </div>
+   <footer><button class="btn pri" style="flex:1" id="iCenter">${svg(I.fit,13)}Centrer sur cet élément</button>
+     <button class="btn dgr" id="iDel" title="Supprimer">${svg(I.trash,13)}</button></footer>`;
+  p.classList.add('open');$('#board').classList.add('inspecting');
+  if(!MOI.ecriture){
+    $$('#iFields [data-k],#i__risk',p).forEach(x=>x.disabled=true);
+    ['iLink','iDup','iDel'].forEach(x=>{const b=$('#'+x,p);if(b)b.disabled=true});
+  }
+  bindInspector(n);
+  $('#iClose').onclick=deselect;
+  $$('[data-node]',p).forEach(r=>{
+    r.onclick=e=>{if(e.target.closest('.del'))return selectEdge(r.dataset.rel);selectNode(r.dataset.node)};
+  });
+  $('#iLink').onclick=()=>startLink(id);
+  $('#iHide').onclick=()=>{const nb2=S.edges.filter(e=>e.a===id||e.b===id).map(e=>e.a===id?e.b:e.a);
+    nb2.forEach(x=>S.collapsed.add(x));render();toast('Branche masquée',nb2.length+' éléments repliés · touche R pour tout réafficher','')};
+  $('#iDup').onclick=()=>{
+    const c={id:'n'+(++S.seq),t:n.t,x:n.x+210,y:n.y+70,r:n.r,d:{...n.d}};
+    S.nodes.push(c);logAct('Duplication d\'élément',sch(n.t).l+' · '+titleOf(c));
+    render();selectNode(c.id);save('Élément dupliqué');toast('Élément dupliqué','','ok')};
+  $('#iCenter').onclick=()=>{const r=$('#board').getBoundingClientRect();
+    S.tx=r.width/2-n.x*S.scale-(S.sel?170:0);S.ty=r.height/2-n.y*S.scale;applyView()};
+  $('#iDel').onclick=()=>confirmDlg('Supprimer l\'élément',
+    `<b>${esc(titleOf(n))}</b> et ses ${rels.length} liaison(s) seront supprimés du tableau. Action journalisée.`,'Supprimer',()=>{
+      logAct('Suppression d\'élément',sch(n.t).l+' · '+titleOf(n));
+      S.edges=S.edges.filter(e=>e.a!==id&&e.b!==id);S.nodes=S.nodes.filter(x=>x.id!==id);
+      deselect();render();save('Élément supprimé');toast('Élément supprimé','','ok')},true);
+}
+function bindInspector(n){
+  const p=$('#inspect');let t;
+  const flag=()=>{const f=$('#fSave',p);if(!f)return;f.textContent='Enregistrement…';
+    clearTimeout(t);t=setTimeout(()=>{f.textContent='À jour';
+      logAct('Modification de fiche',sch(n.t).l+' · '+titleOf(n));save('Fiche enregistrée')},450)};
+  $$('#iFields [data-k]',p).forEach(inp=>{
+    const ev=inp.tagName==='SELECT'?'change':'input';
+    inp.addEventListener(ev,()=>{n.d[inp.dataset.k]=inp.value;flag();
+      const nd=$(`#gnodes .node[data-id="${n.id}"]`);
+      if(nd){const T=sch(n.t),d=n.d,kv=(T.card(d)||[]).filter(x=>x&&x[1]);
+        $('.ttl',nd)&&($('.ttl',nd).textContent=titleOf(n));
+        $$('.kv',nd).forEach(x=>x.remove());
+        const risk=$('.risk',nd);
+        kv.forEach(([k,v])=>risk.insertAdjacentHTML('beforebegin',`<div class="kv">${k?`<b>${k}</b>`:''}${esc(v)}</div>`));
+        const ht=$('header .ihead',p); if(ht)ht.textContent=titleOf(n);
+        measure();drawEdges();
+      }});
+  });
+  const rg=$('#i__risk',p);
+  if(rg)rg.addEventListener('input',()=>{
+    n.r=+rg.value;$('#i__riskv',p).textContent=n.r;
+    const m=$('#i__riskm',p);m.style.width=(n.r*20)+'%';m.className=n.r>=4?'r':n.r>=3?'a':'g';
+    const nd=$(`#gnodes .node[data-id="${n.id}"] .risk`);
+    if(nd)nd.innerHTML=[0,1,2,3,4].map(i=>`<i class="${i<n.r?(n.r>=4?'hi':'on'):''}"></i>`).join('');
+    flag()});
+}
+function selectEdge(id){
+  const e=S.edges.find(x=>x.id===id); if(!e)return;
+  S.selEdge=id;S.sel=null;
+  $$('#gnodes .node').forEach(n=>n.classList.remove('sel','dim'));
+  drawEdges();
+  const a=node(e.a),b=node(e.b);
+  const p=$('#inspect');
+  p.innerHTML=`<header><span style="color:var(--steel)">${svg(I.link,18,1.7)}</span>
+    <div style="flex:1;min-width:0"><div style="font-family:var(--f-ui);font-size:15px;color:var(--ink)">${esc(e.l)}</div>
+    <div class="mono" style="font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#7A6746">Liaison ${e.id}</div></div>
+    <button class="tbtn" id="iClose">${svg(I.x,15)}</button></header>
+   <div class="body">
+     <div class="relrow" data-node="${a.id}"><span style="color:${sch(a.t).c}">${svg(sch(a.t).i,14)}</span><span class="rn">${esc(titleOf(a))}</span><span class="rv">source</span></div>
+     <div class="relrow" data-node="${b.id}"><span style="color:${sch(b.t).c}">${svg(sch(b.t).i,14)}</span><span class="rn">${esc(titleOf(b))}</span><span class="rv">cible</span></div>
+     <div class="isec">Caractéristiques du lien<span id="fSave"></span></div>
+     <div class="f"><label>Intitulé</label><select id="eL">${REL.map(r=>`<option ${r===e.l?'selected':''}>${esc(r)}</option>`).join('')}<option ${!REL.includes(e.l)?'selected':''}>${esc(REL.includes(e.l)?'Autre…':e.l)}</option></select></div>
+     <div class="f"><label>Description</label><textarea id="eD">${esc(e.d||'')}</textarea></div>
+     <div class="f"><label>Date de la relation</label><input id="eDt" class="mono" value="${esc(e.dt||'')}" placeholder="AAAA-MM-JJ"></div>
+     <div class="f"><label>Niveau du lien</label><div style="display:flex;gap:5px;flex-wrap:wrap" id="eW">
+       ${WEIGHT.map(([k,l,c])=>`<button class="btn sm ${(e.w||'')===k?'on':''}" data-w="${k}"><span style="display:inline-block;width:10px;height:2px;background:${c}"></span>${l}</button>`).join('')}</div></div>
+     <div class="f"><label>Tracé</label><div style="display:flex;gap:5px" id="eS">
+       <button class="btn sm ${!e.dash?'on':''}" data-d="0">Plein</button><button class="btn sm ${e.dash?'on':''}" data-d="1">Pointillés</button>
+       <button class="btn sm" id="eSwap" title="Inverser le sens">⇄ Inverser</button></div></div>
+   </div>
+   <footer><button class="btn pri" style="flex:1" id="eSave">Enregistrer</button><button class="btn dgr" id="eDel">${svg(I.trash,13)}</button></footer>`;
+  p.classList.add('open');$('#board').classList.add('inspecting');
+  if(!MOI.ecriture)$$('button,select,textarea,input',p).forEach(x=>{if(x.id!=='iClose')x.disabled=true});
+  $('#iClose').onclick=deselect;
+  $$('[data-node]',p).forEach(r=>r.onclick=()=>selectNode(r.dataset.node));
+  $$('#eW .btn',p).forEach(c=>c.onclick=()=>{$$('#eW .btn',p).forEach(x=>x.classList.remove('on'));c.classList.add('on');e.w=c.dataset.w;drawEdges();save()});
+  $$('#eS .btn[data-d]',p).forEach(c=>c.onclick=()=>{$$('#eS .btn[data-d]',p).forEach(x=>x.classList.remove('on'));c.classList.add('on');e.dash=c.dataset.d==='1'?1:0;drawEdges();save()});
+  $('#eSwap',p).onclick=()=>{const t=e.a;e.a=e.b;e.b=t;drawEdges();save();selectEdge(e.id)};
+  $('#eSave',p).onclick=()=>{e.l=$('#eL',p).value;e.d=$('#eD',p).value;e.dt=$('#eDt',p).value;
+    logAct('Modification de liaison',titleOf(a)+' → '+titleOf(b));drawEdges();save('Liaison enregistrée');toast('Liaison mise à jour','','ok')};
+  $('#eDel',p).onclick=()=>confirmDlg('Supprimer la liaison',
+    `La liaison « ${esc(e.l)} » entre <b>${esc(titleOf(a))}</b> et <b>${esc(titleOf(b))}</b> sera supprimée.`,'Supprimer',()=>{
+      logAct('Suppression de liaison',titleOf(a)+' → '+titleOf(b));
+      S.edges=S.edges.filter(x=>x.id!==e.id);deselect();render();save('Liaison supprimée');toast('Liaison supprimée','','ok')},true);
+}
+
+/* ============================================================
+   AJOUT D'ÉLÉMENT
+   Les types sont présentés par famille : la grille de 24 vignettes
+   devenait illisible sans classement.
+   ============================================================ */
+function addDlg(preset,apres){
+  if(!MOI.ecriture){toast('Lecture seule','Votre accès ne permet pas de modifier le tableau.','warn');return}
+  let t=preset||'personne';
+  const grille=()=>FAMILLES.map(g=>
+    `<div class="tgroup">${esc(g)}</div>`+
+    TYPES.filter(k=>SCHEMA[k].g===g).map(k=>`<button data-t="${k}" class="${k===t?'on':''}">
+      <span style="color:${SCHEMA[k].c}">${svg(SCHEMA[k].i,17,1.7)}</span>${esc(SCHEMA[k].l)}</button>`).join('')
+  ).join('');
+  const body=`
+    <div class="lbl" style="margin-bottom:7px">Type d'élément</div>
+    <div class="typegrid" id="tg">${grille()}</div>
+    <div class="lbl" id="ffLbl" style="margin:14px 0 4px">Champs · ${esc(sch(t).l)}</div>
+    <p style="margin:0 0 10px;font-size:11.5px;color:#7A6746;line-height:1.5">Propriétaire, chef, titulaire, lieu, agent : ces rattachements se créent en liaison, pas en champ.</p>
+    <div id="ff">${fieldsHTML(t,{},'a_')}</div>
+    ${riskHTML(0,'a_')}`;
+  return modal({title:'Ajouter un élément au tableau',ok:'Ajouter au tableau',body:body,
+    after:(sc)=>{
+      $$('#tg button',sc).forEach(b=>b.onclick=()=>{
+        t=b.dataset.t;
+        $$('#tg button',sc).forEach(x=>x.classList.toggle('on',x.dataset.t===t));
+        $('#ff',sc).innerHTML=fieldsHTML(t,{},'a_');
+        $('#ffLbl',sc).textContent='Champs · '+sch(t).l;
+      });
+      const rg=$('#a__risk',sc);
+      rg.addEventListener('input',()=>{$('#a__riskv',sc).textContent=rg.value;
+        const m2=$('#a__riskm',sc);m2.style.width=(rg.value*20)+'%';m2.className=rg.value>=4?'r':rg.value>=3?'a':'g'});
+    },
+    onOk:sc=>{
+      const d={};
+      $$('#ff [data-k]',sc).forEach(i=>{if(i.value)d[i.dataset.k]=i.value});
+      const r=+$('#a__risk',sc).value;
+      const b=$('#board').getBoundingClientRect();
+      // Depuis une page interne le tableau n'est pas mesurable : on pose
+      // l'élément près du centre du nuage existant.
+      let x,y;
+      if(b.width>10){x=Math.round((b.width/2-S.tx)/S.scale);y=Math.round((b.height/2-S.ty)/S.scale)}
+      else{const v=S.nodes;x=v.length?Math.round(v.reduce((s,n)=>s+n.x,0)/v.length)+120:600;
+           y=v.length?Math.round(v.reduce((s,n)=>s+n.y,0)/v.length)+90:400}
+      const n={id:'n'+(++S.seq),t,r,d,x,y};
+      S.nodes.push(n);logAct('Création d\'élément',sch(t).l+' · '+titleOf(n));
+      render();save('Élément ajouté');
+      toast('Élément ajouté',sch(t).l+' · '+titleOf(n),'ok');
+      if(apres)apres(n);else if(ROUTE==='board')selectNode(n.id);
+    }});
+}
+function nodeMenu(ev,n){
+  const w=MOI.ecriture;
+  ctxMenu(ev.clientX,ev.clientY,[{hd:titleOf(n)},
+    {l:'Ouvrir la fiche',i:I.eye,fn:()=>selectNode(n.id)},
+    ...(w?[{l:'Créer une liaison depuis ici',i:I.link,k:'L',fn:()=>startLink(n.id)},
+    {l:'Dupliquer',i:I.copy,fn:()=>{const c={id:'n'+(++S.seq),t:n.t,x:n.x+210,y:n.y+70,r:n.r,d:{...n.d}};
+      S.nodes.push(c);logAct('Duplication d\'élément',sch(n.t).l+' · '+titleOf(c));render();save()}}]:[]),'-',
+    {l:'Masquer la branche',i:I.eye,fn:()=>{S.edges.filter(e=>e.a===n.id||e.b===n.id).map(e=>e.a===n.id?e.b:e.a).forEach(x=>S.collapsed.add(x));render()}},
+    {l:'Masquer ce type',i:I.filt,fn:()=>{S.hidden.add(n.t);render()}},
+    ...(w?['-',{l:'Supprimer',i:I.trash,dgr:1,k:'SUPPR',fn:()=>confirmDlg('Supprimer l\'élément',
+      `<b>${esc(titleOf(n))}</b> et ses liaisons seront supprimés.`,'Supprimer',()=>{
+        logAct('Suppression d\'élément',sch(n.t).l+' · '+titleOf(n));
+        S.edges=S.edges.filter(e=>e.a!==n.id&&e.b!==n.id);S.nodes=S.nodes.filter(x=>x.id!==n.id);
+        deselect();render();save('Élément supprimé')},true)}]:[])]);
+}
+/* ---------- liaisons ---------- */
+function startLink(from){
+  if(!MOI.ecriture){toast('Lecture seule','Votre accès ne permet pas de modifier le tableau.','warn');return}
+  if(ROUTE!=='board')location.hash='#/board';
+  S.linkFrom=from||S.sel||null;
+  $('#board').classList.add('linkmode');
+  if(S.linkFrom)toast('Mode liaison','Cliquez sur l\'élément cible.','');
+  else{toast('Mode liaison','Cliquez sur l\'élément source, puis sur la cible.','');
+    const once=e=>{const nd=e.target.closest('.node');if(nd){S.linkFrom=nd.dataset.id;toast('Source sélectionnée','Cliquez sur la cible.','');
+      $('#board').removeEventListener('mousedown',once,true)}};
+    $('#board').addEventListener('mousedown',once,true);}
+}
+function finishLink(target){
+  const src=node(S.linkFrom);
+  $('#board').classList.remove('linkmode');
+  if(!src||!target||src.id===target.id){S.linkFrom=null;return}
+  const a=src,b=target;S.linkFrom=null;
+  modal({title:'Nouvelle liaison',ok:'Créer la liaison',
+    body:`<div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;padding:11px;background:rgba(255,255,255,.45);border:1px solid #C0A472;border-radius:3px">
+      <div style="flex:1;text-align:center"><span style="color:${sch(a.t).c}">${svg(sch(a.t).i,18)}</span>
+        <div style="font-family:var(--f-ui);font-size:13px;color:var(--ink)">${esc(titleOf(a))}</div>
+        <div class="mono" style="font-size:9.5px;color:var(--ink3)">${sch(a.t).l}</div></div>
+      <span style="color:var(--steel)">${svg(I.link,18)}</span>
+      <div style="flex:1;text-align:center"><span style="color:${sch(b.t).c}">${svg(sch(b.t).i,18)}</span>
+        <div style="font-family:var(--f-ui);font-size:13px;color:var(--ink)">${esc(titleOf(b))}</div>
+        <div class="mono" style="font-size:9.5px;color:var(--ink3)">${sch(b.t).l}</div></div></div>
+      <div class="f"><label>Intitulé de la liaison</label><select id="nlL">${REL.map(r=>`<option>${esc(r)}</option>`).join('')}</select></div>
+      <div class="f"><label>Description</label><textarea id="nlD" placeholder="Contexte, source de l'information…"></textarea></div>
+      <div class="f2"><div class="f"><label>Date de la relation</label><input id="nlDt" class="mono" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div class="f"><label>Niveau du lien</label><select id="nlW">${WEIGHT.map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></div></div>`,
+    onOk:sc=>{
+      S.edges.push({id:'e'+(++S.seq),a:a.id,b:b.id,l:$('#nlL',sc).value,d:$('#nlD',sc).value,dt:$('#nlDt',sc).value,w:$('#nlW',sc).value});
+      logAct('Création de liaison',titleOf(a)+' → '+titleOf(b)+' « '+$('#nlL',sc).value+' »');
+      render();save('Liaison créée');toast('Liaison créée',titleOf(a)+' → '+titleOf(b),'ok');
+    }});
+}
+/* ---------- outils ---------- */
+function autoGroup(){
+  const types=[...new Set(S.nodes.filter(visible).map(n=>n.t))];
+  if(!types.length)return toast('Rien à regrouper','Le tableau est vide.','warn');
+  const cols=Math.ceil(Math.sqrt(types.length));
+  types.forEach((t,i)=>{
+    const cx=260+(i%cols)*480,cy=220+Math.floor(i/cols)*400;
+    const g=S.nodes.filter(n=>n.t===t);
+    g.forEach((n,j)=>{const ang=(j/Math.max(1,g.length))*Math.PI*2,rad=g.length>1?100+g.length*10:0;
+      n.x=Math.round(cx+Math.cos(ang)*rad);n.y=Math.round(cy+Math.sin(ang)*rad)});
+  });
+  render();fitView();save('Regroupement appliqué');
+  toast('Regroupement appliqué',types.length+' groupes par type','ok');
+}
+function exportPng(){
+  toast('Export en cours','Génération de l\'image…');
+  if(typeof html2canvas!=='function')return toast('Export indisponible','Moteur de rendu non chargé.','err');
+  html2canvas($('#board'),{backgroundColor:'#C79B62',scale:2,logging:false}).then(cv=>cv.toBlob(b=>{
+    const u=URL.createObjectURL(b),a=document.createElement('a');
+    a.href=u;a.download='SASP_tableau_liaisons.png';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Image générée','','ok');
+  })).catch(()=>toast('Export impossible','Le rendu a échoué.','err'));
+}
+function exportJson(){
+  const data=JSON.stringify({nom:S.nom,dossier:S.dossier,nodes:S.nodes,edges:S.edges,seq:S.seq},null,1);
+  const b=new Blob([data],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');
+  a.href=u;a.download='tableau-liaisons.json';document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Dossier exporté','','ok');
+}
+function importJson(){
+  if(!MOI.ecriture)return toast('Lecture seule','','warn');
+  modal({title:'Importer un dossier',ok:'Importer',
+    body:`<div class="f"><label>Contenu JSON</label><textarea id="impd" class="mono" style="min-height:180px" placeholder='{"nodes":[…],"edges":[…]}'></textarea>
+      <div class="lbl" style="margin-top:6px">Le contenu actuel du tableau sera remplacé.</div></div>`,
+    onOk:sc=>{
+      try{const d=JSON.parse($('#impd',sc).value);
+        if(!d.nodes)throw 0;
+        S.nodes=d.nodes;S.edges=d.edges||[];S.seq=d.seq||500;
+        deselect();render();fitView();logAct('Import de dossier',S.nodes.length+' éléments');save('Dossier importé');
+        toast('Dossier importé','','ok');
+      }catch(e){toast('Import impossible','JSON invalide ou incomplet.','err');return false}
+    }});
+}
+
+/* ============================================================
+   NAVIGATION ET PAGES
+   ============================================================ */
+const NAV=[
+ {g:'Opérations'},
+ {r:'dash',l:'Tableau de bord',i:I.chart},
+ {r:'cases',l:'Enquêtes',i:I.case},
+ {r:'board',l:'Tableau de liaisons',i:I.web},
+ {r:'dir',l:'Répertoire',i:I.person},
+ {g:'Procédure'},
+ {r:'evidence',l:'Preuves & mandats',i:I.evid},
+ {g:'Supervision'},
+ {r:'log',l:'Journal d\'activité',i:I.book},
+ {r:'admin',l:'Administration',i:I.gear}
+];
+let ROUTE='board';
+const byType=t=>S.nodes.filter(n=>n.t===t);
+const relsOf=id=>S.edges.filter(e=>e.a===id||e.b===id)
+  .map(e=>({e,o:node(e.a===id?e.b:e.a),dir:e.a===id?'→':'←'})).filter(r=>r.o);
+const navCount={dash:()=>null,board:()=>S.nodes.length,cases:()=>byType('enquete').length,
+ dir:()=>S.nodes.length,evidence:()=>byType('preuve').length+byType('mandat').length+byType('arme').length,
+ log:()=>null,admin:()=>null};
+function renderNav(){
+  const n=$('#nav'); n.innerHTML='';
+  NAV.forEach(it=>{
+    if(it.g){n.appendChild(el('h6',null,esc(it.g)));return}
+    const c=navCount[it.r]?navCount[it.r]():null;
+    const a=el('a',ROUTE===it.r?'on':'',`${svg(it.i,15)}<span>${esc(it.l)}</span>${c!==null&&c!==undefined?`<span class="cnt">${c}</span>`:''}`);
+    a.href='#/'+it.r;
+    n.appendChild(a);
+  });
+}
+function route(){
+  const h=(location.hash.replace(/^#\/?/,'').split('/')[0])||'board';
+  ROUTE=NAV.some(x=>x.r===h)?h:'board';
+  renderNav();
+  document.body.classList.toggle('onpage',ROUTE!=='board');
+  if(innerWidth<=900)$('#sidebar').classList.remove('open');
+  if(ROUTE==='board'){setTimeout(()=>{applyView()},0);return}
+  const P={dash:pDash,cases:pCases,dir:pDir,evidence:pEvid,log:pLog,admin:pAdmin}[ROUTE];
+  const v=$('#page'); v.scrollTop=0; P(v);
+}
+const goTo=r=>{location.hash='#/'+r};
+/* ouvrir un élément sur le tableau depuis n'importe quelle page */
+function openOnBoard(id){
+  location.hash='#/board';
+  setTimeout(()=>{
+    const n=node(id); if(!n)return;
+    const r=$('#board').getBoundingClientRect();
+    S.scale=Math.max(S.scale,.85);
+    S.tx=r.width/2-n.x*S.scale-160; S.ty=r.height/2-n.y*S.scale;
+    applyView(); selectNode(id);
+  },60);
+}
+const logTime=iso=>{const d=new Date(iso),n=new Date(),m=Math.round((n-d)/60000);
+  return m<1?'à l\'instant':m<60?'il y a '+m+' min':m<1440?'il y a '+Math.round(m/60)+' h':d.toLocaleDateString('fr-FR')};
+
+/* ---------- tableau de bord ---------- */
+function pDash(v){
+  const c=byType('enquete')[0];
+  const susp=byType('suspect').length, wanted=byType('suspect').filter(n=>(n.d.situation||'').match(/Recherch|fuite/i)).length;
+  const mdt=byType('mandat').filter(n=>n.d.statut==='Actif').length;
+  const prv=byType('preuve').filter(n=>n.d.analyse!=='Terminée').length;
+  const tiles=[
+    ['Éléments au tableau',S.nodes.length,S.edges.length+' liaisons','#/board',I.web,'#C0392B',-1.2],
+    ['Suspects',susp,wanted+' recherché'+(wanted>1?'s':''),'#/dir',I.suspect,'#2E6FA8',.8],
+    ['Mandats actifs',mdt,byType('mandat').length+' au total','#/evidence',I.warrant,'#E0A82E',-.6],
+    ['Preuves en analyse',prv,byType('preuve').length+' scellés','#/evidence',I.evid,'#6B4FA8',1.1]
+  ];
+  const counts={};S.nodes.forEach(n=>counts[n.t]=(counts[n.t]||0)+1);
+  const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const mx=Math.max(1,...top.map(x=>x[1]));
+  const hot=S.nodes.filter(n=>(n.r||0)>=4).sort((a,b)=>b.r-a.r).slice(0,6);
+  v.innerHTML=`<div class="pwrap">
+   <div class="phead"><div><h1>Tableau de bord</h1>
+     <p>${c?esc(c.d.intitule||'')+' · '+esc(c.d.numero||''):esc(S.nom||'Aucun dossier')} — situation au ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}.</p></div>
+     <div class="acts"><button class="btn" id="dJson">${svg(I.dl,13)}Exporter le dossier</button>
+     <button class="btn pri" id="dBoard">${svg(I.web,13)}Ouvrir le tableau</button></div></div>
+   <div class="grid g4" style="margin-bottom:16px">${tiles.map(([k,val,d,href,ic,pc,r])=>`
+     <div class="stat" data-h="${href}" style="--pc:${pc};--r:${r}deg"><span class="pin"></span>
+       <div class="k">${svg(ic,11)}${esc(k)}</div><div class="v">${val}</div><div class="d">${esc(d)}</div></div>`).join('')}</div>
+   <div class="grid g32">
+     <section class="sheet"><header><h3>Éléments les plus sensibles</h3><div class="r"><span class="lbl">Niveau 4 et 5</span></div></header>
+       <div class="bd tight"><div class="tblwrap"><table class="pt">
+       <thead><tr><th style="width:150px">Type</th><th>Élément</th><th style="width:110px">Niveau</th><th style="width:100px">Liaisons</th></tr></thead>
+       <tbody>${hot.map(n=>`<tr class="clk" data-id="${n.id}">
+         <td><span style="color:${sch(n.t).c};display:inline-flex;gap:6px;align-items:center">${svg(sch(n.t).i,13)}${sch(n.t).l}</span></td>
+         <td><span class="ttl">${esc(titleOf(n))}</span></td>
+         <td><div class="meter"><i class="${n.r>=5?'r':'a'}" style="width:${n.r*20}%"></i></div></td>
+         <td class="mono">${relsOf(n.id).length}</td></tr>`).join('')||'<tr><td colspan="4"><div class="empty"><b>Rien à signaler</b>Aucun élément au niveau 4 ou 5.</div></td></tr>'}
+       </tbody></table></div></div></section>
+     <section class="sheet"><header><h3>Dernières actions</h3><div class="r"><a href="#/log" style="font-family:var(--f-mono);font-size:10px;color:var(--red)">TOUT VOIR →</a></div></header>
+       <div class="bd tight"><ul class="feed" id="dFeed"><li><span class="muted">Chargement…</span></li></ul></div></section>
+   </div>
+   <section class="sheet"><header><h3>Composition du tableau</h3><div class="r"><span class="lbl">${Object.keys(counts).length} types utilisés</span></div></header>
+     <div class="bd">${top.length?`<div class="grid g3" style="gap:10px 22px">${top.map(([t,n])=>`
+       <div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+         <span style="font-family:var(--f-ui);font-size:12.5px;color:var(--ink);display:inline-flex;gap:6px;align-items:center">
+           <b style="width:8px;height:8px;border-radius:2px;background:${sch(t).c};display:inline-block"></b>${sch(t).l}</span>
+         <span class="mono" style="font-size:11px;color:var(--ink3)">${n}</span></div>
+         <div class="meter"><i style="width:${n/mx*100}%;background:${sch(t).c}"></i></div></div>`).join('')}
+     </div>`:'<div class="empty"><b>Tableau vide</b>Ajoutez un premier élément depuis le Répertoire ou le tableau.</div>'}</div></section>
+  </div>`;
+  $$('.stat',v).forEach(x=>x.onclick=()=>{location.hash=x.dataset.h});
+  $$('[data-id]',v).forEach(x=>x.onclick=()=>openOnBoard(x.dataset.id));
+  $('#dBoard').onclick=()=>goTo('board');
+  $('#dJson').onclick=exportJson;
+  chargerJournal(7).then(j=>{
+    const f=$('#dFeed',v); if(!f)return;
+    f.innerHTML=j.map(l=>`<li><div class="ico">${svg(I.edit,12)}</div>
+      <div class="tx"><b>${esc(l.action)}</b><div>${esc(l.cible||'')} · ${esc(l.utilisateur||'')}</div></div>
+      <span class="tm">${logTime(l.created_at)}</span></li>`).join('')
+      ||'<li><span class="muted">Aucune action enregistrée.</span></li>';
+  });
+}
+
+/* ---------- enquêtes ---------- */
+function pCases(v){
+  const cs=byType('enquete');
+  v.innerHTML=`<div class="pwrap">
+   <div class="phead"><div><h1>Enquêtes</h1><p>Chaque dossier est un élément du tableau ; ses pièces sont celles qui lui sont reliées.</p></div>
+     <div class="acts"><button class="btn pri" id="cNew" ${MOI.ecriture?'':'disabled'}>${svg(I.plus,13)}Nouveau dossier</button></div></div>
+   ${cs.map(c=>{
+     const r=relsOf(c.id), grp={};
+     r.forEach(x=>{(grp[x.o.t]=grp[x.o.t]||[]).push(x.o)});
+     return `<section class="sheet"><header>
+       <h3>${esc(c.d.numero||'—')}</h3>
+       <span class="tag ${c.d.priorite==='Critique'?'t-red':c.d.priorite==='Haute'?'t-amb':'t-gry'}">${esc(c.d.priorite||'—')}</span>
+       <span class="tag ${c.d.statut==='Active'?'t-grn':'t-gry'}">${esc(c.d.statut||'—')}</span>
+       <span class="tag t-red">${esc(c.d.classification||'—')}</span>
+       <div class="r"><button class="btn sm" data-open="${c.id}">${svg(I.web,12)}Voir sur le tableau</button></div></header>
+       <div class="bd">
+         <div style="font-family:var(--f-ui);font-size:18px;color:var(--ink);margin-bottom:4px">${esc(c.d.intitule||'')}</div>
+         <p style="margin:0 0 12px;color:var(--ink2);max-width:78ch">${esc(c.d.resume||'')}</p>
+         <div class="grid g4" style="gap:10px;margin-bottom:12px">
+           ${[['Ouverture',c.d.ouverture],['Service',c.d.division],['Cadre',c.d.cadre],['Pièces reliées',r.length]]
+             .map(([k,x])=>`<div style="background:#F3E9CE;border:1px solid #D6C79F;border-radius:2px;padding:7px 10px">
+               <div class="lbl" style="font-size:9px">${k}</div>
+               <div style="font-family:var(--f-mono);font-size:12px;color:var(--ink)">${esc(x||'—')}</div></div>`).join('')}
+         </div>
+         <div class="lbl" style="margin-bottom:7px">Éléments rattachés</div>
+         <div class="grid g3" style="gap:10px">${Object.entries(grp).map(([t,ns])=>`
+           <div style="background:#F7F0DC;border:1px solid #D6C79F;border-radius:2px;padding:9px 11px">
+             <div style="display:flex;gap:7px;align-items:center;margin-bottom:6px;color:${sch(t).c}">
+               ${svg(sch(t).i,13)}<span style="font-family:var(--f-ui);font-size:11px;letter-spacing:.1em;text-transform:uppercase">${sch(t).l}</span>
+               <span class="mono" style="margin-left:auto;font-size:10px;color:var(--ink4)">${ns.length}</span></div>
+             ${ns.map(o=>`<div class="relrow" data-id="${o.id}" style="border-color:#E0D3B2"><span class="rn">${esc(titleOf(o))}</span></div>`).join('')}
+           </div>`).join('')||'<span class="muted">Aucun élément rattaché.</span>'}</div>
+       </div></section>`}).join('')||'<div class="sheet"><div class="empty"><b>Aucun dossier</b>Ajoutez un élément de type Enquête.</div></div>'}
+  </div>`;
+  $$('[data-open]',v).forEach(b=>b.onclick=()=>openOnBoard(b.dataset.open));
+  $$('[data-id]',v).forEach(b=>b.onclick=()=>openOnBoard(b.dataset.id));
+  $('#cNew').onclick=()=>addDlg('enquete',()=>route());
+}
+
+/* ---------- répertoire ---------- */
+// Le classement se fait sur trois niveaux : famille, type, puis recherche
+// libre. C'est là que les éléments se créent sans passer par le liège.
+let DIR={q:'',t:'',g:'',group:true};
+function pDir(v){
+  const counts={};S.nodes.forEach(n=>counts[n.t]=(counts[n.t]||0)+1);
+  const parFamille={};S.nodes.forEach(n=>{const g=sch(n.t).g;parFamille[g]=(parFamille[g]||0)+1});
+  v.innerHTML=`<div class="pwrap">
+   <div class="phead"><div><h1>Répertoire</h1><p>Toutes les fiches du tableau, classées par famille puis par type. Un clic ouvre l'élément sur le liège.</p></div>
+     <div class="acts">
+       <button class="btn" id="rGroup">${svg(I.grp,13)}<span id="rGroupL">${DIR.group?'Vue à plat':'Grouper par type'}</span></button>
+       <button class="btn pri" id="rNew" ${MOI.ecriture?'':'disabled'}>${svg(I.plus,13)}Nouvel élément</button></div></div>
+   <div class="sheet"><div class="bd">
+     <input id="rq" placeholder="Nom, plaque, numéro, référence…" value="${esc(DIR.q)}"
+       style="width:100%;max-width:420px;background:var(--paper);border:1px solid #B39A6A;border-radius:2px;padding:7px 10px;font-family:var(--f-mono);font-size:12px;color:var(--ink);margin-bottom:11px">
+     <div class="lbl" style="margin-bottom:5px">Familles</div>
+     <div class="dchip" id="rf"><button data-g="" class="${DIR.g?'':'on'}">Toutes · ${S.nodes.length}</button>
+       ${FAMILLES.filter(g=>parFamille[g]).map(g=>`<button data-g="${esc(g)}" class="${DIR.g===g?'on':''}">${esc(g)} · ${parFamille[g]}</button>`).join('')}</div>
+     <div class="lbl" style="margin-bottom:5px">Types</div>
+     <div class="dchip" id="rc"></div>
+     <div class="grid g4" id="rg" style="gap:12px"></div>
+   </div></div></div>`;
+
+  const chips=()=>{
+    const dispo=Object.keys(counts).filter(t=>!DIR.g||sch(t).g===DIR.g).sort((a,b)=>counts[b]-counts[a]);
+    if(DIR.t&&dispo.indexOf(DIR.t)===-1)DIR.t='';
+    $('#rc',v).innerHTML=`<button data-t="" class="${DIR.t?'':'on'}">Tous</button>`+
+      dispo.map(t=>`<button data-t="${t}" class="${DIR.t===t?'on':''}">${sch(t).l} · ${counts[t]}</button>`).join('');
+    $$('#rc button',v).forEach(b=>b.onclick=()=>{DIR.t=b.dataset.t;chips();draw()});
+  };
+  const carte=n=>{const T=sch(n.t),kv=(T.card(n.d)||[]).filter(x=>x&&x[1]);
+    return `<div class="dcard" data-id="${n.id}">
+      <div class="dcTop" style="background:${T.c}1f;border-bottom-color:${T.c}55">
+        <span style="color:${T.c}">${svg(T.i,14)}</span>
+        <span style="font-family:var(--f-ui);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:${T.c}">${T.l}</span></div>
+      <div class="dcBody"><div class="nm">${esc(titleOf(n))}</div>
+        <div class="sb">${kv.map(([k,x])=>esc(x)).join(' · ')||'&nbsp;'}</div>
+        <div class="meter" style="margin-top:8px"><i class="${(n.r||0)>=4?'r':(n.r||0)>=3?'a':'g'}" style="width:${(n.r||0)*20}%"></i></div></div>
+      <div class="dcFoot">${svg(I.link,12)}<b>${relsOf(n.id).length}</b> liaisons<span style="margin-left:auto;color:var(--red)">Ouvrir →</span></div>
+    </div>`};
+  const draw=()=>{
+    const q=DIR.q.toLowerCase();
+    const list=S.nodes.filter(n=>(!DIR.t||n.t===DIR.t)&&(!DIR.g||sch(n.t).g===DIR.g)&&
+      (!q||(titleOf(n)+' '+sch(n.t).l+' '+Object.values(n.d||{}).join(' ')).toLowerCase().includes(q)));
+    let html='';
+    if(!list.length){
+      html=`<div class="empty" style="grid-column:1/-1"><b>Aucune fiche</b>${
+        S.nodes.length?'Modifiez la recherche ou les filtres.':'Le tableau est vide — créez un premier élément.'}</div>`;
+    }else if(DIR.group){
+      const par={};list.forEach(n=>{(par[n.t]=par[n.t]||[]).push(n)});
+      Object.keys(par).sort((a,b)=>par[b].length-par[a].length).forEach(t=>{
+        html+=`<div class="rgroup"><b>${esc(sch(t).l)}</b><i></i><span class="n">${par[t].length}</span></div>`;
+        html+=par[t].map(carte).join('');
+      });
+    }else html=list.map(carte).join('');
+    $('#rg',v).innerHTML=html;
+    $$('#rg .dcard',v).forEach(c=>c.onclick=()=>openOnBoard(c.dataset.id));
+  };
+  chips();draw();
+  $('#rq',v).oninput=e=>{DIR.q=e.target.value;draw()};
+  $$('#rf button',v).forEach(b=>b.onclick=()=>{DIR.g=b.dataset.g;
+    $$('#rf button',v).forEach(x=>x.classList.remove('on'));b.classList.add('on');chips();draw()});
+  $('#rGroup').onclick=()=>{DIR.group=!DIR.group;$('#rGroupL').textContent=DIR.group?'Vue à plat':'Grouper par type';draw()};
+  // Création directe depuis le répertoire : la page se rafraîchit sur place.
+  $('#rNew').onclick=()=>addDlg(DIR.t||undefined,()=>route());
+}
+
+/* ---------- preuves & mandats ---------- */
+function pEvid(v){
+  const prv=byType('preuve'),mdt=byType('mandat'),arm=byType('arme'),mvt=byType('mouvement');
+  const row=(n,cols)=>`<tr class="clk" data-id="${n.id}">${cols.map(c=>`<td>${c}</td>`).join('')}</tr>`;
+  v.innerHTML=`<div class="pwrap">
+   <div class="phead"><div><h1>Preuves &amp; mandats</h1><p>Scellés, armes, actes judiciaires et chaîne de traçabilité.</p></div>
+     <div class="acts"><button class="btn" id="ePrv" ${MOI.ecriture?'':'disabled'}>${svg(I.plus,13)}Scellé</button>
+     <button class="btn" id="eMdt" ${MOI.ecriture?'':'disabled'}>${svg(I.plus,13)}Mandat</button></div></div>
+   <section class="sheet"><header><h3>Scellés</h3><div class="r"><span class="lbl">${prv.length}</span></div></header>
+     <div class="bd tight"><div class="tblwrap"><table class="pt">
+     <thead><tr><th style="width:130px">N° scellé</th><th>Pièce</th><th style="width:150px">Catégorie</th><th style="width:160px">Découverte</th><th style="width:170px">Stockage</th><th style="width:120px">Analyse</th></tr></thead>
+     <tbody>${prv.map(n=>row(n,[`<span class="mono" style="color:var(--red)">${esc(n.d.scelle||'—')}</span>`,
+       `<span class="ttl">${esc(n.d.intitule||'—')}</span>`,esc(n.d.categorie||'—'),
+       `<span class="mono" style="font-size:11px">${esc(n.d.decouverte||'—')}</span>`,esc(n.d.stockage||'—'),
+       `<span class="tag ${n.d.analyse==='Terminée'?'t-grn':n.d.analyse==='En cours'?'t-amb':'t-gry'}">${esc(n.d.analyse||'—')}</span>`])).join('')
+       ||'<tr><td colspan="6"><div class="empty"><b>Aucun scellé</b></div></td></tr>'}</tbody></table></div></div></section>
+   <section class="sheet"><header><h3>Armes</h3><div class="r"><span class="lbl">${arm.length}</span></div></header>
+     <div class="bd tight"><div class="tblwrap"><table class="pt">
+     <thead><tr><th style="width:150px">Catégorie</th><th>Arme</th><th style="width:110px">Calibre</th><th style="width:130px">N° de série</th><th style="width:130px">État</th><th style="width:150px">Balistique</th></tr></thead>
+     <tbody>${arm.map(n=>row(n,[esc(n.d.type||'—'),`<span class="ttl">${esc(titleOf(n))}</span>`,esc(n.d.calibre||'—'),
+       `<span class="mono">${esc(n.d.serie||'—')}</span>`,
+       `<span class="tag ${/Recherch|Non local/.test(n.d.etat||'')?'t-red':'t-gry'}">${esc(n.d.etat||'—')}</span>`,esc(n.d.balistique||'—')])).join('')
+       ||'<tr><td colspan="6"><div class="empty"><b>Aucune arme</b></div></td></tr>'}</tbody></table></div></div></section>
+   <section class="sheet"><header><h3>Mandats et actes</h3><div class="r"><span class="lbl">${mdt.length}</span></div></header>
+     <div class="bd tight"><div class="tblwrap"><table class="pt">
+     <thead><tr><th style="width:140px">Référence</th><th>Type d'acte</th><th style="width:180px">Magistrat</th><th style="width:110px">Émission</th><th style="width:110px">Expiration</th><th style="width:150px">Statut</th></tr></thead>
+     <tbody>${mdt.map(n=>row(n,[`<span class="mono" style="color:var(--red)">${esc(n.d.reference||'—')}</span>`,
+       `<span class="ttl">${esc(n.d.type||'—')}</span>`,esc(n.d.magistrat||'—'),
+       `<span class="mono" style="font-size:11px">${esc(n.d.emission||'—')}</span>`,
+       `<span class="mono" style="font-size:11px">${esc(n.d.expiration||'—')}</span>`,
+       `<span class="tag ${n.d.statut==='Actif'?'t-grn':n.d.statut==='Exécuté'?'t-gry':'t-amb'}">${esc(n.d.statut||'—')}</span>`])).join('')
+       ||'<tr><td colspan="6"><div class="empty"><b>Aucun mandat</b></div></td></tr>'}</tbody></table></div></div></section>
+   <section class="sheet"><header><h3>Chaîne de traçabilité</h3><div class="r"><span class="lbl">${mvt.length} mouvements</span></div></header>
+     <div class="bd tight"><ul class="feed">${mvt.map(n=>{
+       const lien=relsOf(n.id).find(r=>r.o.t==='preuve');
+       return `<li style="cursor:pointer" data-id="${n.id}"><div class="ico">${svg(I.route,12)}</div>
+       <div class="tx"><b>${esc(n.d.nature||'—')}</b><div>${esc(n.d.destination||'')}${lien?' · '+esc(titleOf(lien.o)):''}</div></div>
+       <span class="tm">${esc(n.d.date||'')}</span></li>`}).join('')||'<li><span class="muted">Aucun mouvement.</span></li>'}</ul></div></section>
+  </div>`;
+  $$('[data-id]',v).forEach(x=>x.onclick=()=>openOnBoard(x.dataset.id));
+  $('#ePrv').onclick=()=>addDlg('preuve',()=>route());
+  $('#eMdt').onclick=()=>addDlg('mandat',()=>route());
+}
+
+/* ---------- journal ---------- */
+// Le journal vient du serveur : il n'est ni modifiable ni effaçable
+// depuis le navigateur.
+async function chargerJournal(limite){
+  const r=await api('/api/sasp/journal?tableau='+BOARD_ID);
+  const j=(r.ok&&r.data.journal)||[];
+  return limite?j.slice(0,limite):j;
+}
+function pLog(v){
+  v.innerHTML=`<div class="pwrap">
+   <div class="phead"><div><h1>Journal d'activité</h1>
+     <p>Chaque ouverture, création, modification et suppression est horodatée côté serveur, avec l'identité Discord, le rôle et l'adresse IP. Le journal ne peut pas être modifié depuis le site.</p></div>
+     <div class="acts"><button class="btn" id="lRef">${svg(I.undo,13)}Actualiser</button></div></div>
+   <section class="sheet"><div class="bd tight"><div class="tblwrap"><table class="pt">
+     <thead><tr><th style="width:120px">Quand</th><th style="width:200px">Agent</th><th style="width:230px">Action</th><th>Objet</th><th style="width:130px">Adresse IP</th></tr></thead>
+     <tbody id="lBody"><tr><td colspan="5"><div class="empty">Chargement…</div></td></tr></tbody>
+     </table></div></div></section></div>`;
+  const remplir=async()=>{
+    const j=await chargerJournal();
+    $('#lBody',v).innerHTML=j.map(l=>`<tr>
+      <td class="mono" style="font-size:11px;color:var(--ink3)" title="${esc(new Date(l.created_at).toLocaleString('fr-FR'))}">${logTime(l.created_at)}</td>
+      <td><span class="ttl">${esc(l.utilisateur||'—')}</span>
+        <div class="mono" style="font-size:10px;color:var(--ink4)">${esc(l.discord_id||'—')} · ${esc(l.role||'—')}</div></td>
+      <td><span class="tag ${/Suppression|Retrait/.test(l.action)?'t-red':/Création|Ouverture d/.test(l.action)?'t-grn':'t-gry'}">${esc(l.action)}</span></td>
+      <td class="mono" style="font-size:11.5px;color:var(--ink)">${esc(l.cible||'—')}</td>
+      <td class="mono" style="font-size:11px;color:var(--ink4)">${esc(l.ip||'—')}</td></tr>`).join('')
+      ||'<tr><td colspan="5"><div class="empty"><b>Journal vide</b>Les actions apparaîtront ici.</div></td></tr>';
+  };
+  remplir();
+  $('#lRef').onclick=remplir;
+}
+
+/* ---------- administration ---------- */
+function pAdmin(v){
+  v.innerHTML=`<div class="pwrap">
+   <div class="phead"><div><h1>Administration</h1><p>Habilitations, accès nominatifs et sauvegarde du tableau.</p></div></div>
+   <section class="sheet"><header><h3>Votre accès</h3></header><div class="bd">
+     <div class="grid g3" style="gap:10px">
+       ${[['Agent',MOI.nom],['Habilitation',MOI.role],['Droits',MOI.ecriture?'Lecture et écriture':'Lecture seule']]
+         .map(([k,x])=>`<div style="background:#F3E9CE;border:1px solid #D6C79F;border-radius:2px;padding:8px 11px">
+           <div class="lbl" style="font-size:9px">${k}</div>
+           <div style="font-family:var(--f-mono);font-size:12.5px;color:var(--ink)">${esc(x||'—')}</div></div>`).join('')}
+     </div></div></section>
+
+   <section class="sheet"><header><h3>Accès nominatifs</h3>
+     <div class="r"><span class="tag ${MOI.peutGerer?'t-grn':'t-gry'}">${MOI.peutGerer?'Gestion autorisée':'Consultation refusée'}</span></div></header>
+     <div class="bd" id="acBd">
+       ${MOI.peutGerer?`
+       <p style="margin:0 0 12px;color:var(--ink2);max-width:76ch">Le Command Staff et le Lead CID ont accès de plein droit.
+       Cette liste ouvre le tableau à des personnes qui n'ont pas ces rôles. Retirer une ligne ferme l'accès immédiatement.</p>
+       <div class="f2" style="max-width:560px;align-items:end">
+         <div class="f"><label>Identifiant Discord</label><input id="acId" class="mono" placeholder="17 à 20 chiffres"></div>
+         <div class="f"><label>Nom affiché</label><input id="acNom" placeholder="Prénom Nom"></div>
+       </div>
+       <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+         <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink2)">
+           <input type="checkbox" id="acW" checked> Autoriser la modification</label>
+         <button class="btn pri" id="acAdd">${svg(I.key,13)}Ouvrir l'accès</button>
+       </div>
+       <div class="tblwrap"><table class="pt">
+         <thead><tr><th style="width:200px">Identifiant Discord</th><th>Nom</th><th style="width:130px">Droits</th><th style="width:180px">Ouvert par</th><th style="width:60px"></th></tr></thead>
+         <tbody id="acBody"><tr><td colspan="5"><div class="empty">Chargement…</div></td></tr></tbody>
+       </table></div>`
+       :`<div class="empty"><b>Réservé au Command Staff et au Lead CID</b>Vous pouvez consulter le tableau, mais pas gérer les accès.</div>`}
+     </div></section>
+
+   <section class="sheet"><header><h3>Sauvegarde</h3></header><div class="bd">
+     <p style="margin:0 0 12px;color:var(--ink2)">Le tableau est enregistré sur le serveur à chaque modification, avec un numéro de version qui empêche deux personnes de s'écraser sans le savoir. Exportez une copie avant une manipulation lourde.</p>
+     <div style="display:flex;gap:8px;flex-wrap:wrap">
+       <button class="btn" id="aExp">${svg(I.dl,13)}Exporter en JSON</button>
+       <button class="btn" id="aImp" ${MOI.ecriture?'':'disabled'}>${svg(I.copy,13)}Importer</button>
+     </div>
+     <div class="lbl" style="margin-top:12px">${S.nodes.length} éléments · ${S.edges.length} liaisons · version ${S.version}</div>
+   </div></section>
+  </div>`;
+  $('#aExp').onclick=exportJson;
+  $('#aImp').onclick=importJson;
+  if(!MOI.peutGerer)return;
+
+  const remplir=async()=>{
+    const r=await api('/api/sasp/comptes');
+    const c=(r.ok&&r.data.comptes)||[];
+    $('#acBody',v).innerHTML=c.map(x=>`<tr>
+      <td class="mono">${esc(x.discord_id)}</td>
+      <td><span class="ttl">${esc(x.nom||'—')}</span></td>
+      <td><span class="tag ${x.peut_ecrire?'t-grn':'t-gry'}">${x.peut_ecrire?'Écriture':'Lecture'}</span></td>
+      <td class="mono" style="font-size:11px;color:var(--ink3)">${esc(x.ajoute_par||'—')}</td>
+      <td><button class="btn sm dgr" data-del="${esc(x.discord_id)}">${svg(I.trash,12)}</button></td></tr>`).join('')
+      ||'<tr><td colspan="5"><div class="empty"><b>Aucun accès nominatif</b>Seuls les porteurs des rôles Discord accèdent au tableau.</div></td></tr>';
+    $$('[data-del]',v).forEach(b=>b.onclick=()=>{
+      const id=b.dataset.del;
+      confirmDlg('Fermer l\'accès',`L'accès de <b>${esc(id)}</b> sera fermé immédiatement.`,'Fermer l\'accès',async()=>{
+        const r=await api('/api/sasp/comptes?discord_id='+encodeURIComponent(id),{method:'DELETE'});
+        if(r.ok){toast('Accès fermé','','ok');remplir()}else toast('Échec',r.data.error||'','err');
+      },true);
+    });
+  };
+  remplir();
+  $('#acAdd').onclick=async()=>{
+    const id=$('#acId',v).value.trim(),nom=$('#acNom',v).value.trim();
+    if(!/^\d{17,20}$/.test(id))return toast('Identifiant invalide','Un identifiant Discord fait 17 à 20 chiffres.','err');
+    const r=await api('/api/sasp/comptes',{method:'POST',body:{discord_id:id,nom:nom,peut_ecrire:$('#acW',v).checked}});
+    if(r.ok){$('#acId',v).value='';$('#acNom',v).value='';toast('Accès ouvert',nom||id,'ok');remplir()}
+    else toast('Échec',r.data.error||'','err');
+  };
+}
+
+/* ============================================================
+   BARRES D'OUTILS · RECHERCHE · RACCOURCIS
+   ============================================================ */
+function buildTools(){
+  const w=MOI.ecriture?'':'disabled';
+  $('#gtools').innerHTML=`
+    <button class="btn sm pri" id="bAdd" ${w}>${svg(I.plus,13)}Ajouter un élément</button>
+    <button class="btn sm" id="bLink" ${w}>${svg(I.link,13)}Créer une liaison</button>
+    <button class="btn sm" id="bGroup" ${w}>${svg(I.grp,13)}Regrouper</button>
+    <button class="btn sm" id="bShow">${svg(I.eye,13)}Tout afficher</button>`;
+  $('#gright').innerHTML=`
+    <button class="btn sm" id="bPng">${svg(I.dl,13)}PNG</button>
+    <button class="btn sm" id="bPdf">${svg(I.print,13)}PDF</button>
+    <button class="btn sm" id="bFs">${svg(I.max,13)}Plein écran</button>
+    <button class="btn sm" id="bRel" title="Recharger depuis le serveur">${svg(I.undo,13)}</button>`;
+  $('#gzoom').innerHTML=`
+    <button class="btn" id="bZi" title="Zoom avant">${svg(I.zin,15)}</button>
+    <button class="btn" id="bZo" title="Zoom arrière">${svg(I.zout,15)}</button>
+    <button class="btn" id="bFit" title="Recentrer">${svg(I.fit,15)}</button>`;
+  $('#bAdd').onclick=()=>addDlg();
+  $('#bLink').onclick=()=>startLink();
+  $('#bGroup').onclick=autoGroup;
+  $('#bShow').onclick=()=>{S.hidden.clear();S.collapsed.clear();render();toast('Filtres réinitialisés','','ok')};
+  $('#lgToggle').onclick=e=>{e.stopPropagation();legendToggle()};
+  $('#lgHead').onclick=()=>legendToggle();
+  let lgs=null; try{lgs=localStorage.getItem('sasp.liaisons.legende')}catch(e){}
+  legendToggle(lgs==='min');
+  $('#bPng').onclick=exportPng;
+  $('#bPdf').onclick=()=>{toast('Export PDF','Ouverture de l\'impression…');setTimeout(()=>window.print(),400)};
+  $('#bFs').onclick=()=>{const b=$('#board');
+    if(!document.fullscreenElement)b.requestFullscreen?.();else document.exitFullscreen?.()};
+  $('#bRel').onclick=()=>confirmDlg('Recharger le tableau',
+    'La version enregistrée sur le serveur sera rechargée. Vos modifications non enregistrées seront perdues.',
+    'Recharger',()=>demarrer());
+  $('#bZi').onclick=()=>zoomBy(1.2);$('#bZo').onclick=()=>zoomBy(1/1.2);$('#bFit').onclick=()=>fitView();
+  $('#help').onclick=aide;
+}
+/* pan / zoom */
+function bindBoard(){
+  const b=$('#board');let pan=false,px,py;
+  b.addEventListener('mousedown',e=>{
+    if(e.target.closest('.node')||e.target.closest('.btn')||e.target.closest('.inspect')||e.target.closest('.legend'))return;
+    if(e.button!==0&&e.button!==1)return;
+    pan=true;px=e.clientX-S.tx;py=e.clientY-S.ty;b.style.cursor='grabbing';deselect();
+  });
+  window.addEventListener('mousemove',e=>{if(!pan)return;S.tx=e.clientX-px;S.ty=e.clientY-py;applyView()});
+  window.addEventListener('mouseup',()=>{if(pan){pan=false;b.style.cursor='';sauverVue()}});
+  b.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const r=b.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+    const f=e.deltaY<0?1.12:1/1.12,ns=Math.min(2.6,Math.max(.2,S.scale*f));
+    S.tx=mx-(mx-S.tx)*(ns/S.scale);S.ty=my-(my-S.ty)*(ns/S.scale);S.scale=ns;applyView();sauverVue();
+  },{passive:false});
+  b.addEventListener('contextmenu',e=>{
+    if(e.target.closest('.node'))return;
+    e.preventDefault();
+    ctxMenu(e.clientX,e.clientY,[{hd:'Tableau de liaisons'},
+      ...(MOI.ecriture?[{l:'Ajouter un élément',i:I.plus,k:'A',fn:()=>addDlg()},
+      {l:'Créer une liaison',i:I.link,k:'L',fn:()=>startLink()}]:[]),
+      {l:'Recentrer la vue',i:I.fit,k:'F',fn:()=>fitView()},
+      ...(MOI.ecriture?[{l:'Regrouper par type',i:I.grp,fn:autoGroup}]:[]),'-',
+      {l:'Exporter en image',i:I.dl,fn:exportPng}]);
+  });
+  window.addEventListener('resize',()=>{if(ROUTE==='board')fitView(true)});
+}
+/* recherche sur le tableau */
+function bindSearch(){
+  const q=$('#q'),sg=$('#sugg');
+  const run=()=>{
+    const v=q.value.trim().toLowerCase();
+    S.hits.clear();
+    if(!v){sg.style.display='none';render();return}
+    const res=S.nodes.filter(n=>(titleOf(n)+' '+sch(n.t).l+' '+Object.values(n.d||{}).join(' ')).toLowerCase().includes(v));
+    res.forEach(n=>S.hits.add(n.id));
+    render();
+    sg.innerHTML=res.slice(0,10).map(n=>`<div data-id="${n.id}"><span style="color:${sch(n.t).c}">${svg(sch(n.t).i,14)}</span>
+      <span>${esc(titleOf(n))}</span><span class="m">${esc(sch(n.t).l)}</span></div>`).join('')
+      ||'<div class="muted" style="cursor:default">Aucun résultat sur ce tableau</div>';
+    sg.style.display='block';
+    $$('#sugg [data-id]').forEach(r=>r.onclick=()=>{
+      const n=node(r.dataset.id),rc=$('#board').getBoundingClientRect();
+      location.hash='#/board';
+      S.scale=Math.max(S.scale,.9);S.tx=rc.width/2-n.x*S.scale-170;S.ty=rc.height/2-n.y*S.scale;
+      applyView();selectNode(n.id);sg.style.display='none';
+    });
+  };
+  q.addEventListener('input',run);
+  q.addEventListener('keydown',e=>{if(e.key==='Escape'){q.value='';run();q.blur()}});
+  document.addEventListener('click',e=>{if(!e.target.closest('.tsearch'))sg.style.display='none'});
+}
+/* raccourcis */
+function bindClavier(){
+  document.addEventListener('keydown',e=>{
+    if($('#gate').classList.contains('on'))return;
+    const typing=/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)||e.target.isContentEditable;
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#q').focus();return}
+    if(typing)return;
+    const k=e.key.toLowerCase();
+    if(e.key==='Escape'){deselect();$('#board').classList.remove('linkmode');S.linkFrom=null;return}
+    if(k==='a'){e.preventDefault();addDlg();return}
+    if(k==='l'){startLink();return}
+    if(k==='f'){fitView();return}
+    if(k==='g'){if(MOI.ecriture)autoGroup();return}
+    if(k==='r'){S.hidden.clear();S.collapsed.clear();render();return}
+    if(k==='t'){legendToggle();return}
+    if(k==='+'||k==='='){zoomBy(1.2);return}
+    if(k==='-'){zoomBy(1/1.2);return}
+    if(e.key==='Delete'&&S.sel&&MOI.ecriture){const n=node(S.sel);
+      confirmDlg('Supprimer l\'élément',`<b>${esc(titleOf(n))}</b> et ses liaisons seront supprimés.`,'Supprimer',()=>{
+        logAct('Suppression d\'élément',sch(n.t).l+' · '+titleOf(n));
+        S.edges=S.edges.filter(x=>x.a!==n.id&&x.b!==n.id);S.nodes=S.nodes.filter(x=>x.id!==n.id);
+        deselect();render();save('Élément supprimé')},true)}
+  });
+}
+function aide(){
+  modal({title:'Raccourcis et prise en main',foot:'<button class="btn pri" data-x>Fermer</button>',
+  body:`<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div><div class="lbl" style="margin-bottom:8px">Tableau</div>
+    ${[['Molette','Zoom avant / arrière'],['Glisser le fond','Déplacer la vue'],['Glisser un élément','Repositionner'],
+       ['Clic','Ouvrir la fiche'],['Clic droit','Menu contextuel'],['Clic sur un lien','Modifier la liaison']]
+      .map(([a,b])=>`<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid #C9B383"><span class="kbd">${a}</span><span style="font-size:12.5px">${b}</span></div>`).join('')}</div>
+    <div><div class="lbl" style="margin-bottom:8px">Clavier</div>
+    ${[['A','Ajouter un élément'],['L','Créer une liaison'],['F','Recentrer'],['G','Regrouper par type'],
+       ['R','Tout réafficher'],['T','Afficher / masquer la légende'],['Suppr','Supprimer la sélection'],
+       ['Ctrl K','Rechercher'],['Échap','Désélectionner']]
+      .map(([a,b])=>`<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid #C9B383"><span class="kbd">${a}</span><span style="font-size:12.5px">${b}</span></div>`).join('')}</div></div>
+    <div class="lbl" style="margin-top:16px">Champs ou liaison ?</div>
+    <p style="font-size:12.5px;color:var(--ink2);line-height:1.6;margin:6px 0 0">
+    Les champs ne portent que ce qui appartient à l'élément lui-même : un véhicule a une plaque, une marque, un modèle, une couleur, un VIN, un état de fichier ; un téléphone a un numéro, un opérateur, un IMEI, un bornage dominant ; une preuve a un scellé, une quantité, un stockage, une chaîne de traçabilité.</p>
+    <p style="font-size:12.5px;color:var(--ink2);line-height:1.6;margin:8px 0 0">
+    Tout ce qui désigne un autre élément — propriétaire, chef, titulaire, détenteur, lieu de découverte, agent, cible d'un mandat — se crée en liaison. Ajoutez l'élément, puis reliez-le : l'information reste visible sur le tableau au lieu d'être enfermée dans une fiche.</p>
+    <div class="lbl" style="margin-top:16px">Journalisation</div>
+    <p style="font-size:12.5px;color:var(--ink2);line-height:1.6;margin:6px 0 0">
+    Chaque ouverture du tableau, chaque création, modification et suppression est enregistrée côté serveur avec votre nom, votre identifiant Discord, votre rôle, la date et votre adresse IP. Le journal est consultable dans Supervision et ne peut pas être effacé depuis le site.</p>`});
+}
+
+demarrer();
+</script>
+</body>
+</html>
