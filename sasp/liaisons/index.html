@@ -191,6 +191,24 @@ button,input,select,textarea{font:inherit;color:inherit}
 .p-card .ttl{font-family:var(--f-ui);font-size:12.5px}
 #board.linkmode .node{cursor:crosshair}
 
+/* Image d'une fiche : elle prend la place de l'icône du type. */
+.node .ph.img{display:flex;padding:0;overflow:hidden;min-height:92px;border-color:rgba(0,0,0,.35)}
+.node .ph img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* Niveau d'alerte : cinq pastilles, pas de glissement à doser. */
+.pastilles{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.pas{width:28px;height:23px;border:1px solid var(--line2);background:var(--paper2);border-radius:2px;
+  cursor:pointer;font-family:var(--f-mono);font-size:10.5px;color:var(--ink4);padding:0;line-height:1;
+  transition:background .1s,color .1s,border-color .1s}
+.pas:hover{border-color:var(--line3);background:#fff}
+.pas.on{background:var(--pc);border-color:rgba(0,0,0,.4);color:#FBEBCD}
+.pasL{font-family:var(--f-ui);font-size:11.5px;color:var(--ink2);margin-left:5px}
+.teinte{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.teinte button{width:22px;height:22px;border-radius:3px;border:1px solid rgba(0,0,0,.3);cursor:pointer;padding:0}
+.teinte button.on{outline:2px solid var(--red);outline-offset:1px}
+.apercu{width:100%;max-height:150px;object-fit:cover;border:1px solid var(--line2);border-radius:2px;
+  margin-top:6px;display:block;background:#4A4640}
+
 /* ---------- ficelle ---------- */
 .edge{stroke:#A8241C;stroke-width:3.4;fill:none;stroke-linecap:round}
 .edge.cool{stroke:#245278}
@@ -501,7 +519,7 @@ table.pt tbody tr:hover{background:#F6EBC9}
 <div id="gate"><div class="gcard" id="gcard"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../../config.js?v=20260830-liaisons"></script>
+<script src="../../config.js?v=20260831-schema"></script>
 <script>
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const el=(t,c,h)=>{const n=document.createElement(t);if(c)n.className=c;if(h!==undefined)n.innerHTML=h;return n};
@@ -556,63 +574,71 @@ const I={
 };
 
 /* ============================================================
-   SCHÉMA : champs propres à chaque type d'élément
-   La clé "g" classe le type dans une famille ; elle ne touche
-   à aucun champ existant.
+   SCHÉMA DES TYPES D'ÉLÉMENTS
+   Entièrement en données, sans aucune fonction : c'est ce qui lui
+   permet de voyager en JSON et d'être modifié depuis la page
+   Administration, puis partagé avec tout le monde.
+     titre  : clés dont les valeurs composent le nom de la fiche
+     titre2 : repli quand les premières sont vides
+     carte  : lignes de la vignette, [libellé, clé] ; une clé peut
+              être un tableau de clés à accoler
+     ic     : nom de l'icône dans I
+     p      : support papier (polaroid, photo, sticky, card, sheet)
+     sc     : couleur du post-it, pour p:'sticky'
    ============================================================ */
 const SEL=(...v)=>v;
 const NOTE={k:'notes',l:'Notes d\'enquête',t:'ta'};
-const SCHEMA={
- personne:{l:'Personne',g:'Personnes',c:'#8CB8E4',i:I.person,title:d=>[d.prenom,d.nom].filter(Boolean).join(' ')||'Personne',
-  card:d=>[['STATUT',d.statut],['PROFESSION',d.profession]],
+const SCHEMA_BASE={
+ personne:{l:'Personne',g:'Personnes',c:'#8CB8E4',ic:'person',p:'polaroid',
+  titre:['prenom','nom'],carte:[['STATUT','statut'],['PROFESSION','profession']],
   f:[{k:'prenom',l:'Prénom',t:'t'},{k:'nom',l:'Nom',t:'t'},{k:'alias',l:'Alias',t:'t'},{k:'naissance',l:'Date de naissance',t:'d'},
      {k:'nationalite',l:'Nationalité',t:'t'},{k:'profession',l:'Profession',t:'t'},
      {k:'statut',l:'Statut dans l\'enquête',t:'s',o:SEL('Inconnu','Témoin','Victime','Personne d\'intérêt','Suspect','Recherché')},
      {k:'taille',l:'Taille',t:'t'},{k:'corpulence',l:'Corpulence',t:'s',o:SEL('Mince','Normale','Athlétique','Forte')},
      {k:'signes',l:'Signes distinctifs',t:'ta',full:1},NOTE]},
- suspect:{l:'Suspect',g:'Personnes',c:'#D9584A',i:I.suspect,title:d=>[d.prenom,d.nom].filter(Boolean).join(' ')||'Suspect',
-  card:d=>[['SITUATION',d.situation],['ALIAS',d.alias]],
+ suspect:{l:'Suspect',g:'Personnes',c:'#D9584A',ic:'suspect',p:'polaroid',
+  titre:['prenom','nom'],carte:[['SITUATION','situation'],['ALIAS','alias']],
   f:[{k:'prenom',l:'Prénom',t:'t'},{k:'nom',l:'Nom',t:'t'},{k:'alias',l:'Alias',t:'t'},{k:'naissance',l:'Date de naissance',t:'d'},
      {k:'nationalite',l:'Nationalité',t:'t'},
-     {k:'situation',l:'Situation',t:'s',o:SEL('Libre','Recherché','En fuite','Garde à vue','Écroué','Contrôle judiciaire')},
+     {k:'situation',l:'Situation',t:'s',o:SEL('Libre','Recherché','En fuite','Garde à vue','Contrôle judiciaire')},
      {k:'arme',l:'Port d\'arme signalé',t:'s',o:SEL('Non','Probable','Confirmé')},
      {k:'dangerosite',l:'Comportement signalé',t:'s',o:SEL('Coopératif','Fuyant','Agressif','Violent')},
      {k:'mo',l:'Mode opératoire',t:'ta',full:1},{k:'signes',l:'Signes distinctifs',t:'ta',full:1},NOTE]},
- victime:{l:'Victime',g:'Personnes',c:'#C77FBE',i:I.victim,title:d=>[d.prenom,d.nom].filter(Boolean).join(' ')||'Victime',
-  card:d=>[['ÉTAT',d.etat],['ITT',d.itt]],
+ victime:{l:'Victime',g:'Personnes',c:'#C77FBE',ic:'victim',p:'polaroid',
+  titre:['prenom','nom'],carte:[['ÉTAT','etat'],['ITT','itt']],
   f:[{k:'prenom',l:'Prénom',t:'t'},{k:'nom',l:'Nom',t:'t'},{k:'naissance',l:'Date de naissance',t:'d'},
      {k:'nationalite',l:'Nationalité',t:'t'},
      {k:'etat',l:'État',t:'s',o:SEL('Indemne','Blessé léger','Blessé grave','Décédé')},
      {k:'itt',l:'ITT constatée',t:'t'},
      {k:'suivi',l:'Suivi',t:'s',o:SEL('Aucun','Médical','Psychologique','Protection')},NOTE]},
- temoin:{l:'Témoin',g:'Personnes',c:'#5FB8A6',i:I.witness,title:d=>[d.prenom,d.nom].filter(Boolean).join(' ')||'Témoin',
-  card:d=>[['FIABILITÉ',d.fiabilite],['PROTECTION',d.protection]],
+ temoin:{l:'Témoin',g:'Personnes',c:'#5FB8A6',ic:'witness',p:'polaroid',
+  titre:['prenom','nom'],carte:[['FIABILITÉ','fiabilite'],['PROTECTION','protection']],
   f:[{k:'prenom',l:'Prénom',t:'t'},{k:'nom',l:'Nom',t:'t'},{k:'naissance',l:'Date de naissance',t:'d'},
      {k:'fiabilite',l:'Fiabilité générale',t:'s',o:SEL('À évaluer','Faible','Moyenne','Élevée')},
      {k:'protection',l:'Mesure de protection',t:'s',o:SEL('Aucune','Anonymat','Protection rapprochée')},
      {k:'disponibilite',l:'Disponibilité',t:'s',o:SEL('Joignable','Difficile à joindre','Injoignable','A quitté la zone')},NOTE]},
- agent:{l:'Agent',g:'Personnes',c:'#4E86C4',i:I.shield,title:d=>[d.prenom,d.nom].filter(Boolean).join(' ')||'Agent',
-  card:d=>[['MATRICULE',d.matricule],['HABIL.',d.habilitation]],
+ agent:{l:'Agent',g:'Personnes',c:'#4E86C4',ic:'shield',p:'polaroid',
+  titre:['prenom','nom'],carte:[['MATRICULE','matricule'],['HABIL.','habilitation']],
   f:[{k:'prenom',l:'Prénom',t:'t'},{k:'nom',l:'Nom',t:'t'},{k:'matricule',l:'Matricule',t:'t',mono:1},
      {k:'grade',l:'Grade',t:'s',o:SEL('Agent invité','Analyste','Enquêteur','Superviseur','Direction','Administrateur')},
      {k:'division',l:'Division',t:'t'},{k:'habilitation',l:'Habilitation',t:'s',o:SEL('D-5','D-4','D-3','D-2','D-1','D-0')},NOTE]},
- organisation:{l:'Organisation',g:'Organisations',c:'#C9A227',i:I.org,title:d=>d.nom||'Organisation',
-  card:d=>[['FORME',d.forme],['SECTEUR',d.secteur]],
+ organisation:{l:'Organisation',g:'Organisations',c:'#C9A227',ic:'org',p:'card',
+  titre:['nom'],carte:[['FORME','forme'],['SECTEUR','secteur']],
   f:[{k:'nom',l:'Raison sociale',t:'t',full:1},
      {k:'forme',l:'Forme',t:'s',o:SEL('Société','Société écran','Association','Établissement','Fondation')},
      {k:'secteur',l:'Secteur d\'activité',t:'t'},{k:'immat',l:'N° d\'immatriculation',t:'t',mono:1},
      {k:'creation',l:'Date de création',t:'d'},{k:'effectif',l:'Effectif déclaré',t:'n'},
      {k:'ca',l:'CA déclaré (annuel)',t:'t'},
      {k:'statut',l:'Statut',t:'s',o:SEL('Néant','Sous surveillance','Perquisitionnée','Dissoute')},NOTE]},
- groupe:{l:'Groupe criminel',g:'Organisations',c:'#E0762A',i:I.gang,title:d=>d.nom||'Groupe criminel',
-  card:d=>[['ZONE',d.zone],['EFFECTIF',d.effectif]],
-  f:[{k:'nom',l:'Dénomination',t:'t',full:1},{k:'zone',l:'Zone d\'influence',t:'t'},{k:'effectif',l:'Effectif présumé',t:'n'},
-     {k:'structure',l:'Structure',t:'s',o:SEL('Pyramidale','Cellulaire','Horizontale','Familiale')},
-     {k:'activite',l:'Activités principales',t:'ta',full:1},
+ groupe:{l:'Groupe criminel',g:'Organisations',c:'#E0762A',ic:'gang',p:'card',
+  titre:['nom'],carte:[['TYPE','type'],['ZONE','zone']],
+  f:[{k:'nom',l:'Dénomination',t:'t',full:1},
+     {k:'type',l:'Type',t:'s',o:SEL('MC','Gang','Famille','Mafia','Cartel','Milice','Indépendant')},
+     {k:'zone',l:'Zone d\'influence',t:'t'},{k:'effectif',l:'Effectif présumé',t:'n'},
      {k:'signes',l:'Signes de reconnaissance',t:'ta',full:1},
      {k:'statut',l:'Statut',t:'s',o:SEL('Actif','Sous surveillance','En reconstitution','Démantelé')},NOTE]},
- vehicule:{l:'Véhicule',g:'Biens et objets',c:'#6FA8DC',i:I.car,title:d=>d.plaque||'Véhicule',plate:1,
-  card:d=>[[null,[d.marque,d.modele].filter(Boolean).join(' ')],['ÉTAT',d.etat]],
+ vehicule:{l:'Véhicule',g:'Biens et objets',c:'#6FA8DC',ic:'car',p:'photo',
+  titre:['plaque'],carte:[[null,['marque','modele']],['ÉTAT','etat']],
   f:[{k:'plaque',l:'Immatriculation',t:'t',mono:1},{k:'marque',l:'Marque',t:'t'},{k:'modele',l:'Modèle',t:'t'},
      {k:'type',l:'Type',t:'s',o:SEL('Berline','Break','SUV','Pick-up','Utilitaire','Sportive','Moto','Poids lourd','Blindé')},
      {k:'couleur',l:'Couleur',t:'t'},{k:'annee',l:'Année',t:'n'},{k:'vin',l:'N° de série (VIN)',t:'t',mono:1},
@@ -620,77 +646,77 @@ const SCHEMA={
      {k:'assurance',l:'Assurance',t:'s',o:SEL('Valide','Expirée','Inconnue')},
      {k:'balise',l:'Géolocalisation',t:'s',o:SEL('Aucune','Balise posée','Suivi désactivé')},
      {k:'signes',l:'Signes distinctifs',t:'ta',full:1},NOTE]},
- propriete:{l:'Propriété',g:'Biens et objets',c:'#9C8B6E',i:I.house,title:d=>d.designation||'Propriété',
-  card:d=>[['TYPE',d.type],['QUARTIER',d.quartier]],
+ propriete:{l:'Propriété',g:'Biens et objets',c:'#9C8B6E',ic:'house',p:'photo',
+  titre:['designation'],carte:[['TYPE','type'],['QUARTIER','quartier']],
   f:[{k:'designation',l:'Désignation',t:'t',full:1},
      {k:'type',l:'Type de bien',t:'s',o:SEL('Maison','Appartement','Entrepôt','Commerce','Garage','Terrain','Bureau')},
      {k:'adresse',l:'Adresse',t:'t',full:1},{k:'quartier',l:'Quartier',t:'t'},{k:'superficie',l:'Superficie',t:'t'},
      {k:'etages',l:'Niveaux / accès',t:'t'},
      {k:'acces',l:'Contrôle d\'accès',t:'s',o:SEL('Libre','Portail','Vidéosurveillance','Gardiennage')},
      {k:'statut',l:'Statut',t:'s',o:SEL('Néant','Point de rencontre','Sous surveillance','Perquisitionnée','Scellée')},NOTE]},
- lieu:{l:'Lieu',g:'Biens et objets',c:'#66A88F',i:I.place,title:d=>d.nom||'Lieu',
-  card:d=>[['TYPE',d.type],['STATUT',d.statut]],
+ lieu:{l:'Lieu',g:'Biens et objets',c:'#66A88F',ic:'place',p:'photo',
+  titre:['nom'],carte:[['TYPE','type'],['STATUT','statut']],
   f:[{k:'nom',l:'Désignation',t:'t',full:1},
      {k:'type',l:'Type',t:'s',o:SEL('Adresse','Établissement','Zone portuaire','Zone industrielle','Voie publique','Parking','Hébergement')},
      {k:'adresse',l:'Adresse',t:'t',full:1},{k:'quartier',l:'Quartier / secteur',t:'t'},{k:'coord',l:'Coordonnées',t:'t',mono:1},
      {k:'frequentation',l:'Fréquentation observée',t:'t'},
      {k:'statut',l:'Statut',t:'s',o:SEL('Néant','Point de rencontre','Sous surveillance','Scène de crime','Périmètre bouclé')},
      {k:'video',l:'Vidéosurveillance',t:'s',o:SEL('Aucune','Présente','Exploitée')},NOTE]},
- arme:{l:'Arme',g:'Biens et objets',c:'#D14B3C',i:I.gun,title:d=>[d.marque,d.modele].filter(Boolean).join(' ')||d.type||'Arme',
-  card:d=>[['CALIBRE',d.calibre],['ÉTAT',d.etat]],
+ arme:{l:'Arme',g:'Biens et objets',c:'#D14B3C',ic:'gun',p:'photo',
+  titre:['marque','modele'],titre2:['type'],carte:[['CALIBRE','calibre'],['ÉTAT','etat']],
   f:[{k:'type',l:'Catégorie',t:'s',o:SEL('Pistolet','Revolver','Fusil à pompe','Fusil d\'assaut','Fusil de précision','Arme blanche','Explosif')},
      {k:'marque',l:'Marque',t:'t'},{k:'modele',l:'Modèle',t:'t'},{k:'calibre',l:'Calibre',t:'t'},
      {k:'serie',l:'N° de série',t:'t',mono:1},{k:'scelle',l:'N° de scellé',t:'t',mono:1},
      {k:'etat',l:'État',t:'s',o:SEL('Non localisée','Recherchée','Saisie','Sous analyse','Détruite')},
      {k:'balistique',l:'Analyse balistique',t:'s',o:SEL('Non demandée','En cours','Concordance','Sans concordance')},
      {k:'munitions',l:'Munitions retrouvées',t:'t'},NOTE]},
- telephone:{l:'Téléphone',g:'Communications et finances',c:'#7FCBD1',i:I.phone,title:d=>d.numero||'Numéro',
-  card:d=>[['OPÉRATEUR',d.operateur],['STATUT',d.statut]],
+ telephone:{l:'Téléphone',g:'Communications et finances',c:'#7FCBD1',ic:'phone',p:'sticky',sc:'#BCE0E6',
+  titre:['numero'],carte:[['OPÉRATEUR','operateur'],['STATUT','statut']],
   f:[{k:'numero',l:'Numéro',t:'t',mono:1},{k:'operateur',l:'Opérateur',t:'t'},
      {k:'type',l:'Type de ligne',t:'s',o:SEL('Abonnement','Prépayée','Professionnelle','Chiffrée')},
      {k:'imei',l:'IMEI',t:'t',mono:1},{k:'modele',l:'Modèle d\'appareil',t:'t'},
      {k:'activation',l:'Date d\'activation',t:'d'},{k:'appels',l:'Appels relevés (30 j)',t:'n'},
      {k:'bornage',l:'Bornage dominant',t:'t',full:1},
      {k:'statut',l:'Statut',t:'s',o:SEL('Active','Inactive','Sur écoute','Saisie')},NOTE]},
- compte:{l:'Compte bancaire',g:'Communications et finances',c:'#79B77A',i:I.bank,title:d=>d.numero||'Compte',
-  card:d=>[['BANQUE',d.banque],['STATUT',d.statut]],
+ compte:{l:'Compte bancaire',g:'Communications et finances',c:'#79B77A',ic:'bank',p:'sticky',sc:'#CFE9BE',
+  titre:['numero'],carte:[['BANQUE','banque'],['STATUT','statut']],
   f:[{k:'numero',l:'N° de compte / IBAN',t:'t',mono:1,full:1},{k:'banque',l:'Établissement',t:'t'},
      {k:'type',l:'Type de compte',t:'s',o:SEL('Courant','Épargne','Professionnel','Offshore','Crypto')},
      {k:'ouverture',l:'Date d\'ouverture',t:'d'},{k:'devise',l:'Devise',t:'t'},
      {k:'juridiction',l:'Juridiction de domiciliation',t:'t'},
      {k:'statut',l:'Statut',t:'s',o:SEL('Actif','Sous réquisition','Gelé','Clôturé')},NOTE]},
- transaction:{l:'Transaction',g:'Communications et finances',c:'#8FC26B',i:I.swap,title:d=>d.montant?d.montant+' '+(d.devise||''):'Transaction',
-  card:d=>[['SENS',d.sens],['DATE',d.date]],
+ transaction:{l:'Transaction',g:'Communications et finances',c:'#8FC26B',ic:'swap',p:'sticky',sc:'#DCEFC2',
+  titre:['montant','devise'],titre2:['reference'],carte:[['SENS','sens'],['DATE','date']],
   f:[{k:'reference',l:'Référence',t:'t',mono:1},{k:'montant',l:'Montant',t:'t',mono:1},{k:'devise',l:'Devise',t:'t'},
      {k:'sens',l:'Sens',t:'s',o:SEL('Entrant','Sortant','Interne')},
      {k:'moyen',l:'Moyen',t:'s',o:SEL('Virement','Espèces','Chèque','Crypto-actif','Mandat','Compensation')},
      {k:'date',l:'Date d\'exécution',t:'d'},{k:'motif',l:'Motif déclaré',t:'t',full:1},
      {k:'statut',l:'Statut',t:'s',o:SEL('Relevée','Justifiée','Suspecte','Signalée','Gelée')},NOTE]},
- evenement:{l:'Événement',g:'Faits',c:'#E2B44F',i:I.event,title:d=>d.intitule||'Événement',
-  card:d=>[['QUAND',d.debut],['TYPE',d.type]],
+ evenement:{l:'Événement',g:'Faits',c:'#E2B44F',ic:'event',p:'sticky',sc:'#F7E389',
+  titre:['intitule'],carte:[['QUAND','debut'],['TYPE','type']],
   f:[{k:'intitule',l:'Intitulé',t:'t',full:1},
      {k:'type',l:'Type',t:'s',o:SEL('Rencontre','Appel','Livraison','Transaction','Altercation','Interpellation','Perquisition','Surveillance')},
      {k:'debut',l:'Date et heure',t:'t',mono:1},{k:'duree',l:'Durée',t:'t'},
      {k:'source',l:'Source de l\'information',t:'s',o:SEL('Constatation directe','Surveillance','Témoignage','Écoute','Vidéo','Informateur')},
      {k:'fiabilite',l:'Fiabilité',t:'s',o:SEL('À évaluer','Faible','Moyenne','Élevée','Certaine')},
      {k:'deroule',l:'Déroulé',t:'ta',full:1},NOTE]},
- infraction:{l:'Infraction',g:'Faits',c:'#E06A50',i:I.scale,title:d=>d.qualification||'Infraction',
-  card:d=>[['GRAVITÉ',d.gravite],['STATUT',d.statut]],
+ infraction:{l:'Infraction',g:'Faits',c:'#E06A50',ic:'scale',p:'card',
+  titre:['qualification'],carte:[['GRAVITÉ','gravite'],['STATUT','statut']],
   f:[{k:'qualification',l:'Qualification',t:'t',full:1},
      {k:'categorie',l:'Catégorie',t:'s',o:SEL('Stupéfiants','Atteinte aux personnes','Atteinte aux biens','Financier','Armes','Faux','Autre')},
      {k:'gravite',l:'Gravité',t:'s',o:SEL('Contravention','Délit','Crime')},
      {k:'date_faits',l:'Date des faits',t:'d'},{k:'circonstances',l:'Circonstances aggravantes',t:'t'},
      {k:'peine_encourue',l:'Peine encourue',t:'t'},
      {k:'statut',l:'Statut',t:'s',o:SEL('Présumée','Établie','Requalifiée','Classée sans suite','Prescrite')},NOTE]},
- condamnation:{l:'Condamnation',g:'Faits',c:'#B5495F',i:I.gavel,title:d=>d.qualification||'Condamnation',
-  card:d=>[['JUGEMENT',d.date_jugement],['PEINE',d.peine]],
+ condamnation:{l:'Condamnation',g:'Faits',c:'#B5495F',ic:'gavel',p:'card',
+  titre:['qualification'],carte:[['JUGEMENT','date_jugement'],['PEINE','peine']],
   f:[{k:'reference',l:'Référence',t:'t',mono:1},{k:'qualification',l:'Qualification retenue',t:'t',full:1},
      {k:'categorie',l:'Catégorie',t:'s',o:SEL('Stupéfiants','Atteinte aux personnes','Atteinte aux biens','Financier','Armes','Faux','Autre')},
      {k:'date_faits',l:'Date des faits',t:'d'},{k:'date_jugement',l:'Date du jugement',t:'d'},
      {k:'juridiction',l:'Juridiction',t:'t'},{k:'peine',l:'Peine prononcée',t:'t'},
      {k:'statut',l:'Statut',t:'s',o:SEL('Définitive','En appel','Purgée','Sursis','Amnistiée')},NOTE]},
- enquete:{l:'Enquête',g:'Dossier et pièces',c:'#5B8FC7',i:I.case,title:d=>d.intitule||d.numero||'Enquête',
-  card:d=>[['DOSSIER',d.numero],['STATUT',d.statut]],
+ enquete:{l:'Enquête',g:'Dossier et pièces',c:'#5B8FC7',ic:'case',p:'sheet',
+  titre:['intitule'],titre2:['numero'],carte:[['DOSSIER','numero'],['STATUT','statut']],
   f:[{k:'numero',l:'N° de dossier',t:'t',mono:1},{k:'intitule',l:'Intitulé',t:'t',full:1},
      {k:'priorite',l:'Priorité',t:'s',o:SEL('Basse','Moyenne','Haute','Critique')},
      {k:'classification',l:'Confidentialité',t:'s',o:SEL('Restreint','Confidentiel','Secret')},
@@ -698,8 +724,8 @@ const SCHEMA={
      {k:'ouverture',l:'Date d\'ouverture',t:'d'},{k:'division',l:'Service responsable',t:'t'},
      {k:'cadre',l:'Cadre juridique',t:'s',o:SEL('Enquête préliminaire','Flagrance','Information judiciaire','Renseignement')},
      {k:'resume',l:'Résumé des faits',t:'ta',full:1},NOTE]},
- preuve:{l:'Preuve',g:'Dossier et pièces',c:'#B9A6E0',i:I.evid,title:d=>d.intitule||d.scelle||'Preuve',
-  card:d=>[['SCELLÉ',d.scelle],['ANALYSE',d.analyse]],
+ preuve:{l:'Preuve',g:'Dossier et pièces',c:'#B9A6E0',ic:'evid',p:'sheet',
+  titre:['intitule'],titre2:['scelle'],carte:[['SCELLÉ','scelle'],['ANALYSE','analyse']],
   f:[{k:'scelle',l:'N° de scellé',t:'t',mono:1},
      {k:'categorie',l:'Catégorie',t:'s',o:SEL('Trace biologique','Empreinte','Support numérique','Stupéfiants','Document','Objet','Vidéo')},
      {k:'intitule',l:'Intitulé',t:'t',full:1},{k:'decouverte',l:'Date et heure de découverte',t:'t',mono:1},
@@ -707,22 +733,22 @@ const SCHEMA={
      {k:'analyse',l:'Statut d\'analyse',t:'s',o:SEL('En attente','En cours','Terminée','Sans résultat')},
      {k:'scelle_etat',l:'Intégrité du scellé',t:'s',o:SEL('Intact','Ouvert sous contrôle','Rompu')},
      {k:'conservation',l:'Conditions de conservation',t:'s',o:SEL('Ambiante','Réfrigérée','Sous coffre','Isolement électronique')},NOTE]},
- photo:{l:'Photo',g:'Dossier et pièces',c:'#A0AEC0',i:I.photo,title:d=>d.reference||'Photo',
-  card:d=>[['SOURCE',d.source],['DATE',d.date]],
+ photo:{l:'Photo',g:'Dossier et pièces',c:'#A0AEC0',ic:'photo',p:'photo',
+  titre:['reference'],carte:[['SOURCE','source'],['DATE','date']],
   f:[{k:'reference',l:'Référence',t:'t',mono:1},
      {k:'source',l:'Source',t:'s',o:SEL('Caméra de surveillance','Téléphone','Surveillance physique','Photo signalétique','Réseaux sociaux')},
      {k:'date',l:'Date de prise de vue',t:'t',mono:1},{k:'resolution',l:'Définition',t:'t'},
      {k:'qualite',l:'Qualité d\'exploitation',t:'s',o:SEL('Faible','Correcte','Bonne','Excellente')},
      {k:'horodatage',l:'Horodatage vérifié',t:'s',o:SEL('Oui','Non','À vérifier')},NOTE]},
- document:{l:'Document',g:'Dossier et pièces',c:'#9AA7B8',i:I.doc,title:d=>d.intitule||d.reference||'Document',
-  card:d=>[['TYPE',d.type],['DATE',d.date]],
+ document:{l:'Document',g:'Dossier et pièces',c:'#9AA7B8',ic:'doc',p:'sheet',
+  titre:['intitule'],titre2:['reference'],carte:[['TYPE','type'],['DATE','date']],
   f:[{k:'reference',l:'Référence',t:'t',mono:1},{k:'intitule',l:'Intitulé',t:'t',full:1},
      {k:'type',l:'Nature',t:'s',o:SEL('Contrat','Relevé bancaire','Registre','Facture','Pièce d\'identité','Correspondance','Rapport')},
      {k:'date',l:'Date du document',t:'d'},{k:'support',l:'Support',t:'s',o:SEL('Papier','Numérique','Copie')},
      {k:'pages',l:'Nombre de pages',t:'n'},
      {k:'authenticite',l:'Authenticité',t:'s',o:SEL('Non vérifiée','Authentique','Falsifié','Douteux')},NOTE]},
- declaration:{l:'Déclaration',g:'Dossier et pièces',c:'#93C5C0',i:I.speech,title:d=>d.reference||d.type||'Déclaration',
-  card:d=>[['TYPE',d.type],['DATE',d.date]],
+ declaration:{l:'Déclaration',g:'Dossier et pièces',c:'#93C5C0',ic:'speech',p:'sheet',
+  titre:['reference'],titre2:['type'],carte:[['TYPE','type'],['DATE','date']],
   f:[{k:'reference',l:'Référence du procès-verbal',t:'t',mono:1},
      {k:'type',l:'Type',t:'s',o:SEL('Audition libre','Audition sous garde à vue','Déposition spontanée','Confrontation','Interrogatoire','Appel anonyme','Signalement')},
      {k:'date',l:'Date et heure',t:'t',mono:1},{k:'duree',l:'Durée',t:'t'},
@@ -731,29 +757,65 @@ const SCHEMA={
      {k:'fiabilite',l:'Fiabilité de la déclaration',t:'s',o:SEL('À évaluer','Faible','Moyenne','Élevée','Corroborée')},
      {k:'exploitation',l:'Exploitation',t:'s',o:SEL('À exploiter','Exploitée','Contredite','Rétractée')},
      {k:'resume',l:'Résumé de la déclaration',t:'ta',full:1},NOTE]},
- mandat:{l:'Mandat',g:'Dossier et pièces',c:'#CF7B4F',i:I.warrant,title:d=>d.reference||'Mandat',
-  card:d=>[['TYPE',d.type],['EXPIRE',d.expiration]],
+ mandat:{l:'Mandat',g:'Dossier et pièces',c:'#CF7B4F',ic:'warrant',p:'sheet',
+  titre:['reference'],carte:[['TYPE','type'],['EXPIRE','expiration']],
   f:[{k:'reference',l:'Référence',t:'t',mono:1},
      {k:'type',l:'Type d\'acte',t:'s',o:SEL('Mandat d\'arrêt','Mandat de perquisition','Mandat d\'amener','Réquisition bancaire','Autorisation de géolocalisation','Autorisation d\'écoute')},
      {k:'magistrat',l:'Magistrat signataire',t:'t',full:1},
      {k:'emission',l:'Date d\'émission',t:'d'},{k:'expiration',l:'Date d\'expiration',t:'d'},
      {k:'statut',l:'Statut',t:'s',o:SEL('Demandé','En attente de signature','Actif','Exécuté','Expiré','Refusé')},
      {k:'portee',l:'Portée / périmètre',t:'ta',full:1},NOTE]},
- mouvement:{l:'Mouvement de scellé',g:'Dossier et pièces',c:'#8A8FB0',i:I.route,title:d=>d.nature||'Mouvement',
-  card:d=>[['QUAND',d.date],['INTÉGRITÉ',d.integrite]],
+ mouvement:{l:'Mouvement de scellé',g:'Dossier et pièces',c:'#8A8FB0',ic:'route',p:'sticky',sc:'#DCD9EE',
+  titre:['nature'],titre2:['reference'],carte:[['QUAND','date'],['INTÉGRITÉ','integrite']],
   f:[{k:'reference',l:'Référence',t:'t',mono:1},
      {k:'nature',l:'Nature du mouvement',t:'s',o:SEL('Mise sous scellé','Transport','Dépôt au greffe','Consultation','Transmission au laboratoire','Analyse','Restitution','Destruction')},
      {k:'date',l:'Date et heure',t:'t',mono:1},{k:'destination',l:'Destination / emplacement',t:'t',full:1},
      {k:'integrite',l:'Intégrité constatée',t:'s',o:SEL('Intact','Ouvert sous contrôle','Rompu')},
      {k:'motif',l:'Motif',t:'t',full:1},NOTE]}
 };
-const TYPES=Object.keys(SCHEMA);
-// Familles, dans l'ordre où elles apparaissent dans le schéma.
-const FAMILLES=[...new Set(TYPES.map(t=>SCHEMA[t].g))];
+
+// Le schéma stocké est de pures données ; les fonctions d'affichage
+// sont reconstruites ici, à chaque chargement comme à chaque
+// modification depuis l'Administration.
+function construireSchema(brut){
+  const out={};
+  Object.keys(brut).forEach(k=>{
+    const t=Object.assign({},brut[k]);
+    t.i=I[t.ic]||I.doc;
+    if(!t.p)t.p='sheet';
+    const lire=(d,cle)=>Array.isArray(cle)?cle.map(x=>d[x]).filter(Boolean).join(' '):d[cle];
+    t.title=d=>{
+      d=d||{};
+      const a=(t.titre||[]).map(x=>d[x]).filter(Boolean).join(' ');
+      if(a)return a;
+      const b=(t.titre2||[]).map(x=>d[x]).filter(Boolean).join(' ');
+      return b||t.l;
+    };
+    t.card=d=>(t.carte||[]).map(c=>[c[0],lire(d||{},c[1])]);
+    out[k]=t;
+  });
+  return out;
+}
+let SCHEMA_DONNEES=JSON.parse(JSON.stringify(SCHEMA_BASE));
+let SCHEMA=construireSchema(SCHEMA_DONNEES);
+let TYPES=Object.keys(SCHEMA);
+let FAMILLES=[...new Set(TYPES.map(t=>SCHEMA[t].g))];
+function appliquerSchema(brut){
+  SCHEMA_DONNEES=brut;
+  SCHEMA=construireSchema(brut);
+  TYPES=Object.keys(SCHEMA);
+  FAMILLES=[...new Set(TYPES.map(t=>SCHEMA[t].g))];
+}
+// Icônes proposées quand on crée ou modifie un type.
+const ICONES=['person','suspect','victim','witness','shield','org','gang','car','house','place',
+ 'phone','bank','gun','evid','photo','doc','event','case','warrant','speech','gavel','scale','swap',
+ 'route','chart','web','book','gear','link','key','alert'];
+const SUPPORTS=[['polaroid','Polaroïd'],['photo','Photo'],['sticky','Post-it'],['card','Fiche cartonnée'],['sheet','Feuille']];
+
 const REL=['Membre de','Chef de','Employé par','Propriétaire de','Détient','Titulaire de','Utilise la ligne',
  'A appelé','A rencontré','A vendu à','A transféré de l\'argent à','Habite à','Domicilié à','Occupe',
  'Présent sur les lieux','Véhicule utilisé pendant','Suspecté de','Victime de','Témoin de','Participe à',
- 'Auteur de la déclaration','Déclaration recueillie par','Porte sur','Contredit','Corrobore',
+ 'Activité du groupe','Auteur de la déclaration','Déclaration recueillie par','Porte sur','Contredit','Corrobore',
  'Condamné pour','Mis en cause pour','Infraction du dossier',
  'Émise depuis','Créditée sur','Mouvement du scellé','Effectué par',
  'Preuve retrouvée chez','Découverte à','Saisie par','Rédigé par','Objet du mandat','Rattaché au dossier',
@@ -916,6 +978,13 @@ async function demarrer(){
   try{const {data}=await SB.auth.getSession();SESSION=data.session}catch(e){SESSION=null}
   if(!SESSION){porte('connexion');return}
 
+  // Le schéma partagé d'abord : les fiches en dépendent pour s'afficher.
+  try{
+    const s=await api('/api/sasp/schema');
+    if(s.ok&&s.data.data&&Object.keys(s.data.data).length)appliquerSchema(s.data.data);
+    else appliquerSchema(JSON.parse(JSON.stringify(SCHEMA_BASE)));
+  }catch(e){}
+
   const r=await api('/api/sasp/board/'+BOARD_ID);
   if(r.statut===401){porte('connexion');return}
   if(r.statut===403){porte('refus',r.data);return}
@@ -941,7 +1010,12 @@ async function demarrer(){
 }
 
 const node=id=>S.nodes.find(n=>n.id===id);
-const sch=t=>SCHEMA[t]||SCHEMA.personne;
+// Un type retire du schema ne doit pas casser le tableau : les fiches
+// qui l utilisaient restent lisibles, signalees comme type inconnu,
+// plutot que de se faire passer pour autre chose.
+const TYPE_INCONNU={l:'Type inconnu',g:'Sans famille',c:'#9AA7B8',i:I.alert,p:'sheet',f:[],
+  title:d=>Object.values(d||{}).filter(x=>typeof x==='string'&&x)[0]||'Élément',card:()=>[]};
+const sch=t=>SCHEMA[t]||TYPE_INCONNU;
 const titleOf=n=>sch(n.t).title(n.d||{})||sch(n.t).l;
 const initials=s=>{const w=String(s||'').replace(/["'«»].*?["'«»]/g,' ').split(/[\s\-·.]+/).filter(x=>x.length>1);
   return ((w[0]?.[0]||'')+(w.length>1?w[w.length-1][0]:(w[0]?.[1]||''))).toUpperCase()||'—'};
@@ -1010,19 +1084,46 @@ function fieldsHTML(t,d,idp){
   });
   flush();return out;
 }
-const riskHTML=(v,idp)=>`<div class="f"><label>Niveau de danger / d'importance</label>
-  <div class="rangeRow"><input id="${idp}_risk" type="range" min="0" max="5" value="${v||0}">
-  <b id="${idp}_riskv">${v||0}</b><span class="lbl">/5</span></div>
-  <div class="meter" style="margin-top:6px"><i id="${idp}_riskm" class="${v>=4?'r':v>=3?'a':'g'}" style="width:${(v||0)*20}%"></i></div></div>`;
+// Niveau d'alerte : cinq pastilles à cliquer. Recliquer celle qui est
+// active remet à zéro, ce qui évite un bouton « aucun » de plus.
+const NIVEAUX=['Aucun','Faible','Surveillance','Élevé','Critique','Maximal'];
+const NIV_TEINTES=['','#3E7A4E','#8FA83A','#C0761A','#C4392C','#7C1712'];
+function niveauHTML(v,idp){
+  v=+v||0;
+  return `<div class="f"><label>Niveau d'alerte</label>
+    <div class="pastilles" id="${idp}niv" data-v="${v}">
+      ${[1,2,3,4,5].map(i=>`<button type="button" class="pas${i<=v?' on':''}" data-n="${i}"
+         style="--pc:${NIV_TEINTES[i]}" title="${esc(NIVEAUX[i])}">${i}</button>`).join('')}
+      <span class="pasL" id="${idp}nivL">${esc(NIVEAUX[v])}</span>
+    </div></div>`;
+}
+function lireNiveau(racine,idp){
+  const z=racine.querySelector('#'+idp+'niv');
+  return z?(+z.dataset.v||0):0;
+}
+function ecrireNiveau(racine,idp,v){
+  const z=racine.querySelector('#'+idp+'niv'); if(!z)return;
+  z.dataset.v=v;
+  z.querySelectorAll('.pas').forEach(b=>b.classList.toggle('on',+b.dataset.n<=v));
+  const l=racine.querySelector('#'+idp+'nivL'); if(l)l.textContent=NIVEAUX[v];
+}
+function brancherNiveau(racine,idp,apres){
+  const z=racine.querySelector('#'+idp+'niv'); if(!z)return;
+  z.querySelectorAll('.pas').forEach(b=>b.onclick=()=>{
+    let v=+b.dataset.n;
+    if(v===lireNiveau(racine,idp))v=0;
+    ecrireNiveau(racine,idp,v);
+    if(apres)apres(v);
+  });
+}
 
-/* ---------- supports papier, épingles, inclinaison ---------- */
-const PAPER={personne:'polaroid',suspect:'polaroid',victime:'polaroid',temoin:'polaroid',agent:'polaroid',
- vehicule:'photo',propriete:'photo',lieu:'photo',arme:'photo',photo:'photo',
- telephone:'sticky',compte:'sticky',transaction:'sticky',evenement:'sticky',mouvement:'sticky',
- organisation:'card',groupe:'card',infraction:'card',condamnation:'card',
- preuve:'sheet',document:'sheet',mandat:'sheet',enquete:'sheet',declaration:'sheet'};
-const STICKY={telephone:'#BCE0E6',compte:'#CFE9BE',transaction:'#DCEFC2',evenement:'#F7E389',mouvement:'#DCD9EE'};
+/* ---------- épingles, inclinaison, teintes ---------- */
+// Le support papier et la couleur du post-it sont désormais portés par
+// le schéma (clés p et sc), donc modifiables depuis Types d'éléments.
 const PINS=['#C0392B','#2E6FA8','#E0A82E','#6B4FA8','#2E8B57','#D95F02','#B03060'];
+// Teintes proposées pour colorer une fiche à la main.
+const TEINTES=['#F6E38B','#F7C6A0','#F2A9A2','#E7B7DA','#C9C0EE','#BCE0E6','#BFE3C6','#DCEFC2',
+ '#E4D6B4','#D8D2C6','#FBF6E9','#C7B299'];
 function hashOf(id){let h=0;for(let i=0;i<id.length;i++)h=(h*31+id.charCodeAt(i))|0;return Math.abs(h)}
 const rotOf=id=>((hashOf(id)%9)-4)*0.9;
 const pinOf=id=>PINS[hashOf(id+'p')%PINS.length];
@@ -1036,16 +1137,21 @@ function render(){
   const nl=$('#gnodes');
   nl.innerHTML=S.nodes.filter(visible).map(n=>{
     const T=sch(n.t),d=n.d||{},kv=(T.card(d)||[]).filter(x=>x&&x[1]);
-    const pp=PAPER[n.t]||'sheet';
-    const st=pp==='sticky'?`--sticky:${STICKY[n.t]||'#F6E38B'};`:'';
+    const pp=T.p||'sheet';
+    // La couleur posée sur la fiche l'emporte sur celle du type.
+    const teinte=n.couleur||T.sc||'#F6E38B';
+    const accent=n.couleur||T.c;
+    const st=pp==='sticky'?`--sticky:${teinte};`:'';
     const body=`
-      <div class="ph">${svg(T.i,pp==='photo'?34:30,1.4)}</div>
-      <div class="tlab" style="color:${pp==='sticky'?'':T.c}">${T.l}</div>
+      <div class="ph${n.image?' img':''}">${n.image
+        ?`<img src="${esc(n.image)}" alt="" onerror="this.parentNode.classList.remove('img');this.remove()">`
+        :svg(T.i,pp==='photo'?34:30,1.4)}</div>
+      <div class="tlab" style="color:${pp==='sticky'?'':accent}">${T.l}</div>
       <div class="ttl">${esc(titleOf(n))}</div>
       ${kv.map(([k,v])=>`<div class="kv">${k?`<b>${k}</b>`:''}${esc(v)}</div>`).join('')}
       <div class="risk">${[0,1,2,3,4].map(i=>`<i class="${i<(n.r||0)?((n.r||0)>=4?'hi':'on'):''}"></i>`).join('')}</div>`;
     return `<div class="node p-${pp}${S.sel===n.id?' sel':''}${S.hits.has(n.id)?' hit':''}" data-id="${n.id}"
-      style="left:${n.x}px;top:${n.y}px;--rot:${rotOf(n.id)}deg;--pc:${pinOf(n.id)};--tc:${T.c};${st}">
+      style="left:${n.x}px;top:${n.y}px;--rot:${rotOf(n.id)}deg;--pc:${pinOf(n.id)};--tc:${accent};${st}">
       ${pp==='sheet'||pp==='photo'?'<span class="tape"></span>':''}
       <span class="pin"></span>
       ${pp==='card'?`<div class="topline"></div><div class="inner">${body}</div>`:body}
@@ -1166,8 +1272,24 @@ function selectNode(id){
    <div class="body">
      <div class="isec">Fiche ${esc(T.l.toLowerCase())}<span id="fSave"></span></div>
      <p style="margin:-4px 0 10px;font-size:11px;color:#7A6746;line-height:1.45">Rattachements à d'autres éléments : voir Relations ci-dessous.</p>
-     ${riskHTML(n.r,'i_')}
+     ${niveauHTML(n.r,'i_')}
      <div id="iFields">${fieldsHTML(n.t,d,'i_')}</div>
+     <div class="isec">Apparence</div>
+     <div class="f"><label>Couleur de cette fiche</label>
+       <div class="teinte" id="iTeinte">
+         <button data-c="" class="${n.couleur?'':'on'}" title="Couleur du type"
+           style="background:${T.sc||T.c}"></button>
+         ${TEINTES.map(c=>`<button data-c="${c}" class="${n.couleur===c?'on':''}" style="background:${c}"></button>`).join('')}
+         <input type="color" id="iCol" value="${esc(n.couleur||T.sc||T.c)}" style="width:30px;height:23px;padding:0;border:1px solid var(--line2)">
+       </div></div>
+     <div class="f"><label>Image (lien, ou fichier depuis le poste)</label>
+       <input id="iImg" value="${esc(n.image&&n.image.slice(0,5)==='data:'?'':(n.image||''))}"
+         placeholder="https://…"></div>
+     <div style="display:flex;gap:6px;flex-wrap:wrap">
+       <button class="btn sm" id="iImgF">${svg(I.photo,12)}Choisir un fichier</button>
+       <button class="btn sm" id="iImgX">${svg(I.x,12)}Retirer</button></div>
+     <input type="file" id="iImgI" accept="image/*" style="display:none">
+     ${n.image?`<img class="apercu" src="${esc(n.image)}" alt="">`:''}
      <div class="isec">Relations<span>${rels.length}</span></div>
      ${rels.map(r=>`<div class="relrow" data-rel="${r.e.id}" data-node="${r.o.id}">
         <span style="color:${sch(r.o.t).c};flex:none">${svg(sch(r.o.t).i,14)}</span>
@@ -1227,13 +1349,59 @@ function bindInspector(n){
         measure();drawEdges();
       }});
   });
-  const rg=$('#i__risk',p);
-  if(rg)rg.addEventListener('input',()=>{
-    n.r=+rg.value;$('#i__riskv',p).textContent=n.r;
-    const m=$('#i__riskm',p);m.style.width=(n.r*20)+'%';m.className=n.r>=4?'r':n.r>=3?'a':'g';
+  brancherNiveau(p,'i_',v=>{
+    n.r=v;
     const nd=$(`#gnodes .node[data-id="${n.id}"] .risk`);
     if(nd)nd.innerHTML=[0,1,2,3,4].map(i=>`<i class="${i<n.r?(n.r>=4?'hi':'on'):''}"></i>`).join('');
-    flag()});
+    flag();
+  });
+
+  // Apparence : couleur et image de cette fiche uniquement.
+  const poser=(c)=>{
+    if(c)n.couleur=c; else delete n.couleur;
+    $$('#iTeinte button',p).forEach(b=>b.classList.toggle('on',(b.dataset.c||'')===(c||'')));
+    render();flag();
+  };
+  $$('#iTeinte button',p).forEach(b=>b.onclick=()=>poser(b.dataset.c||''));
+  const col=$('#iCol',p);
+  if(col)col.addEventListener('change',()=>poser(col.value));
+
+  const champImg=$('#iImg',p);
+  if(champImg)champImg.addEventListener('change',()=>{
+    const u=champImg.value.trim();
+    if(u)n.image=u; else delete n.image;
+    render();flag();selectNode(n.id);
+  });
+  const fich=$('#iImgI',p);
+  const btnF=$('#iImgF',p);
+  if(btnF)btnF.onclick=()=>fich.click();
+  if(fich)fich.addEventListener('change',()=>{
+    const f=fich.files&&fich.files[0]; if(!f)return;
+    reduireImage(f,480,url=>{n.image=url;render();flag();selectNode(n.id);
+      toast('Image ajoutée','Réduite pour ne pas alourdir le tableau.','ok')});
+  });
+  const btnX=$('#iImgX',p);
+  if(btnX)btnX.onclick=()=>{delete n.image;render();flag();selectNode(n.id)};
+}
+
+// Les images sont enregistrées avec le tableau : on les réduit avant
+// de les y mettre, sinon quelques photos suffisent à peser plusieurs
+// mégaoctets à chaque sauvegarde.
+function reduireImage(fichier,cote,apres){
+  const fr=new FileReader();
+  fr.onload=()=>{
+    const im=new Image();
+    im.onload=()=>{
+      const r=Math.min(1,cote/Math.max(im.width,im.height));
+      const w=Math.round(im.width*r),h=Math.round(im.height*r);
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      cv.getContext('2d').drawImage(im,0,0,w,h);
+      apres(cv.toDataURL('image/jpeg',0.72));
+    };
+    im.onerror=()=>toast('Image illisible','Format non reconnu.','err');
+    im.src=fr.result;
+  };
+  fr.readAsDataURL(fichier);
 }
 function selectEdge(id){
   const e=S.edges.find(x=>x.id===id); if(!e)return;
@@ -1282,7 +1450,7 @@ function selectEdge(id){
    ============================================================ */
 function addDlg(preset,apres){
   if(!MOI.ecriture){toast('Lecture seule','Votre accès ne permet pas de modifier le tableau.','warn');return}
-  let t=preset||'personne';
+  let t=(preset&&SCHEMA[preset])?preset:TYPES[0];
   const grille=()=>FAMILLES.map(g=>
     `<div class="tgroup">${esc(g)}</div>`+
     TYPES.filter(k=>SCHEMA[k].g===g).map(k=>`<button data-t="${k}" class="${k===t?'on':''}">
@@ -1294,7 +1462,7 @@ function addDlg(preset,apres){
     <div class="lbl" id="ffLbl" style="margin:14px 0 4px">Champs · ${esc(sch(t).l)}</div>
     <p style="margin:0 0 10px;font-size:11.5px;color:#7A6746;line-height:1.5">Propriétaire, chef, titulaire, lieu, agent : ces rattachements se créent en liaison, pas en champ.</p>
     <div id="ff">${fieldsHTML(t,{},'a_')}</div>
-    ${riskHTML(0,'a_')}`;
+    ${niveauHTML(0,'a_')}`;
   return modal({title:'Ajouter un élément au tableau',ok:'Ajouter au tableau',body:body,
     after:(sc)=>{
       $$('#tg button',sc).forEach(b=>b.onclick=()=>{
@@ -1303,14 +1471,12 @@ function addDlg(preset,apres){
         $('#ff',sc).innerHTML=fieldsHTML(t,{},'a_');
         $('#ffLbl',sc).textContent='Champs · '+sch(t).l;
       });
-      const rg=$('#a__risk',sc);
-      rg.addEventListener('input',()=>{$('#a__riskv',sc).textContent=rg.value;
-        const m2=$('#a__riskm',sc);m2.style.width=(rg.value*20)+'%';m2.className=rg.value>=4?'r':rg.value>=3?'a':'g'});
+      brancherNiveau(sc,'a_');
     },
     onOk:sc=>{
       const d={};
       $$('#ff [data-k]',sc).forEach(i=>{if(i.value)d[i.dataset.k]=i.value});
-      const r=+$('#a__risk',sc).value;
+      const r=lireNiveau(sc,'a_');
       const b=$('#board').getBoundingClientRect();
       // Depuis une page interne le tableau n'est pas mesurable : on pose
       // l'élément près du centre du nuage existant.
@@ -1432,6 +1598,7 @@ const NAV=[
  {g:'Procédure'},
  {r:'evidence',l:'Preuves & mandats',i:I.evid},
  {g:'Supervision'},
+ {r:'types',l:'Types d\'éléments',i:I.filt},
  {r:'log',l:'Journal d\'activité',i:I.book},
  {r:'admin',l:'Administration',i:I.gear}
 ];
@@ -1441,7 +1608,7 @@ const relsOf=id=>S.edges.filter(e=>e.a===id||e.b===id)
   .map(e=>({e,o:node(e.a===id?e.b:e.a),dir:e.a===id?'→':'←'})).filter(r=>r.o);
 const navCount={dash:()=>null,board:()=>S.nodes.length,cases:()=>byType('enquete').length,
  dir:()=>S.nodes.length,evidence:()=>byType('preuve').length+byType('mandat').length+byType('arme').length,
- log:()=>null,admin:()=>null};
+ types:()=>TYPES.length,log:()=>null,admin:()=>null};
 function renderNav(){
   const n=$('#nav'); n.innerHTML='';
   NAV.forEach(it=>{
@@ -1459,7 +1626,7 @@ function route(){
   document.body.classList.toggle('onpage',ROUTE!=='board');
   if(innerWidth<=900)$('#sidebar').classList.remove('open');
   if(ROUTE==='board'){setTimeout(()=>{applyView()},0);return}
-  const P={dash:pDash,cases:pCases,dir:pDir,evidence:pEvid,log:pLog,admin:pAdmin}[ROUTE];
+  const P={dash:pDash,cases:pCases,dir:pDir,evidence:pEvid,types:pTypes,log:pLog,admin:pAdmin}[ROUTE];
   const v=$('#page'); v.scrollTop=0; P(v);
 }
 const goTo=r=>{location.hash='#/'+r};
@@ -1718,6 +1885,198 @@ function pLog(v){
   $('#lRef').onclick=remplir;
 }
 
+/* ---------- types d'éléments ---------- */
+// L'éditeur travaille sur une copie : rien ne bouge pour les autres tant
+// qu'on n'a pas enregistré. Le schéma étant partagé, une modification
+// vaut pour tout le monde.
+let TYP={sel:null,brouillon:null,sale:false};
+const CHAMP_TYPES=[['t','Texte'],['ta','Texte long'],['s','Liste de choix'],['d','Date'],['n','Nombre']];
+
+function pTypes(v){
+  if(!TYP.brouillon)TYP.brouillon=JSON.parse(JSON.stringify(SCHEMA_DONNEES));
+  const B=TYP.brouillon;
+  if(!TYP.sel||!B[TYP.sel])TYP.sel=Object.keys(B)[0]||null;
+  const compte={};S.nodes.forEach(n=>compte[n.t]=(compte[n.t]||0)+1);
+
+  v.innerHTML=`<div class="pwrap">
+   <div class="phead"><div><h1>Types d'éléments</h1>
+     <p>Le contenu des fiches se règle ici : champs, listes de choix, couleur, icône et support papier.
+        Le schéma est partagé — ce que vous enregistrez vaut pour tout le monde.</p></div>
+     <div class="acts">
+       <button class="btn" id="tyReset">${svg(I.undo,13)}Schéma d'origine</button>
+       <button class="btn pri" id="tySave" ${MOI.peutGerer?'':'disabled'}>${svg(I.chk,13)}Enregistrer</button></div></div>
+   ${MOI.peutGerer?'':'<div class="sheet"><div class="empty"><b>Lecture seule</b>Seuls le Command Staff et le Lead CID peuvent modifier le schéma.</div></div>'}
+   <div class="grid" style="grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:14px;align-items:start">
+     <section class="sheet"><header><h3>Les types</h3><div class="r"><span class="lbl" id="tyN"></span></div></header>
+       <div class="bd" style="padding:9px">
+         <div id="tyListe"></div>
+         <button class="btn sm" id="tyNew" style="width:100%;justify-content:center;margin-top:9px" ${MOI.peutGerer?'':'disabled'}>${svg(I.plus,12)}Nouveau type</button>
+       </div></section>
+     <div id="tyEdit"></div>
+   </div></div>`;
+
+  const liste=()=>{
+    const fam={};Object.keys(B).forEach(k=>{(fam[B[k].g||'Sans famille']=fam[B[k].g||'Sans famille']||[]).push(k)});
+    $('#tyN',v).textContent=Object.keys(B).length+' types';
+    $('#tyListe',v).innerHTML=Object.keys(fam).map(g=>
+      `<div class="lbl" style="margin:9px 0 4px">${esc(g)}</div>`+
+      fam[g].map(k=>`<div class="relrow" data-k="${esc(k)}" style="${TYP.sel===k?'background:#F2D98A;':''}padding:5px 6px;border-bottom:1px solid #E0D3B2">
+        <span style="color:${esc(B[k].c||'#888')};flex:none">${svg(I[B[k].ic]||I.doc,14)}</span>
+        <span class="rn">${esc(B[k].l||k)}</span>
+        <span class="rv">${compte[k]||0}</span></div>`).join('')
+    ).join('');
+    $$('#tyListe [data-k]',v).forEach(r=>r.onclick=()=>{TYP.sel=r.dataset.k;liste();editeur()});
+  };
+
+  const editeur=()=>{
+    const k=TYP.sel,t=k&&B[k];
+    if(!t){$('#tyEdit',v).innerHTML='<div class="sheet"><div class="empty"><b>Aucun type</b>Créez-en un.</div></div>';return}
+    const ro=MOI.peutGerer?'':'disabled';
+    $('#tyEdit',v).innerHTML=`<section class="sheet">
+      <header><span style="color:${esc(t.c||'#888')}">${svg(I[t.ic]||I.doc,16)}</span>
+        <h3>${esc(t.l||k)}</h3>
+        <div class="r"><span class="mono" style="font-size:10.5px;color:var(--ink4)">clé : ${esc(k)}</span>
+        <button class="btn sm dgr" id="tyDel" ${ro}>${svg(I.trash,12)}Supprimer</button></div></header>
+      <div class="bd">
+        <div class="f2">
+          <div class="f"><label>Nom affiché</label><input id="tyL" value="${esc(t.l||'')}" ${ro}></div>
+          <div class="f"><label>Famille</label><input id="tyG" value="${esc(t.g||'')}" list="tyFam" ${ro}>
+            <datalist id="tyFam">${[...new Set(Object.values(B).map(x=>x.g).filter(Boolean))].map(g=>`<option>${esc(g)}</option>`).join('')}</datalist></div>
+        </div>
+        <div class="f2">
+          <div class="f"><label>Couleur du type</label>
+            <div style="display:flex;gap:7px;align-items:center">
+              <input type="color" id="tyC" value="${esc(t.c||'#8CB8E4')}" style="width:44px;height:30px;padding:0" ${ro}>
+              <input id="tyCT" class="mono" value="${esc(t.c||'')}" style="flex:1" ${ro}></div></div>
+          <div class="f"><label>Support papier</label><select id="tyP" ${ro}>
+            ${SUPPORTS.map(([a,b2])=>`<option value="${a}" ${t.p===a?'selected':''}>${esc(b2)}</option>`).join('')}</select></div>
+        </div>
+        <div class="f2">
+          <div class="f"><label>Icône</label><select id="tyIc" ${ro}>
+            ${ICONES.map(i=>`<option value="${i}" ${t.ic===i?'selected':''}>${i}</option>`).join('')}</select></div>
+          <div class="f"><label>Couleur du post-it</label>
+            <input type="color" id="tySc" value="${esc(t.sc||'#F6E38B')}" style="width:44px;height:30px;padding:0" ${ro}>
+            <span class="lbl" style="margin-left:7px">${t.p==='sticky'?'utilisée':'sans effet sur ce support'}</span></div>
+        </div>
+        <div class="isec">Nom de la fiche</div>
+        <p style="margin:-4px 0 9px;font-size:11.5px;color:var(--ink3)">Les champs dont les valeurs composent le titre, séparés par des virgules.</p>
+        <div class="f2">
+          <div class="f"><label>Clés du titre</label><input id="tyTi" class="mono" value="${esc((t.titre||[]).join(', '))}" ${ro}></div>
+          <div class="f"><label>Repli si vide</label><input id="tyTi2" class="mono" value="${esc((t.titre2||[]).join(', '))}" ${ro}></div>
+        </div>
+        <div class="isec">Lignes de la vignette</div>
+        ${[0,1].map(i=>{const c=(t.carte||[])[i]||['',''];
+          return `<div class="f2"><div class="f"><label>Libellé ${i+1}</label>
+            <input class="tyCa" data-i="${i}" data-p="0" value="${esc(c[0]||'')}" ${ro}></div>
+            <div class="f"><label>Clé ${i+1}</label>
+            <input class="tyCa mono" data-i="${i}" data-p="1" value="${esc(Array.isArray(c[1])?c[1].join(' '):(c[1]||''))}" ${ro}></div></div>`}).join('')}
+        <div class="isec">Champs de la fiche<span>${(t.f||[]).length}</span></div>
+        <div class="tblwrap"><table class="pt"><thead><tr>
+          <th style="width:135px">Clé</th><th>Libellé</th><th style="width:130px">Type</th>
+          <th>Choix (séparés par des ;)</th><th style="width:70px">Large</th><th style="width:86px"></th></tr></thead>
+          <tbody id="tyF"></tbody></table></div>
+        <button class="btn sm" id="tyAddF" style="margin-top:10px" ${ro}>${svg(I.plus,12)}Ajouter un champ</button>
+      </div></section>`;
+
+    const champs=()=>{
+      const F=t.f||(t.f=[]);
+      $('#tyF',v).innerHTML=F.map((f,i)=>`<tr>
+        <td><input class="tyf mono" data-i="${i}" data-k="k" value="${esc(f.k||'')}" style="width:100%;background:var(--paper);border:1px solid #C9B383;border-radius:2px;padding:4px 6px" ${ro}></td>
+        <td><input class="tyf" data-i="${i}" data-k="l" value="${esc(f.l||'')}" style="width:100%;background:var(--paper);border:1px solid #C9B383;border-radius:2px;padding:4px 6px" ${ro}></td>
+        <td><select class="tyf" data-i="${i}" data-k="t" style="width:100%;background:var(--paper);border:1px solid #C9B383;border-radius:2px;padding:4px 6px" ${ro}>
+          ${CHAMP_TYPES.map(([a,b2])=>`<option value="${a}" ${(f.t||'t')===a?'selected':''}>${esc(b2)}</option>`).join('')}</select></td>
+        <td><input class="tyf" data-i="${i}" data-k="o" value="${esc((f.o||[]).join(' ; '))}" placeholder="${f.t==='s'?'Choix 1 ; Choix 2':'—'}" ${f.t==='s'?'':'disabled'} style="width:100%;background:var(--paper);border:1px solid #C9B383;border-radius:2px;padding:4px 6px" ${ro}></td>
+        <td style="text-align:center"><input type="checkbox" class="tyf" data-i="${i}" data-k="full" ${f.full?'checked':''} ${ro}></td>
+        <td><button class="btn sm" data-mv="${i}" data-d="-1" title="Monter" ${ro}>↑</button>
+            <button class="btn sm" data-mv="${i}" data-d="1" title="Descendre" ${ro}>↓</button>
+            <button class="btn sm dgr" data-rm="${i}" title="Retirer" ${ro}>×</button></td></tr>`).join('')
+        ||'<tr><td colspan="6"><div class="empty">Aucun champ. Ce type n\'aurait que son niveau d\'alerte.</div></td></tr>';
+
+      $$('#tyF .tyf',v).forEach(x=>x.addEventListener('change',()=>{
+        const f=F[+x.dataset.i],c=x.dataset.k;
+        if(c==='full'){x.checked?f.full=1:delete f.full}
+        else if(c==='o'){const l=x.value.split(';').map(s=>s.trim()).filter(Boolean);
+          if(l.length)f.o=l;else delete f.o}
+        else if(c==='t'){f.t=x.value;if(f.t!=='s')delete f.o;champs()}
+        else f[c]=x.value;
+        TYP.sale=true;
+      }));
+      $$('#tyF [data-mv]',v).forEach(b=>b.onclick=()=>{
+        const i=+b.dataset.mv,j=i+ +b.dataset.d;
+        if(j<0||j>=F.length)return;
+        const tmp=F[i];F[i]=F[j];F[j]=tmp;TYP.sale=true;champs();
+      });
+      $$('#tyF [data-rm]',v).forEach(b=>b.onclick=()=>{
+        F.splice(+b.dataset.rm,1);TYP.sale=true;champs();
+      });
+    };
+    champs();
+
+    const lier=(id,cle,transf)=>{const x=$('#'+id,v);if(!x)return;
+      x.addEventListener('change',()=>{const val=transf?transf(x.value):x.value;
+        if(val===''||val===null||(Array.isArray(val)&&!val.length))delete t[cle];else t[cle]=val;
+        TYP.sale=true;liste();editeur()})};
+    lier('tyL','l');lier('tyG','g');lier('tyP','p');lier('tyIc','ic');
+    const cles=s=>s.split(',').map(x=>x.trim()).filter(Boolean);
+    lier('tyTi','titre',cles);lier('tyTi2','titre2',cles);
+    const cc=$('#tyC',v),ct=$('#tyCT',v);
+    if(cc)cc.addEventListener('change',()=>{t.c=cc.value;TYP.sale=true;liste();editeur()});
+    if(ct)ct.addEventListener('change',()=>{if(/^#[0-9a-f]{6}$/i.test(ct.value)){t.c=ct.value;TYP.sale=true;liste();editeur()}});
+    const sc=$('#tySc',v);
+    if(sc)sc.addEventListener('change',()=>{t.sc=sc.value;TYP.sale=true});
+    $$('.tyCa',v).forEach(x=>x.addEventListener('change',()=>{
+      t.carte=t.carte||[];
+      const i=+x.dataset.i;t.carte[i]=t.carte[i]||['',''];
+      if(x.dataset.p==='0')t.carte[i][0]=x.value||null;
+      else{const m=x.value.trim().split(/\s+/).filter(Boolean);t.carte[i][1]=m.length>1?m:(m[0]||'')}
+      t.carte=t.carte.filter(c=>c&&(c[0]||c[1]));
+      TYP.sale=true;
+    }));
+    $('#tyAddF',v).onclick=()=>{(t.f=t.f||[]).push({k:'nouveau_champ',l:'Nouveau champ',t:'t'});TYP.sale=true;editeur()};
+    $('#tyDel',v).onclick=()=>{
+      const n=compte[k]||0;
+      confirmDlg('Supprimer le type',
+        `Le type <b>${esc(t.l||k)}</b> sera retiré du schéma.`+
+        (n?` <b>${n} élément${n>1?'s':''}</b> du tableau ${n>1?'utilisent':'utilise'} ce type et ${n>1?'deviendront illisibles':'deviendra illisible'}.`:' Aucun élément ne l\'utilise.'),
+        'Supprimer',()=>{delete B[k];TYP.sel=null;TYP.sale=true;pTypes(v)},true);
+    };
+  };
+
+  liste();editeur();
+
+  $('#tyNew').onclick=()=>{
+    modal({title:'Nouveau type d\'élément',ok:'Créer',
+      body:`<div class="f"><label>Clé (sans espace ni accent, elle ne changera plus)</label>
+          <input id="nkK" class="mono" placeholder="informateur"></div>
+        <div class="f"><label>Nom affiché</label><input id="nkL" placeholder="Informateur"></div>
+        <div class="f"><label>Famille</label><input id="nkG" value="Personnes" list="tyFam2">
+          <datalist id="tyFam2">${[...new Set(Object.values(B).map(x=>x.g).filter(Boolean))].map(g=>`<option>${esc(g)}</option>`).join('')}</datalist></div>`,
+      onOk:sc2=>{
+        const k=$('#nkK',sc2).value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
+        if(!k)  {toast('Clé manquante','','err');return false}
+        if(B[k]){toast('Clé déjà prise','','err');return false}
+        B[k]={l:$('#nkL',sc2).value.trim()||k,g:$('#nkG',sc2).value.trim()||'Sans famille',
+              c:'#8CB8E4',ic:'doc',p:'sheet',titre:['nom'],carte:[],
+              f:[{k:'nom',l:'Nom',t:'t',full:1},{k:'notes',l:'Notes d\'enquête',t:'ta'}]};
+        TYP.sel=k;TYP.sale=true;pTypes(v);
+      }});
+  };
+
+  $('#tyReset').onclick=()=>confirmDlg('Revenir au schéma d\'origine',
+    'Tous vos réglages de types seront remplacés par le schéma livré avec AEGIS. Les éléments déjà posés ne sont pas touchés.',
+    'Rétablir',()=>{TYP.brouillon=JSON.parse(JSON.stringify(SCHEMA_BASE));TYP.sale=true;TYP.sel=null;pTypes(v)},true);
+
+  $('#tySave').onclick=async()=>{
+    const b=$('#tySave',v);b.disabled=true;b.textContent='Enregistrement…';
+    const r=await api('/api/sasp/schema',{method:'PUT',body:{data:B}});
+    b.disabled=false;b.innerHTML=svg(I.chk,13)+'Enregistrer';
+    if(!r.ok){toast('Enregistrement impossible',r.data.error||'','err');return}
+    appliquerSchema(JSON.parse(JSON.stringify(B)));
+    TYP.sale=false;
+    render();toast('Schéma enregistré','Il s\'applique à tout le monde.','ok');
+  };
+}
+
 /* ---------- administration ---------- */
 function pAdmin(v){
   v.innerHTML=`<div class="pwrap">
@@ -1751,6 +2110,11 @@ function pAdmin(v){
        </table></div>`
        :`<div class="empty"><b>Réservé au Command Staff et au Lead CID</b>Vous pouvez consulter le tableau, mais pas gérer les accès.</div>`}
      </div></section>
+
+   <section class="sheet"><header><h3>Contenu des fiches</h3></header><div class="bd">
+     <p style="margin:0 0 12px;color:var(--ink2);max-width:76ch">Les champs de chaque type d'élément, leurs listes de choix, leur couleur et leur support papier se règlent dans <b>Types d'éléments</b>. Le schéma est partagé : une modification vaut pour tout le monde.</p>
+     <a class="btn" href="#/types">${svg(I.filt,13)}Ouvrir les types d'éléments</a>
+   </div></section>
 
    <section class="sheet"><header><h3>Sauvegarde</h3></header><div class="bd">
      <p style="margin:0 0 12px;color:var(--ink2)">Le tableau est enregistré sur le serveur à chaque modification, avec un numéro de version qui empêche deux personnes de s'écraser sans le savoir. Exportez une copie avant une manipulation lourde.</p>

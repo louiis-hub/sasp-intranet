@@ -5870,6 +5870,46 @@ export default {
           return json({ ok: true, version: Number(actuel.version) + 1, updated_at: maintenant });
         }
 
+        // ── Schema des types d'elements ─────────────────────────────
+        // Partage par tout le monde : lisible par quiconque a acces au
+        // tableau, modifiable seulement par ceux qui gerent les acces.
+        if (url.pathname === "/api/sasp/schema" && request.method === "GET") {
+          try {
+            const rows = await sb(env, "GET", "/liaisons_schema?id=eq.1&select=*");
+            const s = rows && rows[0];
+            return json({ ok: true, data: (s && s.data) || null, version: (s && s.version) || 0 });
+          } catch (e) {
+            // Table absente : le site retombe sur le schema livre dans la page.
+            return json({ ok: true, data: null, version: 0, absente: true });
+          }
+        }
+
+        if (url.pathname === "/api/sasp/schema" && request.method === "PUT") {
+          if (!qui.peutGerer) {
+            return json({ ok: false, error: "Reserve au Command Staff et au Lead CID." }, 403);
+          }
+          const corps = await request.json().catch(() => null);
+          if (!corps || typeof corps.data !== "object" || corps.data === null) {
+            return json({ ok: false, error: "Schema invalide." }, 400);
+          }
+          const rows = await sb(env, "GET", "/liaisons_schema?id=eq.1&select=version");
+          const actuel = rows && rows[0];
+          const maintenant = new Date().toISOString();
+          if (!actuel) {
+            await sb(env, "POST", "/liaisons_schema", {
+              id: 1, data: corps.data, version: 1, updated_at: maintenant, updated_by: qui.nom
+            });
+          } else {
+            await sb(env, "PATCH", "/liaisons_schema?id=eq.1", {
+              data: corps.data, version: Number(actuel.version) + 1,
+              updated_at: maintenant, updated_by: qui.nom
+            });
+          }
+          await liaisonsJournaliser(env, request, qui, null, "Modification du schema",
+            Object.keys(corps.data).length + " types");
+          return json({ ok: true, version: actuel ? Number(actuel.version) + 1 : 1 });
+        }
+
         // ── Journal ─────────────────────────────────────────────────
         if (url.pathname === "/api/sasp/journal" && request.method === "GET") {
           const t = url.searchParams.get("tableau") || "";
