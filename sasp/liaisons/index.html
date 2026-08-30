@@ -2373,6 +2373,9 @@ function bindBoard(){
   window.addEventListener('mousemove',e=>{if(!pan)return;S.tx=e.clientX-px;S.ty=e.clientY-py;applyView()});
   window.addEventListener('mouseup',()=>{if(pan){pan=false;b.style.cursor='';sauverVue()}});
   b.addEventListener('wheel',e=>{
+    // La chemise et la legende sont des enfants du tableau : sans cette
+    // sortie, la molette y zoomait au lieu de faire defiler la fiche.
+    if(e.target.closest('.inspect')||e.target.closest('.legend'))return;
     e.preventDefault();
     const r=b.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
     const f=e.deltaY<0?1.12:1/1.12,ns=Math.min(2.6,Math.max(.2,S.scale*f));
