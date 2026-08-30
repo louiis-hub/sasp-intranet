@@ -459,7 +459,7 @@ var LIAISONS_ROLES_FRONT = ['1500975725153620033', '1501526499910746132'];
 
 function ouvrirLeLogoLiaisons(logo, origine) {
   logo.classList.add('logo-liaisons-ouvert');
-  logo.title = 'Ouvrir le tableau de liaisons';
+  logo.title = 'AEGIS · ouvrir l outil d enquete';
   logo.style.cursor = 'pointer';
   logo.onclick = function() { window.location.href = 'sasp/liaisons/'; };
   console.log('[liaisons] lien actif (' + origine + ')');
