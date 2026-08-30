@@ -184,7 +184,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .p-sheet .tlab{font-family:var(--f-ui);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
   border-bottom:1px solid var(--line2);padding-bottom:4px;margin-bottom:5px}
 .p-sheet .ttl{font-family:var(--f-ui);font-size:12.5px}
-.p-card{background:#FCFAF2;padding:0 0 9px;overflow:hidden}
+/* Pas d overflow:hidden ici : il rognait l epingle, qui deborde en haut.
+   C est la bande de couleur qui est arrondie a la place. */
+.p-card{background:#FCFAF2;padding:0 0 9px}
+.p-card .topline{border-radius:1px 1px 0 0}
 .p-card .topline{height:7px;background:var(--tc,#A8221B);margin-bottom:7px}
 .p-card .inner{padding:0 11px}
 .p-card .tlab{font-family:var(--f-ui);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink4)}
@@ -796,15 +799,35 @@ function construireSchema(brut){
   });
   return out;
 }
-let SCHEMA_DONNEES=JSON.parse(JSON.stringify(SCHEMA_BASE));
-let SCHEMA=construireSchema(SCHEMA_DONNEES);
-let TYPES=Object.keys(SCHEMA);
-let FAMILLES=[...new Set(TYPES.map(t=>SCHEMA[t].g))];
+// Le schema enregistre porte tout ce qui se regle depuis le site : les
+// types, l ordre des familles, et les intitules de liaison. L ancienne
+// forme, une simple table de types, reste acceptee.
+function normaliserPaquet(brut){
+  if(brut&&brut.types)return {types:brut.types,familles:brut.familles||null,relations:brut.relations||null};
+  return {types:brut||{},familles:null,relations:null};
+}
+let SCHEMA_DONNEES={},SCHEMA={},TYPES=[],FAMILLES=[],REL=[];
 function appliquerSchema(brut){
-  SCHEMA_DONNEES=brut;
-  SCHEMA=construireSchema(brut);
+  const p=normaliserPaquet(brut);
+  SCHEMA_DONNEES=p.types;
+  SCHEMA=construireSchema(p.types);
   TYPES=Object.keys(SCHEMA);
-  FAMILLES=[...new Set(TYPES.map(t=>SCHEMA[t].g))];
+  // L ordre choisi fait foi ; une famille apparue depuis se range a la fin.
+  const vues=[...new Set(TYPES.map(t=>SCHEMA[t].g||'Sans famille'))];
+  FAMILLES=(p.familles&&p.familles.length)
+    ? p.familles.filter(g=>vues.indexOf(g)!==-1).concat(vues.filter(g=>p.familles.indexOf(g)===-1))
+    : vues;
+  REL=(p.relations&&p.relations.length)?p.relations.slice():REL_BASE.slice();
+}
+function paquetActuel(){
+  return {types:SCHEMA_DONNEES,familles:FAMILLES.slice(),relations:REL.slice()};
+}
+// Deplace une cle dans un objet en conservant l ordre des autres.
+function reordonnerCles(obj,cle,delta){
+  const ks=Object.keys(obj),i=ks.indexOf(cle),j=i+delta;
+  if(i<0||j<0||j>=ks.length)return obj;
+  ks.splice(j,0,ks.splice(i,1)[0]);
+  const out={};ks.forEach(k=>out[k]=obj[k]);return out;
 }
 // Icônes proposées quand on crée ou modifie un type.
 const ICONES=['person','suspect','victim','witness','shield','org','gang','car','house','place',
@@ -812,7 +835,7 @@ const ICONES=['person','suspect','victim','witness','shield','org','gang','car',
  'route','chart','web','book','gear','link','key','alert'];
 const SUPPORTS=[['polaroid','Polaroïd'],['photo','Photo'],['sticky','Post-it'],['card','Fiche cartonnée'],['sheet','Feuille']];
 
-const REL=['Membre de','Chef de','Employé par','Propriétaire de','Détient','Titulaire de','Utilise la ligne',
+const REL_BASE=['Membre de','Chef de','Employé par','Propriétaire de','Détient','Titulaire de','Utilise la ligne',
  'A appelé','A rencontré','A vendu à','A transféré de l\'argent à','Habite à','Domicilié à','Occupe',
  'Présent sur les lieux','Véhicule utilisé pendant','Suspecté de','Victime de','Témoin de','Participe à',
  'Activité du groupe','Auteur de la déclaration','Déclaration recueillie par','Porte sur','Contredit','Corrobore',
@@ -820,6 +843,7 @@ const REL=['Membre de','Chef de','Employé par','Propriétaire de','Détient','T
  'Émise depuis','Créditée sur','Mouvement du scellé','Effectué par',
  'Preuve retrouvée chez','Découverte à','Saisie par','Rédigé par','Objet du mandat','Rattaché au dossier',
  'Associé à','En conflit avec','Protège','Fournit','Référent du dossier'];
+appliquerSchema(JSON.parse(JSON.stringify(SCHEMA_BASE)));
 const WEIGHT=[['','Neutre','#3A4B60'],['cool','Vérifié','#5B8FC7'],['warm','À confirmer','#D2811F'],['hot','Critique','#C4392C']];
 
 /* ============================================================
@@ -1888,50 +1912,148 @@ function pLog(v){
 /* ---------- types d'éléments ---------- */
 // L'éditeur travaille sur une copie : rien ne bouge pour les autres tant
 // qu'on n'a pas enregistré. Le schéma étant partagé, une modification
-// vaut pour tout le monde.
-let TYP={sel:null,brouillon:null,sale:false};
+// vaut ensuite pour tout le monde.
+let TYP={sel:null,types:null,familles:null,relations:null,sale:false};
 const CHAMP_TYPES=[['t','Texte'],['ta','Texte long'],['s','Liste de choix'],['d','Date'],['n','Nombre']];
 
+function typBrouillon(){
+  if(!TYP.types){
+    TYP.types=JSON.parse(JSON.stringify(SCHEMA_DONNEES));
+    TYP.familles=FAMILLES.slice();
+    TYP.relations=REL.slice();
+  }
+}
+function typFamillesVues(){
+  const vues=[...new Set(Object.keys(TYP.types).map(k=>TYP.types[k].g||'Sans famille'))];
+  return TYP.familles.filter(g=>vues.indexOf(g)!==-1).concat(vues.filter(g=>TYP.familles.indexOf(g)===-1));
+}
+
 function pTypes(v){
-  if(!TYP.brouillon)TYP.brouillon=JSON.parse(JSON.stringify(SCHEMA_DONNEES));
-  const B=TYP.brouillon;
+  typBrouillon();
+  const B=TYP.types;
   if(!TYP.sel||!B[TYP.sel])TYP.sel=Object.keys(B)[0]||null;
   const compte={};S.nodes.forEach(n=>compte[n.t]=(compte[n.t]||0)+1);
+  const ro=MOI.peutGerer?'':'disabled';
 
   v.innerHTML=`<div class="pwrap">
    <div class="phead"><div><h1>Types d'éléments</h1>
-     <p>Le contenu des fiches se règle ici : champs, listes de choix, couleur, icône et support papier.
-        Le schéma est partagé — ce que vous enregistrez vaut pour tout le monde.</p></div>
+     <p>Tout ce qui compose une fiche se règle ici : les familles, les types, leurs champs et leurs listes de choix,
+        et les intitulés de liaison. Le schéma est partagé — ce que vous enregistrez vaut pour tout le monde.</p></div>
      <div class="acts">
        <button class="btn" id="tyReset">${svg(I.undo,13)}Schéma d'origine</button>
-       <button class="btn pri" id="tySave" ${MOI.peutGerer?'':'disabled'}>${svg(I.chk,13)}Enregistrer</button></div></div>
+       <button class="btn pri" id="tySave" ${ro}>${svg(I.chk,13)}Enregistrer</button></div></div>
    ${MOI.peutGerer?'':'<div class="sheet"><div class="empty"><b>Lecture seule</b>Seuls le Command Staff et le Lead CID peuvent modifier le schéma.</div></div>'}
-   <div class="grid" style="grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:14px;align-items:start">
+
+   <section class="sheet"><header><h3>Familles</h3>
+     <div class="r"><span class="lbl">Elles ordonnent les types dans le formulaire d'ajout et le répertoire</span></div></header>
+     <div class="bd"><div id="tyFam"></div>
+       <button class="btn sm" id="tyFamAdd" style="margin-top:10px" ${ro}>${svg(I.plus,12)}Ajouter une famille</button>
+     </div></section>
+
+   <div class="grid" style="grid-template-columns:minmax(0,270px) minmax(0,1fr);gap:14px;align-items:start">
      <section class="sheet"><header><h3>Les types</h3><div class="r"><span class="lbl" id="tyN"></span></div></header>
        <div class="bd" style="padding:9px">
          <div id="tyListe"></div>
-         <button class="btn sm" id="tyNew" style="width:100%;justify-content:center;margin-top:9px" ${MOI.peutGerer?'':'disabled'}>${svg(I.plus,12)}Nouveau type</button>
+         <button class="btn sm" id="tyNew" style="width:100%;justify-content:center;margin-top:9px" ${ro}>${svg(I.plus,12)}Nouveau type</button>
        </div></section>
      <div id="tyEdit"></div>
-   </div></div>`;
+   </div>
 
-  const liste=()=>{
-    const fam={};Object.keys(B).forEach(k=>{(fam[B[k].g||'Sans famille']=fam[B[k].g||'Sans famille']||[]).push(k)});
-    $('#tyN',v).textContent=Object.keys(B).length+' types';
-    $('#tyListe',v).innerHTML=Object.keys(fam).map(g=>
-      `<div class="lbl" style="margin:9px 0 4px">${esc(g)}</div>`+
-      fam[g].map(k=>`<div class="relrow" data-k="${esc(k)}" style="${TYP.sel===k?'background:#F2D98A;':''}padding:5px 6px;border-bottom:1px solid #E0D3B2">
-        <span style="color:${esc(B[k].c||'#888')};flex:none">${svg(I[B[k].ic]||I.doc,14)}</span>
-        <span class="rn">${esc(B[k].l||k)}</span>
-        <span class="rv">${compte[k]||0}</span></div>`).join('')
-    ).join('');
-    $$('#tyListe [data-k]',v).forEach(r=>r.onclick=()=>{TYP.sel=r.dataset.k;liste();editeur()});
+   <section class="sheet"><header><h3>Intitulés de liaison</h3>
+     <div class="r"><span class="lbl" id="tyRelN"></span></div></header>
+     <div class="bd">
+       <p style="margin:0 0 11px;color:var(--ink2);max-width:76ch">Ce sont les intitulés proposés quand on relie deux éléments avec une ficelle. Modifier un intitulé ne renomme pas les liaisons déjà posées.</p>
+       <div id="tyRel" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+       <div style="display:flex;gap:7px;margin-top:11px;max-width:460px">
+         <input id="tyRelNew" placeholder="Nouvel intitulé…" style="flex:1;background:var(--paper);border:1px solid #B39A6A;border-radius:2px;padding:6px 9px" ${ro}>
+         <button class="btn sm" id="tyRelAdd" ${ro}>${svg(I.plus,12)}Ajouter</button></div>
+     </div></section>
+  </div>`;
+
+  /* ---- familles ---- */
+  const familles=()=>{
+    const vues=typFamillesVues();
+    TYP.familles=vues.slice();
+    const n={};Object.keys(B).forEach(k=>{const g=B[k].g||'Sans famille';n[g]=(n[g]||0)+1});
+    $('#tyFam',v).innerHTML=`<div class="tblwrap"><table class="pt"><thead><tr>
+      <th style="width:60px">Ordre</th><th>Nom</th><th style="width:90px">Types</th><th style="width:130px"></th></tr></thead>
+      <tbody>${vues.map((g,i)=>`<tr>
+        <td class="mono" style="color:var(--ink4)">${i+1}</td>
+        <td><input class="tyfa" data-g="${esc(g)}" value="${esc(g)}" ${ro}
+          style="width:100%;max-width:340px;background:var(--paper);border:1px solid #C9B383;border-radius:2px;padding:5px 7px"></td>
+        <td class="mono">${n[g]||0}</td>
+        <td><button class="btn sm" data-fmv="${esc(g)}" data-d="-1" ${ro}>↑</button>
+            <button class="btn sm" data-fmv="${esc(g)}" data-d="1" ${ro}>↓</button>
+            <button class="btn sm dgr" data-frm="${esc(g)}" ${ro}>×</button></td></tr>`).join('')
+        ||'<tr><td colspan="4"><div class="empty">Aucune famille.</div></td></tr>'}
+      </tbody></table></div>`;
+
+    // Renommer une famille la renomme partout où elle est utilisée.
+    $$('#tyFam .tyfa',v).forEach(x=>x.addEventListener('change',()=>{
+      const av=x.dataset.g,ap=x.value.trim();
+      if(!ap||ap===av){x.value=av;return}
+      Object.keys(B).forEach(k=>{if((B[k].g||'Sans famille')===av)B[k].g=ap});
+      TYP.familles=TYP.familles.map(g=>g===av?ap:g);
+      TYP.sale=true;pTypes(v);
+    }));
+    $$('#tyFam [data-fmv]',v).forEach(b=>b.onclick=()=>{
+      const g=b.dataset.fmv,d=+b.dataset.d;
+      const i=TYP.familles.indexOf(g),j=i+d;
+      if(i<0||j<0||j>=TYP.familles.length)return;
+      TYP.familles.splice(j,0,TYP.familles.splice(i,1)[0]);
+      TYP.sale=true;pTypes(v);
+    });
+    $$('#tyFam [data-frm]',v).forEach(b=>b.onclick=()=>{
+      const g=b.dataset.frm,combien=n[g]||0;
+      if(combien){
+        const autres=typFamillesVues().filter(x=>x!==g);
+        modal({title:'Supprimer la famille',ok:'Déplacer et supprimer',
+          body:`<p style="margin:0 0 12px;line-height:1.6"><b>${esc(g)}</b> contient ${combien} type${combien>1?'s':''}.
+            Choisissez la famille qui les accueille.</p>
+            <div class="f"><label>Nouvelle famille</label><select id="fdst">
+              ${autres.map(x=>`<option>${esc(x)}</option>`).join('')||'<option>Sans famille</option>'}</select></div>`,
+          onOk:sc=>{
+            const dst=$('#fdst',sc).value;
+            Object.keys(B).forEach(k=>{if((B[k].g||'Sans famille')===g)B[k].g=dst});
+            TYP.familles=TYP.familles.filter(x=>x!==g);
+            TYP.sale=true;pTypes(v);
+          }});
+      }else{
+        TYP.familles=TYP.familles.filter(x=>x!==g);TYP.sale=true;pTypes(v);
+      }
+    });
   };
 
+  /* ---- liste des types ---- */
+  const liste=()=>{
+    const vues=typFamillesVues();
+    const parFam={};vues.forEach(g=>parFam[g]=[]);
+    Object.keys(B).forEach(k=>{const g=B[k].g||'Sans famille';(parFam[g]=parFam[g]||[]).push(k)});
+    $('#tyN',v).textContent=Object.keys(B).length+' types';
+    $('#tyListe',v).innerHTML=vues.map(g=>
+      `<div class="lbl" style="margin:9px 0 4px">${esc(g)}</div>`+
+      parFam[g].map(k=>`<div class="relrow" style="${TYP.sel===k?'background:#F2D98A;':''}padding:5px 6px;border-bottom:1px solid #E0D3B2">
+        <span data-k="${esc(k)}" style="color:${esc(B[k].c||'#888')};flex:none;cursor:pointer">${svg(I[B[k].ic]||I.doc,14)}</span>
+        <span class="rn" data-k="${esc(k)}" style="cursor:pointer">${esc(B[k].l||k)}</span>
+        <span class="rv">${compte[k]||0}</span>
+        <span style="display:flex;gap:2px">
+          <button class="btn sm" data-tmv="${esc(k)}" data-d="-1" style="padding:1px 5px" ${ro}>↑</button>
+          <button class="btn sm" data-tmv="${esc(k)}" data-d="1" style="padding:1px 5px" ${ro}>↓</button></span>
+        </div>`).join('')
+    ).join('');
+    $$('#tyListe [data-k]',v).forEach(r=>r.onclick=()=>{TYP.sel=r.dataset.k;liste();editeur()});
+    $$('#tyListe [data-tmv]',v).forEach(b=>b.onclick=e=>{
+      e.stopPropagation();
+      // reordonnerCles rend un nouvel objet : il remplace le brouillon.
+      TYP.types=reordonnerCles(B,b.dataset.tmv,+b.dataset.d);
+      TYP.sale=true;pTypes(v);
+    });
+  };
+
+  /* ---- éditeur d'un type ---- */
   const editeur=()=>{
     const k=TYP.sel,t=k&&B[k];
     if(!t){$('#tyEdit',v).innerHTML='<div class="sheet"><div class="empty"><b>Aucun type</b>Créez-en un.</div></div>';return}
-    const ro=MOI.peutGerer?'':'disabled';
     $('#tyEdit',v).innerHTML=`<section class="sheet">
       <header><span style="color:${esc(t.c||'#888')}">${svg(I[t.ic]||I.doc,16)}</span>
         <h3>${esc(t.l||k)}</h3>
@@ -1940,8 +2062,8 @@ function pTypes(v){
       <div class="bd">
         <div class="f2">
           <div class="f"><label>Nom affiché</label><input id="tyL" value="${esc(t.l||'')}" ${ro}></div>
-          <div class="f"><label>Famille</label><input id="tyG" value="${esc(t.g||'')}" list="tyFam" ${ro}>
-            <datalist id="tyFam">${[...new Set(Object.values(B).map(x=>x.g).filter(Boolean))].map(g=>`<option>${esc(g)}</option>`).join('')}</datalist></div>
+          <div class="f"><label>Famille</label><select id="tyG" ${ro}>
+            ${typFamillesVues().map(g=>`<option ${(t.g||'Sans famille')===g?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
         </div>
         <div class="f2">
           <div class="f"><label>Couleur du type</label>
@@ -1973,27 +2095,29 @@ function pTypes(v){
         <div class="isec">Champs de la fiche<span>${(t.f||[]).length}</span></div>
         <div class="tblwrap"><table class="pt"><thead><tr>
           <th style="width:135px">Clé</th><th>Libellé</th><th style="width:130px">Type</th>
-          <th>Choix (séparés par des ;)</th><th style="width:70px">Large</th><th style="width:86px"></th></tr></thead>
+          <th>Choix (séparés par des ;)</th><th style="width:60px">Large</th><th style="width:86px"></th></tr></thead>
           <tbody id="tyF"></tbody></table></div>
         <button class="btn sm" id="tyAddF" style="margin-top:10px" ${ro}>${svg(I.plus,12)}Ajouter un champ</button>
       </div></section>`;
 
+    const cel='width:100%;background:var(--paper);border:1px solid #C9B383;border-radius:2px;padding:4px 6px';
     const champs=()=>{
       const F=t.f||(t.f=[]);
       $('#tyF',v).innerHTML=F.map((f,i)=>`<tr>
-        <td><input class="tyf mono" data-i="${i}" data-k="k" value="${esc(f.k||'')}" style="width:100%;background:var(--paper);border:1px solid #C9B383;border-radius:2px;padding:4px 6px" ${ro}></td>
-        <td><input class="tyf" data-i="${i}" data-k="l" value="${esc(f.l||'')}" style="width:100%;background:var(--paper);border:1px solid #C9B383;border-radius:2px;padding:4px 6px" ${ro}></td>
-        <td><select class="tyf" data-i="${i}" data-k="t" style="width:100%;background:var(--paper);border:1px solid #C9B383;border-radius:2px;padding:4px 6px" ${ro}>
+        <td><input class="tyf mono" data-i="${i}" data-c="k" value="${esc(f.k||'')}" style="${cel}" ${ro}></td>
+        <td><input class="tyf" data-i="${i}" data-c="l" value="${esc(f.l||'')}" style="${cel}" ${ro}></td>
+        <td><select class="tyf" data-i="${i}" data-c="t" style="${cel}" ${ro}>
           ${CHAMP_TYPES.map(([a,b2])=>`<option value="${a}" ${(f.t||'t')===a?'selected':''}>${esc(b2)}</option>`).join('')}</select></td>
-        <td><input class="tyf" data-i="${i}" data-k="o" value="${esc((f.o||[]).join(' ; '))}" placeholder="${f.t==='s'?'Choix 1 ; Choix 2':'—'}" ${f.t==='s'?'':'disabled'} style="width:100%;background:var(--paper);border:1px solid #C9B383;border-radius:2px;padding:4px 6px" ${ro}></td>
-        <td style="text-align:center"><input type="checkbox" class="tyf" data-i="${i}" data-k="full" ${f.full?'checked':''} ${ro}></td>
-        <td><button class="btn sm" data-mv="${i}" data-d="-1" title="Monter" ${ro}>↑</button>
-            <button class="btn sm" data-mv="${i}" data-d="1" title="Descendre" ${ro}>↓</button>
-            <button class="btn sm dgr" data-rm="${i}" title="Retirer" ${ro}>×</button></td></tr>`).join('')
+        <td><input class="tyf" data-i="${i}" data-c="o" value="${esc((f.o||[]).join(' ; '))}"
+          placeholder="${f.t==='s'?'Choix 1 ; Choix 2':'—'}" ${f.t==='s'?'':'disabled'} style="${cel}" ${ro}></td>
+        <td style="text-align:center"><input type="checkbox" class="tyf" data-i="${i}" data-c="full" ${f.full?'checked':''} ${ro}></td>
+        <td><button class="btn sm" data-mv="${i}" data-d="-1" ${ro}>↑</button>
+            <button class="btn sm" data-mv="${i}" data-d="1" ${ro}>↓</button>
+            <button class="btn sm dgr" data-rm="${i}" ${ro}>×</button></td></tr>`).join('')
         ||'<tr><td colspan="6"><div class="empty">Aucun champ. Ce type n\'aurait que son niveau d\'alerte.</div></td></tr>';
 
       $$('#tyF .tyf',v).forEach(x=>x.addEventListener('change',()=>{
-        const f=F[+x.dataset.i],c=x.dataset.k;
+        const f=F[+x.dataset.i],c=x.dataset.c;
         if(c==='full'){x.checked?f.full=1:delete f.full}
         else if(c==='o'){const l=x.value.split(';').map(s=>s.trim()).filter(Boolean);
           if(l.length)f.o=l;else delete f.o}
@@ -2006,9 +2130,7 @@ function pTypes(v){
         if(j<0||j>=F.length)return;
         const tmp=F[i];F[i]=F[j];F[j]=tmp;TYP.sale=true;champs();
       });
-      $$('#tyF [data-rm]',v).forEach(b=>b.onclick=()=>{
-        F.splice(+b.dataset.rm,1);TYP.sale=true;champs();
-      });
+      $$('#tyF [data-rm]',v).forEach(b=>b.onclick=()=>{F.splice(+b.dataset.rm,1);TYP.sale=true;champs()});
     };
     champs();
 
@@ -2042,20 +2164,58 @@ function pTypes(v){
     };
   };
 
-  liste();editeur();
+  /* ---- intitulés de liaison ---- */
+  const relations=()=>{
+    $('#tyRelN',v).textContent=TYP.relations.length+' intitulés';
+    $('#tyRel',v).innerHTML=TYP.relations.map((r,i)=>`
+      <span style="display:inline-flex;align-items:center;gap:5px;background:var(--paper);border:1px solid #C9B383;
+        border-radius:12px;padding:3px 5px 3px 10px;font-size:12px">
+        <input data-ri="${i}" value="${esc(r)}" ${ro}
+          style="border:0;background:none;padding:0;width:${Math.max(7,r.length)}ch;font-size:12px;color:var(--ink)">
+        <button class="btn sm dgr" data-rrm="${i}" style="padding:0 5px;border-radius:9px" ${ro}>×</button></span>`).join('')
+      ||'<span class="muted">Aucun intitulé. Ajoutez-en au moins un.</span>';
+    $$('#tyRel [data-ri]',v).forEach(x=>x.addEventListener('change',()=>{
+      const t2=x.value.trim();
+      if(!t2){relations();return}
+      TYP.relations[+x.dataset.ri]=t2;TYP.sale=true;relations();
+    }));
+    $$('#tyRel [data-rrm]',v).forEach(b=>b.onclick=()=>{
+      TYP.relations.splice(+b.dataset.rrm,1);TYP.sale=true;relations();
+    });
+  };
+
+  familles();liste();editeur();relations();
+
+  $('#tyFamAdd').onclick=()=>{
+    modal({title:'Nouvelle famille',ok:'Ajouter',
+      body:'<div class="f"><label>Nom de la famille</label><input id="nfG" placeholder="Renseignement"></div>',
+      onOk:sc=>{
+        const g=$('#nfG',sc).value.trim();
+        if(!g){toast('Nom manquant','','err');return false}
+        if(TYP.familles.indexOf(g)!==-1){toast('Cette famille existe déjà','','err');return false}
+        TYP.familles.push(g);TYP.sale=true;pTypes(v);
+      }});
+  };
+
+  $('#tyRelAdd').onclick=()=>{
+    const x=$('#tyRelNew',v),t2=x.value.trim();
+    if(!t2)return;
+    if(TYP.relations.indexOf(t2)!==-1)return toast('Intitulé déjà présent','','warn');
+    TYP.relations.push(t2);x.value='';TYP.sale=true;relations();
+  };
 
   $('#tyNew').onclick=()=>{
     modal({title:'Nouveau type d\'élément',ok:'Créer',
       body:`<div class="f"><label>Clé (sans espace ni accent, elle ne changera plus)</label>
           <input id="nkK" class="mono" placeholder="informateur"></div>
         <div class="f"><label>Nom affiché</label><input id="nkL" placeholder="Informateur"></div>
-        <div class="f"><label>Famille</label><input id="nkG" value="Personnes" list="tyFam2">
-          <datalist id="tyFam2">${[...new Set(Object.values(B).map(x=>x.g).filter(Boolean))].map(g=>`<option>${esc(g)}</option>`).join('')}</datalist></div>`,
-      onOk:sc2=>{
-        const k=$('#nkK',sc2).value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
+        <div class="f"><label>Famille</label><select id="nkG">
+          ${typFamillesVues().map(g=>`<option>${esc(g)}</option>`).join('')||'<option>Sans famille</option>'}</select></div>`,
+      onOk:sc=>{
+        const k=$('#nkK',sc).value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
         if(!k)  {toast('Clé manquante','','err');return false}
         if(B[k]){toast('Clé déjà prise','','err');return false}
-        B[k]={l:$('#nkL',sc2).value.trim()||k,g:$('#nkG',sc2).value.trim()||'Sans famille',
+        B[k]={l:$('#nkL',sc).value.trim()||k,g:$('#nkG',sc).value||'Sans famille',
               c:'#8CB8E4',ic:'doc',p:'sheet',titre:['nom'],carte:[],
               f:[{k:'nom',l:'Nom',t:'t',full:1},{k:'notes',l:'Notes d\'enquête',t:'ta'}]};
         TYP.sel=k;TYP.sale=true;pTypes(v);
@@ -2063,17 +2223,25 @@ function pTypes(v){
   };
 
   $('#tyReset').onclick=()=>confirmDlg('Revenir au schéma d\'origine',
-    'Tous vos réglages de types seront remplacés par le schéma livré avec AEGIS. Les éléments déjà posés ne sont pas touchés.',
-    'Rétablir',()=>{TYP.brouillon=JSON.parse(JSON.stringify(SCHEMA_BASE));TYP.sale=true;TYP.sel=null;pTypes(v)},true);
+    'Familles, types et intitulés de liaison seront remplacés par ceux livrés avec AEGIS. Les éléments déjà posés ne sont pas touchés.',
+    'Rétablir',()=>{
+      TYP.types=JSON.parse(JSON.stringify(SCHEMA_BASE));
+      TYP.familles=[...new Set(Object.keys(TYP.types).map(k=>TYP.types[k].g))];
+      TYP.relations=REL_BASE.slice();
+      TYP.sel=null;TYP.sale=true;pTypes(v);
+    },true);
 
   $('#tySave').onclick=async()=>{
+    if(!TYP.relations.length)return toast('Aucun intitulé de liaison','Il en faut au moins un.','err');
     const b=$('#tySave',v);b.disabled=true;b.textContent='Enregistrement…';
-    const r=await api('/api/sasp/schema',{method:'PUT',body:{data:B}});
+    const paquet={types:TYP.types,familles:typFamillesVues(),relations:TYP.relations};
+    const r=await api('/api/sasp/schema',{method:'PUT',body:{data:paquet}});
     b.disabled=false;b.innerHTML=svg(I.chk,13)+'Enregistrer';
     if(!r.ok){toast('Enregistrement impossible',r.data.error||'','err');return}
-    appliquerSchema(JSON.parse(JSON.stringify(B)));
-    TYP.sale=false;
-    render();toast('Schéma enregistré','Il s\'applique à tout le monde.','ok');
+    appliquerSchema(JSON.parse(JSON.stringify(paquet)));
+    TYP.types=null;TYP.sale=false;
+    render();pTypes(v);
+    toast('Schéma enregistré','Il s\'applique à tout le monde.','ok');
   };
 }
 
