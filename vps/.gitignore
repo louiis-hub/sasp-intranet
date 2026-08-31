@@ -1,0 +1,3 @@
+# worker.js est copie ici par mettre-a-jour.sh : la source fait foi a la racine.
+worker.js
+node_modules/

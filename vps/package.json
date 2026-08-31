@@ -1,0 +1,9 @@
+{
+  "name": "sasp-poste",
+  "private": true,
+  "type": "module",
+  "description": "Le Worker Cloudflare, tel quel, derriere un adaptateur Node.",
+  "scripts": {
+    "start": "node serveur.js"
+  }
+}

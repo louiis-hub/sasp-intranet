@@ -1,0 +1,24 @@
+[Unit]
+Description=SASP SUD - API et bot Discord
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sasp
+WorkingDirectory=/opt/sasp/vps
+EnvironmentFile=/etc/sasp/api.env
+ExecStart=/usr/bin/node serveur.js
+Restart=always
+RestartSec=5
+# Le service n'a besoin d'ecrire nulle part : on lui retire le reste.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sasp-api
+
+[Install]
+WantedBy=multi-user.target
