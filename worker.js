@@ -376,6 +376,45 @@ async function liaisonsIdentifier(env, request) {
   return { autorise: false, motif: "role-manquant", nom, discordId };
 }
 
+// ── Droits dossier par dossier ────────────────────────────────────
+// Le controle d'acces general dit qui entre dans AEGIS. Celui-ci dit ce
+// que chacun peut faire sur UN dossier. Il est applique ici, cote
+// serveur : le front peut masquer ce qu'il veut, seule cette fonction
+// decide de ce qui sort de la base.
+const LIAISONS_NIVEAUX = ["ecriture", "lecture", "refus"];
+
+async function liaisonsDroitSur(env, qui, tableauId, tableau) {
+  // Ceux qui reglent les droits gardent l'acces a tout : se laisser
+  // enfermer dehors d'un dossier qu'on administre n'aurait aucune porte
+  // de secours, et c'est eux qui ouvrent celle des autres.
+  if (qui.peutGerer) return "ecriture";
+
+  let defaut = tableau && tableau.acces_defaut;
+  if (!defaut) {
+    try {
+      const rows = await sb(env, "GET", `/liaisons_tableaux?id=eq.${tableauId}&select=acces_defaut`);
+      defaut = rows && rows[0] && rows[0].acces_defaut;
+    } catch (e) {}
+  }
+  if (LIAISONS_NIVEAUX.indexOf(defaut) === -1) defaut = "ecriture";
+
+  try {
+    const rows = await sb(env, "GET",
+      `/liaisons_droits?tableau_id=eq.${tableauId}&discord_id=eq.${encodeURIComponent(qui.discordId)}&select=niveau`);
+    const d = rows && rows[0];
+    if (d && LIAISONS_NIVEAUX.indexOf(d.niveau) !== -1) return d.niveau;
+  } catch (e) {
+    // Table absente : le dossier suit son reglage par defaut.
+  }
+  return defaut;
+}
+
+// Un refus ne dit pas ce qu'il cache : meme reponse que pour un dossier
+// inexistant, sinon la liste des dossiers fermes se devine.
+function liaisonsRefusDossier() {
+  return json({ ok: false, error: "Dossier introuvable ou fermé." }, 403);
+}
+
 // Une entree de journal. Les echecs d'ecriture ne bloquent jamais l'action
 // en cours : le tableau doit rester utilisable meme si le journal tombe.
 async function liaisonsJournaliser(env, request, qui, tableauId, action, cible) {
@@ -5856,8 +5895,18 @@ export default {
         // ── Dossiers ────────────────────────────────────────────────
         if (url.pathname === "/api/sasp/tableaux" && request.method === "GET") {
           const rows = await sb(env, "GET",
-            "/liaisons_tableaux?select=id,nom,dossier,updated_at,updated_by&order=id.asc");
-          return json({ ok: true, tableaux: rows || [] });
+            "/liaisons_tableaux?select=id,nom,dossier,updated_at,updated_by,acces_defaut&order=id.asc");
+          // Un dossier ferme ne figure pas dans la liste : en montrer le nom
+          // reviendrait a publier l'existence d'une enquete a qui n'y a pas droit.
+          const visibles = [];
+          for (const t of (rows || [])) {
+            const d = await liaisonsDroitSur(env, qui, t.id, t);
+            if (d === "refus") continue;
+            visibles.push({ id: t.id, nom: t.nom, dossier: t.dossier,
+              updated_at: t.updated_at, updated_by: t.updated_by,
+              acces_defaut: t.acces_defaut, mon_acces: d });
+          }
+          return json({ ok: true, tableaux: visibles });
         }
 
         if (url.pathname === "/api/sasp/tableaux" && request.method === "POST") {
@@ -5878,17 +5927,30 @@ export default {
           const rows = await sb(env, "GET", `/liaisons_tableaux?id=eq.${idTableau}&select=*`);
           const t = rows && rows[0];
           if (!t) return json({ ok: false, error: "Dossier introuvable." }, 404);
+          const droit = await liaisonsDroitSur(env, qui, t.id, t);
+          if (droit === "refus") {
+            await liaisonsJournaliser(env, request, qui, t.id, "Ouverture refusée", t.nom);
+            return liaisonsRefusDossier();
+          }
           await liaisonsJournaliser(env, request, qui, t.id, "Ouverture du tableau", t.nom);
           return json({ ok: true, id: t.id, nom: t.nom, dossier: t.dossier,
                         nodes: t.nodes || [], edges: t.edges || [], seq: t.seq || 100,
                         version: t.version || 1, updated_at: t.updated_at,
-                        updated_by: t.updated_by, ecriture: !!qui.ecriture,
+                        updated_by: t.updated_by,
+                        // L'ecriture demande le droit general ET celui du dossier.
+                        ecriture: !!qui.ecriture && droit === "ecriture",
+                        mon_acces: droit, acces_defaut: t.acces_defaut || "ecriture",
                         peutGerer: !!qui.peutGerer, nom_agent: qui.nom, role: qui.role });
         }
 
         // ── Enregistrement ──────────────────────────────────────────
         if (idTableau && request.method === "PUT") {
           if (!qui.ecriture) return json({ ok: false, error: "Acces en lecture seule." }, 403);
+          const droitEcr = await liaisonsDroitSur(env, qui, idTableau, null);
+          if (droitEcr === "refus") return liaisonsRefusDossier();
+          if (droitEcr !== "ecriture") {
+            return json({ ok: false, error: "Vous avez ce dossier en lecture seule." }, 403);
+          }
           const corps = await request.json().catch(() => null);
           if (!corps || !Array.isArray(corps.nodes) || !Array.isArray(corps.edges)) {
             return json({ ok: false, error: "Corps de requete invalide." }, 400);
@@ -5961,6 +6023,81 @@ export default {
           await liaisonsJournaliser(env, request, qui, null, "Modification du schema",
             Object.keys(corps.data).length + " types");
           return json({ ok: true, version: actuel ? Number(actuel.version) + 1 : 1 });
+        }
+
+        // ── Droits sur un dossier ───────────────────────────────────
+        // Reglables par ceux qui gerent les acces, eux seuls.
+        const mDroits = url.pathname.match(/^\/api\/sasp\/board\/(\d+)\/droits$/);
+        if (mDroits) {
+          if (!qui.peutGerer) {
+            return json({ ok: false, error: "Reserve au Command Staff et au Lead CID." }, 403);
+          }
+          const id = Number(mDroits[1]);
+          if (request.method === "GET") {
+            const t = await sb(env, "GET", `/liaisons_tableaux?id=eq.${id}&select=nom,acces_defaut`);
+            const d = await sb(env, "GET", `/liaisons_droits?tableau_id=eq.${id}&select=*&order=created_at.asc`);
+            return json({ ok: true, nom: t && t[0] && t[0].nom,
+              acces_defaut: (t && t[0] && t[0].acces_defaut) || "ecriture", droits: d || [] });
+          }
+          if (request.method === "POST") {
+            const c = await request.json().catch(() => ({}));
+            if (c.acces_defaut !== undefined) {
+              if (LIAISONS_NIVEAUX.indexOf(c.acces_defaut) === -1) {
+                return json({ ok: false, error: "Niveau invalide." }, 400);
+              }
+              await sb(env, "PATCH", `/liaisons_tableaux?id=eq.${id}`, { acces_defaut: c.acces_defaut });
+              await liaisonsJournaliser(env, request, qui, id, "Acces par defaut du dossier", c.acces_defaut);
+              return json({ ok: true });
+            }
+            const dis = String(c.discord_id || "").trim();
+            if (!/^\d{17,20}$/.test(dis)) return json({ ok: false, error: "Identifiant Discord invalide." }, 400);
+            if (LIAISONS_NIVEAUX.indexOf(c.niveau) === -1) return json({ ok: false, error: "Niveau invalide." }, 400);
+            await sb(env, "POST", "/liaisons_droits?on_conflict=tableau_id,discord_id", {
+              tableau_id: id, discord_id: dis, niveau: c.niveau,
+              nom: c.nom ? String(c.nom).slice(0, 120) : null, ajoute_par: qui.nom
+            });
+            await liaisonsJournaliser(env, request, qui, id, "Droit sur le dossier",
+              (c.nom || dis) + " : " + c.niveau);
+            return json({ ok: true });
+          }
+          if (request.method === "DELETE") {
+            const dis = String(url.searchParams.get("discord_id") || "").trim();
+            if (!/^\d{17,20}$/.test(dis)) return json({ ok: false, error: "Identifiant Discord invalide." }, 400);
+            await sb(env, "DELETE", `/liaisons_droits?tableau_id=eq.${id}&discord_id=eq.${dis}`);
+            await liaisonsJournaliser(env, request, qui, id, "Retrait d'un droit", dis);
+            return json({ ok: true });
+          }
+        }
+
+        // Les personnes a qui l'on peut donner un droit : celles qui ont
+        // deja acces a AEGIS. Proposer toute la garnison n'aurait pas de sens.
+        if (url.pathname === "/api/sasp/membres" && request.method === "GET") {
+          if (!qui.peutGerer) return json({ ok: false, error: "Reserve au Command Staff et au Lead CID." }, 403);
+          const sortie = [];
+          try {
+            const res = await discordFetch(
+              `${DISCORD_API}/guilds/${envGuildId(env)}/members?limit=1000`,
+              { headers: { authorization: `Bot ${env.DISCORD_BOT_TOKEN}` } });
+            if (res.ok) {
+              const membres = await res.json();
+              for (const m of membres) {
+                if (!m.user || m.user.bot) continue;
+                const porte = LIAISONS_ROLES.filter(r => (m.roles || []).indexOf(r.id) !== -1);
+                if (!porte.length) continue;
+                sortie.push({ discord_id: m.user.id, nom: m.nick || m.user.username,
+                  role: porte.map(r => r.nom).join(" + ") });
+              }
+            }
+          } catch (e) {}
+          try {
+            const acc = await sb(env, "GET", "/liaisons_acces?select=discord_id,nom");
+            (acc || []).forEach(a => {
+              if (sortie.some(x => x.discord_id === a.discord_id)) return;
+              sortie.push({ discord_id: a.discord_id, nom: a.nom || a.discord_id, role: "Acces nominatif" });
+            });
+          } catch (e) {}
+          sortie.sort((a, b) => String(a.nom).localeCompare(String(b.nom), "fr"));
+          return json({ ok: true, membres: sortie });
         }
 
         // ── Journal ─────────────────────────────────────────────────

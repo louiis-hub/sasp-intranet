@@ -921,10 +921,13 @@ function porte(etat,info){
       <div class="gid">Si la connexion échoue, ouvrez d'abord
         <a href="../../index.html" style="color:var(--red)">l'intranet SASP SUD</a>, puis revenez sur cette page.</div>`,
     refus:()=>`<img src="${LOGO}" alt="SASP"><h2>Accès refusé</h2>
-      <p>${esc((info&&info.message)||'Votre compte n\'a pas accès à AEGIS.')}</p>
-      <p style="font-size:12px;color:var(--ink3)">L'accès est ouvert au Command Staff et au Lead CID.
-         Ils peuvent également ouvrir un accès nominatif à votre nom.</p>
-      <a class="btn" href="../../index.html" style="width:100%;justify-content:center">Retour à l'intranet</a>
+      <p>${esc((info&&(info.message||info.error))||'Votre compte n\'a pas accès à AEGIS.')}</p>
+      ${info&&info.dossier
+        ? `<p style="font-size:12px;color:var(--ink3)">Ce dossier vous est fermé. Les autres restent accessibles.</p>
+           <button class="btn pri" id="gAutre" style="width:100%;justify-content:center">Ouvrir un autre dossier</button>`
+        : `<p style="font-size:12px;color:var(--ink3)">L'accès est ouvert au Command Staff et au Lead CID.
+           Ils peuvent également ouvrir un accès nominatif à votre nom.</p>`}
+      <a class="btn" href="../../index.html" style="width:100%;justify-content:center;margin-top:8px">Retour à l'intranet</a>
       <div class="gid">${esc((info&&info.nom)||'')}</div>`,
     panne:()=>`<img src="${LOGO}" alt="SASP"><h2>AEGIS indisponible</h2>
       <p>${esc((info&&info.error)||'Le serveur n\'a pas répondu.')}</p>
@@ -937,6 +940,7 @@ function porte(etat,info){
     await SB.auth.signInWithOAuth({provider:'discord',options:{redirectTo:location.href.split('#')[0]}});
   };
   const rt=$('#gRetry',c); if(rt)rt.onclick=()=>demarrer();
+  const ga=$('#gAutre',c); if(ga)ga.onclick=()=>{porte(null);dossiersDlg()};
 }
 
 /* ---------- enregistrement ---------- */
@@ -1002,7 +1006,8 @@ function logAct(action,cible){
 function appliquer(d){
   S.nodes=d.nodes||[];S.edges=d.edges||[];S.seq=d.seq||100;S.version=d.version||1;
   S.nom=d.nom||'Tableau';S.dossier=d.dossier||'';
-  MOI={nom:d.nom_agent||'—',role:d.role||'—',ecriture:!!d.ecriture,peutGerer:!!d.peutGerer};
+  MOI={nom:d.nom_agent||'—',role:d.role||'—',ecriture:!!d.ecriture,
+       peutGerer:!!d.peutGerer,monAcces:d.mon_acces||'ecriture'};
   let plusGrand=100;
   S.nodes.concat(S.edges).forEach(x=>{const n=parseInt(String(x.id).slice(1),10);if(n>plusGrand)plusGrand=n});
   if(S.seq<plusGrand)S.seq=plusGrand;
@@ -1015,7 +1020,12 @@ function sauverVue(){
 function majEntete(){
   $('#dosT').textContent=S.nom||'Tableau';
   const b=$('#dosBtn'); if(b)b.onclick=dossiersDlg;
-  $('#dosN').textContent=(S.dossier?S.dossier+' · ':'')+(MOI.ecriture?'Lecture et écriture':'Lecture seule');
+  // On distingue « ce dossier est en lecture seule pour vous » d'un
+  // acces general en lecture : ce n'est pas le meme probleme a resoudre.
+  const raison=!MOI.ecriture
+    ? (MOI.monAcces==='lecture'?'Ce dossier en lecture seule':'Lecture seule')
+    : 'Lecture et écriture';
+  $('#dosN').textContent=(S.dossier?S.dossier+' · ':'')+raison;
   $('#meNom').textContent=MOI.nom;
   $('#meRole').textContent=MOI.role;
   $('#meAv').textContent=initials(MOI.nom);
@@ -1081,7 +1091,13 @@ async function demarrer(){
 
   const r=await api('/api/sasp/board/'+BOARD_ID);
   if(r.statut===401){porte('connexion');return}
-  if(r.statut===403){porte('refus',r.data);return}
+  if(r.statut===403){
+    // Le refus vient-il du dossier ou d'AEGIS ? La reponse le dit, et
+    // l'ecran change de discours en consequence.
+    const d=Object.assign({},r.data);
+    if(!d.motif)d.dossier=true;
+    porte('refus',d);return;
+  }
   if(!r.ok){porte('panne',r.data);return}
 
   appliquer(r.data);
@@ -2294,10 +2310,103 @@ async function pCases(v){
       <td class="mono" style="font-size:11px;color:var(--ink3)">
         ${t.updated_at?new Date(t.updated_at).toLocaleDateString('fr-FR'):'—'}
         ${t.updated_by?'<div style="font-size:10px;color:var(--ink4)">'+esc(t.updated_by)+'</div>':''}</td>
-      <td>${ouvert?'<span class="muted" style="font-size:11px">en cours</span>'
-        :'<button class="btn sm pri" data-o="'+t.id+'">Ouvrir</button>'}</td></tr>`;
+      <td style="white-space:nowrap">
+        ${ouvert?'<span class="muted" style="font-size:11px">en cours</span>'
+          :'<button class="btn sm pri" data-o="'+t.id+'">Ouvrir</button>'}
+        ${MOI.peutGerer?` <button class="btn sm" data-dr="${t.id}" data-nom="${esc(t.nom||'')}" title="Gérer les accès">${svg(I.key,12)}</button>`:''}
+      </td></tr>`;
   }).join('')||'<tr><td colspan="5"><div class="empty"><b>Aucun dossier</b>Créez-en un.</div></td></tr>';
-  $$('#cBody [data-d]',v).forEach(x=>x.onclick=()=>ouvrirDossier(+x.dataset.d));
+  $$('#cBody [data-d]',v).forEach(x=>x.onclick=e=>{
+    if(e.target.closest('[data-dr]'))return;
+    ouvrirDossier(+x.dataset.d);
+  });
+  $$('#cBody [data-dr]',v).forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    droitsDlg(+b.dataset.dr,b.dataset.nom);
+  });
+}
+
+/* ---------- droits sur un dossier ---------- */
+const NIVEAUX_ACCES=[
+  {k:'ecriture',l:'Modification',d:'Peut lire et modifier le dossier.',c:'t-grn'},
+  {k:'lecture', l:'Lecture seule',d:'Peut consulter, sans rien changer.',c:'t-amb'},
+  {k:'refus',   l:'Refusé',      d:'Ne voit pas le dossier du tout.',   c:'t-red'}
+];
+const nivAcces=k=>NIVEAUX_ACCES.filter(n=>n.k===k)[0]||NIVEAUX_ACCES[0];
+
+async function droitsDlg(idDossier,nomDossier){
+  const r=await api('/api/sasp/board/'+idDossier+'/droits');
+  if(!r.ok)return toast('Droits indisponibles',r.data.error||'','err');
+  let defaut=r.data.acces_defaut||'ecriture';
+  let liste=r.data.droits||[];
+  let membres=null;
+
+  const m=modal({title:'Accès · '+(nomDossier||r.data.nom||'Dossier'),
+    foot:'<button class="btn pri" data-x>Fermer</button>',
+    body:`
+      <p style="margin:0 0 12px;color:var(--ink2);line-height:1.6">Le Command Staff et le Lead CID gardent l'accès à tous les dossiers : ce sont eux qui règlent ces droits, et il faut bien une porte de secours.</p>
+      <div class="isec">Par défaut sur ce dossier</div>
+      <p style="margin:-4px 0 9px;font-size:11.5px;color:var(--ink3);line-height:1.55">Ce que reçoit quelqu'un qui a accès à AEGIS mais n'est pas nommé ci-dessous. Mettez « Refusé » pour un dossier fermé, ouvert au cas par cas.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="dDef"></div>
+      <div class="isec">Personnes nommées<span id="dN"></span></div>
+      <div id="dListe"></div>
+      <div style="display:flex;gap:7px;margin-top:11px;align-items:flex-end;flex-wrap:wrap">
+        <div class="f" style="flex:1;min-width:190px;margin:0"><label>Ajouter quelqu'un</label>
+          <select id="dQui"><option value="">Chargement…</option></select></div>
+        <div class="f" style="margin:0"><label>Niveau</label>
+          <select id="dNiv">${NIVEAUX_ACCES.map(n=>`<option value="${n.k}">${esc(n.l)}</option>`).join('')}</select></div>
+        <button class="btn pri" id="dAdd">Ajouter</button>
+      </div>`});
+
+  const dessinerDefaut=()=>{
+    $('#dDef',m.scrim).innerHTML=NIVEAUX_ACCES.map(n=>
+      `<button class="btn sm ${n.k===defaut?'on':''}" data-def="${n.k}" title="${esc(n.d)}">${esc(n.l)}</button>`).join('');
+    $$('#dDef [data-def]',m.scrim).forEach(b=>b.onclick=async()=>{
+      const v=b.dataset.def;
+      const rr=await api('/api/sasp/board/'+idDossier+'/droits',{method:'POST',body:{acces_defaut:v}});
+      if(!rr.ok)return toast('Échec',rr.data.error||'','err');
+      defaut=v;dessinerDefaut();
+      toast('Accès par défaut modifié',nivAcces(v).l,'ok');
+    });
+  };
+  const dessinerListe=()=>{
+    $('#dN',m.scrim).textContent=liste.length;
+    $('#dListe',m.scrim).innerHTML=liste.map(d=>{
+      const n=nivAcces(d.niveau);
+      return `<div class="relrow" style="cursor:default">
+        <span class="rn">${esc(d.nom||d.discord_id)}
+          <div class="mono" style="font-size:10px;color:var(--ink4)">${esc(d.discord_id)}</div></span>
+        <span class="tag ${n.c}">${esc(n.l)}</span>
+        <button class="btn sm dgr" data-rm="${esc(d.discord_id)}" style="padding:1px 7px">×</button>
+      </div>`;
+    }).join('')||'<span class="muted">Personne n\'est nommé : tout le monde suit le réglage par défaut.</span>';
+    $$('#dListe [data-rm]',m.scrim).forEach(b=>b.onclick=async()=>{
+      const rr=await api('/api/sasp/board/'+idDossier+'/droits?discord_id='+encodeURIComponent(b.dataset.rm),{method:'DELETE'});
+      if(!rr.ok)return toast('Échec',rr.data.error||'','err');
+      liste=liste.filter(x=>x.discord_id!==b.dataset.rm);dessinerListe();
+      toast('Droit retiré','La personne suit de nouveau le réglage par défaut.','ok');
+    });
+  };
+  dessinerDefaut();dessinerListe();
+
+  api('/api/sasp/membres').then(rm=>{
+    membres=(rm.ok&&rm.data.membres)||[];
+    const sel=$('#dQui',m.scrim); if(!sel)return;
+    sel.innerHTML='<option value="">— Choisir —</option>'+membres.map(x=>
+      `<option value="${esc(x.discord_id)}" data-nom="${esc(x.nom)}">${esc(x.nom)} · ${esc(x.role)}</option>`).join('');
+  });
+
+  $('#dAdd',m.scrim).onclick=async()=>{
+    const sel=$('#dQui',m.scrim),niv=$('#dNiv',m.scrim).value;
+    const id=sel.value;
+    if(!id)return toast('Personne à choisir','','warn');
+    const nom=sel.options[sel.selectedIndex].dataset.nom||'';
+    const rr=await api('/api/sasp/board/'+idDossier+'/droits',{method:'POST',body:{discord_id:id,niveau:niv,nom}});
+    if(!rr.ok)return toast('Échec',rr.data.error||'','err');
+    liste=liste.filter(x=>x.discord_id!==id).concat([{discord_id:id,niveau:niv,nom}]);
+    dessinerListe();sel.value='';
+    toast('Droit enregistré',nom+' : '+nivAcces(niv).l,'ok');
+  };
 }
 
 /* ---------- répertoire ---------- */
