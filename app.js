@@ -315,6 +315,7 @@ var NAV = [
   { divider: true, staffOnly: true, _wikiEnd: true },
   { group: 'ADMINISTRATION', staffOnly: true },
   { id: 'stats',           icon: '📈', img: 'stats', label: 'Statistiques',       staffOnly: true },
+  { id: 'ppa-carte',       icon: '🪪', img: 'agents', label: 'Cartes PPA',        staffOnly: true },
   { id: 'service-logements', icon: '🏠', img: 'logements', label: 'Logements service', adminOnly: true },
   { id: 'ticketing', icon: '🎫', img: 'ticketing', label: 'Tickets Discord', adminOnly: true, hidden: true },
   { divider: true, commandOnly: true },
@@ -334,6 +335,7 @@ var PAGE_TITLES = {
   ceremonie:'Prépa Cérémonie', completude:'Complétude fiches', plaintes:'Plaintes', 'tests-poudre':'Tests de poudre', 'affaires-internes':'Affaires Internes',
   'global-settings':'Réglages globaux',
   'service-logements':'Logements de service',
+  'ppa-carte':'Cartes de port d\'arme',
   ticketing:'Tickets Discord',
   cid:'CID', ftf:'FTF', 'ftf-dossier':'Dossier FTF', stats:'Statistiques', search:'Recherche', settings:'Mon compte'
 };
@@ -795,6 +797,7 @@ async function navigate(page, pd) {
       'affaires-internes': renderAffairesInternes,
       'global-settings': renderGlobalSettings,
       'service-logements': renderServiceLogements,
+      'ppa-carte':    renderCartesPPA,
       ticketing: renderTicketing,
       ftf:            renderFTF,
       'ftf-dossier':  renderFtfDossierPage,
@@ -908,7 +911,7 @@ function canAccessTestsPoudre() {
 // plusieurs les CUMULE. Auparavant un seul rôle l'emportait et les autres
 // étaient ignorés : un agent Police Academy + FTF n'avait que la FTF.
 var PAGES_PAR_PROFIL = {
-  rh:       ['dashboard','agents','agent-profile','grades','units','pointeuse','faq','cartes','stats','recap','ceremonie','completude','plaintes','tests-poudre','ftf','affaires-internes'],
+  rh:       ['dashboard','agents','agent-profile','grades','units','pointeuse','faq','cartes','stats','recap','ceremonie','completude','plaintes','tests-poudre','ftf','affaires-internes','ppa-carte'],
   academy:  ['faq','dashboard','recap','completude','agents','agent-profile','grades','units','cartes'],
   agent:    ['dashboard','agents','agent-profile','grades','units','pointeuse','faq','mdt','vehicles','cartes','info','manuel','tenue','document'],
   visiteur: ['dashboard','pointeuse','faq','cartes'],
@@ -3586,6 +3589,437 @@ async function tpDessiner(t) {
 }
 
 var _testsPoudre = [];
+
+// ══════════════════════════════════════════════════════════════════
+//  Cartes de port d'arme
+//  La carte est dessinee sur un canvas plutot qu'en HTML : c'est le seul
+//  moyen d'en sortir un PNG fidele, et le rendu ne depend alors ni du
+//  navigateur ni des polices installees sur le poste.
+// ══════════════════════════════════════════════════════════════════
+
+// Format carte bancaire, 85,6 x 54 mm. Double dimension au rendu, soit
+// environ 600 dpi : la carte reste nette une fois imprimee ou zoomee.
+var PPA_L = 1050, PPA_H = 662, PPA_ECHELLE = 2;
+
+var PPA_NIVEAUX = [
+  { n: 1, cle: 'ppa1', titre: 'PPA 1', arme: 'Glock 17' },
+  { n: 2, cle: 'ppa2', titre: 'PPA 2', arme: 'MP5' },
+  { n: 3, cle: 'ppa3', titre: 'PPA 3', arme: 'Fusil à pompe / carabine' }
+];
+
+var _ppaCarte = {
+  prenom: '', nom: '', matricule: '', naissance: '', delivree: '', validite: '',
+  grade: '', niveaux: { ppa1: false, ppa2: false, ppa3: false },
+  photo: null, zoom: 1, dx: 0, dy: 0, logo: null
+};
+
+// app.js ne garde pas de liste globale des agents : chaque page la
+// recharge. On memorise la notre pour le pre-remplissage.
+var _ppaAgents = [];
+
+function ppaDateFr(iso) {
+  if (!iso) return '';
+  var m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[3] + '/' + m[2] + '/' + m[1] : String(iso);
+}
+function ppaAujourdhui(decalageAnnees) {
+  var d = new Date();
+  if (decalageAnnees) d.setFullYear(d.getFullYear() + decalageAnnees);
+  var z = function(x) { return String(x).padStart(2, '0'); };
+  return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate());
+}
+
+// Fond guilloche : les fines ondes croisees des documents officiels.
+// Deux reseaux de sinusoides dephasees suffisent a rendre l'effet.
+function ppaGuilloche(ctx, x, y, l, h) {
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, y, l, h); ctx.clip();
+  ctx.lineWidth = 0.6;
+  for (var passe = 0; passe < 2; passe++) {
+    ctx.strokeStyle = passe ? 'rgba(30,70,120,.10)' : 'rgba(120,30,30,.08)';
+    for (var i = 0; i < 46; i++) {
+      ctx.beginPath();
+      for (var px = 0; px <= l; px += 4) {
+        var t = px / l * Math.PI * 2;
+        var py = y + h / 2
+          + Math.sin(t * (2.6 + passe * 1.7) + i * 0.42) * (h * 0.31)
+          + Math.cos(t * (5.1 - passe * 2.2) + i * 0.27) * (h * 0.14)
+          + (i - 23) * (h / 52);
+        px === 0 ? ctx.moveTo(x + px, py) : ctx.lineTo(x + px, py);
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function ppaRect(ctx, x, y, l, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + l, y, x + l, y + h, r);
+  ctx.arcTo(x + l, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + l, y, r);
+  ctx.closePath();
+}
+
+function ppaChamp(ctx, x, y, l, libelleFr, libelleEn, valeur) {
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#0F2742';
+  ctx.font = '700 21px Arial, sans-serif';
+  ctx.fillText(libelleFr, x, y);
+  ctx.fillStyle = '#6B7C90';
+  ctx.font = '400 15px Arial, sans-serif';
+  ctx.fillText(libelleEn, x, y + 19);
+
+  var bx = x + 232;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.strokeStyle = '#1F3A5C';
+  ctx.lineWidth = 2;
+  ppaRect(ctx, bx, y - 25, l - 232, 46, 3);
+  ctx.fill(); ctx.stroke();
+
+  ctx.fillStyle = '#0B1A2C';
+  ctx.font = '700 25px Arial, sans-serif';
+  ctx.fillText(String(valeur || ''), bx + 14, y + 6);
+}
+
+// Le trait de code-barres n'encode rien : c'est un ornement, et le
+// pretendre lisible par un scanner serait mentir sur la piece.
+function ppaCodeBarres(ctx, x, y, l, h, graine) {
+  var s = 0;
+  for (var i = 0; i < graine.length; i++) s = (s * 31 + graine.charCodeAt(i)) | 0;
+  var px = x;
+  ctx.fillStyle = '#111';
+  while (px < x + l - 2) {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    var large = 2 + (s % 4);
+    if ((s >> 5) % 3) { ctx.fillRect(px, y, large, h); }
+    px += large + 2 + ((s >> 9) % 3);
+  }
+}
+
+function ppaCarteDessiner() {
+  var canvas = document.getElementById('ppaCanvas');
+  if (!canvas) return;
+  canvas.width = PPA_L * PPA_ECHELLE;
+  canvas.height = PPA_H * PPA_ECHELLE;
+  var ctx = canvas.getContext('2d');
+  ctx.scale(PPA_ECHELLE, PPA_ECHELLE);
+  ctx.textBaseline = 'alphabetic';
+  var C = _ppaCarte;
+
+  // Corps de la carte
+  ctx.fillStyle = '#F4F6F8';
+  ppaRect(ctx, 0, 0, PPA_L, PPA_H, 22); ctx.fill();
+  ppaGuilloche(ctx, 0, 0, PPA_L, PPA_H);
+
+  // Bandeau superieur
+  var deg = ctx.createLinearGradient(0, 0, PPA_L, 104);
+  deg.addColorStop(0, '#0B1E36'); deg.addColorStop(1, '#173C63');
+  ctx.save();
+  ppaRect(ctx, 0, 0, PPA_L, PPA_H, 22); ctx.clip();
+  ctx.fillStyle = deg; ctx.fillRect(0, 0, PPA_L, 104);
+  ctx.fillStyle = '#C8A24A'; ctx.fillRect(0, 104, PPA_L, 5);
+  ctx.restore();
+
+  if (C.logo) { try { ctx.drawImage(C.logo, 26, 14, 78, 78); } catch (e) {} }
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '700 33px Arial, sans-serif';
+  ctx.fillText('SAN ANDREAS STATE POLICE', 120, 46);
+  ctx.font = '700 24px Arial, sans-serif';
+  ctx.fillStyle = '#E7C97A';
+  ctx.fillText("PERMIS DE PORT D'ARME", 120, 78);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(255,255,255,.72)';
+  ctx.font = '400 17px Arial, sans-serif';
+  ctx.fillText('WEAPON CARRY PERMIT', PPA_L - 26, 50);
+  ctx.fillText('DIVISION SUD', PPA_L - 26, 76);
+
+  // Photo
+  var px = 34, py = 132, pl = 214, ph = 268;
+  ctx.save();
+  ppaRect(ctx, px, py, pl, ph, 5);
+  ctx.fillStyle = '#DCE3EA'; ctx.fill();
+  ctx.clip();
+  if (C.photo) {
+    var r = Math.max(pl / C.photo.width, ph / C.photo.height) * C.zoom;
+    var w = C.photo.width * r, h = C.photo.height * r;
+    ctx.drawImage(C.photo, px + (pl - w) / 2 + C.dx, py + (ph - h) / 2 + C.dy, w, h);
+  } else {
+    ctx.fillStyle = '#9AAAB9';
+    ctx.font = '400 17px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PHOTO', px + pl / 2, py + ph / 2);
+  }
+  ctx.restore();
+  ctx.strokeStyle = '#1F3A5C'; ctx.lineWidth = 2.5;
+  ppaRect(ctx, px, py, pl, ph, 5); ctx.stroke();
+
+  // Matricule sous la photo
+  ctx.fillStyle = '#0B1E36';
+  ppaRect(ctx, px, py + ph + 12, pl, 44, 4); ctx.fill();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#E7C97A';
+  ctx.font = '700 15px Arial, sans-serif';
+  ctx.fillText('MATRICULE', px + pl / 2, py + ph + 28);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '700 22px Arial, sans-serif';
+  ctx.fillText(C.matricule || '—', px + pl / 2, py + ph + 50);
+
+  // Champs
+  var fx = 274, fl = PPA_L - 274 - 34;
+  ppaChamp(ctx, fx, 156, fl, 'NOM :', 'Last name', C.nom);
+  ppaChamp(ctx, fx, 224, fl, 'PRÉNOM :', 'First name', C.prenom);
+  ppaChamp(ctx, fx, 292, fl, 'NAISSANCE :', 'Date of birth', ppaDateFr(C.naissance));
+  ppaChamp(ctx, fx, 360, fl, 'DÉLIVRÉ LE :', 'Issued on', ppaDateFr(C.delivree));
+  ppaChamp(ctx, fx, 428, fl, "VALIDE JUSQU'AU :", 'Valid until', ppaDateFr(C.validite));
+
+  // Categories autorisees
+  var cy = 476, cl = (fl - 20) / 3;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#0F2742';
+  ctx.font = '700 16px Arial, sans-serif';
+  ctx.fillText('CATÉGORIES AUTORISÉES', fx, cy);
+  PPA_NIVEAUX.forEach(function(N, i) {
+    var bx = fx + i * (cl + 10), by = cy + 12, bh = 62;
+    var actif = !!C.niveaux[N.cle];
+    ctx.fillStyle = actif ? '#123A22' : '#E4E8EC';
+    ppaRect(ctx, bx, by, cl, bh, 4); ctx.fill();
+    ctx.strokeStyle = actif ? '#1E6B3C' : '#C2CBD4';
+    ctx.lineWidth = 2; ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = actif ? '#7FE0A2' : '#9AA7B4';
+    ctx.font = '700 20px Arial, sans-serif';
+    ctx.fillText(N.titre, bx + cl / 2, by + 26);
+    ctx.fillStyle = actif ? '#CFE9D8' : '#AEB9C4';
+    ctx.font = '400 13px Arial, sans-serif';
+    var arme = N.arme.length > 26 ? N.arme.slice(0, 25) + '…' : N.arme;
+    ctx.fillText(actif ? arme : 'non autorisé', bx + cl / 2, by + 47);
+  });
+
+  // Pied : code-barres et signature
+  ppaCodeBarres(ctx, 34, 596, 300, 40, (C.matricule || '') + (C.nom || '') + (C.validite || ''));
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#5B6B7C';
+  ctx.font = '400 12px Arial, sans-serif';
+  ctx.fillText('SASP-SUD · ' + (C.matricule || '000') + ' · DOCUMENT OFFICIEL', 34, 650);
+
+  ctx.strokeStyle = '#1F3A5C'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(PPA_L - 330, 626); ctx.lineTo(PPA_L - 34, 626); ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#0F2742';
+  ctx.font = '700 15px Arial, sans-serif';
+  ctx.fillText('SIGNATURE DU COMMAND STAFF', PPA_L - 182, 648);
+  ctx.font = 'italic 400 26px Georgia, serif';
+  ctx.fillStyle = '#26456B';
+  ctx.fillText(C.grade || 'San Andreas State Police', PPA_L - 182, 616);
+
+  // Liseré
+  ctx.strokeStyle = '#0B1E36'; ctx.lineWidth = 3;
+  ppaRect(ctx, 1.5, 1.5, PPA_L - 3, PPA_H - 3, 22); ctx.stroke();
+}
+
+function ppaLireFormulaire() {
+  var v = function(id) { var e = document.getElementById(id); return e ? e.value : ''; };
+  var c = function(id) { var e = document.getElementById(id); return e ? e.checked : false; };
+  _ppaCarte.prenom    = v('ppaPrenom');
+  _ppaCarte.nom       = v('ppaNom');
+  _ppaCarte.matricule = v('ppaMat');
+  _ppaCarte.naissance = v('ppaNaiss');
+  _ppaCarte.delivree  = v('ppaDeliv');
+  _ppaCarte.validite  = v('ppaValid');
+  _ppaCarte.grade     = v('ppaGrade');
+  _ppaCarte.niveaux   = { ppa1: c('ppaN1'), ppa2: c('ppaN2'), ppa3: c('ppaN3') };
+  ppaCarteDessiner();
+}
+
+// Recopie ce que la fiche de l'agent sait deja : le reste est a saisir.
+function ppaPrefill(id) {
+  var a = _ppaAgents.filter(function(x) { return String(x.id) === String(id); })[0];
+  if (!a) return;
+  var mettre = function(cid, val) { var e = document.getElementById(cid); if (e) e.value = val || ''; };
+  mettre('ppaPrenom', a.prenom);
+  mettre('ppaNom', a.nom);
+  mettre('ppaMat', a.matricule);
+  mettre('ppaNaiss', a.date_naissance || '');
+  // Le grade de l agent est un champ texte, pas une reference.
+  mettre('ppaGrade', a.grade || '');
+  ['1', '2', '3'].forEach(function(n) {
+    var e = document.getElementById('ppaN' + n);
+    if (e) e.checked = !!a['ppa' + n];
+  });
+  // La plus recente des dates de PPA fait la date de delivrance.
+  var dates = ['ppa1_date', 'ppa2_date', 'ppa3_date']
+    .map(function(k) { return a[k]; }).filter(Boolean).sort();
+  if (dates.length) mettre('ppaDeliv', dates[dates.length - 1]);
+  ppaLireFormulaire();
+}
+
+function ppaTelecharger() {
+  var canvas = document.getElementById('ppaCanvas');
+  if (!canvas) return;
+  var nom = ('PPA-' + (_ppaCarte.matricule || '000') + '-' + (_ppaCarte.nom || 'agent'))
+    .replace(/[^A-Za-z0-9À-ÿ_-]+/g, '_');
+  var a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = nom + '.png';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast('Carte téléchargée.', 'success');
+  sendLog('🪪 Carte PPA générée', 0x3498db, [
+    { name: 'Agent', value: (_ppaCarte.prenom + ' ' + _ppaCarte.nom).trim() || '—', inline: true },
+    { name: 'Matricule', value: _ppaCarte.matricule || '—', inline: true },
+    { name: 'Par', value: _whoAmI(), inline: true }
+  ]);
+}
+
+async function renderCartesPPA() {
+  try { _ppaAgents = await DB.getAgents(); } catch (e) { _ppaAgents = []; }
+
+  var actifs = _ppaAgents.filter(function(a) {
+    return ['Licencié', 'Retraité', 'Démission'].indexOf(a.statut) === -1;
+  }).sort(function(a, b) {
+    return String(a.matricule || '').localeCompare(String(b.matricule || ''), 'fr', { numeric: true });
+  });
+
+  var champ = function(id, label, type, val) {
+    return '<div style="margin-bottom:11px">' +
+      '<label class="form-label">' + label + '</label>' +
+      '<input class="form-control" id="' + id + '" type="' + type + '" value="' + esc(val || '') + '">' +
+    '</div>';
+  };
+
+  setContent(
+    '<div class="flex-between mb-20 flex-wrap gap-8">' +
+      '<div>' +
+        '<h2 style="font-size:1.15rem;font-weight:700;color:var(--t0);margin:0">Cartes de port d\'arme</h2>' +
+        '<p class="text-muted" style="font-size:.82rem;margin-top:3px">Sélectionnez un agent pour reprendre sa fiche, ajustez la photo, puis téléchargez la carte.</p>' +
+      '</div>' +
+    '</div>' +
+
+    '<div style="display:grid;grid-template-columns:minmax(0,330px) minmax(0,1fr);gap:20px;align-items:start" class="ppa-carte-grid">' +
+
+      '<div class="card" style="padding:16px">' +
+        '<div style="margin-bottom:13px">' +
+          '<label class="form-label">Reprendre la fiche d\'un agent</label>' +
+          '<select class="form-control" id="ppaAgent">' +
+            '<option value="">— Saisie manuelle —</option>' +
+            actifs.map(function(a) {
+              return '<option value="' + a.id + '">' + esc((a.matricule ? a.matricule + ' · ' : '') + a.prenom + ' ' + a.nom) + '</option>';
+            }).join('') +
+          '</select>' +
+        '</div>' +
+        '<div style="height:1px;background:var(--border1);margin:14px 0"></div>' +
+        champ('ppaPrenom', 'Prénom', 'text', '') +
+        champ('ppaNom', 'Nom', 'text', '') +
+        champ('ppaMat', 'Matricule', 'text', '') +
+        champ('ppaNaiss', 'Date de naissance', 'date', '') +
+        champ('ppaDeliv', 'Délivré le', 'date', ppaAujourdhui(0)) +
+        champ('ppaValid', 'Valide jusqu\'au', 'date', ppaAujourdhui(2)) +
+        champ('ppaGrade', 'Signature (grade ou nom)', 'text', '') +
+
+        '<div style="height:1px;background:var(--border1);margin:14px 0"></div>' +
+        '<label class="form-label">Catégories autorisées</label>' +
+        PPA_NIVEAUX.map(function(N) {
+          return '<label style="display:flex;align-items:center;gap:9px;margin:7px 0;cursor:pointer">' +
+            '<input type="checkbox" id="ppaN' + N.n + '">' +
+            '<span style="font-size:.85rem;color:var(--t1)"><b>' + N.titre + '</b> — ' + esc(N.arme) + '</span>' +
+          '</label>';
+        }).join('') +
+
+        '<div style="height:1px;background:var(--border1);margin:14px 0"></div>' +
+        '<label class="form-label">Photo</label>' +
+        '<input type="file" id="ppaPhoto" accept="image/*" class="form-control" style="padding:7px">' +
+        '<label class="form-label" style="margin-top:11px">Zoom</label>' +
+        '<input type="range" id="ppaZoom" min="100" max="300" value="100" style="width:100%;accent-color:var(--gold)">' +
+        '<p class="text-muted" style="font-size:.74rem;margin-top:7px;line-height:1.5">Le cadre reste fixe. Faites glisser la photo sur la carte pour la recentrer, et utilisez le zoom pour recadrer un sujet excentré.</p>' +
+
+        '<button class="btn btn-primary" id="ppaDl" style="width:100%;justify-content:center;margin-top:16px">Télécharger la carte (PNG)</button>' +
+      '</div>' +
+
+      '<div class="card" style="padding:16px;background:var(--bg1)">' +
+        '<div class="text-muted" style="font-size:.76rem;text-align:center;margin-bottom:10px">Aperçu en temps réel</div>' +
+        '<canvas id="ppaCanvas" style="width:100%;max-width:100%;height:auto;border-radius:14px;box-shadow:0 12px 34px rgba(0,0,0,.45);cursor:grab;display:block"></canvas>' +
+      '</div>' +
+
+    '</div>'
+  );
+
+  // Le sceau vient du site lui-meme : meme origine, donc le canvas reste
+  // exportable en PNG.
+  var logo = new Image();
+  logo.onload = function() { _ppaCarte.logo = logo; ppaCarteDessiner(); };
+  logo.src = 'assets/sasp-sud-logo.png';
+
+  _ppaCarte.photo = null; _ppaCarte.zoom = 1; _ppaCarte.dx = 0; _ppaCarte.dy = 0;
+
+  ['ppaPrenom','ppaNom','ppaMat','ppaNaiss','ppaDeliv','ppaValid','ppaGrade'].forEach(function(id) {
+    var e = document.getElementById(id);
+    if (e) e.addEventListener('input', ppaLireFormulaire);
+  });
+  ['ppaN1','ppaN2','ppaN3'].forEach(function(id) {
+    var e = document.getElementById(id);
+    if (e) e.addEventListener('change', ppaLireFormulaire);
+  });
+
+  var sel = document.getElementById('ppaAgent');
+  if (sel) sel.addEventListener('change', function() {
+    if (sel.value) ppaPrefill(sel.value); else ppaLireFormulaire();
+  });
+
+  var zoom = document.getElementById('ppaZoom');
+  if (zoom) zoom.addEventListener('input', function() {
+    _ppaCarte.zoom = (+zoom.value) / 100; ppaCarteDessiner();
+  });
+
+  var fich = document.getElementById('ppaPhoto');
+  if (fich) fich.addEventListener('change', function() {
+    var f = fich.files && fich.files[0];
+    if (!f) return;
+    var fr = new FileReader();
+    fr.onload = function() {
+      var im = new Image();
+      im.onload = function() {
+        _ppaCarte.photo = im; _ppaCarte.dx = 0; _ppaCarte.dy = 0;
+        if (zoom) { zoom.value = 100; _ppaCarte.zoom = 1; }
+        ppaCarteDessiner();
+      };
+      im.onerror = function() { toast('Image illisible.', 'error'); };
+      im.src = fr.result;
+    };
+    fr.readAsDataURL(f);
+  });
+
+  // Deplacement de la photo : les coordonnees de la souris sont en pixels
+  // ecran, la carte en pixels logiques, d'ou la conversion par le ratio.
+  var canvas = document.getElementById('ppaCanvas');
+  if (canvas) {
+    var tire = false, ox = 0, oy = 0, bx = 0, by = 0;
+    canvas.addEventListener('mousedown', function(e) {
+      if (!_ppaCarte.photo) return;
+      tire = true; canvas.style.cursor = 'grabbing';
+      ox = e.clientX; oy = e.clientY; bx = _ppaCarte.dx; by = _ppaCarte.dy;
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', function(e) {
+      if (!tire) return;
+      var ratio = PPA_L / canvas.getBoundingClientRect().width;
+      _ppaCarte.dx = bx + (e.clientX - ox) * ratio;
+      _ppaCarte.dy = by + (e.clientY - oy) * ratio;
+      ppaCarteDessiner();
+    });
+    window.addEventListener('mouseup', function() {
+      if (tire) { tire = false; canvas.style.cursor = 'grab'; }
+    });
+  }
+
+  var dl = document.getElementById('ppaDl');
+  if (dl) dl.onclick = ppaTelecharger;
+
+  ppaLireFormulaire();
+}
 
 async function renderTestsPoudre() {
   _testsPoudre = await DB.getTestsPoudre();

@@ -508,3 +508,9 @@ select.form-control{cursor:pointer}
 /* ── DISCORD BUTTON ─────────────────────────────────────────────────── */
 .btn-discord{background:#5865F2;color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;font-size:15px;font-weight:600;border:none;margin-top:8px}
 .btn-discord:hover{background:#4752C4;color:#fff}
+
+/* Cartes PPA : le formulaire passe au-dessus de l apercu sur petit ecran.
+   Nom distinct de .ppa-grid, qui sert deja aux badges de la fiche agent. */
+@media (max-width: 980px) {
+  .ppa-carte-grid { grid-template-columns: 1fr !important; }
+}
