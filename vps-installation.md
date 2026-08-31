@@ -217,7 +217,7 @@ ssh sasp@193.38.250.69
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl git nginx rsync sqlite3 ca-certificates
+sudo apt install -y curl git nginx rsync sqlite3 ca-certificates build-essential
 ```
 
 **Node.** Debian 13 est recent, et le depot NodeSource ne le couvre pas
@@ -245,6 +245,10 @@ Les trois doivent afficher `function object function`. Si l'un dit
 ```bash
 nginx -v
 ```
+
+**`build-essential` n'est pas facultatif.** `better-sqlite3` est un module
+natif : sans `make`, son installation echoue sur `node-gyp` avec
+`Error: not found: make`, un message qui ne dit pas ce qui manque.
 
 ---
 
