@@ -34,16 +34,109 @@ Ce dernier point est le plus important : **le Worker n'est pas jetable**. Il por
 
 | Aujourd'hui | Sur le VPS |
 |---|---|
-| GitHub Pages | Node sert les fichiers, derrière nginx |
-| Worker Cloudflare | Le même code, dans un processus Node |
+| GitHub Pages | **Next.js** sert les pages, derrière nginx |
+| HTML et JS écrits à la main | **React**, en composants |
+| Worker Cloudflare | Routes API de Next.js, même logique |
 | Supabase Postgres | **SQLite**, un fichier |
 | Supabase Auth | Discord OAuth traité par le serveur, session en cookie |
 | RLS sans policy | Contrôle dans le middleware |
 | Interrogation toutes les 3 s | WebSocket |
 
-Debian 12, Node 22 LTS, `better-sqlite3`, Fastify ou Express, nginx en frontal, Let's Encrypt pour le certificat, systemd pour tenir le service en vie.
+Debian 12, Node 22 LTS, **Next.js 15** en App Router, **React 19**, `better-sqlite3`, nginx en frontal, Let's Encrypt pour le certificat, systemd pour tenir le service en vie.
 
 **Pourquoi `better-sqlite3`** : il est synchrone. Pas de promesses à enchaîner pour lire trois lignes, et sur un fichier local une lecture prend quelques microsecondes. Le code en devient nettement plus lisible que l'actuel.
+
+## React et Next.js
+
+C'est la partie qui change le plus, et celle dont le coût est le plus facile à sous-estimer.
+
+### Ce que Next.js apporte
+
+**La protection des pages, pour de bon.** Un `middleware.ts` s'exécute avant que la moindre page soit rendue. C'est exactement ce qui manque aujourd'hui :
+
+```ts
+// middleware.ts : la page n'est jamais rendue si le rôle manque.
+export function middleware(req: NextRequest) {
+  const session = lireSession(req.cookies);
+  if (req.nextUrl.pathname.startsWith('/aegis')) {
+    if (!session) return NextResponse.redirect(new URL('/connexion', req.url));
+    if (!session.roles.some(r => ROLES_AEGIS.includes(r))) {
+      return new NextResponse('Accès refusé', { status: 403 });
+    }
+  }
+  return NextResponse.next();
+}
+```
+
+**Les composants serveur.** Une page peut lire SQLite directement pendant son rendu, sans API intermédiaire. Le HTML arrive rempli, il n'y a pas d'écran de chargement, et les données ne transitent jamais par un point que le navigateur pourrait appeler seul.
+
+```tsx
+// app/divisions/[code]/page.tsx : ceci tourne sur le serveur, uniquement.
+export default async function Division({ params }) {
+  const qui = await session();
+  if (!qui.divisions.includes(params.code)) notFound();
+  const docs = db.prepare('SELECT * FROM bureau_documents WHERE division = ?').all(params.code);
+  return <Documents liste={docs} />;
+}
+```
+
+**Le reste vient avec** : le regroupement du JS, les images optimisées, le rendu du premier affichage, le typage de bout en bout si on prend TypeScript.
+
+### Ce que React coûte
+
+**Il faut réécrire le front. Entièrement.**
+
+| Fichier | Lignes | Ce qu'il devient |
+|---|---|---|
+| `app.js` | ~8 800 | Une trentaine de composants, le gros du travail |
+| `sasp/liaisons/index.html` | ~3 700 | AEGIS : le moteur du graphe reste tel quel, enveloppé |
+| `index.html` (bureau) | ~1 200 | Fenêtres et barre des tâches en composants |
+| `worker.js` | ~10 900 | Routes API : la logique se reprend presque telle quelle |
+
+Environ **13 700 lignes de front à repenser**. Ce n'est pas une migration, c'est une réécriture. Comptez des mois à temps partiel, pas des semaines.
+
+Et ce sera plus long qu'il n'y paraît, parce que le code actuel manipule le DOM directement partout : `innerHTML`, `getElementById`, des gestionnaires posés à la main. React interdit cette façon de faire ; chaque écran est à repenser en état plutôt qu'en instructions.
+
+### Le chemin praticable
+
+Ne pas tout réécrire d'un coup. Next.js sait servir des fichiers statiques tels quels depuis `public/` :
+
+**1.** Monter Next.js, déposer `pa.html`, `app.js`, `style.css` et AEGIS dans `public/`. Tout fonctionne comme aujourd'hui, sans une ligne de React.
+
+**2.** Mettre le `middleware.ts` en place. Les pages sont enfin protégées, et **on n'a encore rien réécrit**. C'est le gain le plus grand pour l'effort le plus faible.
+
+**3.** Porter le bureau en React. C'est le plus récent, le plus petit, et celui qu'on connaît le mieux.
+
+**4.** Porter l'intranet écran par écran. `/agents` en React pendant que `/grades` reste en `public/`, les deux cohabitent sans se gêner.
+
+**5.** AEGIS en dernier, si jamais. Son moteur de graphe, le canvas et le SVG n'ont rien à gagner à devenir du React. Un composant qui l'enveloppe et le laisse travailler suffit.
+
+L'étape 2 mérite qu'on s'y arrête : elle apporte à elle seule la protection réelle des pages, pour quelques heures de travail. Les étapes 3 à 5 sont du confort.
+
+### SQLite dans Next.js, les deux pièges
+
+**`better-sqlite3` est un module natif.** Il faut le déclarer, sinon la compilation échoue au déploiement :
+
+```js
+// next.config.js
+module.exports = {
+  serverExternalPackages: ['better-sqlite3'],
+  output: 'standalone'   // pour ne déployer que ce qui sert
+};
+```
+
+**La connexion doit survivre au rechargement à chaud.** En développement, Next.js recharge les modules à chaque sauvegarde ; sans précaution, chaque rechargement ouvre une connexion de plus et le processus finit par manquer de descripteurs :
+
+```ts
+// lib/db.ts
+import Database from 'better-sqlite3';
+const g = globalThis as { _db?: Database.Database };
+export const db = g._db ?? (g._db = new Database('/var/sasp/sasp.db'));
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+```
+
+Et la règle qui ne souffre aucune exception : **`db` ne s'importe jamais dans un composant client**. Un `'use client'` en tête de fichier et un import de la base dans le même arbre, et le bundler tente d'embarquer SQLite dans le navigateur. L'erreur est déroutante quand on ne connaît pas la cause.
 
 ## SQLite est-il assez ?
 
@@ -146,19 +239,27 @@ const inserer = db.transaction(lignes => {
 });
 ```
 
-**4. Porter le serveur.** Le Worker devient un fichier Node. Les routes `/api/...` gardent leurs chemins, donc le front n'a presque rien à changer. La partie Discord se reprend telle quelle.
+**4. Porter le serveur.** Le Worker devient des routes API de Next.js. Elles gardent leurs chemins `/api/...`, donc le front n'a rien à changer. La partie Discord se reprend telle quelle, dans un processus à part ou dans le même.
 
-**5. Faire tourner les deux en parallèle une semaine.** L'ancien reste la référence, le nouveau se remplit et se compare. C'est là qu'on trouve les écarts.
+**5. Déposer le front actuel dans `public/`.** Sans une ligne de React. Le site tourne alors entièrement sur le VPS, à l'identique.
 
-**6. Basculer le DNS.** Et garder l'ancien joignable un mois, au cas où.
+**6. Poser le `middleware.ts`.** Les pages deviennent réellement protégées. C'est ici que se gagne l'essentiel.
 
-Ne pas viser la bascule en un week-end. Compter **deux à trois semaines à temps partiel**, dont l'essentiel sur l'étape 4.
+**7. Faire tourner les deux en parallèle une semaine.** L'ancien reste la référence, le nouveau se remplit et se compare. C'est là qu'on trouve les écarts.
+
+**8. Basculer le DNS.** Et garder l'ancien joignable un mois, au cas où.
+
+Ne pas viser la bascule en un week-end. Compter **deux à trois semaines à temps partiel** pour aller jusqu'à l'étape 8, dont l'essentiel sur la 4.
+
+**La réécriture en React vient après, et seulement si vous la voulez.** Elle n'est pas nécessaire pour gagner la protection des pages, le temps réel ni les courriels : tout cela est acquis à l'étape 6. React apporte du confort de développement et un code plus tenable à long terme, pas une fonctionnalité de plus.
 
 ## Ce que ça enlève
 
 Il faut le dire aussi, sinon la décision est faussée.
 
-**Le déploiement devient manuel.** Aujourd'hui un `git push` suffit. Demain il faudra tirer, redémarrer, vérifier. Ça se scripte, mais c'est à faire.
+**Le déploiement devient manuel, et il y a une compilation.** Aujourd'hui un `git push` suffit et le fichier est en ligne. Demain il faudra tirer, lancer `npm run build`, redémarrer le service, vérifier. La compilation prend une à deux minutes et **peut échouer** : une erreur de type, un import de la base dans un composant client, et rien ne part. Ça se scripte, mais c'est une étape de plus entre vous et la mise en ligne.
+
+**Il faut connaître React.** Le code actuel se lit avec du HTML et du JavaScript. Après la réécriture, il faudra comprendre les composants, l'état, les effets, la frontière entre serveur et client. Si l'un de vous deux ne connaît pas, il perd l'accès à une partie du code jusqu'à l'apprendre.
 
 **Plus de CDN.** GitHub Pages sert la page depuis le point le plus proche du visiteur. Un VPS unique sert depuis un seul endroit.
 
@@ -173,3 +274,5 @@ Il faut le dire aussi, sinon la décision est faussée.
 **Si l'architecture actuelle vous convient, n'y touchez pas.** Elle est plus sûre par construction : rien à administrer, rien à sauvegarder, rien qui tombe la nuit.
 
 Une voie moyenne existe, souvent la plus raisonnable : **garder GitHub Pages pour le front, mettre un petit serveur Node sur le VPS pour l'API et le bot**. On gagne le temps réel, les fichiers et les courriels, sans reprendre l'hébergement du site ni perdre le CDN. La protection des pages reste hors de portée, mais c'est la contrainte la moins gênante des trois.
+
+**Sur React et Next.js, séparez bien les deux décisions.** Next.js sur le VPS vaut le coup dès l'étape 6 : quelques heures de travail, et les pages sont protégées pour de bon. La réécriture du front en React est une décision distincte, qui n'apporte aucune fonctionnalité et coûte des mois. Prenez la première maintenant si vous basculez, gardez la seconde pour quand le code actuel vous gênera vraiment.
