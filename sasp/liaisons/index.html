@@ -287,6 +287,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .relrow .del{opacity:0;color:#8A7550}
 .relrow:hover .del{opacity:1}
 .relrow .del:hover{color:var(--red)}
+.relrow .sup:hover{color:var(--red)}
 
 /* ---------- fenêtres ---------- */
 .scrim{position:fixed;inset:0;background:rgba(30,16,4,.72);z-index:80;display:grid;place-items:center;padding:24px;animation:fade .16s}
@@ -1298,7 +1299,23 @@ function drawEdges(){
     l+=`<text class="elabel${S.selEdge===e.id?' sel':''}${dim}" x="${lx}" y="${ly-4}" text-anchor="middle" data-edge="${e.id}" transform="rotate(${ang.toFixed(1)} ${lx} ${ly-4})">${esc(e.l)}</text>`;
   });
   $('#glinks').innerHTML=sh+p; $('#glabels').innerHTML=l;
-  $$('[data-edge]').forEach(x=>x.onclick=ev=>{ev.stopPropagation();selectEdge(x.dataset.edge)});
+  $$('[data-edge]').forEach(x=>{
+    x.onclick=ev=>{ev.stopPropagation();selectEdge(x.dataset.edge)};
+    x.addEventListener('contextmenu',ev=>{
+      ev.preventDefault();ev.stopPropagation();
+      const e2=S.edges.filter(y=>y.id===x.dataset.edge)[0]; if(!e2)return;
+      const a2=node(e2.a),b2=node(e2.b);
+      ctxMenu(ev.clientX,ev.clientY,[{hd:titleOf(a2)+' → '+titleOf(b2)},
+        {l:'Ouvrir la liaison',i:I.link,fn:()=>selectEdge(e2.id)},
+        ...(MOI.ecriture?['-',{l:'Supprimer la liaison',i:I.trash,dgr:1,fn:()=>confirmDlg('Supprimer la liaison',
+          `La liaison « ${esc(e2.l)} » entre <b>${esc(titleOf(a2))}</b> et <b>${esc(titleOf(b2))}</b> sera supprimée.`,
+          'Supprimer',()=>{
+            logAct('Suppression de liaison',titleOf(a2)+' → '+titleOf(b2));
+            S.edges=S.edges.filter(y=>y.id!==e2.id);
+            deselect();render();save('Liaison supprimée');toast('Liaison supprimée','','ok');
+          },true)}]:[])]);
+    });
+  });
 }
 function bindNodes(){
   $$('#gnodes .node').forEach(nd=>{
@@ -1754,7 +1771,9 @@ function selectNode(id){
         <span style="color:${sch(r.o.t).c};flex:none">${svg(sch(r.o.t).i,14)}</span>
         <span class="rv">${r.dir} ${esc(r.e.l)}</span>
         <span class="rn">${esc(titleOf(r.o))}</span>
-        <span class="del" title="Modifier la liaison">${svg(I.link,13)}</span></div>`).join('')
+        <span class="del" title="Modifier la liaison">${svg(I.link,13)}</span>
+        ${MOI.ecriture?`<span class="del sup" data-sup="${r.e.id}" title="Supprimer la liaison">${svg(I.trash,13)}</span>`:''}
+        </div>`).join('')
         ||'<span class="muted">Aucune liaison. Utilisez « Créer une liaison ».</span>'}
      <div class="isec">Actions</div>
      <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -1773,7 +1792,25 @@ function selectNode(id){
   bindInspector(n);
   $('#iClose').onclick=deselect;
   $$('[data-node]',p).forEach(r=>{
-    r.onclick=e=>{if(e.target.closest('.del'))return selectEdge(r.dataset.rel);selectNode(r.dataset.node)};
+    r.onclick=e=>{
+      if(e.target.closest('.sup'))return;              // traité plus bas
+      if(e.target.closest('.del'))return selectEdge(r.dataset.rel);
+      selectNode(r.dataset.node);
+    };
+  });
+  $$('[data-sup]',p).forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const lien=S.edges.filter(x=>x.id===b.dataset.sup)[0];
+    if(!lien)return;
+    const autre=node(lien.a===id?lien.b:lien.a);
+    confirmDlg('Supprimer la liaison',
+      `La liaison « ${esc(lien.l)} » entre <b>${esc(titleOf(n))}</b> et <b>${esc(titleOf(autre))}</b> sera supprimée. Les deux fiches restent sur le tableau.`,
+      'Supprimer',()=>{
+        logAct('Suppression de liaison',titleOf(n)+' → '+titleOf(autre));
+        S.edges=S.edges.filter(x=>x.id!==lien.id);
+        render();selectNode(id);save('Liaison supprimée');
+        toast('Liaison supprimée','','ok');
+      },true);
   });
   const bh=$('#iHier',p);
   if(bh)bh.onclick=()=>hierarchieDlg(id);
@@ -1895,7 +1932,8 @@ function selectEdge(id){
        <button class="btn sm ${!e.dash?'on':''}" data-d="0">Plein</button><button class="btn sm ${e.dash?'on':''}" data-d="1">Pointillés</button>
        <button class="btn sm" id="eSwap" title="Inverser le sens">⇄ Inverser</button></div></div>
    </div>
-   <footer><button class="btn pri" style="flex:1" id="eSave">Enregistrer</button><button class="btn dgr" id="eDel">${svg(I.trash,13)}</button></footer>`;
+   <footer><button class="btn pri" style="flex:1" id="eSave">Enregistrer</button>
+     <button class="btn dgr" id="eDel">${svg(I.trash,13)}Supprimer</button></footer>`;
   p.classList.add('open');$('#board').classList.add('inspecting');
   if(!MOI.ecriture)$$('button,select,textarea,input',p).forEach(x=>{if(x.id!=='iClose')x.disabled=true});
   $('#iClose').onclick=deselect;
@@ -2946,14 +2984,186 @@ function saisieLien(reste,T){
   return {lien:true,a,b,l:intitule,w:niveau,rang};
 }
 
+/* ------------------------------------------------------------
+   PHRASES
+   Une couche de tournures françaises courantes par-dessus la
+   saisie stricte. Ce sont des motifs, pas de la compréhension :
+   ce qui ne tombe dans aucun motif est signalé, jamais deviné.
+   ------------------------------------------------------------ */
+
+// Les rangs tels qu'on les nomme dans une phrase.
+const PH_RANGS=[
+  [/^(president|presidente|chef|cheffe|tete de reseau|leader|boss|patron|parrain)$/,1],
+  [/^(vice.?president|vice.?presidente|bras droit|second|numero 2|adjoint)$/,2],
+  [/^(lieutenant|sergent|sergent d.armes|capitaine|responsable)$/,3],
+  [/^(homme de main|soldat|membre|executant|nervi)$/,4],
+  [/^(contact|associe|associee|peripherie|indic|informateur)$/,5]
+];
+const phRang=s=>{const p=sansAccent(s);
+  for(const [re,n] of PH_RANGS) if(re.test(p)) return n;
+  return 0;};
+
+// Les trafics les plus courants, pour nommer l'infraction correctement.
+const PH_TRAFICS=[
+  [/arme/,        "Trafic d'armes",              'Armes'],
+  [/stup|drogue|coke|cocaine|meth|herbe|cannabis/, 'Trafic de stupéfiants', 'Stupéfiants'],
+  [/vehicule|voiture|bagnole/, 'Trafic de véhicules', 'Atteinte aux biens'],
+  [/humain|etre humain|personne/, "Traite d'êtres humains", 'Atteinte aux personnes']
+];
+
+// Retire les articles et le mot « groupe », et met une majuscule quand
+// tout est en minuscules : « le groupe des black king » -> « Black King ».
+// L'ordre des variantes compte : « les » doit être testé avant « le »,
+// sinon « les black king » perd trois lettres et devient « s black king ».
+// Les formes élidées sont traitées à part, elles n'ont pas d'espace après.
+function phRetirerArticle(x){
+  return x
+    .replace(/^(?:l|d)['’]\s*/i,'')
+    .replace(/^(?:de\s+la|de\s+l['’]|les|le|la|des|du|de|une|un|aux|au)\s+/i,'')
+    .trim();
+}
+function phNom(s){
+  let x=String(s||'').trim().replace(/[.,;!?]+$/,'').trim();
+  for(let k=0;k<3;k++)x=phRetirerArticle(x);
+  x=x.replace(/^(?:groupes?|bandes?|organisations?|gangs?|clans?)\s+/i,'').trim();
+  for(let k=0;k<3;k++)x=phRetirerArticle(x);
+  if(x&&x===x.toLowerCase())x=x.replace(/(^|[\s'’-])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase());
+  return x;
+}
+
+// Découpe un texte suivi en propositions. Sans ponctuation, on coupe
+// devant les reprises qui commencent visiblement une nouvelle idée.
+function phClauses(texte){
+  return texte
+    .replace(/\s+(?=(?:il|elle|ils|elles)\s+(?:est|sont|a|ont|dirige|fait|travaille))/gi,'\n')
+    .replace(/\s+(?=(?:le groupe|la bande|le gang|l['’]organisation)\b)/gi,'\n')
+    .split(/[\n.;]+/).map(x=>x.trim()).filter(Boolean);
+}
+
+// Contexte de lecture : « il » renvoie à la dernière personne nommée,
+// « le groupe » au dernier groupe. Sans cela, les phrases enchaînées
+// perdraient leur sujet.
+function phrasesAnalyser(texte){
+  const sorties=[];
+  const ctx={personne:null,groupe:null};
+  const neuf={};   // nom normalisé -> déjà proposé dans ce lot
+
+  const poser=(t,nom,champs)=>{
+    const cle=t+'|'+sansAccent(nom);
+    if(neuf[cle])return neuf[cle];
+    const d=Object.assign({},champs||{});
+    const cles=SCHEMA[t]&&SCHEMA[t].titre||[];
+    if(cles.length>1){const mots=nom.split(/\s+/);d[cles[0]]=mots.shift()||'';if(mots.length)d[cles[1]]=mots.join(' ');}
+    else if(cles.length===1)d[cles[0]]=nom;
+    const r={t,d,r:0,resolus:[['nom',nom]].concat(Object.keys(champs||{}).map(k=>{
+      const f=(SCHEMA[t].f||[]).filter(x=>x.k===k)[0];
+      return [f?f.l:k,champs[k]];
+    })),ignores:[],ligne:'· '+nom};
+    sorties.push(r);
+    neuf[cle]=nom;
+    return nom;
+  };
+  const relier=(a,b,l,extra)=>{
+    sorties.push(Object.assign({lien:true,a,b,l,w:'',rang:0,ligne:'· '+a+' → '+b},extra||{}));
+  };
+
+  phClauses(texte).forEach(cl=>{
+    const p=sansAccent(cl);
+    let m;
+
+    // « X fait partie du groupe Y » · « X est membre de Y »
+    if((m=cl.match(/^(.+?)\s+(?:fait\s+partie|est\s+membre|appartient|est\s+dans)\s+(?:de\s+|du\s+|des\s+|d['’]|a\s+|à\s+)?(.+)$/i))){
+      const qui=phNom(m[1]),grp=phNom(m[2]);
+      if(qui&&grp){
+        ctx.personne=poser('personne',qui);
+        ctx.groupe=poser('groupe',grp);
+        relier(ctx.personne,ctx.groupe,'Membre de');
+        return;
+      }
+    }
+    // « X dirige Y » · « X est le chef de Y »
+    if((m=cl.match(/^(.+?)\s+(?:dirige|commande)\s+(.+)$/i))||
+       (m=cl.match(/^(.+?)\s+est\s+(?:le\s+|la\s+)?(?:chef|president|présidente|présidente|patron|parrain)\s+(?:de\s+|du\s+|des\s+|de\s+la\s+)(.+)$/i))){
+      const qui=phNom(m[1]),grp=phNom(m[2]);
+      if(qui&&grp){
+        ctx.personne=poser('personne',qui);
+        ctx.groupe=poser('groupe',grp);
+        relier(ctx.personne,ctx.groupe,'Chef de',{w:'hot',rang:1});
+        return;
+      }
+    }
+    // « il est président » · « Léo Arras est lieutenant »
+    if((m=cl.match(/^(?:il|elle)\s+est\s+(?:le\s+|la\s+|l['’])?(.+)$/i))||
+       (m=cl.match(/^(.+?)\s+est\s+(?:le\s+|la\s+|l['’])?(président|présidente|chef|cheffe|vice.?président|bras droit|second|lieutenant|sergent|homme de main|soldat|membre|associé|associée|contact)$/i))){
+      let qui=ctx.personne,titre=m[1];
+      if(m.length>2&&m[2]){ qui=phNom(m[1]); titre=m[2]; }
+      const rang=phRang(titre);
+      if(qui&&ctx.groupe&&rang){
+        const dejaLien=sorties.filter(x=>x.lien&&x.a===qui&&x.b===ctx.groupe)[0];
+        if(dejaLien){ dejaLien.rang=rang; if(rang===1){dejaLien.l='Chef de';dejaLien.w='hot';} }
+        else relier(qui,ctx.groupe,rang===1?'Chef de':'Membre de',{rang});
+        return;
+      }
+    }
+    // « le groupe des black king trafique des armes »
+    if((m=cl.match(/^(.+?)\s+(?:trafique|traffic|trafic|fait\s+(?:du|de\s+la|le|des)?\s*(?:trafic|traffic))\s*(?:de\s+|du\s+|des\s+|d['’]|dans\s+)?(.+)$/i))){
+      const grp=phNom(m[1])||ctx.groupe, quoi=sansAccent(m[2]);
+      if(grp){
+        const g=poser('groupe',grp); ctx.groupe=g;
+        let intitule='Trafic de '+m[2].trim(), cat='Autre';
+        for(const [re,lib,c] of PH_TRAFICS) if(re.test(quoi)){ intitule=lib; cat=c; break; }
+        const inf=poser('infraction',intitule,{categorie:cat,gravite:'Crime',statut:'Présumée'});
+        relier(g,inf,'Activité du groupe',{w:'warm'});
+        return;
+      }
+    }
+    // « X détient un Glock 17 » · « X possède une AK »
+    if((m=cl.match(/^(.+?)\s+(?:detient|détient|possede|possède|porte)\s+(?:un\s+|une\s+|le\s+|la\s+|des\s+)?(.+)$/i))){
+      const qui=phNom(m[1])||ctx.personne, arme=phNom(m[2]);
+      if(qui&&arme){
+        const a=poser('personne',qui); ctx.personne=a;
+        const w=poser('arme',arme,{etat:'Non localisée'});
+        relier(a,w,'Détient',{w:'warm'});
+        return;
+      }
+    }
+    // « X habite à Sandy Shores »
+    if((m=cl.match(/^(.+?)\s+(?:habite|reside|réside|vit)\s+(?:a\s+|à\s+|au\s+|aux\s+|dans\s+(?:le\s+|la\s+|les\s+)?)?(.+)$/i))){
+      const qui=phNom(m[1])||ctx.personne, ou=phNom(m[2]);
+      if(qui&&ou){
+        const a=poser('personne',qui); ctx.personne=a;
+        const l=poser('lieu',ou,{type:'Adresse'});
+        relier(a,l,'Habite à');
+        return;
+      }
+    }
+
+    sorties.push({erreur:"Tournure non reconnue. Essayez « X fait partie du groupe Y », « il est président », « Y trafique des armes », « X détient une arme », « X habite à Z ».",ligne:cl});
+  });
+
+  return sorties;
+}
+
 function saisieAnalyser(texte){
   const T=saisieTables();
-  return texte.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(ligne=>{
+  const sorties=[];
+  texte.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).forEach(ligne=>{
     const m=ligne.match(/^(lien|liaison|ficelle)\s+([\s\S]+)$/i);
     const r=m?saisieLien(m[2],T):saisieElement(ligne,T);
+    // Une ligne qui ne commence pas par un type n'est pas forcément
+    // fautive : c'est peut-être une phrase. On la repasse à la couche
+    // de tournures avant de la déclarer perdue.
+    if(r.erreur&&/^Type inconnu/.test(r.erreur)){
+      const p=phrasesAnalyser(ligne);
+      if(p.length&&p.some(x=>!x.erreur)){ p.forEach(x=>sorties.push(x)); return; }
+      // Une ligne de quatre mots ou plus est visiblement une phrase :
+      // lui reprocher un « type inconnu » n'aiderait personne à corriger.
+      if(ligne.split(/\s+/).length>=4&&p.length){ p.forEach(x=>sorties.push(x)); return; }
+    }
     r.ligne=ligne;
-    return r;
+    sorties.push(r);
   });
+  return sorties;
 }
 
 // Retrouve une fiche par son nom. Ambigu vaut mieux que faux : deux
