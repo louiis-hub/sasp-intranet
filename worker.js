@@ -5943,12 +5943,20 @@ export default {
       if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
       try {
         const rows = await sb(env, "GET", "/liaisons_tableaux?select=*&order=id.asc");
-        return json({ ok: true, tableaux: (rows || []).map(t => ({
-          id: t.id, nom: t.nom, dossier: t.dossier, version: t.version,
-          elements: Array.isArray(t.nodes) ? t.nodes.length : 0,
-          liaisons: Array.isArray(t.edges) ? t.edges.length : 0,
-          updated_at: t.updated_at, updated_by: t.updated_by
-        })) });
+        return json({ ok: true, tableaux: (rows || []).map(t => {
+          // Le poids compte autant que le nombre de fiches : les images
+          // voyagent dans le tableau, quelques photos pesent plus que
+          // cent fiches de texte.
+          const octets = JSON.stringify(t.nodes || []).length + JSON.stringify(t.edges || []).length;
+          const avecImage = (Array.isArray(t.nodes) ? t.nodes : []).filter(n => n && n.image).length;
+          return {
+            id: t.id, nom: t.nom, dossier: t.dossier, version: t.version,
+            elements: Array.isArray(t.nodes) ? t.nodes.length : 0,
+            liaisons: Array.isArray(t.edges) ? t.edges.length : 0,
+            images: avecImage, ko: Math.round(octets / 1024),
+            updated_at: t.updated_at, updated_by: t.updated_by
+          };
+        }) });
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
       }
@@ -6319,9 +6327,21 @@ export default {
           if (droitEcr !== "ecriture") {
             return json({ ok: false, error: "Vous avez ce dossier en lecture seule." }, 403);
           }
-          const corps = await request.json().catch(() => null);
+          let corps = null, lu = null;
+          try { lu = await request.text(); corps = JSON.parse(lu); } catch (e) {}
           if (!corps || !Array.isArray(corps.nodes) || !Array.isArray(corps.edges)) {
-            return json({ ok: false, error: "Corps de requete invalide." }, 400);
+            return json({ ok: false, error: "Corps de requete invalide.",
+              recu_ko: lu ? Math.round(lu.length / 1024) : 0 }, 400);
+          }
+          // Une limite annoncee vaut mieux qu un echec sans explication :
+          // sans elle, Supabase refusait et personne ne savait pourquoi.
+          const poidsKo = Math.round(lu.length / 1024);
+          if (lu.length > 6 * 1024 * 1024) {
+            const gros = corps.nodes.filter(n => n && n.image && String(n.image).length > 150000).length;
+            return json({ ok: false, trop_lourd: true, recu_ko: poidsKo,
+              error: "Tableau trop lourd (" + poidsKo + " Ko). " +
+                (gros ? gros + " fiche(s) portent une image tres lourde. " : "") +
+                "Retirez ou allegez des images." }, 413);
           }
 
           // Verrou optimiste : deux personnes sur le meme dossier ne

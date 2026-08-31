@@ -147,6 +147,9 @@ button,input,select,textarea{font:inherit;color:inherit}
   backdrop-filter:blur(20px);overflow:hidden;min-width:340px;min-height:220px}
 .fen.plein{left:0 !important;top:0 !important;width:100% !important;
   height:calc(100% - 78px) !important;border-radius:0;border-width:0 0 1px 0}
+/* En plein ecran natif il n y a plus de barre des taches a eviter. */
+.fen:fullscreen{left:0 !important;top:0 !important;
+  width:100vw !important;height:100vh !important;border-radius:0;border:0}
 .fen.range{display:none}
 .fen > header{display:flex;align-items:center;gap:10px;padding:0 6px 0 14px;height:44px;flex:none;
   background:rgba(255,255,255,.035);border-bottom:1px solid var(--bord);cursor:grab;user-select:none}
@@ -458,7 +461,8 @@ function fenetre(cle,o){
       <span style="font-size:15px">${o.icone||'🗂️'}</span>
       <span class="ti">${esc(o.titre)}${o.sous?`<span class="st">${esc(o.sous)}</span>`:''}</span>
       <button class="fbtn" data-reduire title="Réduire">─</button>
-      <button class="fbtn" data-plein title="Agrandir">▢</button>
+      <button class="fbtn" data-plein title="Agrandir dans le bureau">▢</button>
+      <button class="fbtn" data-ecran title="Plein écran (F11 de la fenêtre)">⛶</button>
       <button class="fbtn fermer" data-fermer title="Fermer">✕</button>
     </header>
     <div class="corps"></div>
@@ -475,6 +479,16 @@ function fenetre(cle,o){
   $('[data-reduire]',f).onclick=e=>{e.stopPropagation();rangerFenetre(cle)};
   $('[data-plein]',f).onclick=e=>{e.stopPropagation();f.classList.toggle('plein')};
   tete.addEventListener('dblclick',()=>f.classList.toggle('plein'));
+
+  // Le vrai plein ecran : la fenetre prend l ecran entier, barre des
+  // taches comprise. Utile pour AEGIS, dont le liege gagne a tout prendre.
+  $('[data-ecran]',f).onclick=async e=>{
+    e.stopPropagation();
+    try{
+      if(document.fullscreenElement===f)await document.exitFullscreen();
+      else await f.requestFullscreen();
+    }catch(err){ avis('Plein écran refusé',err&&err.message||'','warn'); }
+  };
 
   // Déplacement
   tete.addEventListener('mousedown',e=>{
@@ -1042,9 +1056,38 @@ function ouvrirMail(){
             href="${esc(p.donnee||'#')}" style="margin:4px 6px 0 0">📎 ${esc(p.nom||'pièce '+(i+1))}</a>`).join('')}
         </div>`:''}
         <div style="margin-top:22px"><button class="btn" id="mlRep">↩ Répondre</button></div>
+        ${(()=>{ const f=filDe(m).filter(x=>x.id!==m.id); return f.length?`
+          <div style="margin-top:26px;padding-top:18px;border-top:1px solid var(--bord)">
+            <div class="lbl">Historique de la conversation (${f.length})</div>
+            ${f.reverse().map(x=>`<details style="margin-top:9px;border:1px solid var(--bord);
+              border-radius:9px;background:rgba(255,255,255,.03)">
+              <summary style="padding:10px 13px;cursor:pointer;font-size:12.5px;color:var(--t2);
+                display:flex;gap:9px;align-items:center">
+                <b style="color:var(--bleu2);font-weight:600">${esc(x.expediteur_nom||x.expediteur_adr)}</b>
+                <span style="margin-left:auto;font-size:11px;color:var(--t3)">
+                  ${new Date(x.created_at).toLocaleString('fr-FR')}</span></summary>
+              <div style="padding:0 13px 13px;font-size:13px;color:var(--t1);line-height:1.7;
+                white-space:pre-wrap">${esc(x.corps||'')}</div>
+            </details>`).join('')}
+          </div>`:''; })()}
       </div>`;
       const rep=$('#mlRep',o.corps);
-      if(rep)rep.onclick=()=>ecrire({a:[m.expediteur_adr],sujet:'Re : '+(m.sujet||'')});
+      if(rep)rep.onclick=()=>ecrire({a:[m.expediteur_adr],sujet:sujetReponse(m.sujet),
+        cite:m});
+    };
+
+    // « Re : » ne s empile pas : un fil de dix reponses donnerait
+    // « Re : Re : Re : ... » et le sujet deviendrait illisible.
+    const sujetReponse=s2=>{
+      const t=String(s2||'').replace(/^\s*(re\s*:\s*)+/i,'').trim();
+      return 'Re : '+(t||'(sans objet)');
+    };
+    // Le fil : tous les messages du meme sujet, du plus ancien au plus
+    // recent. Sans identifiant de conversation, le sujet fait le lien.
+    const filDe=m=>{
+      const cle=sujetReponse(m.sujet).slice(5).toLowerCase();
+      return mails.filter(x=>sujetReponse(x.sujet).slice(5).toLowerCase()===cle)
+        .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
     };
 
     const ecrire=async pre=>{
@@ -1060,7 +1103,12 @@ function ouvrirMail(){
         <label class="lbl" style="margin-top:14px">Objet</label>
         <input class="champ" id="mlS" value="${esc(pre&&pre.sujet||'')}">
         <label class="lbl" style="margin-top:14px">Message</label>
-        <textarea class="champ" id="mlC" style="min-height:170px"></textarea>
+        <textarea class="champ" id="mlC" style="min-height:170px">${
+          pre&&pre.cite
+            ? '\n\n' + ('Le '+new Date(pre.cite.created_at).toLocaleString('fr-FR')+
+               ', '+(pre.cite.expediteur_nom||pre.cite.expediteur_adr)+' a écrit :\n')+
+              String(pre.cite.corps||'').split('\n').map(l=>'> '+l).join('\n')
+            : ''}</textarea>
         <label class="lbl" style="margin-top:14px">Pièce jointe</label>
         <input type="file" class="champ" id="mlF" multiple style="padding:7px">
         <div style="font-size:11.5px;color:var(--t3);margin-top:5px">
@@ -1099,11 +1147,40 @@ function majBadgeMail(){
   const r=RACCOURCIS.filter(x=>x.cle==='mail')[0];
   if(r){ r.badge=MAILS_NON_LUS||0; majTaches(); }
 }
+// Les identifiants deja signales, pour ne pas reprevenir a chaque tour.
+let MAILS_VUS=null;
+
 async function veilleMail(){
   const r=await api('/api/bureau/mails?boite=recus');
   if(!r.ok)return;
-  MAILS_NON_LUS=(r.data.mails||[]).filter(m=>(m.lu_par||[]).indexOf(MOI.discord_id)===-1).length;
+  const recus=r.data.mails||[];
+  const nonLus=recus.filter(m=>(m.lu_par||[]).indexOf(MOI.discord_id)===-1);
+  MAILS_NON_LUS=nonLus.length;
   majBadgeMail();
+
+  // Au premier tour on ne previent de rien : ce sont des mails deja la,
+  // pas des arrivees. On note seulement ce qui existe.
+  if(MAILS_VUS===null){ MAILS_VUS=new Set(recus.map(m=>m.id)); return; }
+
+  const nouveaux=nonLus.filter(m=>!MAILS_VUS.has(m.id));
+  recus.forEach(m=>MAILS_VUS.add(m.id));
+  if(!nouveaux.length)return;
+
+  nouveaux.slice(0,3).forEach(m=>{
+    const f=avis('✉️ '+(m.expediteur_nom||m.expediteur_adr),
+      (m.sujet||'(sans objet)'),'', 12000);
+    // Cliquer la notification ouvre la messagerie sur ce message.
+    const n=$('#avis').lastElementChild;
+    if(n){
+      n.style.cursor='pointer';
+      n.addEventListener('click',e=>{
+        if(e.target.closest('.x'))return;
+        f(); ouvrirMail();
+      });
+    }
+  });
+  if(nouveaux.length>3)avis('Et '+(nouveaux.length-3)+' autre(s) message(s)','','',8000);
+  try{ new Audio('data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=').play(); }catch(e){}
 }
 
 /* ============================================================
@@ -1328,7 +1405,7 @@ async function demarrer(){
     annonces();
     veilleMail();
   }
-  setInterval(veilleMail,60000);
+  setInterval(veilleMail,25000);
 }
 
 horloge();

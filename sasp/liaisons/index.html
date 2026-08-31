@@ -129,12 +129,14 @@ button,input,select,textarea{font:inherit;color:inherit}
 #gedges{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
 
 /* ---------- fiches épinglées ---------- */
-.node{position:absolute;width:176px;transform:translate(-50%,-50%) rotate(var(--rot,0deg));
+/* --ech : le facteur de taille de la fiche, pour mettre en evidence
+   ce qui compte. Le calcul de l epingle en tient compte. */
+.node{position:absolute;width:176px;transform:translate(-50%,-50%) rotate(var(--rot,0deg)) scale(var(--ech,1));
   background:var(--paper);color:var(--ink);border-radius:1px;cursor:grab;user-select:none;padding:9px 9px 8px;
   box-shadow:0 7px 14px rgba(50,28,6,.38), 0 2px 3px rgba(0,0,0,.25);
   transition:box-shadow .14s,filter .14s}
 .node:hover{box-shadow:0 11px 22px rgba(50,28,6,.45), 0 2px 3px rgba(0,0,0,.3)}
-.node.sel{transform:translate(-50%,-50%) rotate(0deg) scale(1.03);z-index:20;
+.node.sel{transform:translate(-50%,-50%) rotate(0deg) scale(calc(var(--ech,1) * 1.03));z-index:20;
   box-shadow:0 0 0 2px var(--red), 0 16px 30px rgba(50,28,6,.5)}
 .node.dim{opacity:.4;filter:saturate(.45)}
 .node.hit{box-shadow:0 0 0 3px #F2C230, 0 10px 22px rgba(50,28,6,.45)}
@@ -148,11 +150,16 @@ button,input,select,textarea{font:inherit;color:inherit}
 .node .ph{display:none;background:#4A4640;border:1px solid #2E2B27;margin-bottom:7px;
   align-items:center;justify-content:center;color:#8C877E;
   background-image:linear-gradient(150deg,#5A554E,#3C3833 60%,#514C45)}
-.node .ttl{font-family:var(--f-ui);font-size:13px;color:var(--ink);line-height:1.22;word-break:break-word;letter-spacing:.01em}
+.node .ttl{font-family:var(--f-ui);font-size:12.5px;color:var(--ink);line-height:1.22;
+  word-break:break-word;overflow-wrap:anywhere;letter-spacing:.01em}
 .node .tlab{font-family:var(--f-hand);font-size:14px;line-height:1;margin-bottom:3px}
-.node .kv{display:flex;gap:5px;font-family:var(--f-mono);font-size:9.5px;color:var(--ink3);margin-top:3px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.node .kv b{color:var(--ink4);font-weight:400}
+/* Deux lignes plutot qu une coupure : « PROFESSION Co-Patron BurgerShot »
+   centre se faisait rogner des deux cotes et devenait illisible. */
+.node .kv{font-family:var(--f-mono);font-size:8.5px;color:var(--ink3);margin-top:3px;
+  line-height:1.4;word-break:break-word;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.node .kv b{color:var(--ink4);font-weight:400;margin-right:4px}
+.p-polaroid .kv,.p-photo .kv{text-align:center}
 .node .risk{display:flex;gap:2px;margin-top:6px}
 .node .risk i{width:13px;height:3px;background:rgba(120,100,70,.28);border-radius:1px}
 .node .risk i.on{background:var(--amber)}
@@ -161,15 +168,13 @@ button,input,select,textarea{font:inherit;color:inherit}
 /* variantes de support */
 .p-polaroid{background:#FDFDFB;padding:9px 9px 7px}
 .p-polaroid .ph{display:flex;aspect-ratio:1/1}
-.p-polaroid .ttl{font-family:var(--f-hand);font-size:19px;line-height:1.05;text-align:center;margin-top:4px}
+.p-polaroid .ttl{font-family:var(--f-hand);font-size:17px;line-height:1.08;text-align:center;margin-top:4px}
 .p-polaroid .tlab{text-align:center;font-size:12px;color:var(--ink4)}
-.p-polaroid .kv{justify-content:center}
 .p-polaroid .risk{justify-content:center}
 .p-photo{background:#FDFDFB;padding:8px 8px 7px;width:192px}
 .p-photo .ph{display:flex;aspect-ratio:16/10}
 .p-photo .ttl{font-family:var(--f-mono);font-size:13px;letter-spacing:.09em;margin-top:5px;text-align:center}
 .p-photo .tlab{text-align:center;font-size:12px;color:var(--ink4)}
-.p-photo .kv{justify-content:center}
 .p-photo .risk{justify-content:center}
 .p-sticky{width:158px;padding:11px 11px 9px;background:var(--sticky,#F6E38B);
   box-shadow:0 7px 12px rgba(50,28,6,.32), inset 0 -18px 22px -18px rgba(0,0,0,.18)}
@@ -195,7 +200,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 
 /* Image d'une fiche : elle prend la place de l'icône du type. */
 .node .ph.img{display:flex;padding:0;overflow:hidden;min-height:92px;border-color:rgba(0,0,0,.35)}
-.node .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.node .ph img{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center}
 
 /* Niveau d'alerte : cinq pastilles, pas de glissement à doser. */
 .pastilles{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
@@ -974,8 +979,13 @@ async function envoyer(msg,forcer){
     conflitDlg(r.data);
   }else{
     ENATTENTE.unshift(...lot);
-    etatSave('Échec de l\'enregistrement');
-    toast('Enregistrement impossible',r.data.error||'Réessayez dans un instant.','err');
+    // Le code et le message viennent du serveur : « échec » tout court
+    // ne dit pas s il faut alleger, se reconnecter ou simplement
+    // reessayer, et laisse chercher.
+    etatSave('Échec ('+(r.statut||'réseau')+')');
+    console.error('[aegis] enregistrement refusé',r.statut,r.data);
+    toast('Enregistrement impossible',
+      (r.data.error||'Serveur injoignable.')+' (code '+(r.statut||0)+')','err',9000);
   }
   if(rappel){rappel=false;envoyer(msg)}
 }
@@ -1273,14 +1283,15 @@ function render(){
     const st=pp==='sticky'?`--sticky:${teinte};`:'';
     const body=`
       <div class="ph${n.image?' img':''}">${n.image
-        ?`<img src="${esc(n.image)}" alt="" onerror="this.parentNode.classList.remove('img');this.remove()">`
+        ?`<img src="${esc(n.image)}" alt="" style="object-position:${n.ix??50}% ${n.iy??50}%;transform:scale(${n.iz||1})"
+           onerror="this.parentNode.classList.remove('img');this.remove()">`
         :svg(T.i,pp==='photo'?34:30,1.4)}</div>
       <div class="tlab" style="color:${pp==='sticky'?'':accent}">${T.l}</div>
       <div class="ttl">${esc(titleOf(n))}</div>
       ${kv.map(([k,v])=>`<div class="kv">${k?`<b>${k}</b>`:''}${esc(v)}</div>`).join('')}
       <div class="risk">${[0,1,2,3,4].map(i=>`<i class="${i<(n.r||0)?((n.r||0)>=4?'hi':'on'):''}"></i>`).join('')}</div>`;
     return `<div class="node p-${pp}${S.sel===n.id?' sel':''}${S.hits.has(n.id)?' hit':''}" data-id="${n.id}"
-      style="left:${n.x}px;top:${n.y}px;--rot:${rotOf(n.id)}deg;--pc:${pinOf(n.id)};--tc:${accent};${st}">
+      style="left:${n.x}px;top:${n.y}px;--rot:${rotOf(n.id)}deg;--pc:${pinOf(n.id)};--tc:${accent};--ech:${n.ech||1};${st}">
       ${pp==='sheet'||pp==='photo'?'<span class="tape"></span>':''}
       <span class="pin"></span>
       ${pp==='card'?`<div class="topline"></div><div class="inner">${body}</div>`:body}
@@ -1290,12 +1301,16 @@ function render(){
   applyView();
   bindNodes();
   drawLegend();
-  $('#counts').textContent=`${S.nodes.filter(visible).length} éléments · ${S.edges.length} liaisons`;
+  // Le poids se voit avant de gener : c est lui qui finit par bloquer
+  // l enregistrement quand on ajoute des images.
+  const ko=Math.round((JSON.stringify(S.nodes).length+JSON.stringify(S.edges).length)/1024);
+  $('#counts').textContent=`${S.nodes.filter(visible).length} éléments · ${S.edges.length} liaisons`+
+    (ko>400?` · ${ko>1024?(ko/1024).toFixed(1)+' Mo':ko+' Ko'}`:'');
 }
 function measure(){
   $$('#gnodes .node').forEach(nd=>{NH[nd.dataset.id]={w:nd.offsetWidth,h:nd.offsetHeight}});
 }
-const pinPt=n=>({x:n.x,y:n.y-((NH[n.id]?.h||110)/2)+2});
+const pinPt=n=>({x:n.x,y:n.y-((NH[n.id]?.h||110)*(n.ech||1))/2+2});
 function drawEdges(){
   const pos=id=>{const n=node(id);return n&&visible(n)?n:null};
   let sh='',p='',l='';
@@ -1774,6 +1789,11 @@ function selectNode(id){
          ${TEINTES.map(c=>`<button data-c="${c}" class="${n.couleur===c?'on':''}" style="background:${c}"></button>`).join('')}
          <input type="color" id="iCol" value="${esc(n.couleur||T.sc||T.c)}" style="width:30px;height:23px;padding:0;border:1px solid var(--line2)">
        </div></div>
+     <div class="f"><label>Taille de la fiche</label>
+       <div class="teinte" id="iEch">
+         ${[['0.75','Petite'],['1','Normale'],['1.4','Grande'],['1.9','Très grande']].map(([v,l])=>
+           `<button class="btn sm ${String(n.ech||1)===v?'on':''}" data-e="${v}">${l}</button>`).join('')}
+       </div></div>
      <div class="f"><label>Image (lien, ou fichier depuis le poste)</label>
        <input id="iImg" value="${esc(n.image&&n.image.slice(0,5)==='data:'?'':(n.image||''))}"
          placeholder="https://…"></div>
@@ -1781,7 +1801,15 @@ function selectNode(id){
        <button class="btn sm" id="iImgF">${svg(I.photo,12)}Choisir un fichier</button>
        <button class="btn sm" id="iImgX">${svg(I.x,12)}Retirer</button></div>
      <input type="file" id="iImgI" accept="image/*" style="display:none">
-     ${n.image?`<img class="apercu" src="${esc(n.image)}" alt="">`:''}
+     ${n.image?`<img class="apercu" src="${esc(n.image)}" alt=""
+       style="object-fit:cover;object-position:${n.ix??50}% ${n.iy??50}%">`+
+       `<div class="f" style="margin-top:9px"><label>Cadrage horizontal</label>
+         <input type="range" id="iIX" min="0" max="100" value="${n.ix??50}" style="width:100%;accent-color:var(--red)"></div>`+
+       `<div class="f"><label>Cadrage vertical</label>
+         <input type="range" id="iIY" min="0" max="100" value="${n.iy??50}" style="width:100%;accent-color:var(--red)"></div>`+
+       `<div class="f"><label>Zoom de l'image</label>
+         <input type="range" id="iIZ" min="100" max="260" value="${Math.round((n.iz||1)*100)}" style="width:100%;accent-color:var(--red)"></div>`
+     :''}
      <div class="isec">Relations<span>${rels.length}</span></div>
      ${rels.map(r=>`<div class="relrow" data-rel="${r.e.id}" data-node="${r.o.id}">
         <span style="color:${sch(r.o.t).c};flex:none">${svg(sch(r.o.t).i,14)}</span>
@@ -1878,7 +1906,29 @@ function bindInspector(n){
     $$('#iTeinte button',p).forEach(b=>b.classList.toggle('on',(b.dataset.c||'')===(c||'')));
     render();flag();
   };
-  $$('#iTeinte button',p).forEach(b=>b.onclick=()=>poser(b.dataset.c||''));
+  $('#iTeinte button',p).forEach(b=>b.onclick=()=>poser(b.dataset.c||''));
+
+  // Taille de la fiche : on redessine tout, la ficelle suit l epingle.
+  $('#iEch button',p).forEach(b=>b.onclick=()=>{
+    const v=parseFloat(b.dataset.e);
+    if(v===1)delete n.ech; else n.ech=v;
+    $('#iEch button',p).forEach(x=>x.classList.toggle('on',x.dataset.e===b.dataset.e));
+    render();flag();
+  });
+
+  // Cadrage : la vignette et l apercu bougent ensemble, sans tout
+  // redessiner a chaque cran du curseur.
+  const cadrer=()=>{
+    const im=$(`#gnodes .node[data-id="${n.id}"] .ph img`);
+    const ap=$('.apercu',p);
+    const pos=`${n.ix??50}% ${n.iy??50}%`;
+    if(im){ im.style.objectPosition=pos; im.style.transform='scale('+(n.iz||1)+')'; }
+    if(ap)ap.style.objectPosition=pos;
+  };
+  const ix=$('#iIX',p), iy=$('#iIY',p), iz=$('#iIZ',p);
+  if(ix)ix.addEventListener('input',()=>{n.ix=+ix.value;cadrer();flag()});
+  if(iy)iy.addEventListener('input',()=>{n.iy=+iy.value;cadrer();flag()});
+  if(iz)iz.addEventListener('input',()=>{n.iz=(+iz.value)/100;cadrer();flag()});
   const col=$('#iCol',p);
   if(col)col.addEventListener('change',()=>poser(col.value));
 
