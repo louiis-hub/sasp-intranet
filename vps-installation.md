@@ -396,23 +396,49 @@ dig +short sasp.EXEMPLE.fr
 
 ### 5.2 nginx et le certificat
 
-Dans `/etc/nginx/sites-available/sasp`, remplacez les deux blocs du haut
-par les deux blocs commentes du bas, en mettant votre nom a la place de
-`EXEMPLE.fr`. Puis :
+**Deux formes possibles, selon le nom obtenu.**
+
+**Un seul nom** (cas d'un DuckDNS, ou d'un sous-domaine chez un tiers) :
+le site et l'API le partagent, departages par le chemin. C'est possible
+parce que le Worker n'ecoute que sur dix-neuf chemins racine, tous
+enumeres dans le fichier, et qu'aucun ne heurte un fichier du site.
+Discord, en particulier, tape sur `/interactions` et non sur `/`.
 
 ```bash
+sudo cp /opt/sasp/vps/nginx-un-nom.conf /etc/nginx/sites-available/sasp
+sudo sed -i 's/DOMAINE/sasp.EXEMPLE.fr/g' /etc/nginx/sites-available/sasp
 sudo nginx -t && sudo systemctl reload nginx
 sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d sasp.EXEMPLE.fr
+```
+
+**Deux noms** (si vous possedez le domaine) : reprendre les deux blocs
+commentes en bas de `nginx-sasp.conf`, puis
+
+```bash
 sudo certbot --nginx -d sasp.EXEMPLE.fr -d api.sasp.EXEMPLE.fr
 ```
 
 Certbot ajoute lui-meme l'ecoute en 443 et renouvelle tout seul.
 
-Refaites pointer le site sur l'adresse en HTTPS :
+**Puis faire pointer le site sur la nouvelle adresse.** Avec un seul nom,
+l'API est au meme endroit que le site :
 
 ```bash
-API_URL=https://api.sasp.EXEMPLE.fr /opt/sasp/vps/mettre-a-jour.sh
+API_URL=https://sasp.EXEMPLE.fr /opt/sasp/vps/mettre-a-jour.sh
 ```
+
+Verification, dans cet ordre :
+
+```bash
+curl -s https://sasp.EXEMPLE.fr/health                      # {"ok":true}
+curl -s https://sasp.EXEMPLE.fr/ | grep -o "const API='[^']*'"
+curl -s -o /dev/null -w "%{http_code}\n" https://sasp.EXEMPLE.fr/pa.html
+```
+
+Le premier prouve que l'API passe, le deuxieme que le site l'appelle au
+bon endroit, le troisieme que les fichiers du site sortent toujours
+malgre la regle de routage.
 
 ### 5.3 Les adresses ecrites en dur
 
