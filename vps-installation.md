@@ -286,10 +286,28 @@ L'API pointe encore sur Cloudflare : c'est normal, et c'est meme le but.
 
 ### 4.1 Reprendre les secrets
 
-Ouvrez Cloudflare, `Workers & Pages` > `sasp-intranet-bot` > `Settings` >
-`Variables and Secrets`. Les valeurs des secrets n'y sont plus lisibles :
-il faut les reprendre a la source (portail developpeur Discord pour le
-token et la cle publique, tableau de bord Supabase pour la cle service).
+Cloudflare ne reaffiche pas ses secrets. Il faut donc les retrouver
+ailleurs, et l'un des trois se recupere mal.
+
+| Variable | Ou la prendre | Attention |
+|---|---|---|
+| `SUPABASE_SERVICE_KEY` | Supabase > `Settings` > `API` > `service_role` | Se relit autant qu'on veut |
+| `DISCORD_PUBLIC_KEY` | Portail Discord > votre application > `General Information` | Se relit, ce n'est pas un secret |
+| `DISCORD_APPLICATION_ID` | Meme page | Se relit |
+| `DISCORD_BOT_TOKEN` | **Ne pas regenerer** | Voir ci-dessous |
+
+**Le token du bot ne s'affiche qu'une fois.** Le portail Discord ne
+propose que `Reset Token`, et **une regeneration coupe immediatement le
+Worker Cloudflare**, qui tourne encore : le bot cesse de repondre sur
+Discord jusqu'a ce que la nouvelle valeur soit posee des deux cotes.
+
+Reprenez donc celui que vous avez deja, dans vos notes. Si vous devez
+malgre tout le regenerer, faites-le dans cet ordre, sans pause :
+
+1. `Reset Token`, copier la nouvelle valeur ;
+2. la poser dans `/etc/sasp/api.env` **et** dans Cloudflare
+   (`Settings` > `Variables and Secrets`) ;
+3. redemarrer les deux.
 
 ```bash
 sudo cp /opt/sasp/vps/api.env.exemple /etc/sasp/api.env
@@ -300,6 +318,10 @@ sudo chown root:root /etc/sasp/api.env
 
 Les `[vars]` de `wrangler.toml` y sont deja pre-remplies : seuls les
 secrets du haut sont a completer.
+
+**`SUPABASE_NORD_SERVICE_KEY` et `NORD_SUPABASE_SERVICE_KEY` peuvent
+rester vides.** Elles ne servent qu'aux routes du SASP NORD, hors du
+perimetre de ce depot.
 
 ### 4.2 Le service
 
