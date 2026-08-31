@@ -1234,9 +1234,37 @@ function bindNodes(){
     nd.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();nodeMenu(e,node(nd.dataset.id))});
   });
 }
+// Le grain du liege est peint sur #board, qui ne bouge pas : sans cela le
+// fond reste fige pendant qu on deplace ou zoome, et le panneau a l air
+// d une image collee derriere les fiches. On le fait suivre la vue.
+// Chaque couche : pas de la trame, teinte, rayon du point, rayon de sortie,
+// et decalage d origine.
+const GRAIN=[
+  {t:13,c:'rgba(92,58,24,.20)',  r:1.1,r2:1.3,x:0, y:0},
+  {t:23,c:'rgba(158,110,58,.34)',r:1.7,r2:2.0,x:7, y:11},
+  {t:37,c:'rgba(70,44,18,.13)',  r:2.5,r2:2.9,x:19,y:5},
+  {t:53,c:'rgba(210,168,112,.25)',r:1.3,r2:1.6,x:31,y:27}
+];
+let _grainEchelle=null;
+function grainVue(){
+  const b=$('#board'),s=S.scale;
+  if(!b)return;
+  // Les motifs ne sont regeneres qu au changement de zoom : pendant un
+  // deplacement seule la position bouge, ce qui evite de repeindre
+  // quatre degrades plein ecran a chaque mouvement de souris.
+  if(_grainEchelle!==s){
+    _grainEchelle=s;
+    b.style.backgroundImage=GRAIN.map(g=>
+      `radial-gradient(${g.c} ${(g.r*s).toFixed(2)}px, transparent ${(g.r2*s).toFixed(2)}px)`).join(',');
+    b.style.backgroundSize=GRAIN.map(g=>`${(g.t*s).toFixed(2)}px ${(g.t*s).toFixed(2)}px`).join(',');
+  }
+  b.style.backgroundPosition=GRAIN.map(g=>
+    `${(S.tx+g.x*s).toFixed(2)}px ${(S.ty+g.y*s).toFixed(2)}px`).join(',');
+}
 function applyView(){
   $('#gworld').style.transform=`translate(${S.tx}px,${S.ty}px) scale(${S.scale})`;
   $('#zoomv').textContent=Math.round(S.scale*100)+'%';
+  grainVue();
 }
 function zoomBy(f){
   const r=$('#board').getBoundingClientRect(),mx=r.width/2,my=r.height/2;
