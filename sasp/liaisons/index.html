@@ -330,6 +330,20 @@ button,input,select,textarea{font:inherit;color:inherit}
 #ctx .hd{font-family:var(--f-ui);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:#7A6746;
   padding:5px 9px 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .empty{padding:26px;text-align:center;color:var(--ink3)}
+
+/* Aperçu de la saisie rapide : ce qui sera cree, et ce qui ne l a pas ete compris. */
+.sLigne{display:flex;gap:9px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line2);
+  border-left-width:3px;border-radius:2px;margin-bottom:6px;background:rgba(255,255,255,.45)}
+.sLigne>b{flex:none;line-height:1;padding-top:2px}
+.sLigne>div{flex:1;min-width:0}
+.sOk{border-left-color:var(--green)}
+.sErr{border-left-color:var(--red);background:#F6E2DE}
+.sErr>b{color:var(--red);font-family:var(--f-mono)}
+.sMsg{font-size:11.5px;color:var(--ink3);margin-top:3px;line-height:1.7}
+.sIgn{color:var(--red-d)}
+.sCh{display:inline-block;background:var(--paper2);border:1px solid var(--line2);border-radius:2px;
+  padding:1px 6px;margin:2px 4px 2px 0;font-size:11px}
+.sRel{font-family:var(--f-hand);font-size:15px;color:var(--red);margin:0 7px}
 .empty b{display:block;font-family:var(--f-ui);font-size:15px;color:var(--ink2);margin-bottom:4px}
 
 /* ---------- barre latérale ---------- */
@@ -2808,12 +2822,288 @@ function pAdmin(v){
 }
 
 /* ============================================================
+   SAISIE RAPIDE
+   Une ligne, une fiche. C'est de l'analyse de texte par règles,
+   pas un modèle de langage : c'est gratuit, instantané, et
+   surtout ça n'invente jamais un champ. Ce qui n'est pas
+   reconnu est signalé dans l'aperçu au lieu d'être deviné.
+   ============================================================ */
+const sansAccent=s=>String(s||'').toLowerCase()
+  .normalize('NFD').replace(/[̀-ͯ]/g,'')
+  .replace(/\s+/g,' ').trim();
+
+// Les tables de correspondance sont refaites à chaque ouverture :
+// le schéma est modifiable, elles ne peuvent pas être figées.
+function saisieTables(){
+  const types={},champs={},options={};
+  TYPES.forEach(k=>{
+    types[sansAccent(k)]=k;
+    types[sansAccent(SCHEMA[k].l)]=k;
+    champs[k]={};options[k]={};
+    (SCHEMA[k].f||[]).forEach(f=>{
+      champs[k][sansAccent(f.k)]=f;
+      champs[k][sansAccent(f.l)]=f;
+      // Le libellé sans sa ponctuation finale : « Statut dans l'enquête »
+      // se tape rarement en entier.
+      champs[k][sansAccent(String(f.l).split(/[(/]/)[0])]=f;
+      (f.o||[]).forEach(o=>{ options[k][sansAccent(o)]={f,o}; });
+    });
+  });
+  const rel={};REL.forEach(r=>rel[sansAccent(r)]=r);
+  const poids={};WEIGHT.forEach(([k,l])=>poids[sansAccent(l)]=k);
+  const rangs={};RANGS.forEach(r=>rangs[sansAccent(r.l)]=r.n);
+  return {types,champs,options,rel,poids,rangs};
+}
+
+// Une ligne d'élément : « suspect Jean Dupont, alias Le Chat, recherché »
+function saisieElement(ligne,T){
+  const m=ligne.match(/^(\S+)\s+([\s\S]*)$/);
+  if(!m)return {erreur:'Ligne vide ou incomplète.'};
+  const t=T.types[sansAccent(m[1])];
+  if(!t)return {erreur:'Type inconnu : « '+m[1]+' ».'};
+
+  const parts=m[2].split(',').map(x=>x.trim()).filter(Boolean);
+  if(!parts.length)return {erreur:'Il manque le nom après le type.'};
+
+  const d={},resolus=[],ignores=[];
+  let niveau=0;
+
+  // Le premier morceau nomme la fiche : il se répartit sur les clés
+  // du titre définies dans le schéma.
+  const cles=SCHEMA[t].titre||[];
+  if(cles.length>1){
+    const mots=parts[0].split(/\s+/);
+    d[cles[0]]=mots.shift()||'';
+    if(mots.length)d[cles[1]]=mots.join(' ');
+  }else if(cles.length===1){
+    d[cles[0]]=parts[0];
+  }else{
+    const f0=(SCHEMA[t].f||[])[0];
+    if(f0)d[f0.k]=parts[0];
+  }
+  resolus.push(['nom',parts[0]]);
+
+  parts.slice(1).forEach(seg=>{
+    // 1. « clé: valeur » ou « clé = valeur »
+    let mm=seg.match(/^([^:=]+)[:=]\s*([\s\S]+)$/);
+    if(mm){
+      const f=T.champs[t][sansAccent(mm[1])];
+      if(f){ d[f.k]=mm[2].trim(); resolus.push([f.l,mm[2].trim()]); return; }
+    }
+    // 2. « niveau 4 » ou « alerte 4 »
+    mm=seg.match(/^(niveau|alerte)\s+([0-5])$/i);
+    if(mm){ niveau=+mm[2]; resolus.push(["niveau d'alerte",mm[2]]); return; }
+    // 3. « libellé valeur » : le début du segment nomme un champ
+    mm=seg.match(/^(\S+(?:\s+\S+)?)\s+([\s\S]+)$/);
+    if(mm){
+      const f=T.champs[t][sansAccent(mm[1])];
+      if(f){ d[f.k]=mm[2].trim(); resolus.push([f.l,mm[2].trim()]); return; }
+      const f2=T.champs[t][sansAccent(seg.split(/\s+/)[0])];
+      if(f2){ const v=seg.split(/\s+/).slice(1).join(' ');
+        d[f2.k]=v; resolus.push([f2.l,v]); return; }
+    }
+    // 4. Le segment est l'un des choix d'une liste du type.
+    const opt=T.options[t][sansAccent(seg)];
+    if(opt){ d[opt.f.k]=opt.o; resolus.push([opt.f.l,opt.o]); return; }
+    // 5. Rien de sûr : on le signale plutôt que de le ranger au hasard.
+    ignores.push(seg);
+  });
+
+  return {t,d,r:niveau,resolus,ignores};
+}
+
+// Une ligne de liaison : « lien Jean Dupont détient Glock 17, critique »
+// La relation est trouvée dans la phrase, c'est elle qui coupe en deux.
+function saisieLien(reste,T){
+  let sujet=reste, niveau='', rang=0;
+  const virg=reste.split(',').map(x=>x.trim());
+  sujet=virg[0];
+  virg.slice(1).forEach(x=>{
+    const p=T.poids[sansAccent(x)];
+    if(p!==undefined){ niveau=p; return; }
+    const rg=T.rangs[sansAccent(x)];
+    if(rg){ rang=rg; return; }
+  });
+
+  // La relation est cherchée mot à mot plutôt que par position : la
+  // version sans accents est aussi mise en minuscules et voit ses espaces
+  // multiples réduits, donc ses indices ne collent pas à l'originale.
+  // On retient la plus longue, sinon « Membre de » l'emporterait sur
+  // « Déclaration recueillie par » dès qu'un mot commun apparaît.
+  const mots=sujet.split(/\s+/).filter(Boolean);
+  let choix=null;
+  for(let i=1;i<mots.length;i++){
+    for(let j=i+1;j<mots.length;j++){
+      const cand=sansAccent(mots.slice(i,j).join(' '));
+      if(T.rel[cand]&&(!choix||(j-i)>(choix.j-choix.i)))choix={i,j};
+    }
+  }
+  if(!choix)return {erreur:'Aucune relation reconnue. Écrivez par exemple « détient », « membre de », « propriétaire de ».'};
+  const a=mots.slice(0,choix.i).join(' ');
+  const b=mots.slice(choix.j).join(' ');
+  const intitule=T.rel[sansAccent(mots.slice(choix.i,choix.j).join(' '))];
+  if(!a||!b)return {erreur:'Il manque un des deux éléments autour de la relation.'};
+  return {lien:true,a,b,l:intitule,w:niveau,rang};
+}
+
+function saisieAnalyser(texte){
+  const T=saisieTables();
+  return texte.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(ligne=>{
+    const m=ligne.match(/^(lien|liaison|ficelle)\s+([\s\S]+)$/i);
+    const r=m?saisieLien(m[2],T):saisieElement(ligne,T);
+    r.ligne=ligne;
+    return r;
+  });
+}
+
+// Retrouve une fiche par son nom. Ambigu vaut mieux que faux : deux
+// correspondances font une erreur, pas un choix au hasard.
+function saisieTrouver(nom,crees){
+  const cible=sansAccent(nom);
+  const tout=S.nodes.concat(crees||[]);
+  let exacts=tout.filter(n=>sansAccent(titleOf(n))===cible);
+  if(exacts.length===1)return exacts[0];
+  if(exacts.length>1)return {ambigu:exacts.length};
+  const partiels=tout.filter(n=>sansAccent(titleOf(n)).indexOf(cible)!==-1);
+  if(partiels.length===1)return partiels[0];
+  if(partiels.length>1)return {ambigu:partiels.length};
+  return null;
+}
+
+function saisieApercu(lignes){
+  const crees=[];
+  return lignes.map(r=>{
+    if(r.erreur)return `<div class="sLigne sErr"><b>✕</b><div><span class="mono">${esc(r.ligne)}</span>
+      <div class="sMsg">${esc(r.erreur)}</div></div></div>`;
+    if(r.lien){
+      const a=saisieTrouver(r.a,crees),b=saisieTrouver(r.b,crees);
+      const pb=[];
+      if(!a)pb.push('« '+r.a+' » introuvable');
+      else if(a.ambigu)pb.push('« '+r.a+' » correspond à '+a.ambigu+' fiches');
+      if(!b)pb.push('« '+r.b+' » introuvable');
+      else if(b.ambigu)pb.push('« '+r.b+' » correspond à '+b.ambigu+' fiches');
+      if(pb.length)return `<div class="sLigne sErr"><b>✕</b><div><span class="mono">${esc(r.ligne)}</span>
+        <div class="sMsg">${esc(pb.join(' · '))}</div></div></div>`;
+      return `<div class="sLigne sOk"><b>${svg(I.link,12)}</b><div>
+        <span class="ttl">${esc(titleOf(a))}</span>
+        <span class="sRel">${esc(r.l)}</span>
+        <span class="ttl">${esc(titleOf(b))}</span>
+        ${r.w?`<span class="tag ${r.w==='hot'?'t-red':r.w==='warm'?'t-amb':'t-gry'}">${esc((WEIGHT.filter(w=>w[0]===r.w)[0]||[])[1]||'')}</span>`:''}
+        ${r.rang?`<span class="tag t-gry">${esc((rangDe(r.rang)||{}).l||'')}</span>`:''}
+      </div></div>`;
+    }
+    const faux={id:'_apercu'+crees.length,t:r.t,d:r.d,r:r.r};
+    crees.push(faux);
+    return `<div class="sLigne sOk"><b style="color:${sch(r.t).c}">${svg(sch(r.t).i,13)}</b><div>
+      <span class="ttl">${esc(titleOf(faux))}</span>
+      <span class="tag t-gry">${esc(sch(r.t).l)}</span>
+      <div class="sMsg">${r.resolus.slice(1).map(([k,v])=>`<span class="sCh">${esc(k)} : <b>${esc(v)}</b></span>`).join('')
+        ||'<span class="muted">aucun autre champ</span>'}</div>
+      ${r.ignores.length?`<div class="sMsg sIgn">non reconnu, ne sera pas enregistré : ${r.ignores.map(x=>'« '+esc(x)+' »').join(', ')}</div>`:''}
+    </div></div>`;
+  }).join('');
+}
+
+function saisieAppliquer(lignes){
+  const b=$('#board').getBoundingClientRect();
+  let cx,cy;
+  if(b.width>10){ cx=Math.round((b.width/2-S.tx)/S.scale); cy=Math.round((b.height/2-S.ty)/S.scale); }
+  else{ const v=S.nodes; cx=v.length?Math.round(v.reduce((s,n)=>s+n.x,0)/v.length):600;
+        cy=v.length?Math.round(v.reduce((s,n)=>s+n.y,0)/v.length)+220:400; }
+
+  const crees=[];let nb=0,nl=0,i=0;
+  lignes.forEach(r=>{
+    if(r.erreur||r.lien)return;
+    const n={id:'n'+(++S.seq),t:r.t,r:r.r||0,d:r.d,
+      x:cx+(i%4)*230-345, y:cy+Math.floor(i/4)*200};
+    i++;
+    S.nodes.push(n);crees.push(n);nb++;
+    logAct("Création d'élément (saisie rapide)",sch(r.t).l+' · '+titleOf(n));
+  });
+  lignes.forEach(r=>{
+    if(!r.lien)return;
+    const a=saisieTrouver(r.a,crees),b2=saisieTrouver(r.b,crees);
+    if(!a||a.ambigu||!b2||b2.ambigu)return;
+    const e={id:'e'+(++S.seq),a:a.id,b:b2.id,l:r.l,d:'',dt:new Date().toISOString().slice(0,10),w:r.w||''};
+    if(r.rang)e.rang=r.rang;
+    S.edges.push(e);nl++;
+    logAct('Création de liaison (saisie rapide)',titleOf(a)+' → '+titleOf(b2));
+  });
+  render();save('Saisie enregistrée');
+  toast('Saisie appliquée',nb+' élément'+(nb>1?'s':'')+', '+nl+' liaison'+(nl>1?'s':''),'ok');
+  if(ROUTE!=='board')route();
+}
+
+function saisieDlg(){
+  if(!MOI.ecriture){toast('Lecture seule','Votre accès ne permet pas de modifier le tableau.','warn');return}
+  const exemples=[
+    'suspect Jean Dupont, alias Le Chat, recherché, arme confirmée, niveau 4',
+    'arme Glock 17, calibre 9 mm, saisie, scellé SC-2026-0920',
+    'lien Jean Dupont détient Glock 17, critique'
+  ].join('\n');
+
+  const m=modal({title:'Saisie rapide',ok:'Créer',
+    body:`
+      <p style="margin:0 0 11px;color:var(--ink2);line-height:1.6">Une ligne par fiche. Le premier mot donne le type, puis le nom, puis les champs séparés par des virgules. Une ligne qui commence par <b>lien</b> pose une ficelle.</p>
+      <textarea id="sTxt" class="mono" spellcheck="false"
+        style="min-height:130px;width:100%;background:var(--paper);border:1px solid #B39A6A;border-radius:2px;padding:9px 11px;font-size:12.5px;line-height:1.7"
+        placeholder="${esc(exemples)}"></textarea>
+      <div style="display:flex;gap:7px;margin:9px 0 0;flex-wrap:wrap">
+        <button class="btn sm" id="sEx">Coller l'exemple</button>
+        <button class="btn sm" id="sAide">Champs disponibles</button>
+      </div>
+      <div class="isec">Aperçu<span id="sN"></span></div>
+      <div id="sApercu"><div class="empty" style="padding:16px">Tapez quelque chose.</div></div>`,
+    onOk:()=>{
+      const lignes=saisieAnalyser($('#sTxt',m.scrim).value);
+      const bons=lignes.filter(r=>!r.erreur);
+      if(!bons.length){toast('Rien à créer','Aucune ligne exploitable.','err');return false}
+      saisieAppliquer(lignes);
+    }});
+
+  const txt=$('#sTxt',m.scrim);
+  const rafraichir=()=>{
+    const lignes=saisieAnalyser(txt.value);
+    const ok=lignes.filter(r=>!r.erreur).length;
+    $('#sN',m.scrim).textContent=lignes.length?ok+' / '+lignes.length:'';
+    $('#sApercu',m.scrim).innerHTML=lignes.length
+      ? saisieApercu(lignes)
+      : '<div class="empty" style="padding:16px">Tapez quelque chose.</div>';
+  };
+  txt.addEventListener('input',rafraichir);
+  $('#sEx',m.scrim).onclick=()=>{txt.value=exemples;rafraichir();txt.focus()};
+  $('#sAide',m.scrim).onclick=()=>saisieAideDlg();
+  setTimeout(()=>txt.focus(),60);
+}
+
+// La liste des types et de leurs champs, tirée du schéma en vigueur :
+// une antisèche figée aurait menti dès la première modification.
+function saisieAideDlg(){
+  modal({title:'Champs reconnus par la saisie rapide',
+    foot:'<button class="btn pri" data-x>Fermer</button>',
+    body:FAMILLES.map(g=>`<div class="isec">${esc(g)}</div>`+
+      TYPES.filter(k=>SCHEMA[k].g===g).map(k=>`
+        <div style="margin-bottom:9px">
+          <div style="display:flex;gap:7px;align-items:center;color:${sch(k).c}">
+            ${svg(sch(k).i,13)}<span class="mono" style="font-size:12px"><b>${esc(k)}</b></span>
+            <span class="muted" style="font-size:11.5px">${esc(SCHEMA[k].l)}</span></div>
+          <div style="font-size:11.5px;color:var(--ink3);margin-left:20px;line-height:1.6">
+            ${(SCHEMA[k].f||[]).map(f=>`<span class="sCh">${esc(f.l)}${f.o?' <i style="color:var(--ink4)">('+esc(f.o.slice(0,4).join(', '))+(f.o.length>4?'…':'')+')</i>':''}</span>`).join('')}
+          </div>
+        </div>`).join('')).join('')+
+      `<div class="isec">Liaisons</div>
+       <p style="margin:0 0 8px;font-size:12px;color:var(--ink2);line-height:1.6">Écrivez <span class="mono">lien</span>, le nom du premier élément, l'intitulé de la relation, puis le second. Ajoutez un niveau après une virgule.</p>
+       <div style="font-size:11.5px;color:var(--ink3);line-height:1.7">${REL.map(r=>`<span class="sCh">${esc(r)}</span>`).join('')}</div>`});
+}
+
+/* ============================================================
    BARRES D'OUTILS · RECHERCHE · RACCOURCIS
    ============================================================ */
 function buildTools(){
   const w=MOI.ecriture?'':'disabled';
   $('#gtools').innerHTML=`
     <button class="btn sm pri" id="bAdd" ${w}>${svg(I.plus,13)}Ajouter un élément</button>
+    <button class="btn sm" id="bSaisie" ${w}>${svg(I.edit,13)}Saisie rapide</button>
     <button class="btn sm" id="bLink" ${w}>${svg(I.link,13)}Créer une liaison</button>
     <button class="btn sm" id="bGroup" ${w}>${svg(I.grp,13)}Regrouper</button>
     <button class="btn sm" id="bShow">${svg(I.eye,13)}Tout afficher</button>`;
@@ -2827,6 +3117,7 @@ function buildTools(){
     <button class="btn" id="bZo" title="Zoom arrière">${svg(I.zout,15)}</button>
     <button class="btn" id="bFit" title="Recentrer">${svg(I.fit,15)}</button>`;
   $('#bAdd').onclick=()=>addDlg();
+  $('#bSaisie').onclick=saisieDlg;
   $('#bLink').onclick=()=>startLink();
   $('#bGroup').onclick=autoGroup;
   $('#bShow').onclick=()=>{S.hidden.clear();S.collapsed.clear();render();toast('Filtres réinitialisés','','ok')};
@@ -2868,6 +3159,7 @@ function bindBoard(){
     e.preventDefault();
     ctxMenu(e.clientX,e.clientY,[{hd:'Tableau de liaisons'},
       ...(MOI.ecriture?[{l:'Ajouter un élément',i:I.plus,k:'A',fn:()=>addDlg()},
+      {l:'Saisie rapide',i:I.edit,k:'S',fn:()=>saisieDlg()},
       {l:'Créer une liaison',i:I.link,k:'L',fn:()=>startLink()}]:[]),
       {l:'Recentrer la vue',i:I.fit,k:'F',fn:()=>fitView()},
       ...(MOI.ecriture?[{l:'Regrouper par type',i:I.grp,fn:autoGroup}]:[]),'-',
@@ -2911,6 +3203,7 @@ function bindClavier(){
     if(e.key==='Escape'){deselect();$('#board').classList.remove('linkmode');S.linkFrom=null;return}
     if(k==='a'){e.preventDefault();addDlg();return}
     if(k==='l'){startLink();return}
+    if(k==='s'){e.preventDefault();saisieDlg();return}
     if(k==='f'){fitView();return}
     if(k==='g'){if(MOI.ecriture)autoGroup();return}
     if(k==='r'){S.hidden.clear();S.collapsed.clear();render();return}
@@ -2932,7 +3225,7 @@ function aide(){
        ['Clic','Ouvrir la fiche'],['Clic droit','Menu contextuel'],['Clic sur un lien','Modifier la liaison']]
       .map(([a,b])=>`<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid #C9B383"><span class="kbd">${a}</span><span style="font-size:12.5px">${b}</span></div>`).join('')}</div>
     <div><div class="lbl" style="margin-bottom:8px">Clavier</div>
-    ${[['A','Ajouter un élément'],['L','Créer une liaison'],['F','Recentrer'],['G','Regrouper par type'],
+    ${[['A','Ajouter un élément'],['S','Saisie rapide'],['L','Créer une liaison'],['F','Recentrer'],['G','Regrouper par type'],
        ['R','Tout réafficher'],['T','Afficher / masquer la légende'],['Suppr','Supprimer la sélection'],
        ['Ctrl K','Rechercher'],['Échap','Désélectionner']]
       .map(([a,b])=>`<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid #C9B383"><span class="kbd">${a}</span><span style="font-size:12.5px">${b}</span></div>`).join('')}</div></div>
