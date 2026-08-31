@@ -20,7 +20,9 @@ import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
-const URL_SB = process.env.SUPABASE_URL || "https://mjcatmoiwmuxovcigfvz.supabase.co";
+// Meme adresse que SUPABASE_URL dans worker.js. api.env ne la porte pas :
+// elle n est pas secrete, mais elle doit rester la meme des deux cotes.
+const URL_SB = process.env.SUPABASE_URL || "https://ufxhxptzcnvelnbprwng.supabase.co";
 const CLE = process.env.SUPABASE_SERVICE_KEY;
 if (!CLE) {
   console.error("SUPABASE_SERVICE_KEY absente. Chargez /etc/sasp/api.env d'abord :");
@@ -40,8 +42,18 @@ const PAGE = 1000;   // PostgREST plafonne les reponses
 const entetes = { apikey: CLE, authorization: `Bearer ${CLE}` };
 
 async function sb(chemin, extra = {}) {
-  const r = await fetch(`${URL_SB}/rest/v1${chemin}`,
-    { headers: Object.assign({}, entetes, extra) });
+  let r;
+  try {
+    r = await fetch(`${URL_SB}/rest/v1${chemin}`,
+      { headers: Object.assign({}, entetes, extra) });
+  } catch (e) {
+    const cause = (e.cause && e.cause.code) || "";
+    if (cause === "ENOTFOUND") {
+      throw new Error(`${URL_SB} est introuvable. Verifiez SUPABASE_URL : `
+        + "elle doit valoir la meme chose que dans worker.js.");
+    }
+    throw new Error(`${URL_SB} injoignable (${cause || e.message}).`);
+  }
   if (!r.ok) throw new Error(`${chemin} : ${r.status} ${await r.text()}`);
   return r;
 }
