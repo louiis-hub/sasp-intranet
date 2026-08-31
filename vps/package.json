@@ -4,6 +4,11 @@
   "type": "module",
   "description": "Le Worker Cloudflare, tel quel, derriere un adaptateur Node.",
   "scripts": {
-    "start": "node serveur.js"
+    "start": "node serveur.js",
+    "test": "node postgrest-sql.test.mjs",
+    "reprise": "node reprise-supabase.mjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3"
   }
 }

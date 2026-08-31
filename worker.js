@@ -2806,7 +2806,44 @@ function siteKeyFromGuildId(guildId) {
   return String(guildId || "") === NORD_SITE_GUILD_ID ? "nord" : "sud";
 }
 
+/* ── SQLite, en remplacement de Supabase ─────────────────────────────
+   Le corps de sbForSite change, sa signature non : les 143 appels qui
+   la consomment ne bougent pas d'une ligne. C'est la meme methode qui a
+   permis de faire tourner ce fichier tel quel sur Node.
+
+   L'interrupteur BASE decide, dans /etc/sasp/api.env :
+     BASE=supabase  (defaut) : rien ne change
+     BASE=sqlite              : lecture et ecriture dans le fichier local
+
+   Le NORD continue de passer par Supabase quoi qu'il arrive : il n'est
+   pas dans le perimetre de ce depot, et sa base ne sera pas reprise. */
+let SQLITE = null, SQLITE_EXEC = null;
+
+async function baseLocale() {
+  if (SQLITE) return SQLITE;
+  // L'import est tardif et garde : sur Cloudflare, better-sqlite3
+  // n'existe pas, et le fichier doit rester chargeable.
+  const [{ default: Database }, mod] = await Promise.all([
+    import("better-sqlite3"),
+    import("./postgrest-sql.mjs")
+  ]);
+  SQLITE_EXEC = mod.executer;
+  SQLITE = new Database(process.env.SQLITE_FICHIER || "/var/sasp/sasp.db");
+  SQLITE.pragma("journal_mode = WAL");
+  SQLITE.pragma("foreign_keys = ON");
+  console.log("[base] SQLite ouverte :", process.env.SQLITE_FICHIER || "/var/sasp/sasp.db");
+  return SQLITE;
+}
+
 async function sbForSite(env, method, path, body, siteKey = "sud") {
+  // Le SUD peut vivre en local ; le NORD reste chez Supabase.
+  if (siteKey !== "nord" && (env.BASE || "") === "sqlite") {
+    const db = await baseLocale();
+    const prefer = method === "POST"
+      ? (path.includes("on_conflict") ? "resolution=merge-duplicates,return=representation" : "return=representation")
+      : "return=minimal";
+    return SQLITE_EXEC(db, method, path, body, { prefer });
+  }
   const cfg = getSupabaseConfigForSite(env, siteKey);
   const prefer = method === "POST"
     ? (path.includes("on_conflict") ? "resolution=merge-duplicates,return=representation" : "return=representation")
