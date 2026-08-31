@@ -14,7 +14,13 @@ POINTEUSE_CLAIM_CHANNEL_ID = "1533451858209931477"
 PLAINTESASP_CHANNEL_ID = "1538289329917534328"
 
 [triggers]
-# Cloudflare limite le nombre de declencheurs cron. On s en tient a deux :
-# l annonce de ceremonie s appuie sur celui des 15 minutes, qui tombe pile
-# a l heure ronde.
-crons = ["0 18 * * SUN", "*/15 * * * *"]
+# Le 31 aout 2026, les taches periodiques sont passees sur le VPS, ou
+# CRONS=1 les declenche. Les laisser ici aussi ferait tout partir deux
+# fois : messages prives, edition de la pointeuse, ecriture des roles
+# dans Supabase, rapport de synchronisation, renommages.
+#
+# Le Worker reste deploye, mais muet : c est le retour en arriere le plus
+# simple si le VPS defaille. Pour le reactiver, remettre les deux crons
+# ci-dessous ET repasser CRONS=0 sur le VPS.
+#   crons = ["0 18 * * SUN", "*/15 * * * *"]
+crons = []
