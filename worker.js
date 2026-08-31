@@ -5781,6 +5781,25 @@ export default {
 
     if (url.pathname === "/health") return json({ ok: true });
 
+    // Diagnostic : ce que la base contient reellement pour les tableaux.
+    // Ne renvoie que des compteurs, jamais le contenu des fiches, pour ne
+    // pas ouvrir une porte de lecture a cote du controle des roles.
+    if (url.pathname === "/admin/liaisons-info" && request.method === "GET") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const rows = await sb(env, "GET", "/liaisons_tableaux?select=*&order=id.asc");
+        return json({ ok: true, tableaux: (rows || []).map(t => ({
+          id: t.id, nom: t.nom, dossier: t.dossier, version: t.version,
+          elements: Array.isArray(t.nodes) ? t.nodes.length : 0,
+          liaisons: Array.isArray(t.edges) ? t.edges.length : 0,
+          updated_at: t.updated_at, updated_by: t.updated_by
+        })) });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     // Amorcage d'un tableau de liaisons depuis l'exterieur (mise en place,
     // dossier de demonstration). Reserve au jeton d'administration : cette
     // route n'est pas soumise a la verification des roles Discord, elle ne
