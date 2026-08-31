@@ -1,9 +1,23 @@
 # Installer le poste SASP sur le VPS
 
 Suite pratique de `vps.md`. Ici, seulement des commandes a coller, dans
-l'ordre. Le principe est celui de l'etape 5 du document : **on deplace ce
-qui existe, sans rien reecrire**. La reprise en React et le passage a
-SQLite viennent apres, et seulement si vous les voulez.
+l'ordre.
+
+**Le but : plus rien sur Cloudflare.** A la fin de l'etape 6, le site,
+l'API, le bot Discord et les crons tournent tous sur le VPS, le Worker
+est supprime et l'action GitHub qui le deployait aussi.
+
+**Le principe : on deplace, on ne reecrit pas.** `worker.js` n'utilise
+aucune interface propre a Cloudflare - ni KV, ni D1, ni le cache,
+seulement `fetch`, `Request`, `Response` et `crypto.subtle`, que Node 22
+fournit tous. Il tourne donc tel quel derriere `vps/serveur.js`, un
+adaptateur d'une centaine de lignes.
+
+Les etapes 1 a 5 se defont en remettant une adresse dans quatre fichiers.
+Seule l'etape 5.4, quand Discord pointe sur le VPS, engage vraiment.
+
+Reste ensuite **Supabase**, dernier hebergeur exterieur : c'est l'etape 7,
+un chantier a part, a ne surtout pas melanger aux precedentes.
 
 VPS : `193.38.250.69`, chez Redheberg.
 
@@ -326,16 +340,148 @@ Worker en place, il ne genera pas.
 
 ---
 
-## Etape 6 - Refermer
+## Etape 6 - Eteindre Cloudflare
 
-Une fois que tout tient depuis quelques jours :
+C'est le but de l'operation. A partir d'ici plus rien n'y tourne.
+
+### 6.1 Verifier que le VPS a bien tout repris
+
+Avant de couper, trois preuves, pas une de moins :
+
+```bash
+# 1. Le site vient du VPS et appelle le VPS
+curl -s https://sasp.EXEMPLE.fr/ | grep -o "const API='[^']*'"
+
+# 2. L'API du VPS repond
+curl -s https://api.sasp.EXEMPLE.fr/health
+
+# 3. Le Worker Cloudflare ne recoit plus rien
+```
+
+Pour le troisieme point : Cloudflare > `Workers & Pages` >
+`sasp-intranet-bot` > `Metrics`. Si la courbe des requetes est plate
+depuis 24 h, plus personne ne lui parle. **Si elle ne l'est pas, quelque
+chose pointe encore dessus** : cherchez avant de couper.
+
+```bash
+grep -rn "workers.dev" /var/www/sasp | head
+```
+
+Cette commande doit ne rien rendre.
+
+Essayez aussi une commande du bot sur Discord, et une connexion complete
+au site depuis une fenetre privee.
+
+### 6.2 Couper le deploiement automatique
+
+Sans ca, le prochain `git push` relance une action qui deploiera dans le
+vide et echouera en silence - le piege qui a deja coute sept commits sur
+ce projet.
+
+```bash
+cd /opt/sasp
+git rm .github/workflows/deploy-worker.yml
+git commit -m "Retirer le deploiement Cloudflare, le Worker vit sur le VPS"
+git push origin gh-pages
+```
+
+### 6.3 Supprimer le Worker
+
+Cloudflare > `Workers & Pages` > `sasp-intranet-bot` > `Settings` >
+`Delete`.
+
+**Attendez une semaine avant de faire ce dernier geste.** Tant que le
+Worker existe et ne recoit rien, il ne coute rien et il constitue le
+retour en arriere le plus simple qui soit : remettre son adresse dans
+Discord et dans les quatre fichiers du front, et tout revient.
+
+### 6.4 GitHub Pages
+
+Le depot `gh-pages` reste la source du code : c'est de la que le VPS tire
+ses mises a jour. Ce qui s'arrete, c'est qu'il **serve** le site.
+
+GitHub > `Settings` > `Pages` > `Source` : `None`.
+
+La aussi, attendez d'etre sur. Une adresse `github.io` qui continue de
+servir une vieille version pendant que le vrai site est ailleurs, c'est
+une source de confusion, pas un filet.
+
+### 6.5 Refermer le port d'essai
 
 ```bash
 sudo ufw delete allow 8080/tcp
-sudo systemctl reload nginx
 ```
 
 Et retirez du fichier nginx le bloc d'ecoute en 8080.
+
+---
+
+## Ou en est-on, une fois la 6 passee
+
+| Ce qui tournait ou | Maintenant |
+|---|---|
+| Site sur GitHub Pages | **VPS**, nginx |
+| API et bot sur Cloudflare Workers | **VPS**, systemd |
+| Crons Cloudflare (2 max) | **VPS**, sans limite de nombre |
+| Base Supabase | **Supabase**, toujours |
+| Connexion Discord via Supabase Auth | **Supabase**, toujours |
+
+Deux lignes restent. Elles sont le sujet de l'etape 7.
+
+**Ce qui disparait avec Cloudflare :** la limite de deux crons, le
+deploiement qui echoue sans le dire, l'impossibilite de lire un journal
+au-dela de quelques minutes, et le fait qu'un `git push` soit la
+production sans preproduction possible.
+
+---
+
+## Etape 7 - Sortir de Supabase
+
+C'est le dernier hebergeur exterieur, et c'est un autre chantier. Voici
+ce qu'il represente exactement, mesure sur le code, pas estime.
+
+**117 appels** a la base (`sb` 67, `sbForSite` 50), a travers **20
+tables**. Mais la surface reellement utilisee de PostgREST est etroite :
+
+| Construction | Occurrences |
+|---|---|
+| `eq.` | 77 |
+| `select=` | 58 |
+| `limit=` | 50 |
+| `order=` | 27 |
+| `on_conflict` | 7 |
+| `is.` | 6 |
+| `not.` | 4 |
+| `neq.` | 4 |
+| `in.`, `gt.`, `ov.` | 1 chacun |
+| `or=(`, `and=(`, `rpc/`, `offset=`, `range=` | **aucun** |
+
+Et seulement **deux formes de jointure**, toutes deux a un seul niveau :
+`agents(...)` depuis `pointages`, et `referent:referent_id(...)` depuis
+`agents`.
+
+**La consequence est importante :** il n'y a pas besoin de toucher aux
+117 appels. Il suffit de reecrire `sb()` pour qu'il traduise cette
+poignee de constructions en SQL sur SQLite. Le reste de `worker.js` ne
+change pas d'une ligne, exactement comme pour la bascule ci-dessus.
+
+Restent alors trois choses a ecrire :
+
+1. **Le schema**, 20 tables traduites selon le tableau de `vps.md`.
+2. **Le script de reprise**, qui lit Supabase avec la cle service et
+   remplit SQLite, rejouable autant de fois qu'on veut.
+3. **L'authentification.** C'est le seul endroit qui change vraiment :
+   le serveur mene lui-meme l'echange OAuth avec Discord et pose un
+   cookie, au lieu de valider un jeton Supabase. Voir la section
+   correspondante de `vps.md`.
+
+**Et c'est seulement la qu'on gagne la protection des pages.** Tant que
+la connexion passe par Supabase, `sasp/liaisons/` reste telechargeable
+par n'importe qui.
+
+**A ne pas melanger avec les etapes 1 a 6.** Si le deplacement et le
+changement de base se font en meme temps, la premiere panne devient
+impossible a attribuer. Faites tourner le VPS quelques jours d'abord.
 
 ---
 
