@@ -3169,8 +3169,14 @@ function saisieAnalyser(texte){
 // Retrouve une fiche par son nom. Ambigu vaut mieux que faux : deux
 // correspondances font une erreur, pas un choix au hasard.
 function saisieTrouver(nom,crees){
-  const cible=sansAccent(nom);
-  const tout=S.nodes.concat(crees||[]);
+  // Les mots de liaison que l'on garde parfois en trop devant la relation :
+  // « Jean Dupont est membre de X » laisse « Jean Dupont est » comme sujet.
+  let cible=sansAccent(nom).replace(/\s+(est|sont|a|ont|fait|font|etait|etaient)$/,'');
+  if(!cible)cible=sansAccent(nom);
+  // Une fiche tout juste creee figure deja dans S.nodes : la recompter
+  // depuis la liste des nouvelles la ferait passer pour deux homonymes,
+  // et la liaison serait abandonnee comme ambigue.
+  const tout=S.nodes.concat((crees||[]).filter(c=>!S.nodes.some(n=>n.id===c.id)));
   let exacts=tout.filter(n=>sansAccent(titleOf(n))===cible);
   if(exacts.length===1)return exacts[0];
   if(exacts.length>1)return {ambigu:exacts.length};
@@ -3230,10 +3236,13 @@ function saisieAppliquer(lignes){
     S.nodes.push(n);crees.push(n);nb++;
     logAct("Création d'élément (saisie rapide)",sch(r.t).l+' · '+titleOf(n));
   });
+  const perdues=[];
   lignes.forEach(r=>{
     if(!r.lien)return;
     const a=saisieTrouver(r.a,crees),b2=saisieTrouver(r.b,crees);
-    if(!a||a.ambigu||!b2||b2.ambigu)return;
+    // Une liaison qu'on ne sait pas rattacher doit se voir : l'abandonner
+    // sans rien dire laissait croire que tout avait été créé.
+    if(!a||a.ambigu||!b2||b2.ambigu){ perdues.push(r.a+' → '+r.b); return; }
     const e={id:'e'+(++S.seq),a:a.id,b:b2.id,l:r.l,d:'',dt:new Date().toISOString().slice(0,10),w:r.w||''};
     if(r.rang)e.rang=r.rang;
     S.edges.push(e);nl++;
@@ -3241,6 +3250,10 @@ function saisieAppliquer(lignes){
   });
   render();save('Saisie enregistrée');
   toast('Saisie appliquée',nb+' élément'+(nb>1?'s':'')+', '+nl+' liaison'+(nl>1?'s':''),'ok');
+  if(perdues.length){
+    toast(perdues.length+' liaison'+(perdues.length>1?'s non posées':' non posée'),
+      perdues.slice(0,3).join(' · ')+(perdues.length>3?'…':''),'warn',7000);
+  }
   if(ROUTE!=='board')route();
 }
 
@@ -3277,10 +3290,30 @@ function saisieConsigne(texte){
     "1. N'utilise que les types et les champs listés ci-dessous, avec leur libellé exact.",
     '2. Pour un champ à choix, prends exactement une des valeurs entre crochets.',
     "3. N'invente aucune information absente des notes. Ce qui n'est pas dit ne s'écrit pas.",
-    '4. Les liaisons viennent après les fiches, et ne citent que des noms déjà créés.',
-    "5. Niveau du lien : Neutre, Vérifié, À confirmer, Critique.",
-    '6. Dans un groupe, un rang peut être ajouté après le niveau : Tête de réseau, Bras droit, Lieutenant, Homme de main, Périphérie.',
-    "7. Réponds UNIQUEMENT par les lignes, sans commentaire, sans balise de code, sans titre.",
+    "4. Niveau du lien : Neutre, Vérifié, À confirmer, Critique.",
+    '5. Dans un groupe, un rang peut être ajouté après le niveau : Tête de réseau, Bras droit, Lieutenant, Homme de main, Périphérie.',
+    '',
+    'LES LIAISONS SONT LE CŒUR DE L\'OUTIL :',
+    "C'est un tableau de liaisons. Des fiches sans ficelles entre elles n'ont aucun intérêt,",
+    "c'est le lien qui porte l'enquête. Relis les notes une seconde fois en cherchant",
+    'uniquement ce qui relie deux éléments, et produis une ligne « lien » pour chacun.',
+    "- Toute personne rattachée à un groupe, à un lieu, à un véhicule, à une arme, à un compte",
+    '  ou à un événement doit avoir sa liaison.',
+    "- Une saisie relie l'objet saisi au lieu de la saisie et à la personne chez qui il était.",
+    '- Un nom cité deux fois dans les notes est la même fiche : ne la crée pas deux fois, relie-la.',
+    '- Écris les noms exactement comme dans les fiches créées plus haut, sans article devant.',
+    '- Les lignes « lien » se placent après toutes les fiches.',
+    "Si aucune liaison ne ressort des notes, dis-le en une phrase au lieu de n'en produire aucune.",
+    '',
+    'SI QUELQUE CHOSE MANQUE :',
+    "Tu peux poser des questions. Si une information essentielle manque ou reste ambiguë",
+    "— qui détient quoi, quel groupe, quelle date, un nom incomplet — pose tes questions",
+    "en une courte liste numérotée AVANT de produire quoi que ce soit, et attends la réponse.",
+    'Poser une question vaut toujours mieux que deviner.',
+    '',
+    'FORMAT DE LA RÉPONSE :',
+    'Soit tes questions seules, soit UNIQUEMENT les lignes : pas de commentaire,',
+    'pas de balise de code, pas de titre, rien avant ni après.',
     '',
     'TYPES ET CHAMPS DISPONIBLES :',
     saisieSpec(),
@@ -3290,8 +3323,15 @@ function saisieConsigne(texte){
     '',
     'EXEMPLE DE SORTIE :',
     'suspect Jean Dupont, Alias Le Chat, Situation Recherché, niveau 4',
+    'groupe Los Diablos, Type MC, Zone d\'influence Sandy Shores',
     'arme Glock 17, Calibre 9 mm, État Saisie, N° de scellé SC-2026-0920',
+    'lieu Entrepôt 4, Type Zone industrielle, Statut Périmètre bouclé',
+    'lien Jean Dupont Chef de Los Diablos, Critique, Tête de réseau',
     'lien Jean Dupont Détient Glock 17, Critique',
+    'lien Glock 17 Découverte à Entrepôt 4, Vérifié',
+    '',
+    'Remarquez que dans cet exemple, chacune des quatre fiches est reliée :',
+    'aucune ne reste isolée sur le tableau.',
     '',
     'NOTES À CONVERTIR :',
     texte.trim()
