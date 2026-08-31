@@ -1,4 +1,4 @@
-# SASP SUD — intranet, poste de travail et AEGIS
+# SASP SUD : intranet, poste de travail et AEGIS
 
 Serveur GTA-RP. Ce dépôt porte trois applications qui partagent une base.
 
@@ -19,11 +19,11 @@ Serveur GTA-RP. Ce dépôt porte trois applications qui partagent une base.
 
 Site **statique** sur GitHub Pages + **Worker Cloudflare** + **Supabase**. Il n'y a ni serveur de rendu, ni session côté serveur, ni middleware.
 
-Conséquence à ne jamais oublier : **une page ne peut pas être protégée**. GitHub Pages sert le HTML à qui le demande. La protection porte uniquement sur les **données** — les pages sont des coquilles vides, tout vient de l'API.
+Conséquence à ne jamais oublier : **une page ne peut pas être protégée**. GitHub Pages sert le HTML à qui le demande. La protection porte uniquement sur les **données** : les pages sont des coquilles vides, tout vient de l'API.
 
 Le Worker valide le jeton Supabase auprès de `/auth/v1/user`, en tire l'identifiant Discord, puis **relit les rôles Discord à chaque requête**. Un rôle retiré ferme l'accès dans la seconde.
 
-Les tables sensibles (`liaisons_*`, `bureau_*`) ont **RLS activé sans aucune policy** : rien n'est lisible depuis le navigateur, même avec la clé anon. **Ne jamais ajouter de policy `authenticated` dessus** — cela contournerait toute la vérification de rôles d'un coup.
+Les tables sensibles (`liaisons_*`, `bureau_*`) ont **RLS activé sans aucune policy** : rien n'est lisible depuis le navigateur, même avec la clé anon. **Ne jamais ajouter de policy `authenticated` dessus** : cela contournerait toute la vérification de rôles d'un coup.
 
 ## Les pièges qui ont déjà coûté cher
 
@@ -44,7 +44,7 @@ Les tables sensibles (`liaisons_*`, `bureau_*`) ont **RLS activé sans aucune po
 ## Accès
 
 - **Intranet** : rôles Discord, voir `config.js` et `PAGES_PAR_PROFIL` dans `app.js`.
-- **AEGIS** : Command Staff (`1500975725153620033`) et Lead CID (`1501526499910746132`), plus des accès nominatifs en base. La liste fait autorité dans `worker.js`, constante `LIAISONS_ROLES` — **jamais dans le front**, qui se contente de demander à l'API.
+- **AEGIS** : Command Staff (`1500975725153620033`) et Lead CID (`1501526499910746132`), plus des accès nominatifs en base. La liste fait autorité dans `worker.js`, constante `LIAISONS_ROLES` : **jamais dans le front**, qui se contente de demander à l'API.
 - **Poste de travail** : constante `BUREAU_DIVISIONS` dans `worker.js`.
 
 ## Conventions d'écriture

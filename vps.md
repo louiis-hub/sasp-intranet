@@ -121,7 +121,7 @@ Cette seule ligne rend caduc tout le compromis « coquille publique, données ve
 
 Toute la base est **un seul fichier**. C'est sa force et son danger : un `rm` malheureux, un disque qui lâche, et tout est perdu.
 
-**Ne jamais copier le fichier pendant qu'on écrit dedans** — on obtient une base corrompue sans le savoir. SQLite fournit l'outil qui fait ça proprement :
+**Ne jamais copier le fichier pendant qu'on écrit dedans** : on obtient une base corrompue sans le savoir. SQLite fournit l'outil qui fait ça proprement :
 
 ```bash
 sqlite3 /var/sasp/sasp.db ".backup '/var/sauvegardes/sasp-$(date +%F-%H%M).db'"
