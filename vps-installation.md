@@ -14,7 +14,7 @@ fournit tous. Il tourne donc tel quel derriere `vps/serveur.js`, un
 adaptateur d'une centaine de lignes.
 
 Les etapes 1 a 5 se defont en remettant une adresse dans quatre fichiers.
-Seule l'etape 5.4, quand Discord pointe sur le VPS, engage vraiment.
+Seule l'etape 5.5, quand Discord pointe sur le VPS, engage vraiment.
 
 Reste ensuite **Supabase**, dernier hebergeur exterieur : c'est l'etape 7,
 un chantier a part, a ne surtout pas melanger aux precedentes.
@@ -392,7 +392,43 @@ Refaites pointer le site sur l'adresse en HTTPS :
 API_URL=https://api.sasp.EXEMPLE.fr /opt/sasp/vps/mettre-a-jour.sh
 ```
 
-### 5.3 Supabase
+### 5.3 Les adresses ecrites en dur
+
+Treize adresses `louiis-hub.github.io` restent dans le code, et elles ne
+se voient pas depuis le navigateur : ce sont les **images des messages
+Discord**. Le bot les donne a Discord, qui va les chercher lui-meme. Le
+jour ou GitHub Pages s'arrete, les embeds perdent leurs images **sans le
+moindre message d'erreur**.
+
+Ou elles sont :
+
+| Fichier | Ce que c'est |
+|---|---|
+| `worker.js` | `SITE_BASE_URL`, les cinq images DEFCON, le panneau de tickets, les deux logos, les images de service |
+| `app.js` | trois images de panneaux de tickets |
+| `ticketing-advanced.js` | le filigrane |
+
+Une seule commande les deplace toutes, dans le depot cette fois (elles
+partent dans Discord, pas dans la page servie) :
+
+```bash
+cd /opt/sasp
+grep -rl 'louiis-hub\.github\.io/sasp-intranet' worker.js app.js ticketing-advanced.js \
+  | xargs sed -i 's|https://louiis-hub\.github\.io/sasp-intranet|https://sasp.EXEMPLE.fr|g'
+grep -rn 'louiis-hub\.github\.io' worker.js app.js ticketing-advanced.js   # doit ne rien rendre
+git commit -am "Faire pointer les images Discord sur le VPS"
+git push origin gh-pages
+/opt/sasp/vps/mettre-a-jour.sh
+sudo systemctl restart sasp-api
+```
+
+**A faire seulement une fois le certificat en place** : Discord ne
+recupere pas une image en clair de facon fiable.
+
+Verification : declenchez un message du bot qui porte une image (un
+panneau de tickets, un DEFCON) et regardez si l'image s'affiche.
+
+### 5.4 Supabase
 
 Tableau de bord Supabase > `Authentication` > `URL Configuration` :
 
@@ -402,7 +438,7 @@ Tableau de bord Supabase > `Authentication` > `URL Configuration` :
 **Gardez l'ancienne adresse GitHub Pages dans la liste** tant que les deux
 tournent en parallele.
 
-### 5.4 Discord
+### 5.5 Discord
 
 Portail developpeur > votre application > `General Information` :
 

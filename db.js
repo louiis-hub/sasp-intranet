@@ -42,7 +42,7 @@ var DB = {
       provider: 'discord',
       options: {
         scopes: 'identify email',
-        redirectTo: 'https://louiis-hub.github.io/sasp-intranet/'
+        redirectTo: location.origin + location.pathname.replace(/[^/]*$/, '')
       }
     });
   },
