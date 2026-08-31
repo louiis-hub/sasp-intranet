@@ -5781,6 +5781,40 @@ export default {
 
     if (url.pathname === "/health") return json({ ok: true });
 
+    // Amorcage d'un tableau de liaisons depuis l'exterieur (mise en place,
+    // dossier de demonstration). Reserve au jeton d'administration : cette
+    // route n'est pas soumise a la verification des roles Discord, elle ne
+    // doit donc jamais servir a lire quoi que ce soit, uniquement a ecrire.
+    if (url.pathname === "/admin/liaisons-seed" && request.method === "POST") {
+      const token = request.headers.get("x-log-token") || url.searchParams.get("token");
+      if (token !== (env.LOG_TOKEN || "SASPlogs2026!")) return json({ error: "Unauthorized" }, 401);
+      try {
+        const c = await request.json();
+        if (!Array.isArray(c.nodes) || !Array.isArray(c.edges)) {
+          return json({ ok: false, error: "nodes et edges attendus." }, 400);
+        }
+        const ligne = {
+          nom: String(c.nom || "Dossier importe").slice(0, 120),
+          dossier: c.dossier ? String(c.dossier).slice(0, 60) : null,
+          nodes: c.nodes, edges: c.edges,
+          seq: Number(c.seq) || 500,
+          version: 1,
+          updated_by: "Mise en place"
+        };
+        let cree;
+        if (c.id) {
+          await sb(env, "PATCH", `/liaisons_tableaux?id=eq.${Number(c.id)}`, ligne);
+          cree = [{ id: Number(c.id) }];
+        } else {
+          cree = await sb(env, "POST", "/liaisons_tableaux", ligne);
+        }
+        const t = cree && cree[0];
+        return json({ ok: true, id: t && t.id, elements: c.nodes.length, liaisons: c.edges.length });
+      } catch (e) {
+        return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
     // ════════════════════════════════════════════════════════════════
     //  API du tableau de liaisons
     //  Tout passe par liaisonsIdentifier : aucune route ne renvoie la

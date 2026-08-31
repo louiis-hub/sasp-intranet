@@ -1359,6 +1359,108 @@ function drawLegend(){
 }
 
 /* ============================================================
+   HIÉRARCHIE D'UN GROUPE
+   Le rang est porté par la ficelle, pas par la personne : le même
+   individu peut être lieutenant d'un cartel et simple contact d'un
+   autre. C'est le lien qui dit ce qu'il y est.
+   ============================================================ */
+const RANGS=[
+  {n:1,l:'Tête de réseau',   c:'#8E1F19'},
+  {n:2,l:'Bras droit',       c:'#B8322A'},
+  {n:3,l:'Lieutenant',       c:'#C0761A'},
+  {n:4,l:'Homme de main',    c:'#7A6746'},
+  {n:5,l:'Périphérie',       c:'#5E7A8C'}
+];
+const rangDe=n=>RANGS.filter(r=>r.n===n)[0]||null;
+// Types qui peuvent porter une hiérarchie interne.
+const A_HIERARCHIE=t=>['groupe','organisation'].indexOf(t)!==-1;
+
+// Les membres d'un groupe, ranges par rang puis par nom. Une ficelle
+// sans rang range la personne en périphérie : mieux vaut la montrer
+// en bas de l'organigramme que la faire disparaître.
+function membresDe(idGroupe){
+  return S.edges.filter(e=>e.a===idGroupe||e.b===idGroupe)
+    .map(e=>({e,o:node(e.a===idGroupe?e.b:e.a)}))
+    .filter(x=>x.o&&['personne','suspect','victime','temoin','agent'].indexOf(x.o.t)!==-1)
+    .map(x=>({...x,rang:+x.e.rang||5}))
+    .sort((a,b)=>a.rang-b.rang||titleOf(a.o).localeCompare(titleOf(b.o),'fr'));
+}
+
+// Organigramme en SVG : les traits doivent relier des boites de
+// largeurs variables, ce qu une grille HTML rend penible.
+function hierarchieSvg(g){
+  const membres=membresDe(g.id);
+  if(!membres.length)return '';
+  const BW=186,BH=64,GX=18,GY=94,MT=118;
+  const paliers=RANGS.map(r=>({r,liste:membres.filter(m=>m.rang===r.n)})).filter(p=>p.liste.length);
+  const large=Math.max(...paliers.map(p=>p.liste.length*BW+(p.liste.length-1)*GX),BW+80);
+  const L=large+80, H=MT+paliers.length*(BH+GY)+20;
+  const cx=L/2;
+
+  let s=`<svg viewBox="0 0 ${L} ${H}" width="100%" style="display:block;max-height:64vh">`;
+  // Le groupe, en tête.
+  s+=`<rect x="${cx-125}" y="18" width="250" height="66" rx="4" fill="${sch(g.t).c}" stroke="#3A2A14" stroke-width="2"/>`;
+  s+=`<text x="${cx}" y="44" text-anchor="middle" font-family="Special Elite,monospace" font-size="9"`+
+     ` letter-spacing="1.6" fill="rgba(0,0,0,.55)">${esc(sch(g.t).l.toUpperCase())}</text>`;
+  s+=`<text x="${cx}" y="68" text-anchor="middle" font-family="Special Elite,monospace" font-size="17"`+
+     ` fill="#241F19">${esc(titleOf(g))}</text>`;
+
+  paliers.forEach((p,pi)=>{
+    const y=MT+pi*(BH+GY);
+    const l=p.liste.length*BW+(p.liste.length-1)*GX;
+    const x0=cx-l/2;
+    const yPrec=pi===0?84:MT+(pi-1)*(BH+GY)+BH;
+    const yBarre=y-GY/2;
+    // Descente depuis le palier precedent, puis barre horizontale.
+    s+=`<path d="M${cx} ${yPrec} L${cx} ${yBarre}" stroke="#A8241C" stroke-width="2.4" fill="none"/>`;
+    if(p.liste.length>1){
+      s+=`<path d="M${x0+BW/2} ${yBarre} L${x0+l-BW/2} ${yBarre}" stroke="#A8241C" stroke-width="2.4" fill="none"/>`;
+    }
+    // Etiquette du rang, a gauche.
+    s+=`<text x="18" y="${y+BH/2+4}" font-family="Special Elite,monospace" font-size="10"`+
+       ` letter-spacing="1.4" fill="${p.r.c}">${esc(p.r.l.toUpperCase())}</text>`;
+
+    p.liste.forEach((m,mi)=>{
+      const x=x0+mi*(BW+GX);
+      s+=`<path d="M${x+BW/2} ${yBarre} L${x+BW/2} ${y}" stroke="#A8241C" stroke-width="2.4" fill="none"/>`;
+      s+=`<g class="hNoeud" data-id="${m.o.id}" style="cursor:pointer">`;
+      s+=`<rect x="${x}" y="${y}" width="${BW}" height="${BH}" rx="3" fill="#FBF6E9"`+
+         ` stroke="${p.r.c}" stroke-width="2"/>`;
+      s+=`<rect x="${x}" y="${y}" width="5" height="${BH}" fill="${sch(m.o.t).c}"/>`;
+      s+=`<text x="${x+14}" y="${y+25}" font-family="Special Elite,monospace" font-size="13"`+
+         ` fill="#241F19">${esc(coupe(titleOf(m.o),19))}</text>`;
+      s+=`<text x="${x+14}" y="${y+43}" font-family="IBM Plex Mono,monospace" font-size="9"`+
+         ` fill="#7A6E5C">${esc((sch(m.o.t).l+' · '+m.e.l).toUpperCase().slice(0,30))}</text>`;
+      // Le niveau d alerte, en pastilles, comme sur les fiches.
+      for(let k=0;k<5;k++){
+        s+=`<rect x="${x+14+k*11}" y="${y+50}" width="8" height="3" rx="1"`+
+           ` fill="${k<(m.o.r||0)?((m.o.r||0)>=4?'#A8221B':'#C0761A'):'rgba(120,100,70,.28)'}"/>`;
+      }
+      s+='</g>';
+    });
+  });
+  return s+'</svg>';
+}
+const coupe=(s,n)=>String(s||'').length>n?String(s).slice(0,n-1)+'…':String(s||'');
+
+function hierarchieDlg(id){
+  const g=node(id); if(!g)return;
+  const membres=membresDe(id);
+  const svg2=hierarchieSvg(g);
+  const m=modal({title:'Hiérarchie · '+titleOf(g),
+    foot:'<button class="btn" data-x>Fermer</button>',
+    body: svg2
+      ? `<div style="background:rgba(255,255,255,.5);border:1px solid #C0A472;border-radius:3px;padding:10px;overflow:auto">${svg2}</div>`+
+        `<p style="margin:11px 0 0;font-size:11.5px;color:var(--ink3);line-height:1.55">`+
+        `${membres.length} personne${membres.length>1?'s':''} rattachée${membres.length>1?'s':''}. `+
+        `Le rang se règle sur la ficelle : cliquez une liaison sur le tableau, puis « Rang dans le groupe ». `+
+        `Cliquez une case pour ouvrir la fiche.</p>`
+      : `<div class="empty"><b>Personne n'est rattaché</b>Reliez des personnes à ce groupe, `+
+        `puis donnez un rang à chaque ficelle.</div>`});
+  $$('.hNoeud',m.scrim).forEach(x=>x.onclick=()=>{m.close();openOnBoard(x.dataset.id)});
+}
+
+/* ============================================================
    SÉLECTION + PANNEAU DE FICHE
    ============================================================ */
 function deselect(){
@@ -1403,6 +1505,21 @@ function selectNode(id){
        <button class="btn sm" id="iImgX">${svg(I.x,12)}Retirer</button></div>
      <input type="file" id="iImgI" accept="image/*" style="display:none">
      ${n.image?`<img class="apercu" src="${esc(n.image)}" alt="">`:''}
+     ${A_HIERARCHIE(n.t)?(function(){
+       const mb=membresDe(n.id);
+       const paliers=RANGS.map(r=>({r,liste:mb.filter(x=>x.rang===r.n)})).filter(p=>p.liste.length);
+       return '<div class="isec">Hiérarchie<span>'+mb.length+'</span></div>'+
+         (paliers.length
+           ? paliers.map(p=>`<div style="margin-bottom:7px">`+
+               `<div class="lbl" style="font-size:9px;color:${p.r.c}">${esc(p.r.l)}</div>`+
+               p.liste.map(x=>`<div class="relrow" data-node="${x.o.id}" style="padding:4px 0">`+
+                 `<span style="color:${sch(x.o.t).c};flex:none">${svg(sch(x.o.t).i,13)}</span>`+
+                 `<span class="rn">${esc(titleOf(x.o))}</span></div>`).join('')+
+               `</div>`).join('')
+           : '<span class="muted">Aucune personne rattachée.</span>')+
+         `<button class="btn sm" id="iHier" style="width:100%;justify-content:center;margin-top:6px">`+
+         `${svg(I.grp,12)}Voir l'organigramme</button>`;
+     })():''}
      <div class="isec">Relations<span>${rels.length}</span></div>
      ${rels.map(r=>`<div class="relrow" data-rel="${r.e.id}" data-node="${r.o.id}">
         <span style="color:${sch(r.o.t).c};flex:none">${svg(sch(r.o.t).i,14)}</span>
@@ -1429,6 +1546,8 @@ function selectNode(id){
   $$('[data-node]',p).forEach(r=>{
     r.onclick=e=>{if(e.target.closest('.del'))return selectEdge(r.dataset.rel);selectNode(r.dataset.node)};
   });
+  const bh=$('#iHier',p);
+  if(bh)bh.onclick=()=>hierarchieDlg(id);
   $('#iLink').onclick=()=>startLink(id);
   $('#iHide').onclick=()=>{const nb2=S.edges.filter(e=>e.a===id||e.b===id).map(e=>e.a===id?e.b:e.a);
     nb2.forEach(x=>S.collapsed.add(x));render();toast('Branche masquée',nb2.length+' éléments repliés · touche R pour tout réafficher','')};
@@ -1534,6 +1653,11 @@ function selectEdge(id){
      <div class="f"><label>Intitulé</label><select id="eL">${REL.map(r=>`<option ${r===e.l?'selected':''}>${esc(r)}</option>`).join('')}<option ${!REL.includes(e.l)?'selected':''}>${esc(REL.includes(e.l)?'Autre…':e.l)}</option></select></div>
      <div class="f"><label>Description</label><textarea id="eD">${esc(e.d||'')}</textarea></div>
      <div class="f"><label>Date de la relation</label><input id="eDt" class="mono" value="${esc(e.dt||'')}" placeholder="AAAA-MM-JJ"></div>
+     ${(A_HIERARCHIE(a.t)||A_HIERARCHIE(b.t))?`
+     <div class="f"><label>Rang dans le groupe</label><select id="eRang">
+       <option value="">Non précisé</option>
+       ${RANGS.map(r=>`<option value="${r.n}" ${(+e.rang||0)===r.n?'selected':''}>${esc(r.l)}</option>`).join('')}
+     </select></div>`:''}
      <div class="f"><label>Niveau du lien</label><div style="display:flex;gap:5px;flex-wrap:wrap" id="eW">
        ${WEIGHT.map(([k,l,c])=>`<button class="btn sm ${(e.w||'')===k?'on':''}" data-w="${k}"><span style="display:inline-block;width:10px;height:2px;background:${c}"></span>${l}</button>`).join('')}</div></div>
      <div class="f"><label>Tracé</label><div style="display:flex;gap:5px" id="eS">
@@ -1549,6 +1673,8 @@ function selectEdge(id){
   $$('#eS .btn[data-d]',p).forEach(c=>c.onclick=()=>{$$('#eS .btn[data-d]',p).forEach(x=>x.classList.remove('on'));c.classList.add('on');e.dash=c.dataset.d==='1'?1:0;drawEdges();save()});
   $('#eSwap',p).onclick=()=>{const t=e.a;e.a=e.b;e.b=t;drawEdges();save();selectEdge(e.id)};
   $('#eSave',p).onclick=()=>{e.l=$('#eL',p).value;e.d=$('#eD',p).value;e.dt=$('#eDt',p).value;
+    const cr=$('#eRang',p);
+    if(cr){ if(cr.value)e.rang=+cr.value; else delete e.rang; }
     logAct('Modification de liaison',titleOf(a)+' → '+titleOf(b));drawEdges();save('Liaison enregistrée');toast('Liaison mise à jour','','ok')};
   $('#eDel',p).onclick=()=>confirmDlg('Supprimer la liaison',
     `La liaison « ${esc(e.l)} » entre <b>${esc(titleOf(a))}</b> et <b>${esc(titleOf(b))}</b> sera supprimée.`,'Supprimer',()=>{
