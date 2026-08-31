@@ -14,7 +14,8 @@ Police Academy (`pa.html`), l'outil d'enquete AEGIS
 et **toutes** les API.
 
 Depot : `c:\Users\louis\Documents\Codex\2026-08-16\on-reprend-le-projet-bot-site\work\sasp-intranet`
-Branche : `gh-pages`. Lire `CLAUDE.md` **avant de toucher au code**.
+Branche : `gh-pages`. Lire `AGENTS.md` puis `CLAUDE.md` **avant de
+toucher au code**.
 
 **Perimetre : SASP SUD uniquement. Ne jamais toucher au SASP NORD.**
 
@@ -126,6 +127,26 @@ GitHub echouait en silence.
 `node -e '...'`. Ecrire le script dans un fichier, puis l'executer. Et
 sous Git Bash sur Windows, `grep -c $'\r'` donne des faux positifs :
 compter les octets avec Node.
+
+## La methode attendue
+
+`AGENTS.md`, a la racine du depot, la decrit en entier. L'essentiel :
+
+**Verifier la conclusion, jamais l'apparence.** Un preflight qui rend 204
+ne prouve rien, il faut lire `access-control-allow-headers`. Un push
+reussi ne prouve pas que le deploiement a marche, il faut lire la
+conclusion de l'action GitHub. Un fichier de configuration ne dit pas ce
+que le service applique : `sshd -T`, `nginx -t`, `systemctl status`.
+
+**Prouver avant d'affirmer.** Ne pas ecrire qu'une chose fonctionne sans
+l'avoir vue fonctionner. Si un essai n'a pas ete fait, le dire.
+
+**Avant tout push** : `node --check worker.js app.js db.js`, plus le
+controle des tiret cadratins. Les commandes exactes sont dans
+`AGENTS.md`.
+
+**Modifier par script**, jamais a la main sur les gros fichiers : ils
+sont en CRLF et les outils d'edition les ecrasent en LF.
 
 ## Les conventions
 
