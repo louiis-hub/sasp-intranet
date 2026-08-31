@@ -52,9 +52,17 @@ dire que le serveur mene lui-meme l'echange OAuth avec Discord et pose un
 cookie `httpOnly`, `secure`, `sameSite=lax`. Ca touche le front des trois
 applications et la moitie haute de `worker.js`.
 
-**Faire la moitie 1 d'abord, et s'arreter la.** Garder Supabase Auth est
-un etat parfaitement tenable. Ne commencer la moitie 2 que si Louis le
-demande explicitement.
+**Ne faire QUE la moitie 1. L'authentification ne t'appartient pas.**
+
+Un autre chantier, mene en parallele, porte le site sur Next.js. Sa
+deuxieme etape deplace la session dans un cookie pour rendre les pages
+reellement protegeables : elle reecrit donc l'authentification, des deux
+cotes. Deux reecritures simultanees de la meme couche produiraient un
+conflit qu'on mettrait des heures a demeler.
+
+Concretement : ne pas toucher a `/auth/v1/user`, ni a `bureauIdentifier`,
+ni a `liaisonsIdentifier`, ni a `signInWithOAuth` dans `db.js` et
+`index.html`. La base seule.
 
 ## Ce qu'il faut ecrire
 
@@ -205,7 +213,7 @@ en meme temps rendent la premiere panne inattribuable.
 
 - Toucher au SASP NORD.
 - Reecrire les 117 appels : c'est `sb()` qu'on remplace.
-- Commencer l'authentification sans accord explicite de Louis.
+- Toucher a l'authentification : elle appartient au chantier Next.js.
 - Supprimer quoi que ce soit dans Supabase avant un mois de
   fonctionnement de SQLite.
 - Employer un tiret cadratin, nulle part.
