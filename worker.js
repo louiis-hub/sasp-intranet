@@ -315,7 +315,7 @@ function envGuildId(env) {
 
 // Command Staff et Lead CID : ces deux roles ouvrent le tableau et
 // permettent d'ouvrir des acces nominatifs a d'autres personnes.
-const LIAISONS_ROLES = [
+let LIAISONS_ROLES = [
   { id: "1500975725153620033", nom: "Command Staff" },
   { id: "1501526499910746132", nom: "Lead CID" }
 ];
@@ -424,7 +424,7 @@ function liaisonsRefusDossier() {
 
 // Les dix divisions, avec le role qui en donne l'acces et celui qui
 // donne l'encadrement. Le separateur decoratif ne compte jamais.
-const BUREAU_DIVISIONS = [
+let BUREAU_DIVISIONS = [
   { code: "PA",   nom: "Police Academy",              adr: "academy",  ic: "🎓",
     lead: ["1518632035911205168"], colead: [],
     roles: ["1518631032167993534", "1523753182457495653", "1527820344558354613"] },
@@ -467,16 +467,83 @@ const BUREAU_ST = "1504452141518032956";   // Supervisor Team
 // « San Andreas State Police Sud » : le role qui dit qu on est du
 // departement. Il fait l annuaire de la messagerie et l acces au poste.
 const BUREAU_SASP = "1501250580058870104";
+// Ce que la base peut elargir : les roles qui ouvrent le poste, et ceux
+// qui valent supervision. Le repli reste le comportement d'hier.
+let BUREAU_POSTE = [BUREAU_SASP];
+let BUREAU_SUPERVISION = [BUREAU_ST];
 
 // Un membre du Command Staff peut ne pas porter le role de departement :
 // c est le cas d au moins un aujourd hui. Le refuser sur ce seul critere
 // mettrait l encadrement dehors, alors on accepte aussi ses roles.
 function bureauEstPersonnel(roles) {
   const r = roles || [];
-  if (r.indexOf(BUREAU_SASP) !== -1) return true;
-  if (r.indexOf(BUREAU_CS) !== -1 || r.indexOf(BUREAU_ST) !== -1) return true;
+  if (BUREAU_POSTE.some(x => r.indexOf(x) !== -1)) return true;
+  if (r.indexOf(BUREAU_CS) !== -1 || BUREAU_SUPERVISION.some(x => r.indexOf(x) !== -1)) return true;
   return BUREAU_DIVISIONS.some(d => bureauRolesDiv(d).some(x => r.indexOf(x) !== -1));
 }
+
+/* ── la configuration, relue depuis la base ──────────────────────────
+   Les valeurs ci-dessus restent le repli : si config_divisions et
+   config_acces sont vides ou injoignables, rien ne change. On garde
+   toujours le dernier etat connu plutot que d'ouvrir par accident.
+
+   Elles sont relues au plus toutes les CONFIG_TTL millisecondes. Ce
+   delai ne concerne QUE la configuration : les roles Discord d'une
+   personne, eux, restent relus a chaque requete. Un role retire ferme
+   l'acces dans la seconde, comme avant. */
+const CONFIG_TTL = 30000;
+let configQuand = 0;
+let configEnCours = null;
+
+// Le Command Staff est le plancher : il administre toujours, et cela ne
+// se retire pas depuis l'ecran. Sans ce garde-fou, une fausse manoeuvre
+// sur la ligne « admin » fermerait la porte a tout le monde, sans aucun
+// moyen de revenir en arriere depuis le site.
+let BUREAU_ADMIN = [BUREAU_CS];
+
+async function chargerConfig(env) {
+  const [divs, acces] = await Promise.all([
+    sb(env, "GET", "/config_divisions?select=*&actif=eq.true&order=ordre").catch(() => null),
+    sb(env, "GET", "/config_acces?select=*").catch(() => null)
+  ]);
+
+  if (Array.isArray(divs) && divs.length) {
+    BUREAU_DIVISIONS = divs.map(d => ({
+      code: d.code, nom: d.nom, adr: d.adr, ic: d.ic || "🚔",
+      roles:  Array.isArray(d.roles)  ? d.roles  : [],
+      lead:   Array.isArray(d.lead)   ? d.lead   : [],
+      colead: Array.isArray(d.colead) ? d.colead : []
+    }));
+  }
+
+  if (Array.isArray(acces) && acces.length) {
+    const par = {};
+    acces.forEach(a => { par[a.cle] = Array.isArray(a.roles) ? a.roles : []; });
+    if (par.aegis && par.aegis.length) {
+      LIAISONS_ROLES = par.aegis.map(id => ({ id, nom: "Acces AEGIS" }));
+    }
+    if (par.poste && par.poste.length) BUREAU_POSTE = par.poste;
+    if (par.supervision && par.supervision.length) BUREAU_SUPERVISION = par.supervision;
+    // Le plancher survit a tout ce qui vient de la base.
+    BUREAU_ADMIN = [BUREAU_CS].concat((par.admin || []).filter(r => r !== BUREAU_CS));
+  }
+  configQuand = Date.now();
+}
+
+// A appeler au debut de chaque section d'API. Les appels concurrents
+// partagent la meme promesse : sans cela, dix requetes simultanees
+// declencheraient dix lectures de la base.
+function assurerConfig(env) {
+  if (Date.now() - configQuand < CONFIG_TTL) return Promise.resolve();
+  if (!configEnCours) {
+    configEnCours = chargerConfig(env)
+      .catch(e => { console.error("[config]", e && e.message); })
+      .finally(() => { configEnCours = null; });
+  }
+  return configEnCours;
+}
+
+const bureauEstAdmin = roles => (roles || []).some(r => BUREAU_ADMIN.indexOf(r) !== -1);
 
 // Une adresse se derive du nom affiche : « [12] Boris Miller » donne
 // « borismiller ». Deux agents homonymes partageraient leur boite, mais
@@ -540,7 +607,7 @@ async function bureauIdentifier(env, request) {
   if (!bureauEstPersonnel(roles)) return { ok: false, motif: "pas-du-departement", nom };
 
   const estCS = roles.indexOf(BUREAU_CS) !== -1;
-  const estST = roles.indexOf(BUREAU_ST) !== -1;
+  const estST = BUREAU_SUPERVISION.some(r => roles.indexOf(r) !== -1);
   const divisions = BUREAU_DIVISIONS
     .filter(d => estCS || estST || bureauRolesDiv(d).some(r => roles.indexOf(r) !== -1))
     .map(d => ({
@@ -6054,6 +6121,7 @@ export default {
         }});
       }
 
+      await assurerConfig(env);
       const qui = await bureauIdentifier(env, request);
       if (!qui.ok) return bureauRefus(qui.motif);
 
@@ -6062,6 +6130,9 @@ export default {
         if (url.pathname === "/api/bureau/moi" && request.method === "GET") {
           return json({ ok: true, nom: qui.nom, adresse: qui.adresse, avatar: qui.avatar,
             discord_id: qui.discordId, command_staff: qui.estCS, superviseur: qui.estST,
+            // Administrer n'est plus synonyme de Command Staff : la ligne
+            // « admin » peut en ouvrir l'acces a d'autres roles.
+            admin: bureauEstAdmin(qui.roles),
             divisions: qui.divisions, toutes: qui.toutes });
         }
 
@@ -6306,6 +6377,149 @@ export default {
           }
         }
 
+        // ── Gestion globale des acces ──────────────────────────────
+        // Reserve aux roles de la ligne « admin », dont le Command Staff
+        // fait toujours partie : c'est le plancher, il ne se retire pas.
+        if (url.pathname.startsWith("/api/bureau/gestion")) {
+          if (!bureauEstAdmin(qui.roles)) {
+            return json({ ok: false, error: "Reserve a l'administration du departement." }, 403);
+          }
+
+          const tracer = async (action, cible, avant, apres) => {
+            // Une modification d'acces sans trace, c'est une modification
+            // que personne n'assume.
+            try {
+              await sb(env, "POST", "/config_journal", {
+                qui: qui.nom, qui_id: qui.discordId,
+                ip: request.headers.get("cf-connecting-ip")
+                 || request.headers.get("x-forwarded-for") || null,
+                action, cible, avant: avant || null, apres: apres || null
+              });
+            } catch (e) {}
+          };
+
+          // Ce que l'ecran affiche : les divisions, les acces, et la
+          // liste des roles Discord avec leurs vrais noms.
+          if (url.pathname === "/api/bureau/gestion" && request.method === "GET") {
+            const [divs, acces] = await Promise.all([
+              sb(env, "GET", "/config_divisions?select=*&order=ordre").catch(() => []),
+              sb(env, "GET", "/config_acces?select=*&order=cle").catch(() => [])
+            ]);
+
+            let roles = [];
+            try {
+              const res = await discordFetch(`${DISCORD_API}/guilds/${envGuildId(env)}/roles`,
+                { headers: { authorization: `Bot ${env.DISCORD_BOT_TOKEN}` } });
+              if (res.ok) {
+                const bruts = await res.json();
+                roles = bruts
+                  .filter(r => r.name !== "@everyone")
+                  .sort((a, b) => b.position - a.position)
+                  .map(r => ({
+                    id: r.id, nom: r.name, position: r.position,
+                    couleur: r.color ? "#" + r.color.toString(16).padStart(6, "0") : null,
+                    gere_par_bot: !!(r.tags && r.tags.bot_id),
+                    // Les roles « ------ [XXX] ------ » sont decoratifs.
+                    // Les avoir ne veut pas dire appartenir a la division :
+                    // s'en servir comme identifiant de permission a deja
+                    // rendu sept membres de la Police Academy administrateurs.
+                    separateur: /-{4,}/.test(r.name) || /^[\s\-_=*.]+$/.test(r.name)
+                  }));
+              }
+            } catch (e) {}
+
+            return json({ ok: true,
+              divisions: divs || [], acces: acces || [], roles,
+              // Ce que l'ecran ne doit pas laisser retirer.
+              plancher: { admin: BUREAU_CS },
+              // Ce qui s'applique reellement en ce moment, repli compris.
+              actif: {
+                divisions: BUREAU_DIVISIONS.map(d => d.code),
+                poste: BUREAU_POSTE, supervision: BUREAU_SUPERVISION,
+                aegis: LIAISONS_ROLES.map(r => r.id), admin: BUREAU_ADMIN
+              }
+            });
+          }
+
+          // Creer ou modifier une division.
+          if (url.pathname === "/api/bureau/gestion/division" && request.method === "PUT") {
+            const c = await request.json().catch(() => ({}));
+            const code = String(c.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+            if (!code) return json({ ok: false, error: "Code manquant." }, 400);
+            if (!String(c.nom || "").trim()) return json({ ok: false, error: "Nom manquant." }, 400);
+
+            const ids = v => (Array.isArray(v) ? v : [])
+              .map(x => String(x)).filter(x => /^\d{17,20}$/.test(x));
+            const adr = String(c.adr || code.toLowerCase())
+              .toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24);
+            if (!adr) return json({ ok: false, error: "Adresse interne invalide." }, 400);
+
+            const avant = (await sb(env, "GET",
+              `/config_divisions?code=eq.${code}&select=*`).catch(() => []))[0] || null;
+
+            const ligne = {
+              code, nom: String(c.nom).slice(0, 80), adr, ic: String(c.ic || "🚔").slice(0, 8),
+              roles: ids(c.roles), lead: ids(c.lead), colead: ids(c.colead),
+              ordre: Number.isFinite(+c.ordre) ? +c.ordre : 100,
+              actif: c.actif !== false,
+              updated_at: new Date().toISOString(), updated_by: qui.nom
+            };
+            const cree = await sb(env, "POST",
+              "/config_divisions?on_conflict=code", ligne);
+            await tracer(avant ? "division-modifiee" : "division-creee", code, avant, ligne);
+            configQuand = 0;   // la prochaine requete relira
+            return json({ ok: true, division: (cree && cree[0]) || ligne });
+          }
+
+          // Retirer une division. On la desactive plutot que de la
+          // supprimer : ses messages et ses documents lui survivent, et
+          // une suppression les rendrait orphelins sans avertissement.
+          if (url.pathname === "/api/bureau/gestion/division" && request.method === "DELETE") {
+            const code = String(url.searchParams.get("code") || "").toUpperCase();
+            if (!/^[A-Z0-9]{1,12}$/.test(code)) return json({ ok: false, error: "Code invalide." }, 400);
+            const avant = (await sb(env, "GET",
+              `/config_divisions?code=eq.${code}&select=*`).catch(() => []))[0] || null;
+            if (!avant) return json({ ok: false, error: "Division inconnue." }, 404);
+            await sb(env, "PATCH", `/config_divisions?code=eq.${code}`,
+              { actif: false, updated_at: new Date().toISOString(), updated_by: qui.nom });
+            await tracer("division-desactivee", code, avant, null);
+            configQuand = 0;
+            return json({ ok: true });
+          }
+
+          // Changer qui ouvre quelle application.
+          if (url.pathname === "/api/bureau/gestion/acces" && request.method === "PUT") {
+            const c = await request.json().catch(() => ({}));
+            const cle = String(c.cle || "");
+            if (["poste", "aegis", "supervision", "admin"].indexOf(cle) === -1) {
+              return json({ ok: false, error: "Acces inconnu." }, 400);
+            }
+            let roles = (Array.isArray(c.roles) ? c.roles : [])
+              .map(x => String(x)).filter(x => /^\d{17,20}$/.test(x));
+
+            // Le plancher se remet quoi qu'il arrive : sans lui, un
+            // enregistrement malheureux sur cette ligne fermerait la
+            // porte a tout le monde, sans retour possible depuis le site.
+            if (cle === "admin" && roles.indexOf(BUREAU_CS) === -1) roles = [BUREAU_CS].concat(roles);
+
+            const avant = (await sb(env, "GET",
+              `/config_acces?cle=eq.${cle}&select=*`).catch(() => []))[0] || null;
+            const ligne = { cle, libelle: (avant && avant.libelle) || cle, roles,
+              updated_at: new Date().toISOString(), updated_by: qui.nom };
+            await sb(env, "POST", "/config_acces?on_conflict=cle", ligne);
+            await tracer("acces-modifie", cle, avant, ligne);
+            configQuand = 0;
+            return json({ ok: true, acces: ligne });
+          }
+
+          // Ce qui a ete change, et par qui.
+          if (url.pathname === "/api/bureau/gestion/journal" && request.method === "GET") {
+            const rows = await sb(env, "GET",
+              "/config_journal?select=*&order=quand.desc&limit=150").catch(() => []);
+            return json({ ok: true, journal: rows || [] });
+          }
+        }
+
         // ── Organigramme ───────────────────────────────────
         // Qui commande quoi. Les roles Discord donnent la place, la table
         // des agents donne le matricule et le telephone. Rien n est saisi
@@ -6412,6 +6626,7 @@ export default {
     // ════════════════════════════════════════════════════════════════
     if (url.pathname.startsWith("/api/sasp/")) {
       // Les preflights sont traites plus haut, avant toute route.
+      await assurerConfig(env);
       const qui = await liaisonsIdentifier(env, request);
       if (!qui.autorise) return liaisonsRefus(qui);
 

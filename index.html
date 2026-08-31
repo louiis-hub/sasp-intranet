@@ -554,7 +554,7 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
 <div id="porte"><div class="pcard" id="pcard"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=20260831-vps"></script>
+<script src="config.js?v=20260831-gestion"></script>
 <script>
 /* ============================================================
    POSTE DE TRAVAIL SASP
@@ -781,7 +781,9 @@ const APPS={
   demandes:    {n:'Mes demandes',   ic:'📮', d:'Contacts ouverts',
                 f:ouvrirMesDemandes},
   annonces:    {n:'Annonces',       ic:'📣', d:'Journal de l\'état-major',
-                f:ouvrirAnnonces}
+                f:ouvrirAnnonces},
+  gestion:     {n:'Administration', ic:'⚙️', d:'Accès, divisions, rôles',
+                f:ouvrirGestion, admin:true}
 };
 
 const NAV=[
@@ -791,12 +793,17 @@ const NAV=[
                            {d:'SYND',n:'Syndicat'}]},
   {t:'Unités',         it:[{d:'TU',n:'Traffic Unit'},{d:'CNU',n:'Crisis & Negotiation Unit'},
                            {d:'LP',n:'Lincoln Patrol'}]},
-  {t:'Administration', it:[{a:'organigramme',n:'État-major'},{a:'annonces',n:'Annonces'}]},
+  {t:'Administration', it:[{a:'organigramme',n:'État-major'},{a:'annonces',n:'Annonces'},
+                           {a:'gestion',n:'Gestion',admin:true}]},
   {t:'Général',        it:[{a:'aegis',n:'AEGIS'},{a:'mail',n:'Messagerie'},
                            {a:'demandes',n:'Demandes'}]}
 ];
 
 const cleDe=it=>it.a?it.a:'div:'+it.d;
+// Ce qui est reserve a l'administration ne s'affiche pas pour les autres.
+// Le serveur refuserait de toute facon, mais une porte visible et fermee
+// invite a pousser dessus.
+const visible=it=>!(it.a&&APPS[it.a]&&APPS[it.a].admin)||!!(MOI&&MOI.admin);
 const dedansDiv=c=>MOI&&MOI.divisions.some(d=>d.code===c);
 
 // Une division dont on ne fait pas partie n'ouvre pas une fenêtre vide :
@@ -812,7 +819,7 @@ function lancer(it){
 function majTaches(){
   const z=$('#nav'); if(!z)return;
   z.innerHTML=NAV.map(g=>`<div class="navGr"><i>${esc(g.t)}</i><div>
-    ${g.it.map((it,j)=>{
+    ${g.it.filter(visible).map((it,j)=>{
       const o=FEN[cleDe(it)];
       const hors=it.d&&!dedansDiv(it.d);
       const b=it.a&&APPS[it.a].badge?APPS[it.a].badge():0;
@@ -823,7 +830,7 @@ function majTaches(){
     }).join('')}
   </div></div>`).join('');
   $$('.navIt',z).forEach(b=>b.onclick=()=>{
-    const it=NAV[+b.dataset.g].it[+b.dataset.j];
+    const it=NAV[+b.dataset.g].it.filter(visible)[+b.dataset.j];
     if(!basculerFenetre(cleDe(it)))lancer(it);
   });
   dessinerIcones();
@@ -834,7 +841,7 @@ function menuDemarrer(){
   const m=$('#menuDem');
   if(m.classList.contains('on')){ fermerMenuDem(); return; }
   const tout=[];
-  NAV.forEach(g=>g.it.forEach(it=>tout.push({g:g.t,it})));
+  NAV.forEach(g=>g.it.filter(visible).forEach(it=>tout.push({g:g.t,it})));
   tout.push({g:'Général',it:{a:'divisions',n:'Toutes les divisions'}});
 
   m.innerHTML=`<header>
@@ -968,6 +975,7 @@ function iconesCatalogue(){
   // Les applications d'abord, puis les unités dont on fait partie :
   // celles-la seules s'ouvrent d'un double-clic.
   const L=[{a:'pa'},{a:'aegis'},{a:'organigramme'},{a:'mail'},{a:'demandes'},{a:'divisions'}];
+  if(MOI&&MOI.admin)L.push({a:'gestion'});
   ((MOI&&MOI.divisions)||[]).forEach(d=>L.push({d:d.code}));
   return L;
 }
@@ -1660,6 +1668,295 @@ function orgCarte(p,chef){
         <span>${esc(p.mail)}</span>
       </div>
     </div></div>`;
+}
+
+/* ---------- l'administration des accès ---------- */
+// Qui accède à quoi vivait en dur dans le code. Cet écran le règle depuis
+// le site, pour les rôles qui portent la ligne « admin ».
+let GESTION=null;
+
+function ouvrirGestion(){
+  fenetre('gestion',{titre:'Administration',icone:'⚙️',l:1080,h:740,apres:o=>{
+    o.corps.style.display='flex';
+    o.corps.style.flexDirection='row';
+    o.corps.innerHTML=`
+      <nav class="salons">
+        <div class="tt">Gestion globale</div>
+        <button data-t="divisions" class="on"><span class="di">🚔</span><span class="n">Divisions et unités</span></button>
+        <button data-t="acces"><span class="di">🔑</span><span class="n">Accès aux applications</span></button>
+        <button data-t="qui"><span class="di">👁️</span><span class="n">Qui accède à quoi</span></button>
+        <hr>
+        <button data-t="journal"><span class="di">📋</span><span class="n">Journal des changements</span></button>
+      </nav>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <div class="salonTete" id="gsTete"></div>
+        <div style="flex:1;min-height:0;overflow:auto" id="gsCorps"></div>
+      </div>`;
+    const corps=$('#gsCorps',o.corps), tete=$('#gsTete',o.corps);
+    const TT={divisions:['🚔','Divisions et unités','Leur composition, et les rôles Discord qui en font partie'],
+              acces:['🔑','Accès aux applications','Quels rôles ouvrent quoi'],
+              qui:['👁️','Qui accède à quoi','Vue d\'ensemble, personne par personne'],
+              journal:['📋','Journal des changements','Ce qui a été modifié, et par qui']};
+    const aller=async t=>{
+      $$('.salons button',o.corps).forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+      const [i,n,d]=TT[t];
+      tete.innerHTML=`<span class="di">${i}</span><b>${esc(n)}</b><p>${esc(d)}</p>`;
+      corps.innerHTML='<div class="vide">Chargement…</div>';
+      if(!GESTION||t==='journal'){
+        const r=await api('/api/bureau/gestion');
+        if(!r.ok){corps.innerHTML=`<div class="vide"><b>Refusé</b>${esc(r.data.error||'')}</div>`;return}
+        GESTION=r.data;
+      }
+      if(t==='divisions')     gsDivisions(corps);
+      else if(t==='acces')    gsAcces(corps);
+      else if(t==='qui')      gsQui(corps);
+      else                    gsJournal(corps);
+    };
+    $$('.salons button',o.corps).forEach(b=>b.onclick=()=>aller(b.dataset.t));
+    aller('divisions');
+  }});
+}
+
+// Le nom du rôle, tel que Discord l'affiche. Sans lui on choisit un
+// identifiant à l'aveugle, et c'est ainsi que les rôles décoratifs sont
+// devenus des identifiants de permission.
+const gsRole=id=>(GESTION.roles||[]).filter(r=>r.id===id)[0];
+function gsPuceRole(id){
+  const r=gsRole(id);
+  if(!r)return `<span class="puce p-rouge" title="Ce rôle n'existe plus sur Discord">${esc(id)}</span>`;
+  if(r.separateur)return `<span class="puce p-rouge" title="Rôle décoratif : à ne pas utiliser">⚠ ${esc(r.nom)}</span>`;
+  return `<span class="puce p-bleu">${esc(r.nom)}</span>`;
+}
+
+/* ---------- le sélecteur de rôles ---------- */
+// Il refuse les séparateurs plutôt que de les proposer : les avoir ne veut
+// pas dire appartenir à la division, et s'en servir comme identifiant de
+// permission a déjà rendu sept membres de la Police Academy administrateurs.
+function gsChoixRoles(titre, choisis, onOk){
+  let sel=new Set(choisis||[]);
+  const dispo=(GESTION.roles||[]).filter(r=>!r.gere_par_bot);
+  dlg({titre,ok:'Valider',l:640,corps:`
+    <input class="champ" id="grF" placeholder="Filtrer les rôles…" autocomplete="off">
+    <div id="grL" style="max-height:380px;overflow:auto;margin-top:12px"></div>`,
+    apres:v=>{
+      const rendre=q=>{
+        $('#grL',v).innerHTML=dispo
+          .filter(r=>!q||sansAccentSimple(r.nom).indexOf(q)!==-1)
+          .map(r=>`<label class="mqLigne" style="cursor:${r.separateur?'not-allowed':'pointer'};
+              opacity:${r.separateur?'.45':'1'};margin-bottom:5px">
+            <input type="checkbox" data-r="${r.id}" ${sel.has(r.id)?'checked':''}
+              ${r.separateur?'disabled':''} style="width:16px;height:16px;flex:none">
+            <b style="color:${r.couleur||'inherit'}">${esc(r.nom)}</b>
+            ${r.separateur?'<span class="puce p-rouge">décoratif</span>':''}
+          </label>`).join('')
+          ||'<div class="vide" style="padding:22px">Aucun rôle.</div>';
+        $$('[data-r]',v).forEach(c=>c.onchange=()=>{
+          c.checked?sel.add(c.dataset.r):sel.delete(c.dataset.r);
+        });
+      };
+      rendre('');
+      const f=$('#grF',v);
+      f.addEventListener('input',()=>rendre(sansAccentSimple(f.value)));
+      setTimeout(()=>f.focus(),40);
+    },
+    onOk:()=>{ onOk([...sel]); }});
+}
+
+/* ---------- divisions ---------- */
+function gsDivisions(z){
+  const D=GESTION.divisions||[];
+  z.innerHTML=`<div class="pad">
+    <button class="btn pri" id="gdAdd" style="margin-bottom:18px">＋ Créer une division</button>
+    ${D.map(d=>`<div class="orgCarte" style="align-items:flex-start;margin-bottom:11px;
+        ${d.actif?'':'opacity:.5'}">
+      <div class="av" style="font-size:19px">${d.ic||'🚔'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:9px">
+          <b style="font-size:14.5px">${esc(d.code)} · ${esc(d.nom)}</b>
+          ${d.actif?'':'<span class="puce p-gris">désactivée</span>'}
+          <span style="margin-left:auto;font-size:11.5px;color:var(--t3);font-family:var(--fm)">
+            ${esc(d.adr)}@sasp.com</span>
+        </div>
+        <div style="margin-top:9px;display:grid;gap:6px;font-size:12px">
+          <div><span style="color:var(--t3);display:inline-block;width:96px">Encadrement</span>
+            ${(d.lead||[]).map(gsPuceRole).join(' ')||'<span style="color:var(--t3)">aucun</span>'}</div>
+          <div><span style="color:var(--t3);display:inline-block;width:96px">Adjoints</span>
+            ${(d.colead||[]).map(gsPuceRole).join(' ')||'<span style="color:var(--t3)">aucun</span>'}</div>
+          <div><span style="color:var(--t3);display:inline-block;width:96px">Membres</span>
+            ${(d.roles||[]).map(gsPuceRole).join(' ')||'<span style="color:var(--t3)">aucun</span>'}</div>
+        </div>
+        <div style="margin-top:11px;display:flex;gap:7px">
+          <button class="btn sm" data-mod="${esc(d.code)}">Modifier</button>
+          ${d.actif?`<button class="btn sm dgr" data-sup="${esc(d.code)}">Désactiver</button>`:''}
+        </div>
+      </div></div>`).join('')||'<div class="vide"><b>Aucune division</b>La table est vide : le code applique ses valeurs de repli.</div>'}
+  </div>`;
+  $('#gdAdd',z).onclick=()=>gsFormDivision(null,z);
+  $$('[data-mod]',z).forEach(b=>b.onclick=()=>
+    gsFormDivision(GESTION.divisions.filter(d=>d.code===b.dataset.mod)[0],z));
+  $$('[data-sup]',z).forEach(b=>b.onclick=()=>confirmer('Désactiver la division',
+    'Elle disparaîtra du site. Ses messages et ses documents sont conservés, '+
+    'et la réactiver les rendra.','Désactiver',async()=>{
+      const r=await api('/api/bureau/gestion/division?code='+b.dataset.sup,{method:'DELETE'});
+      if(!r.ok)return avis('Échec',r.data.error||'','err');
+      GESTION=null; avis('Division désactivée','','ok');
+      const rr=await api('/api/bureau/gestion'); if(rr.ok){GESTION=rr.data;gsDivisions(z)}
+    },true));
+}
+
+function gsFormDivision(d,z){
+  const e=d||{code:'',nom:'',adr:'',ic:'🚔',roles:[],lead:[],colead:[],ordre:100};
+  let roles=[...(e.roles||[])], lead=[...(e.lead||[])], colead=[...(e.colead||[])];
+  const {voile,fermer}=dlg({titre:d?('Modifier '+e.code):'Créer une division',ok:'Enregistrer',corps:`
+    <div style="display:grid;grid-template-columns:110px 1fr;gap:12px">
+      <div><label class="lbl">Code</label>
+        <input class="champ" id="gfC" value="${esc(e.code)}" ${d?'disabled':''} placeholder="SWAT"></div>
+      <div><label class="lbl">Nom complet</label>
+        <input class="champ" id="gfN" value="${esc(e.nom)}" placeholder="Special Weapons & Tactics"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:110px 1fr;gap:12px;margin-top:14px">
+      <div><label class="lbl">Icône</label>
+        <input class="champ" id="gfI" value="${esc(e.ic||'🚔')}" maxlength="4"></div>
+      <div><label class="lbl">Adresse interne</label>
+        <input class="champ" id="gfA" value="${esc(e.adr)}" placeholder="swat">
+        <div style="font-size:11.5px;color:var(--t3);margin-top:5px">
+          Elle donnera <span class="mono" id="gfApercu">…</span></div></div>
+    </div>
+    <div style="margin-top:18px" id="gfRoles"></div>`,
+    apres:v=>{
+      const maj=()=>{
+        $('#gfApercu',v).textContent=($('#gfA',v).value||'…')+'@sasp.com';
+        $('#gfRoles',v).innerHTML=[
+          ['Encadrement','lead',lead,'Ils lisent la discussion d\'encadrement et publient les annonces'],
+          ['Adjoints','colead',colead,'Mêmes droits que l\'encadrement'],
+          ['Membres','roles',roles,'Ils accèdent aux salons de la division']
+        ].map(([t,k,l,aide])=>`<div style="margin-bottom:14px">
+          <label class="lbl">${t}</label>
+          <div style="font-size:11.5px;color:var(--t3);margin:2px 0 7px">${aide}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+            ${l.map(gsPuceRole).join(' ')||'<span style="color:var(--t3);font-size:12.5px">aucun rôle</span>'}
+            <button class="btn sm" data-ch="${k}">Choisir…</button>
+          </div></div>`).join('');
+        $$('[data-ch]',v).forEach(b=>b.onclick=()=>{
+          const k=b.dataset.ch;
+          gsChoixRoles('Rôles : '+k, k==='lead'?lead:k==='colead'?colead:roles, s=>{
+            if(k==='lead')lead=s; else if(k==='colead')colead=s; else roles=s;
+            maj();
+          });
+        });
+      };
+      maj();
+      $('#gfA',v).addEventListener('input',()=>
+        $('#gfApercu',v).textContent=($('#gfA',v).value||'…')+'@sasp.com');
+    },
+    onOk:async v=>{
+      const code=(d?e.code:$('#gfC',v).value).trim().toUpperCase();
+      const nom=$('#gfN',v).value.trim();
+      if(!code){avis('Code manquant','','err');return false}
+      if(!nom){avis('Nom manquant','','err');return false}
+      const r=await api('/api/bureau/gestion/division',{method:'PUT',body:{
+        code,nom,adr:$('#gfA',v).value.trim()||code.toLowerCase(),
+        ic:$('#gfI',v).value.trim()||'🚔',roles,lead,colead,ordre:e.ordre,actif:true}});
+      if(!r.ok){avis('Refusé',r.data.error||'','err');return false}
+      avis('Division enregistrée','Elle s\'applique dans les trente secondes.','ok');
+      GESTION=null;
+      const rr=await api('/api/bureau/gestion'); if(rr.ok){GESTION=rr.data;gsDivisions(z)}
+    }});
+}
+
+/* ---------- accès aux applications ---------- */
+function gsAcces(z){
+  const A=GESTION.acces||[], plancher=(GESTION.plancher||{}).admin;
+  const LIB={poste:['🖥️','Ouvrir le poste de travail','Sans ce rôle, la session est refusée'],
+             aegis:['🛡️','Ouvrir AEGIS','L\'outil d\'enquête du CID'],
+             supervision:['🎖️','Supervision','Publie les annonces, voit toutes les divisions'],
+             admin:['⚙️','Administrer les accès','Ouvre cet écran']};
+  z.innerHTML=`<div class="pad">
+    <p style="margin:0 0 20px;color:var(--t2);line-height:1.65">
+      Le Command Staff et l'encadrement de chaque division gardent leurs droits
+      quoi qu'il arrive. Ces lignes ne font qu'<b style="color:var(--t1)">ajouter</b> des rôles.</p>
+    ${['poste','aegis','supervision','admin'].map(cle=>{
+      const a=A.filter(x=>x.cle===cle)[0]||{cle,roles:[]};
+      const [ic,nom,aide]=LIB[cle];
+      return `<div class="orgCarte" style="align-items:flex-start;margin-bottom:11px">
+        <div class="av" style="font-size:18px">${ic}</div>
+        <div style="flex:1;min-width:0">
+          <b style="font-size:14px">${esc(nom)}</b>
+          <div style="font-size:11.5px;color:var(--t3);margin:3px 0 9px">${esc(aide)}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+            ${(a.roles||[]).map(id=>id===plancher&&cle==='admin'
+              ? `<span class="puce p-ambre" title="Non retirable">🔒 ${esc((gsRole(id)||{}).nom||id)}</span>`
+              : gsPuceRole(id)).join(' ')||'<span style="color:var(--t3);font-size:12.5px">aucun</span>'}
+            <button class="btn sm" data-ac="${cle}">Modifier</button>
+          </div>
+        </div></div>`;
+    }).join('')}
+  </div>`;
+  $$('[data-ac]',z).forEach(b=>b.onclick=()=>{
+    const cle=b.dataset.ac;
+    const a=(GESTION.acces||[]).filter(x=>x.cle===cle)[0]||{roles:[]};
+    gsChoixRoles(LIB[cle][1], a.roles||[], async choisis=>{
+      if(cle==='admin'&&choisis.indexOf(plancher)===-1){
+        avis('Command Staff conservé','Il ne peut pas être retiré : sans lui, plus personne n\'administrerait.','warn');
+      }
+      const r=await api('/api/bureau/gestion/acces',{method:'PUT',body:{cle,roles:choisis}});
+      if(!r.ok)return avis('Refusé',r.data.error||'','err');
+      avis('Accès enregistré','Il s\'applique dans les trente secondes.','ok');
+      GESTION=null;
+      const rr=await api('/api/bureau/gestion'); if(rr.ok){GESTION=rr.data;gsAcces(z)}
+    });
+  });
+}
+
+/* ---------- qui accède à quoi ---------- */
+function gsQui(z){
+  const act=GESTION.actif||{};
+  const parRole={};
+  const noter=(id,quoi)=>{ (parRole[id]=parRole[id]||[]).push(quoi); };
+  (act.poste||[]).forEach(r=>noter(r,'Poste de travail'));
+  (act.aegis||[]).forEach(r=>noter(r,'AEGIS'));
+  (act.supervision||[]).forEach(r=>noter(r,'Supervision'));
+  (act.admin||[]).forEach(r=>noter(r,'Administration'));
+  (GESTION.divisions||[]).filter(d=>d.actif).forEach(d=>{
+    (d.lead||[]).forEach(r=>noter(r,d.code+' (encadrement)'));
+    (d.colead||[]).forEach(r=>noter(r,d.code+' (adjoint)'));
+    (d.roles||[]).forEach(r=>noter(r,d.code));
+  });
+  const ids=Object.keys(parRole).sort((a,b)=>
+    ((gsRole(a)||{}).nom||'').localeCompare((gsRole(b)||{}).nom||''));
+  z.innerHTML=`<div class="pad">
+    <p style="margin:0 0 18px;color:var(--t2);line-height:1.65">
+      Ce que chaque rôle Discord ouvre réellement, tel que le serveur l'applique
+      en ce moment. <b style="color:var(--t1)">${ids.length}</b> rôles donnent un accès.</p>
+    ${ids.map(id=>{
+      const r=gsRole(id);
+      return `<div class="mqLigne" style="align-items:flex-start">
+        <b style="flex:0 0 210px;color:${r&&r.couleur||'inherit'}">
+          ${r?esc(r.nom):`<span style="color:var(--rouge)">${esc(id)} (disparu)</span>`}
+          ${r&&r.separateur?' <span class="puce p-rouge">décoratif</span>':''}</b>
+        <div style="flex:1;display:flex;flex-wrap:wrap;gap:5px">
+          ${parRole[id].map(q=>`<span class="puce p-gris">${esc(q)}</span>`).join('')}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+/* ---------- journal ---------- */
+async function gsJournal(z){
+  const r=await api('/api/bureau/gestion/journal');
+  if(!r.ok){z.innerHTML=`<div class="vide"><b>Indisponible</b>${esc(r.data.error||'')}</div>`;return}
+  const J=r.data.journal||[];
+  z.innerHTML=`<div class="pad">${J.length?J.map(l=>`
+    <div class="mqLigne" style="align-items:flex-start">
+      <span class="ic">${l.action.indexOf('acces')===0?'🔑':'🚔'}</span>
+      <div style="flex:1;min-width:0">
+        <b style="font-size:13px">${esc(l.action)} · ${esc(l.cible||'')}</b>
+        <div style="font-size:11.5px;color:var(--t3);margin-top:3px;font-family:var(--fm)">
+          ${esc(l.qui||'?')} · ${new Date(l.quand).toLocaleString('fr-FR')}
+          ${l.ip?' · '+esc(l.ip):''}</div>
+      </div></div>`).join('')
+    :'<div class="vide"><b>Aucun changement</b>Rien n\'a encore été modifié depuis cet écran.</div>'}
+  </div>`;
 }
 
 /* ---------- le dossier Organigramme ---------- */
