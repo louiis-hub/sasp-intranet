@@ -473,6 +473,9 @@ async function bureauIdentifier(env, request) {
   if (!/^\d{17,20}$/.test(discordId)) return { ok: false, motif: "non-connecte" };
 
   let roles = null, nom = meta.full_name || meta.global_name || meta.name || "Agent";
+  // L avatar rend l ouverture de session personnelle. Celui du serveur
+  // prime sur celui du compte : c est le visage que les collegues voient.
+  let avatar = null;
   try {
     const res = await discordFetch(`${DISCORD_API}/guilds/${envGuildId(env)}/members/${discordId}`, {
       headers: { authorization: `Bot ${env.DISCORD_BOT_TOKEN}` }
@@ -481,6 +484,14 @@ async function bureauIdentifier(env, request) {
       const m = await res.json();
       roles = m.roles || [];
       if (m.nick) nom = m.nick;
+      const base = "https://cdn.discordapp.com";
+      if (m.avatar) {
+        avatar = `${base}/guilds/${envGuildId(env)}/users/${discordId}/avatars/${m.avatar}.png?size=128`;
+      } else if (m.user && m.user.avatar) {
+        avatar = `${base}/avatars/${discordId}/${m.user.avatar}.png?size=128`;
+      } else {
+        avatar = `${base}/embed/avatars/${(BigInt(discordId) >> 22n) % 6n}.png`;
+      }
     } else if (res.status === 404) roles = [];
   } catch (e) {}
   if (roles === null) return { ok: false, motif: "verification-impossible" };
@@ -496,7 +507,7 @@ async function bureauIdentifier(env, request) {
     }));
 
   return {
-    ok: true, discordId, nom, roles,
+    ok: true, discordId, nom, roles, avatar,
     adresse: bureauAdresse(nom),
     estCS, estST,
     divisions,
@@ -5996,7 +6007,7 @@ export default {
       try {
         // ── Qui suis-je ────────────────────────────────────────────
         if (url.pathname === "/api/bureau/moi" && request.method === "GET") {
-          return json({ ok: true, nom: qui.nom, adresse: qui.adresse,
+          return json({ ok: true, nom: qui.nom, adresse: qui.adresse, avatar: qui.avatar,
             discord_id: qui.discordId, command_staff: qui.estCS, superviseur: qui.estST,
             divisions: qui.divisions, toutes: qui.toutes });
         }

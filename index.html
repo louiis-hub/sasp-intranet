@@ -212,6 +212,49 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
   border-top-color:var(--bleu);border-radius:50%;animation:tourner .8s linear infinite}
 @keyframes tourner{to{transform:rotate(360deg)}}
 
+/* ── ouverture de session ─────────────────────────────────────── */
+#ouverture{position:fixed;inset:0;z-index:95;display:none;
+  align-items:center;justify-content:center;flex-direction:column;
+  background:radial-gradient(900px 560px at 50% 42%, #101B31 0%, #070C16 62%, #04070D 100%)}
+#ouverture.on{display:flex}
+#ouverture.parte{animation:sessionSort .55s ease forwards}
+@keyframes sessionSort{to{opacity:0;transform:scale(1.04);visibility:hidden}}
+
+.ovAvatar{position:relative;width:118px;height:118px;margin-bottom:22px;
+  animation:ovMonte .5s cubic-bezier(.2,.8,.3,1) both}
+.ovAvatar img,.ovAvatar .init{width:118px;height:118px;border-radius:50%;object-fit:cover;
+  border:2px solid rgba(120,160,215,.35);background:#16233C;display:grid;place-items:center;
+  font-size:38px;font-weight:600;color:var(--bleu2);letter-spacing:.02em}
+/* L anneau tourne pendant les verifications, et s arrete quand elles sont finies. */
+.ovAnneau{position:absolute;inset:-9px;border-radius:50%;border:2px solid transparent;
+  border-top-color:var(--bleu);border-right-color:rgba(59,130,246,.35);
+  animation:tourner 1.1s linear infinite}
+#ouverture.fini .ovAnneau{border-color:rgba(52,211,153,.75);animation:none;
+  transition:border-color .3s}
+
+.ovNom{font-size:27px;font-weight:600;letter-spacing:.01em;
+  animation:ovMonte .5s .08s cubic-bezier(.2,.8,.3,1) both}
+.ovRole{font-size:13px;color:var(--t2);margin-top:7px;letter-spacing:.14em;text-transform:uppercase;
+  animation:ovMonte .5s .16s cubic-bezier(.2,.8,.3,1) both}
+.ovAdr{font-family:var(--fm);font-size:12px;color:var(--t3);margin-top:5px;
+  animation:ovMonte .5s .22s cubic-bezier(.2,.8,.3,1) both}
+@keyframes ovMonte{from{opacity:0;transform:translateY(11px)}to{opacity:1;transform:none}}
+
+.ovBarre{width:230px;height:2px;border-radius:2px;background:rgba(120,160,215,.16);
+  margin:30px 0 18px;overflow:hidden}
+.ovBarre i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--bleu),var(--bleu2));
+  transition:width .32s ease}
+
+.ovEtapes{display:flex;flex-direction:column;gap:7px;min-height:74px;width:290px}
+.ovEtape{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--t3);
+  opacity:0;transform:translateY(5px);transition:opacity .26s,transform .26s,color .26s}
+.ovEtape.vue{opacity:1;transform:none;color:var(--t2)}
+.ovEtape.faite{color:var(--vert)}
+.ovEtape .marque{flex:none;width:15px;text-align:center;font-size:12px}
+
+.ovPasser{position:absolute;bottom:34px;font-size:11.5px;color:var(--t3);
+  letter-spacing:.05em;animation:ovMonte .5s 1.4s both}
+
 /* ── notifications ───────────────────────────────────────────── */
 #avis{position:fixed;right:18px;bottom:92px;z-index:80;display:flex;flex-direction:column;
   gap:10px;align-items:flex-end}
@@ -319,6 +362,7 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
 <div id="avis"></div>
 <div id="dlgRoot"></div>
 
+<div id="ouverture"></div>
 <div id="porte"><div class="pcard" id="pcard"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1063,6 +1107,92 @@ async function veilleMail(){
 }
 
 /* ============================================================
+   OUVERTURE DE SESSION
+   Le travail est reellement fait pendant l'animation : chaque
+   etape attend ce qu'elle annonce. On tient seulement chaque
+   ligne assez longtemps pour qu'elle se lise, sinon la sequence
+   defile trop vite pour vouloir dire quoi que ce soit.
+   ============================================================ */
+let SESSION_VUE=false;
+
+const initiales=nom=>String(nom||'')
+  .replace(/^\[[^\]]*\]\s*/,'')
+  .split(/\s+/).filter(Boolean).slice(0,2)
+  .map(m=>m[0]).join('').toUpperCase()||'??';
+
+const matricule=nom=>{
+  const m=String(nom||'').match(/^\[([^\]]+)\]/);
+  return m?m[1].trim():null;
+};
+
+function ouvertureSession(moi,taches){
+  return new Promise(resolve=>{
+    const z=$('#ouverture');
+    const mat=matricule(moi.nom);
+    const propre=String(moi.nom||'').replace(/^\[[^\]]*\]\s*/,'');
+    const role=moi.command_staff?'Command Staff'
+      :moi.superviseur?'Supervisor Team'
+      :moi.divisions.length?moi.divisions.map(d=>d.code).join(' · ')
+      :'Agent';
+
+    z.innerHTML=`
+      <div class="ovAvatar">
+        <div class="ovAnneau"></div>
+        ${moi.avatar
+          ? `<img src="${esc(moi.avatar)}" alt=""
+               onerror="this.outerHTML='<div class=\\'init\\'>${esc(initiales(moi.nom))}</div>'">`
+          : `<div class="init">${esc(initiales(moi.nom))}</div>`}
+      </div>
+      <div class="ovNom">${esc(propre)}</div>
+      <div class="ovRole">${mat?'Matricule '+esc(mat)+' · ':''}${esc(role)}</div>
+      <div class="ovAdr">${esc(moi.adresse)}</div>
+      <div class="ovBarre"><i id="ovProg"></i></div>
+      <div class="ovEtapes" id="ovEtapes">${taches.map((t,i)=>
+        `<div class="ovEtape" data-e="${i}"><span class="marque">○</span><span>${esc(t.libelle)}</span></div>`
+      ).join('')}</div>
+      <div class="ovPasser">Cliquez pour passer</div>`;
+    z.classList.add('on');
+    z.classList.remove('fini','parte');
+
+    let fini=false;
+    const sortir=()=>{
+      if(fini)return; fini=true;
+      z.classList.add('fini');
+      setTimeout(()=>{
+        z.classList.add('parte');
+        setTimeout(()=>{z.classList.remove('on','parte');resolve()},560);
+      },260);
+    };
+    // Passer n'annule pas le chargement : il continue en arriere-plan,
+    // seule l'attente visuelle est ecourtee.
+    z.onclick=sortir;
+    const clav=e=>{ if(e.key==='Enter'||e.key===' '||e.key==='Escape')sortir(); };
+    document.addEventListener('keydown',clav,{once:true});
+
+    (async()=>{
+      const attendre=ms=>new Promise(r=>setTimeout(r,ms));
+      for(let i=0;i<taches.length;i++){
+        if(fini)break;
+        const ligne=$(`[data-e="${i}"]`,z);
+        if(ligne)ligne.classList.add('vue');
+        // Le vrai travail et le temps de lecture avancent ensemble : on
+        // attend le plus lent des deux, jamais l'un puis l'autre.
+        const t0=Date.now();
+        try{ if(taches[i].faire)await taches[i].faire(); }catch(e){}
+        const reste=Math.max(0,(taches[i].duree||380)-(Date.now()-t0));
+        await attendre(reste);
+        if(ligne){ ligne.classList.add('faite'); $('.marque',ligne).textContent='✓'; }
+        const p=$('#ovProg',z);
+        if(p)p.style.width=Math.round((i+1)/taches.length*100)+'%';
+      }
+      if(!fini)await new Promise(r=>setTimeout(r,240));
+      document.removeEventListener('keydown',clav);
+      sortir();
+    })();
+  });
+}
+
+/* ============================================================
    BUREAU : dossiers, raccourcis, démarrage
    ============================================================ */
 function construireBureau(){
@@ -1177,9 +1307,24 @@ async function demarrer(){
 
   MOI=r.data;
   porte(null);
-  construireBureau();
-  annonces();
-  veilleMail();
+
+  // La sequence ne se rejoue pas sur un simple reessai : elle marque
+  // l arrivee sur le poste, pas chaque rechargement de donnees.
+  if(!SESSION_VUE){
+    SESSION_VUE=true;
+    await ouvertureSession(MOI,[
+      {libelle:"Identite verifiee aupres de Discord",duree:420},
+      {libelle:"Roles et divisions charges",duree:400,
+       faire:async()=>{ construireBureau(); }},
+      {libelle:"Messagerie interrogee",duree:420,faire:veilleMail},
+      {libelle:"Annonces de l etat-major",duree:360,faire:async()=>{ annonces(); }},
+      {libelle:"Poste de travail pret",duree:300}
+    ]);
+  }else{
+    construireBureau();
+    annonces();
+    veilleMail();
+  }
   setInterval(veilleMail,60000);
 }
 
