@@ -301,26 +301,68 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
 .grille{padding-left:126px}
 @media (max-width:900px){ .grille{padding-left:0} }
 
-/* ── les salons d'une division ────────────────────────────────── */
-.salons{flex:none;width:216px;display:flex;flex-direction:column;padding:12px 8px;
-  background:rgba(0,0,0,.24);border-right:1px solid var(--bord);overflow-y:auto}
-.salons .tt{padding:6px 8px 8px;font-size:11px;font-weight:700;letter-spacing:.06em;
-  text-transform:uppercase;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.salons button{display:flex;align-items:center;gap:7px;width:100%;height:33px;padding:0 8px;
-  margin-bottom:1px;background:none;border:0;border-radius:5px;color:#949BA4;cursor:pointer;
-  font-size:14px;text-align:left;transition:background .1s,color .1s}
-.salons button:hover{background:rgba(255,255,255,.045);color:#DBDEE1}
-.salons button.on{background:rgba(255,255,255,.11);color:#fff}
-.salons button .di{flex:none;font-size:18px;color:#80848E;line-height:1}
-.salons button.on .di,.salons button:hover .di{color:currentColor}
+/* ── le volet des salons, façon volet de navigation ───────────── */
+/* Un nom lisible, une icône, et le liseré bleu à gauche de l'entrée
+   courante : le volet de navigation de Windows, pas une liste Discord. */
+.salons{flex:none;width:238px;display:flex;flex-direction:column;padding:10px 8px;
+  background:rgba(255,255,255,.022);border-right:1px solid var(--bord);overflow-y:auto}
+.salons .tt{padding:9px 10px 12px;font-size:13.5px;font-weight:700;color:var(--t0);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.salons button{position:relative;display:flex;align-items:center;gap:11px;width:100%;height:38px;
+  padding:0 11px;margin-bottom:2px;background:none;border:0;border-radius:7px;color:var(--t1);
+  cursor:pointer;font-size:13.5px;text-align:left;transition:background .12s,color .12s}
+.salons button:hover{background:rgba(255,255,255,.06);color:var(--t0)}
+.salons button.on{background:rgba(255,255,255,.095);color:#fff;font-weight:600}
+.salons button.on:before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:3px;height:18px;border-radius:0 2px 2px 0;background:var(--bleu)}
+.salons button .di{flex:none;width:19px;text-align:center;font-size:15px;line-height:1}
 .salons button span.n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.salons hr{border:0;border-top:1px solid var(--bord);margin:9px 4px}
-.salonTete{flex:none;display:flex;align-items:center;gap:9px;padding:12px 18px;
+.salons hr{border:0;border-top:1px solid var(--bord);margin:9px 6px}
+.salonTete{flex:none;display:flex;align-items:center;gap:11px;padding:13px 20px;
   border-bottom:1px solid var(--bord);background:rgba(255,255,255,.02)}
-.salonTete .di{font-size:19px;color:#80848E}
-.salonTete b{font-size:14.5px}
-.salonTete p{margin:0 0 0 6px;padding-left:12px;border-left:1px solid var(--bord);
+.salonTete .di{font-size:17px;line-height:1}
+.salonTete b{font-size:15px}
+.salonTete p{margin:0;padding-left:13px;border-left:1px solid var(--bord);
   font-size:12.5px;color:var(--t3)}
+
+/* ── boutons de fenêtre, façon Windows ────────────────────────── */
+.fen > header{padding-right:0}
+.fbtn{width:46px;height:44px;display:grid;place-items:center;background:transparent;border:0;
+  border-radius:0;color:var(--t2);cursor:pointer;font-size:11px;line-height:1}
+.fbtn:hover{background:rgba(255,255,255,.08);color:var(--t0)}
+.fbtn.fermer:hover{background:#C42B1C;color:#fff}
+.fen > header .fbtn:last-child{border-top-right-radius:var(--r)}
+
+/* Le repère de placement, quand on pousse une fenêtre sur un bord. */
+#zoneSnap{position:fixed;z-index:19;display:none;border:2px solid rgba(96,165,250,.75);
+  border-radius:10px;background:rgba(59,130,246,.16);pointer-events:none;
+  transition:left .09s,top .09s,width .09s,height .09s}
+
+/* ── le bandeau du bureau, qu'on peut masquer ─────────────────── */
+.grille.cache{display:none}
+
+/* ── menus contextuels, façon Windows 11 ──────────────────────── */
+#menuBureau{position:fixed;z-index:75;display:none;min-width:246px;padding:5px;
+  background:rgba(20,29,48,.985);border:1px solid var(--bord2);border-radius:9px;
+  box-shadow:0 16px 42px rgba(0,0,0,.6);backdrop-filter:blur(18px)}
+#menuBureau button{display:flex;align-items:center;gap:11px;width:100%;padding:9px 11px;
+  background:none;border:0;border-radius:5px;color:var(--t1);cursor:pointer;
+  font-size:13px;text-align:left}
+#menuBureau button .mi{flex:none;width:18px;text-align:center;font-size:14px}
+#menuBureau button:hover{background:rgba(255,255,255,.08);color:var(--t0)}
+#menuBureau button[disabled]{opacity:.4;cursor:default}
+#menuBureau button[disabled]:hover{background:none;color:var(--t1)}
+#menuBureau hr{border:0;border-top:1px solid var(--bord);margin:5px 8px}
+#menuBureau .tt{padding:8px 11px 5px;font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--t3)}
+
+/* ── restauration des éléments masqués ───────────────────────── */
+.mqLigne{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;
+  border:1px solid var(--bord);background:rgba(255,255,255,.03);margin-bottom:8px}
+.mqLigne .ic{flex:none;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;
+  background:rgba(255,255,255,.055);font-size:15px}
+.mqLigne b{flex:1;min-width:0;font-size:13px;font-weight:500;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
 
 /* ── l'organigramme ───────────────────────────────────────────── */
 .orgCarte{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:10px;
@@ -377,20 +419,6 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
 .wunite:last-child{border-bottom:0}
 .wunite:hover b{color:var(--bleu2)}
 .wunite b{font-size:13.5px;font-weight:600}
-
-/* Menu du bureau, au clic droit. */
-#menuBureau{position:fixed;z-index:75;display:none;min-width:232px;padding:5px;
-  background:rgba(17,27,46,.98);border:1px solid var(--bord2);border-radius:11px;
-  box-shadow:0 20px 46px rgba(0,0,0,.62);backdrop-filter:blur(18px)}
-#menuBureau button{display:flex;align-items:center;gap:10px;width:100%;padding:8px 11px;
-  background:none;border:0;border-radius:7px;color:var(--t1);cursor:pointer;
-  font-size:13px;text-align:left}
-#menuBureau button:hover{background:rgba(59,130,246,.18);color:var(--t0)}
-#menuBureau button[disabled]{opacity:.4;cursor:default}
-#menuBureau button[disabled]:hover{background:none;color:var(--t1)}
-#menuBureau hr{border:0;border-top:1px solid var(--bord);margin:5px 0}
-#menuBureau .tt{padding:7px 11px 4px;font-size:11px;letter-spacing:.11em;
-  text-transform:uppercase;color:var(--t3)}
 
 /* ── ouverture de session ─────────────────────────────────────── */
 #ouverture{position:fixed;inset:0;z-index:95;display:none;
@@ -517,6 +545,7 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
   <div id="barreFin"></div>
 </div>
 
+<div id="zoneSnap"></div>
 <div id="fenetres"></div>
 <div id="avis"></div>
 <div id="dlgRoot"></div>
@@ -525,7 +554,7 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
 <div id="porte"><div class="pcard" id="pcard"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=20260831-poste"></script>
+<script src="config.js?v=20260831-windows"></script>
 <script>
 /* ============================================================
    POSTE DE TRAVAIL SASP
@@ -628,7 +657,7 @@ function fenetre(cle,o){
       <span style="font-size:15px">${o.icone||'🗂️'}</span>
       <span class="ti">${esc(o.titre)}${o.sous?`<span class="st">${esc(o.sous)}</span>`:''}</span>
       <button class="fbtn" data-reduire title="Réduire">─</button>
-      <button class="fbtn" data-plein title="Agrandir dans le bureau">▢</button>
+      <button class="fbtn" data-plein title="Agrandir dans le bureau">□</button>
       <button class="fbtn" data-ecran title="Plein écran (F11 de la fenêtre)">⛶</button>
       <button class="fbtn fermer" data-fermer title="Fermer">✕</button>
     </header>
@@ -663,11 +692,27 @@ function fenetre(cle,o){
     if(f.classList.contains('plein'))return;
     const r=f.getBoundingClientRect(), dx=e.clientX-r.left, dy=e.clientY-r.top;
     tete.classList.add('tire');
+    const zs=$('#zoneSnap'); let place=null;
     const mv=ev=>{
       f.style.left=Math.max(-r.width+90,Math.min(innerWidth-90,ev.clientX-dx))+'px';
       f.style.top=Math.max(0,Math.min(innerHeight-120,ev.clientY-dy))+'px';
+      place=ev.clientY<6?'haut':ev.clientX<6?'gauche':ev.clientX>innerWidth-7?'droite':null;
+      if(!place){ zs.style.display='none'; return; }
+      const H=innerHeight-78;
+      const c=place==='haut'?[0,0,innerWidth,H]
+        :place==='gauche'?[0,0,innerWidth/2,H]
+        :[innerWidth/2,0,innerWidth/2,H];
+      zs.style.cssText='display:block;left:'+c[0]+'px;top:'+c[1]+'px;width:'+c[2]+'px;height:'+c[3]+'px';
     };
-    const up=()=>{tete.classList.remove('tire');
+    const up=()=>{
+      tete.classList.remove('tire'); zs.style.display='none';
+      if(place==='haut')f.classList.add('plein');
+      else if(place){
+        f.classList.remove('plein');
+        f.style.left=(place==='gauche'?0:innerWidth/2)+'px';
+        f.style.top='0px'; f.style.width=(innerWidth/2)+'px';
+        f.style.height=(innerHeight-78)+'px';
+      }
       window.removeEventListener('mousemove',mv);window.removeEventListener('mouseup',up)};
     window.addEventListener('mousemove',mv);window.addEventListener('mouseup',up);
     e.preventDefault();
@@ -854,29 +899,89 @@ function fermerMenuDem(){
 const sansAccentSimple=s=>String(s||'').normalize('NFD')
   .replace(/[̀-ͯ]/g,'').toLowerCase();
 
+/* ---------- masquer n'importe quel élément ---------- */
+// Ce que l'on masque tient sur le poste, comme la disposition : deux
+// personnes n'ont pas le meme bureau.
+const MASQUES_CLE='sasp.bureau.masques';
+let MASQUES=new Set();
+function masquesLire(){
+  try{ MASQUES=new Set(JSON.parse(localStorage.getItem(MASQUES_CLE)||'[]')); }
+  catch(e){ MASQUES=new Set(); }
+}
+function masquesEcrire(){
+  try{ localStorage.setItem(MASQUES_CLE,JSON.stringify([...MASQUES])); }catch(e){}
+}
+const estMasque=k=>MASQUES.has(k);
+function masquer(k){ MASQUES.add(k); masquesEcrire(); appliquerMasques(); }
+function demasquer(k){ MASQUES.delete(k); masquesEcrire(); appliquerMasques(); }
+function appliquerMasques(){
+  const g=$('.grille'); if(g)g.classList.toggle('cache',estMasque('banniere'));
+  ICONES=[]; dessinerIcones();
+}
+
+// Tout ce qui peut disparaitre du bureau, avec de quoi le reconnaitre
+// dans la fenetre de restauration.
+function masquables(){
+  const L=[{k:'banniere',n:'Bandeau SASP SUD',ic:'🏷️'}];
+  iconesCatalogue().forEach(x=>{
+    const ap=x.a?APPS[x.a]:null;
+    L.push({k:'ico:'+cleDe(x), ic:ap?ap.ic:icoDiv(x.d),
+      n:'Icône : '+(ap?ap.n:nomDiv(x.d))});
+  });
+  Object.keys(CATALOGUE).forEach(k=>{
+    if(!PLAN.some(w=>w.cle===k))
+      L.push({k:'wid:'+k, ic:CATALOGUE[k].icone, n:'Widget : '+CATALOGUE[k].titre, widget:k});
+  });
+  return L;
+}
+function dlgMasques(){
+  const rendre=v=>{
+    const L=masquables().filter(x=>x.widget?true:estMasque(x.k));
+    v.innerHTML=L.length?L.map(x=>`<div class="mqLigne">
+        <span class="ic">${x.ic}</span><b>${esc(x.n)}</b>
+        <button class="btn sm" data-r="${esc(x.k)}">Afficher</button></div>`).join('')
+      :'<div class="vide" style="padding:26px 8px"><b>Rien n\'est masqué</b>Tout est à sa place.</div>';
+    $$('[data-r]',v).forEach(b=>b.onclick=()=>{
+      const k=b.dataset.r;
+      if(k.indexOf('wid:')===0)ajouterWidget(k.slice(4),140,140);
+      else demasquer(k);
+      rendre(v);
+    });
+  };
+  dlg({titre:'Éléments du bureau',pied:'<button class="btn pri" data-x>Fermer</button>',
+    corps:'<div id="mqL"></div>',apres:v=>rendre($('#mqL',v))});
+}
+
 /* ---------- les icônes du bureau ---------- */
 const ICONES_CLE='sasp.bureau.icones';
+const PAS_ICO=104;          // le pas de la grille, comme sur un bureau Windows
 let ICONES=[];
+
+// Le nom court vient de la barre du bas : « Salons PA » plutôt qu'un
+// deuxième « Police Academy », « SWAT » plutôt que le nom complet.
+const NOM_NAV={};
+NAV.forEach(g=>g.it.forEach(it=>{ if(it.d)NOM_NAV[it.d]=it.n; }));
+const nomDiv=c=>NOM_NAV[c]||((MOI&&MOI.toutes.filter(d=>d.code===c)[0])||{nom:c}).nom;
+const icoDiv=c=>((MOI&&MOI.toutes.filter(d=>d.code===c)[0])||{}).ic||'🚔';
 
 function iconesCatalogue(){
   // Les applications d'abord, puis les unités dont on fait partie :
   // celles-la seules s'ouvrent d'un double-clic.
   const L=[{a:'pa'},{a:'aegis'},{a:'organigramme'},{a:'mail'},{a:'demandes'},{a:'divisions'}];
-  (MOI.divisions||[]).forEach(d=>L.push({d:d.code}));
+  ((MOI&&MOI.divisions)||[]).forEach(d=>L.push({d:d.code}));
   return L;
 }
+const surGrille=v=>14+Math.round((v-14)/PAS_ICO)*PAS_ICO;
 function iconesLire(){
-  const cat=iconesCatalogue();
+  const cat=iconesCatalogue().filter(x=>!estMasque('ico:'+cleDe(x)));
   let pos={};
   try{ pos=JSON.parse(localStorage.getItem(ICONES_CLE)||'{}')||{}; }catch(e){}
-  // Une colonne le long du bord gauche, qui repart en haut quand elle
-  // touche la barre du bas.
-  const parCol=Math.max(3,Math.floor((innerHeight-160)/104));
+  const parCol=Math.max(3,Math.floor((innerHeight-160)/PAS_ICO));
   return cat.map((x,i)=>{
     const k=cleDe(x), p=pos[k];
     return {...x,cle:k,
-      x:p?p.x:18+Math.floor(i/parCol)*104,
-      y:p?p.y:18+(i%parCol)*104};
+      x:p?p.x:14+Math.floor(i/parCol)*PAS_ICO,
+      y:p?p.y:14+(i%parCol)*PAS_ICO};
   });
 }
 function iconesEcrire(){
@@ -888,20 +993,28 @@ function dessinerIcones(){
   if(!ICONES.length)ICONES=iconesLire();
   z.innerHTML=ICONES.map((x,i)=>{
     const ap=x.a?APPS[x.a]:null;
-    const dv=x.d?(MOI.toutes.filter(d=>d.code===x.d)[0]||{nom:x.d}):null;
-    const o=FEN[x.cle];
+    const nom=ap?ap.n:nomDiv(x.d);
     const b=ap&&ap.badge?ap.badge():0;
-    return `<div class="ico" data-i="${i}" style="left:${x.x}px;top:${x.y}px"
-      title="${esc(ap?ap.n:dv.nom)}">
-      <div class="im">${ap?ap.ic:(dv.ic||'🚔')}</div>
-      <div class="nm">${esc(ap?ap.n:dv.nom)}</div>
+    return `<div class="ico" data-i="${i}" style="left:${x.x}px;top:${x.y}px" title="${esc(nom)}">
+      <div class="im">${ap?ap.ic:icoDiv(x.d)}</div>
+      <div class="nm">${esc(nom)}</div>
       ${b?`<span class="pst">${b}</span>`:''}
-      ${o?'<span class="cad">▪</span>':''}</div>`;
+      ${FEN[x.cle]?'<span class="cad">▪</span>':''}</div>`;
   }).join('');
+
+  // Le bandeau se decale a droite de la derniere colonne d'icones :
+  // il passait dessous des qu'il y en avait plus d'une colonne.
+  const g=$('.grille');
+  if(g)g.style.paddingLeft=(ICONES.length?Math.max(...ICONES.map(i=>i.x))+PAS_ICO+18:0)+'px';
 
   $$('.ico',z).forEach(n=>{
     const i=+n.dataset.i;
     n.addEventListener('dblclick',()=>lancer(ICONES[i]));
+    n.addEventListener('contextmenu',e=>{
+      e.preventDefault(); e.stopPropagation();
+      $$('.ico',z).forEach(a=>a.classList.remove('sel')); n.classList.add('sel');
+      menuIcone(i,e.clientX,e.clientY);
+    });
     n.addEventListener('mousedown',e=>{
       if(e.button!==0)return;
       $$('.ico',z).forEach(a=>a.classList.remove('sel'));
@@ -916,7 +1029,14 @@ function dessinerIcones(){
         n.style.left=ICONES[i].x+'px'; n.style.top=ICONES[i].y+'px';
       };
       const up=()=>{
-        n.classList.remove('tire'); if(bouge)iconesEcrire();
+        n.classList.remove('tire');
+        if(bouge){
+          // On repose sur la grille : des icones alignees, comme sur un
+          // vrai bureau, plutot que posees au pixel pres.
+          ICONES[i].x=surGrille(ICONES[i].x); ICONES[i].y=surGrille(ICONES[i].y);
+          n.style.left=ICONES[i].x+'px'; n.style.top=ICONES[i].y+'px';
+          iconesEcrire(); dessinerIcones();
+        }
         window.removeEventListener('mousemove',mv); window.removeEventListener('mouseup',up);
       };
       window.addEventListener('mousemove',mv); window.addEventListener('mouseup',up);
@@ -928,6 +1048,66 @@ function rangerIcones(){
   try{ localStorage.removeItem(ICONES_CLE); }catch(e){}
   ICONES=iconesLire(); dessinerIcones();
   avis('Icônes rangées','','ok');
+}
+
+/* ---------- les menus contextuels ---------- */
+function poserMenu(m,x,y){
+  m.style.display='block';
+  m.style.left=Math.min(x,innerWidth-m.offsetWidth-10)+'px';
+  m.style.top=Math.min(y,innerHeight-m.offsetHeight-10)+'px';
+}
+function menuIcone(i,x,y){
+  const m=$('#menuBureau'), it=ICONES[i];
+  const ap=it.a?APPS[it.a]:null;
+  const nom=ap?ap.n:nomDiv(it.d);
+  m.innerHTML=`<div class="tt">${esc(nom)}</div>
+    <button data-ouvrir><span class="mi">↗</span>Ouvrir</button>
+    <hr>
+    <button data-masq><span class="mi">🚫</span>Masquer cette icône</button>
+    <button data-liste><span class="mi">👁️</span>Éléments masqués…</button>
+    <button data-ranger><span class="mi">⌗</span>Ranger les icônes</button>`;
+  poserMenu(m,x,y);
+  $('[data-ouvrir]',m).onclick=()=>{ m.style.display='none'; lancer(it); };
+  $('[data-masq]',m).onclick=()=>{ m.style.display='none'; masquer('ico:'+it.cle);
+    avis('Icône masquée','Clic droit sur le bureau pour la retrouver.','ok'); };
+  $('[data-liste]',m).onclick=()=>{ m.style.display='none'; dlgMasques(); };
+  $('[data-ranger]',m).onclick=()=>{ m.style.display='none'; rangerIcones(); };
+}
+function menuBureau(x,y){
+  const m=$('#menuBureau');
+  const poses=PLAN.map(w=>w.cle);
+  const caches=masquables().filter(k=>estMasque(k.k)).length;
+  m.innerHTML=`<div class="tt">Ajouter un widget</div>`+
+    Object.keys(CATALOGUE).map(k=>{
+      const c=CATALOGUE[k], deja=poses.indexOf(k)!==-1;
+      return `<button data-add="${k}" ${deja?'disabled':''}>
+        <span class="mi">${c.icone}</span>${esc(c.titre)}
+        ${deja?'<span style="margin-left:auto;font-size:11px;color:var(--t3)">posé</span>':''}</button>`;
+    }).join('')+
+    `<hr>
+     <button data-banniere><span class="mi">${estMasque('banniere')?'👁️':'🚫'}</span>
+       ${estMasque('banniere')?'Afficher':'Masquer'} le bandeau</button>
+     <button data-liste><span class="mi">👁️</span>Éléments masqués…
+       ${caches?`<span style="margin-left:auto;font-size:11px;color:var(--t3)">${caches}</span>`:''}</button>
+     <hr>
+     <button data-icones><span class="mi">⌗</span>Ranger les icônes</button>
+     <button data-fond><span class="mi">🖼️</span>Changer le fond d'écran…</button>
+     <button data-raz><span class="mi">↺</span>Remettre la disposition d'origine</button>`;
+  poserMenu(m,x,y);
+  $$('[data-add]',m).forEach(b=>{ if(!b.disabled)b.onclick=()=>{
+    m.style.display='none'; ajouterWidget(b.dataset.add,x-40,y-30); }; });
+  $('[data-banniere]',m).onclick=()=>{ m.style.display='none';
+    estMasque('banniere')?demasquer('banniere'):masquer('banniere'); };
+  $('[data-liste]',m).onclick=()=>{ m.style.display='none'; dlgMasques(); };
+  $('[data-icones]',m).onclick=()=>{ m.style.display='none'; rangerIcones(); };
+  $('[data-fond]',m).onclick=()=>{ m.style.display='none'; fondDlg(); };
+  $('[data-raz]',m).onclick=()=>{
+    m.style.display='none';
+    try{ localStorage.removeItem(RANGEMENT); localStorage.removeItem(ICONES_CLE); }catch(e){}
+    MASQUES=new Set(); masquesEcrire();
+    PLAN=planLire(); planEcrire(); appliquerMasques();
+    avis('Disposition rétablie','','ok');
+  };
 }
 
 /* ============================================================
@@ -1291,31 +1471,6 @@ function fondDlg(){
     }});
 }
 
-function menuBureau(x,y){
-  const m=$('#menuBureau');
-  const poses=PLAN.map(w=>w.cle);
-  m.innerHTML=`<div class="tt">Ajouter un widget</div>`+
-    Object.keys(CATALOGUE).map(k=>{
-      const c=CATALOGUE[k], deja=poses.indexOf(k)!==-1;
-      return `<button data-add="${k}" ${deja?'disabled':''}>
-        <span style="font-size:15px">${c.icone}</span>${esc(c.titre)}
-        ${deja?'<span style="margin-left:auto;font-size:11px;color:var(--t3)">posé</span>':''}</button>`;
-    }).join('')+
-    `<hr><button data-icones>⌗ Ranger les icônes</button><button data-fond>🖼️ Changer le fond d'écran…</button><button data-raz>↺ Remettre la disposition d'origine</button>`;
-  m.style.display='block';
-  m.style.left=Math.min(x,innerWidth-m.offsetWidth-10)+'px';
-  m.style.top=Math.min(y,innerHeight-m.offsetHeight-10)+'px';
-  $$('[data-add]',m).forEach(b=>{ if(!b.disabled)b.onclick=()=>{
-    m.style.display='none'; ajouterWidget(b.dataset.add,x-40,y-30); }; });
-  $('[data-icones]',m).onclick=()=>{ m.style.display='none'; rangerIcones(); };
-  $('[data-fond]',m).onclick=()=>{ m.style.display='none'; fondDlg(); };
-  $('[data-raz]',m).onclick=()=>{
-    m.style.display='none';
-    try{ localStorage.removeItem(RANGEMENT); }catch(e){}
-    PLAN=planLire(); planEcrire(); dessinerPlan();
-    avis('Disposition rétablie','','ok');
-  };
-}
 
 /* ============================================================
    APPLICATIONS
@@ -1377,12 +1532,12 @@ function ouvrirDivisions(){
 // sous les memes noms : c'est le site qui vient a l'habitude, pas
 // l'inverse.
 const SALONS=[
-  {c:'annonce',        n:'annonce',         t:'Annonces de l\'encadrement'},
-  {c:'discussion-lead',n:'discussion-lead', t:'Entre encadrants uniquement', lead:true},
-  {c:'discussion',     n:'discussion',      t:'Toute la division'},
-  {c:'documents',      n:'documents',       t:'Procédures et fiches'},
-  {c:'pseudo',         n:'pseudo',          t:'Nom RP et indicatif'},
-  {c:'equipe',         n:'equipe',          t:'Qui compose la division'}
+  {c:'annonce',        i:'📣', n:'Annonces',               t:'Publications de l\u0027encadrement'},
+  {c:'discussion-lead',i:'🛡️', n:'Discussion encadrement', t:'Entre encadrants uniquement', lead:true},
+  {c:'discussion',     i:'💬', n:'Discussion',             t:'Toute la division'},
+  {c:'documents',      i:'📄', n:'Documents',              t:'Procédures et fiches'},
+  {c:'pseudo',         i:'🏷️', n:'Pseudos',                t:'Nom RP et indicatif'},
+  {c:'equipe',         i:'👥', n:'Équipe',                 t:'Composition de la division'}
 ];
 
 function ouvrirDivision(code,salon){
@@ -1395,10 +1550,10 @@ function ouvrirDivision(code,salon){
     o.corps.innerHTML=`
       <nav class="salons">
         <div class="tt">${esc(d.nom)}</div>
-        ${dispo.map(s=>`<button data-t="${s.c}"><span class="di">#</span>
+        ${dispo.map(s=>`<button data-t="${s.c}"><span class="di">${s.i}</span>
           <span class="n">${esc(s.n)}</span></button>`).join('')}
         ${lead?`<hr><button data-t="demandes"><span class="di">📮</span>
-          <span class="n">demandes reçues</span></button>`:''}
+          <span class="n">Demandes reçues</span></button>`:''}
       </nav>
       <div style="flex:1;min-width:0;display:flex;flex-direction:column">
         <div class="salonTete" id="dvTete"></div>
@@ -1410,8 +1565,8 @@ function ouvrirDivision(code,salon){
       if(o.arret){o.arret();o.arret=null}
       const s=SALONS.filter(x=>x.c===t)[0];
       tete.innerHTML=s
-        ? `<span class="di">#</span><b>${esc(s.n)}</b><p>${esc(s.t)}</p>`
-        : `<span class="di">📮</span><b>demandes reçues</b><p>Contacts venus d'autres divisions</p>`;
+        ? `<span class="di">${s.i}</span><b>${esc(s.n)}</b><p>${esc(s.t)}</p>`
+        : `<span class="di">📮</span><b>Demandes reçues</b><p>Contacts venus d'autres divisions</p>`;
       if(t==='annonce')        filAnnoncesDivision(corps,code,lead);
       else if(t==='documents') filDocuments(corps,code,lead);
       else if(t==='equipe')    filEquipe(corps,code);
@@ -1447,7 +1602,7 @@ function filAnnoncesDivision(zone,code,lead){
       </article>`).join('')
       :'<div class="vide"><b>Aucune annonce</b>Ce salon est encore vide.</div>';
     const ab=$('#anAdd',zone);
-    if(ab)ab.onclick=()=>dlg({titre:'Publier dans #annonce',ok:'Publier',corps:`
+    if(ab)ab.onclick=()=>dlg({titre:'Publier une annonce de division',ok:'Publier',corps:`
       <label class="lbl">Titre</label><input class="champ" id="adT">
       <label class="lbl" style="margin-top:14px">Message</label>
       <textarea class="champ" id="adC" style="min-height:140px"></textarea>`,
@@ -2123,8 +2278,10 @@ function construireBureau(){
   // Le bureau se monte dans cet ordre : le fond, les widgets, puis la
   // barre, qui redessine les icônes une fois MOI connu.
   fondAppliquer();
+  masquesLire();
   PLAN=planLire();
   dessinerPlan();
+  appliquerMasques();
 
   majTaches();
 
