@@ -313,6 +313,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 .toast.ok{border-left-color:var(--green)}.toast.err{border-left-color:var(--red)}.toast.warn{border-left-color:var(--amber)}
 .toast b{display:block;font-family:var(--f-ui);font-size:12.5px;color:var(--ink)}
 .toast span{font-size:12px;color:var(--ink3)}
+.toast>div{flex:1;min-width:0}
+.toast .tx{flex:none;align-self:flex-start;width:19px;height:19px;display:grid;place-items:center;
+  background:none;border:0;border-radius:2px;color:var(--ink4);cursor:pointer;padding:0;margin:-1px -3px 0 0}
+.toast .tx:hover{background:rgba(60,40,10,.12);color:var(--ink)}
 @keyframes slidein{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
 #ctx{position:fixed;z-index:90;background:linear-gradient(180deg,#F7F0DC,#ECE0C2);border:1px solid #9C7A48;
   border-radius:var(--rad);padding:4px;min-width:212px;box-shadow:0 14px 30px rgba(0,0,0,.5);display:none}
@@ -505,7 +509,11 @@ table.pt tbody tr:hover{background:#F6EBC9}
       <span class="lgN" id="lgN"></span>
       <button class="lgBtn" id="lgToggle" title="Masquer la légende" aria-expanded="true">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>
-    <div class="lgBody"><span class="lbl" style="font-size:9px">Cliquer sur un type pour le masquer du tableau</span>
+    <div class="lgBody">
+      <div style="display:flex;align-items:center;gap:9px">
+        <span class="lbl" style="font-size:9px">Cliquer sur un type pour le masquer</span>
+        <button class="btn sm" id="lgAll" style="margin-left:auto;padding:2px 8px;font-size:10px">Tout afficher</button>
+      </div>
       <div class="row" id="legrow"></div></div>
   </div>
   <div class="gstat"><span id="saveState">—</span> · <span id="counts"></span> · <span id="zoomv">100%</span></div>
@@ -1043,9 +1051,26 @@ const initials=s=>{const w=String(s||'').replace(/["'«»].*?["'«»]/g,' ').spl
 
 /* ---------- UI utilitaires ---------- */
 function toast(t,m,k='',ms=3400){
-  const n=el('div','toast '+k,`<span style="color:var(--${k==='ok'?'green':k==='err'?'red':k==='warn'?'amber':'steel'})">${svg(k==='ok'?I.chk:I.alert,15)}</span><div><b>${esc(t)}</b>${m?`<span>${esc(m)}</span>`:''}</div>`);
+  const n=el('div','toast '+k,
+    `<span style="color:var(--${k==='ok'?'green':k==='err'?'red':k==='warn'?'amber':'steel'})">${svg(k==='ok'?I.chk:I.alert,15)}</span>`+
+    `<div><b>${esc(t)}</b>${m?`<span>${esc(m)}</span>`:''}</div>`+
+    `<button class="tx" title="Fermer" aria-label="Fermer">${svg(I.x,11,2.2)}</button>`);
   $('#toasts').appendChild(n);
-  setTimeout(()=>{n.style.transition='opacity .3s,transform .3s';n.style.opacity=0;n.style.transform='translateX(16px)';setTimeout(()=>n.remove(),320)},ms);
+  // Le garde evite qu un clic et la minuterie retirent la meme notification.
+  let parti=false;
+  const fermer=()=>{
+    if(parti)return; parti=true;
+    n.style.transition='opacity .3s,transform .3s';
+    n.style.opacity=0;n.style.transform='translateX(16px)';
+    setTimeout(()=>n.remove(),320);
+  };
+  $('.tx',n).onclick=fermer;
+  let minuterie=setTimeout(fermer,ms);
+  // Survoler suspend la disparition : le temps de lire un message long,
+  // ou de viser la croix sans qu elle se derobe.
+  n.addEventListener('mouseenter',()=>clearTimeout(minuterie));
+  n.addEventListener('mouseleave',()=>{minuterie=setTimeout(fermer,1200)});
+  return fermer;
 }
 function modal(o){
   const scrim=el('div','scrim');
@@ -1317,6 +1342,20 @@ function drawLegend(){
   $('#legrow').innerHTML=used.map(t=>`<span class="lg ${S.hidden.has(t)?'off':''}" data-t="${t}"><b style="background:${sch(t).c}"></b>${sch(t).l}</span>`).join('')
     ||'<span class="muted" style="font-size:10px">Aucun élément sur le tableau</span>';
   $$('#legrow .lg').forEach(s=>s.onclick=()=>{const t=s.dataset.t;S.hidden.has(t)?S.hidden.delete(t):S.hidden.add(t);render()});
+
+  // Une seule bascule plutot que deux boutons : elle propose ce qui manque.
+  const tout=$('#lgAll');
+  if(tout){
+    const cache=used.some(t=>S.hidden.has(t))||S.collapsed.size>0;
+    tout.textContent=cache?'Tout afficher':'Tout masquer';
+    tout.disabled=!used.length;
+    tout.onclick=e=>{
+      e.stopPropagation();
+      if(cache){S.hidden.clear();S.collapsed.clear()}
+      else used.forEach(t=>S.hidden.add(t));
+      render();
+    };
+  }
 }
 
 /* ============================================================
