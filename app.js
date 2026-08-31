@@ -3867,7 +3867,7 @@ async function renderCartesPPA() {
   var actifs = _ppaAgents.filter(function(a) {
     return ['Licencié', 'Retraité', 'Démission'].indexOf(a.statut) === -1;
   }).sort(function(a, b) {
-    return String(a.matricule || '').localeCompare(String(b.matricule || ''), 'fr', { numeric: true });
+    return String(a.nom || '').localeCompare(String(b.nom || ''), 'fr');
   });
 
   var champ = function(id, label, type, val) {
@@ -3893,7 +3893,7 @@ async function renderCartesPPA() {
           '<select class="form-control" id="ppaAgent">' +
             '<option value="">— Saisie manuelle —</option>' +
             actifs.map(function(a) {
-              return '<option value="' + a.id + '">' + esc((a.matricule ? a.matricule + ' · ' : '') + a.prenom + ' ' + a.nom) + '</option>';
+              return '<option value="' + a.id + '">' + esc(a.nom + ' ' + a.prenom) + '</option>';
             }).join('') +
           '</select>' +
         '</div>' +
