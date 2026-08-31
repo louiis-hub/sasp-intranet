@@ -47,6 +47,18 @@ function valeur(brut) {
   return v;
 }
 
+// Postgres a un vrai type booleen, SQLite non : il garde 0 ou 1. Une
+// comparaison a la chaine "true" ne trouverait donc jamais rien, et le
+// filtre rendrait zero ligne sans rien signaler. C'est ce qui serait
+// arrive a config_divisions?actif=eq.true, qui aurait vide la
+// configuration des divisions en silence.
+function valeurComparable(brut) {
+  const v = valeur(brut);
+  if (v === "true")  return 1;
+  if (v === "false") return 0;
+  return v;
+}
+
 /* ── analyse du select ─────────────────────────────────────────────── */
 // « id,nom,agents(id,nom) » ou « referent:referent_id(id,nom) ».
 // On decoupe au premier niveau seulement : il n'y a pas d'imbrication.
@@ -100,12 +112,12 @@ function analyserFiltre(colonne, brut) {
 
   const col = echapper(colonne);
   switch (op) {
-    case "eq":  return { sql: `${col} ${nie ? "IS NOT" : "IS"} ?`, params: [valeur(reste)] };
-    case "neq": return { sql: `${col} ${nie ? "IS" : "IS NOT"} ?`, params: [valeur(reste)] };
-    case "gt":  return { sql: `${col} ${nie ? "<=" : ">"} ?`,  params: [valeur(reste)] };
-    case "gte": return { sql: `${col} ${nie ? "<" : ">="} ?`,  params: [valeur(reste)] };
-    case "lt":  return { sql: `${col} ${nie ? ">=" : "<"} ?`,  params: [valeur(reste)] };
-    case "lte": return { sql: `${col} ${nie ? ">" : "<="} ?`,  params: [valeur(reste)] };
+    case "eq":  return { sql: `${col} ${nie ? "IS NOT" : "IS"} ?`, params: [valeurComparable(reste)] };
+    case "neq": return { sql: `${col} ${nie ? "IS" : "IS NOT"} ?`, params: [valeurComparable(reste)] };
+    case "gt":  return { sql: `${col} ${nie ? "<=" : ">"} ?`,  params: [valeurComparable(reste)] };
+    case "gte": return { sql: `${col} ${nie ? "<" : ">="} ?`,  params: [valeurComparable(reste)] };
+    case "lt":  return { sql: `${col} ${nie ? ">=" : "<"} ?`,  params: [valeurComparable(reste)] };
+    case "lte": return { sql: `${col} ${nie ? ">" : "<="} ?`,  params: [valeurComparable(reste)] };
     case "like":
     case "ilike": {
       const v = valeur(reste).replace(/\*/g, "%");
@@ -120,7 +132,7 @@ function analyserFiltre(colonne, brut) {
     }
     case "in": {
       const dedans = valeur(reste).replace(/^\(|\)$/g, "");
-      const items = dedans ? dedans.split(",").map(x => valeur(x.trim())) : [];
+      const items = dedans ? dedans.split(",").map(x => valeurComparable(x.trim())) : [];
       if (!items.length) return { sql: nie ? "1=1" : "1=0", params: [] };
       return { sql: `${col} ${nie ? "NOT IN" : "IN"} (${items.map(() => "?").join(",")})`,
         params: items };
@@ -129,7 +141,7 @@ function analyserFiltre(colonne, brut) {
       // Chevauchement de tableaux. En SQLite la colonne est du JSON :
       // la ligne correspond si l'un des elements cherches y figure.
       const dedans = valeur(reste).replace(/^\{|\}$/g, "");
-      const items = dedans ? dedans.split(",").map(x => valeur(x.trim())) : [];
+      const items = dedans ? dedans.split(",").map(x => valeurComparable(x.trim())) : [];
       if (!items.length) return { sql: nie ? "1=1" : "1=0", params: [] };
       const un = `EXISTS (SELECT 1 FROM json_each(${col}) WHERE json_each.value = ?)`;
       const tous = items.map(() => un).join(" OR ");

@@ -112,6 +112,27 @@ const aj = executer(db, "GET",
 verifier("jointure aliasee", aj[1].referent, { id: 1, nom: "Taishiro" });
 verifier("jointure nulle", aj[0].referent, null);
 
+console.log("\n── booleens ──");
+// Postgres a un vrai booleen, SQLite garde 0 ou 1. Sans conversion,
+// config_divisions?actif=eq.true rendait zero ligne SANS RIEN DIRE, et
+// la configuration des divisions retombait sur le repli en silence.
+db.exec(`create table config_divisions (
+  code text primary key, nom text, actif integer, ordre integer);
+  insert into config_divisions values
+    ('SWAT','Special Weapons',1,30), ('OLD','Ancienne',0,99);`);
+verifier("eq.true trouve les actives",
+  executer(db, "GET", "/config_divisions?select=code&actif=eq.true&order=ordre")
+    .map(d => d.code), ["SWAT"]);
+verifier("eq.false trouve les inactives",
+  executer(db, "GET", "/config_divisions?select=code&actif=eq.false").map(d => d.code), ["OLD"]);
+verifier("is.true aussi",
+  executer(db, "GET", "/config_divisions?select=code&actif=is.true").map(d => d.code), ["SWAT"]);
+verifier("not.is.true",
+  executer(db, "GET", "/config_divisions?select=code&actif=not.is.true").map(d => d.code), ["OLD"]);
+verifier("booleen ecrit en 1",
+  executer(db, "POST", "/config_divisions",
+    { code: "NEW", nom: "Neuve", actif: true, ordre: 5 })[0].actif, 1);
+
 console.log("\n── ecriture ──");
 verifier("insertion rendue",
   executer(db, "POST", "/liaisons_acces",
