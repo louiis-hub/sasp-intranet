@@ -1542,6 +1542,21 @@ function selectNode(id){
      <div class="isec">Fiche ${esc(T.l.toLowerCase())}<span id="fSave"></span></div>
      <p style="margin:-4px 0 10px;font-size:11px;color:#7A6746;line-height:1.45">Rattachements à d'autres éléments : voir Relations ci-dessous.</p>
      ${niveauHTML(n.r,'i_')}
+     ${A_HIERARCHIE(n.t)?(function(){
+       const mb=membresDe(n.id);
+       const paliers=RANGS.map(r=>({r,liste:mb.filter(x=>x.rang===r.n)})).filter(p=>p.liste.length);
+       return '<div class="isec">Hiérarchie<span>'+mb.length+'</span></div>'+
+         (paliers.length
+           ? paliers.map(p=>`<div style="margin-bottom:7px">`+
+               `<div class="lbl" style="font-size:9px;color:${p.r.c}">${esc(p.r.l)}</div>`+
+               p.liste.map(x=>`<div class="relrow" data-node="${x.o.id}" style="padding:4px 0">`+
+                 `<span style="color:${sch(x.o.t).c};flex:none">${svg(sch(x.o.t).i,13)}</span>`+
+                 `<span class="rn">${esc(titleOf(x.o))}</span></div>`).join('')+
+               `</div>`).join('')
+           : '<span class="muted">Aucune personne rattachée.</span>')+
+         `<button class="btn sm" id="iHier" style="width:100%;justify-content:center;margin-top:6px">`+
+         `${svg(I.grp,12)}Voir l'organigramme</button>`;
+     })():''}
      <div id="iFields">${fieldsHTML(n.t,d,'i_')}</div>
      <div class="isec">Apparence</div>
      <div class="f"><label>Couleur de cette fiche</label>
@@ -1559,21 +1574,6 @@ function selectNode(id){
        <button class="btn sm" id="iImgX">${svg(I.x,12)}Retirer</button></div>
      <input type="file" id="iImgI" accept="image/*" style="display:none">
      ${n.image?`<img class="apercu" src="${esc(n.image)}" alt="">`:''}
-     ${A_HIERARCHIE(n.t)?(function(){
-       const mb=membresDe(n.id);
-       const paliers=RANGS.map(r=>({r,liste:mb.filter(x=>x.rang===r.n)})).filter(p=>p.liste.length);
-       return '<div class="isec">Hiérarchie<span>'+mb.length+'</span></div>'+
-         (paliers.length
-           ? paliers.map(p=>`<div style="margin-bottom:7px">`+
-               `<div class="lbl" style="font-size:9px;color:${p.r.c}">${esc(p.r.l)}</div>`+
-               p.liste.map(x=>`<div class="relrow" data-node="${x.o.id}" style="padding:4px 0">`+
-                 `<span style="color:${sch(x.o.t).c};flex:none">${svg(sch(x.o.t).i,13)}</span>`+
-                 `<span class="rn">${esc(titleOf(x.o))}</span></div>`).join('')+
-               `</div>`).join('')
-           : '<span class="muted">Aucune personne rattachée.</span>')+
-         `<button class="btn sm" id="iHier" style="width:100%;justify-content:center;margin-top:6px">`+
-         `${svg(I.grp,12)}Voir l'organigramme</button>`;
-     })():''}
      <div class="isec">Relations<span>${rels.length}</span></div>
      ${rels.map(r=>`<div class="relrow" data-rel="${r.e.id}" data-node="${r.o.id}">
         <span style="color:${sch(r.o.t).c};flex:none">${svg(sch(r.o.t).i,14)}</span>
@@ -1788,6 +1788,7 @@ function nodeMenu(ev,n){
   const w=MOI.ecriture;
   ctxMenu(ev.clientX,ev.clientY,[{hd:titleOf(n)},
     {l:'Ouvrir la fiche',i:I.eye,fn:()=>selectNode(n.id)},
+    ...(A_HIERARCHIE(n.t)?[{l:'Voir l\x27organigramme',i:I.grp,fn:()=>hierarchieDlg(n.id)}]:[]),
     ...(w?[{l:'Créer une liaison depuis ici',i:I.link,k:'L',fn:()=>startLink(n.id)},
     {l:'Dupliquer',i:I.copy,fn:()=>{const c={id:'n'+(++S.seq),t:n.t,x:n.x+210,y:n.y+70,r:n.r,d:{...n.d}};
       S.nodes.push(c);logAct('Duplication d\'élément',sch(n.t).l+' · '+titleOf(c));render();save()}}]:[]),'-',
