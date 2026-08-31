@@ -521,7 +521,26 @@ git commit -m "Retirer le deploiement Cloudflare, le Worker vit sur le VPS"
 git push origin gh-pages
 ```
 
-### 6.3 Supprimer le Worker
+### 6.3 Rallumer les crons du VPS
+
+Pendant toute la bascule, `CRONS=0` a garde le VPS silencieux : le Worker
+portait seul les taches periodiques. Maintenant qu'il ne recoit plus rien,
+c'est au VPS de les prendre.
+
+```bash
+sudo sed -i 's/^CRONS=.*/CRONS=1/' /etc/sasp/api.env
+sudo systemctl restart sasp-api
+journalctl -u sasp-api -n 5 --no-pager | grep crons
+```
+
+Vous devez lire `crons : ACTIFS`. Si vous lisez encore `en veille`, la
+pointeuse ne se rafraichira plus et **rien ne le signalera**.
+
+Verification a la premiere heure ronde : le message de la pointeuse doit
+se mettre a jour, et `journalctl -u sasp-api -f` afficher
+`[cron] */15 * * * * termine`.
+
+### 6.4 Supprimer le Worker
 
 Cloudflare > `Workers & Pages` > `sasp-intranet-bot` > `Settings` >
 `Delete`.
@@ -531,7 +550,7 @@ Worker existe et ne recoit rien, il ne coute rien et il constitue le
 retour en arriere le plus simple qui soit : remettre son adresse dans
 Discord et dans les quatre fichiers du front, et tout revient.
 
-### 6.4 GitHub Pages
+### 6.5 GitHub Pages
 
 Le depot `gh-pages` reste la source du code : c'est de la que le VPS tire
 ses mises a jour. Ce qui s'arrete, c'est qu'il **serve** le site.
@@ -542,7 +561,7 @@ La aussi, attendez d'etre sur. Une adresse `github.io` qui continue de
 servir une vieille version pendant que le vrai site est ailleurs, c'est
 une source de confusion, pas un filet.
 
-### 6.5 Refermer le port d'essai
+### 6.6 Refermer le port d'essai
 
 ```bash
 sudo ufw delete allow 8080/tcp

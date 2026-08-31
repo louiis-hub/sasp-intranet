@@ -82,7 +82,17 @@ function journal(req, code, ms) {
   console.log(`${req.method} ${req.url} ${code} ${ms}ms`);
 }
 
-/* ── les crons de wrangler.toml ──────────────────────────────────────
+/* ── les crons de wrangler.toml ──────────────────────────────────
+   ILS NE PARTENT QUE SI CRONS=1.
+
+   Pendant toute la bascule, le Worker Cloudflare tourne encore et lance
+   deja ces memes taches. Or celle des 15 minutes n'est pas contemplative :
+   elle envoie des messages prives, edite le message de la pointeuse,
+   ecrit les roles dans Supabase, publie un rapport de synchronisation et
+   renomme des membres sur un second serveur. La faire partir des deux
+   cotes, c'est doubler tout cela.
+
+   On ne bascule CRONS a 1 qu'a l'etape 6, quand Cloudflare est eteint.────
    Cloudflare les declenche en UTC. On garde la meme reference, sinon la
    ceremonie du dimanche 18 h partirait a la mauvaise heure une partie de
    l'annee, au gre de l'heure d'ete. */
@@ -95,6 +105,7 @@ const CRONS = [
 // redemarrage tombant sur une minute ronde rejouerait le cron aussitot, et
 // un redemarrage en boucle le rejouerait en boucle.
 let derniereMinute = new Date().toISOString().slice(0, 16);
+const CRONS_ACTIFS = process.env.CRONS === '1';
 
 async function declencher(motif) {
   try {
@@ -105,16 +116,21 @@ async function declencher(motif) {
   }
 }
 
-setInterval(() => {
-  const d = new Date();
-  const cle = d.toISOString().slice(0, 16);
-  if (cle === derniereMinute) return;      // une seule passe par minute
-  derniereMinute = cle;
-  CRONS.forEach(c => { if (c.quand(d)) declencher(c.motif); });
-}, 20000);
+if (CRONS_ACTIFS) {
+  setInterval(() => {
+    const d = new Date();
+    const cle = d.toISOString().slice(0, 16);
+    if (cle === derniereMinute) return;      // une seule passe par minute
+    derniereMinute = cle;
+    CRONS.forEach(c => { if (c.quand(d)) declencher(c.motif); });
+  }, 20000);
+}
 
 serveur.listen(PORT, HOTE, () => {
   console.log(`[sasp] API en ecoute sur ${HOTE}:${PORT}`);
+  console.log(CRONS_ACTIFS
+    ? '[sasp] crons : ACTIFS - verifier que Cloudflare ne les lance plus'
+    : '[sasp] crons : en veille (CRONS != 1) - Cloudflare les porte encore');
   const manquants = ['DISCORD_BOT_TOKEN', 'SUPABASE_SERVICE_KEY', 'DISCORD_PUBLIC_KEY']
     .filter(k => !process.env[k]);
   if (manquants.length) console.warn('[sasp] variables manquantes :', manquants.join(', '));

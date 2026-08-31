@@ -60,7 +60,7 @@ a une commande privilegiee.
 | 1 - Durcissement SSH | **fait** | `sshd -T` rend `permitrootlogin no`, `passwordauthentication no`. ufw actif sur 22/80/443/8080, fail2ban en marche |
 | 2 - Node et nginx | **fait** | Node 22.23.2, `function object function` |
 | 3 - Le site sur le VPS | **fait** | `http://193.38.250.69` affiche le poste de travail |
-| 4 - L'API et le bot | **inconnu** | verifier, voir ci-dessous |
+| 4 - L'API et le bot | **fait** | `/health` local et via nginx, preflight avec `authorization`, token Discord et cle Supabase valides, `/api/bureau/moi` rend 401 sans jeton |
 | 5 - Domaine, certificat, Discord | **bloque** | pas de nom de domaine |
 | 6 - Supprimer Cloudflare | a faire | depend de la 5 |
 | 7 - Sortir de Supabase | plus tard | decision de Louis : apres la 6, pas avant |
@@ -75,6 +75,27 @@ echo "-- health  : $(curl -s -m 3 http://127.0.0.1:8787/health || echo 'pas de r
 echo "-- nginx   : $(curl -s -m 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/health)"
 echo "-- depot   : $(cd /opt/sasp && git log --oneline -1)"
 ```
+
+## Le piege des crons en double
+
+Le Worker Cloudflare tourne encore et lance ses deux crons. `serveur.js`
+les rejoue. Or celui des 15 minutes envoie des messages prives, edite le
+message de la pointeuse, ecrit les roles dans Supabase, publie un rapport
+de synchronisation et renomme des membres sur un second serveur : le
+lancer des deux cotes double tout cela.
+
+Le VPS les tient donc en veille tant que `CRONS=1` n'est pas dans
+`/etc/sasp/api.env`. **Ne pas y toucher avant l'etape 6.3**, qui les
+rallume une fois Cloudflare eteint.
+
+Verification a tout moment :
+
+```bash
+journalctl -u sasp-api -n 20 --no-pager | grep crons
+```
+
+Pendant la bascule : `crons : en veille`. Apres l'etape 6.3 :
+`crons : ACTIFS`.
 
 ## Ce qui reste ouvert
 
