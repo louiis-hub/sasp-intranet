@@ -3244,6 +3244,97 @@ function saisieAppliquer(lignes){
   if(ROUTE!=='board')route();
 }
 
+/* ------------------------------------------------------------
+   PONT VERS CLAUDE
+   Les regles ne comprendront jamais une tournure qu'on n'a pas
+   ecrite. Plutot que de payer une API, on prepare la consigne
+   complete — le schema en vigueur et la syntaxe attendue — a
+   coller dans l'application Claude a laquelle l'utilisateur est
+   deja abonne. Il rapporte les lignes, l'apercu les verifie.
+   ------------------------------------------------------------ */
+
+// Le schema en vigueur, mis a plat. Tire de SCHEMA et non d'une copie
+// figee : si un champ est ajoute depuis la page Types d'elements, la
+// consigne le connait des la seconde suivante.
+function saisieSpec(){
+  return TYPES.map(k=>{
+    const t=SCHEMA[k];
+    const champs=(t.f||[]).map(f=>f.o?`${f.l} [${f.o.join(' | ')}]`:f.l).join(' ; ');
+    return `- ${k}  (${t.l})\n    ${champs||'aucun champ'}`;
+  }).join('\n');
+}
+
+function saisieConsigne(texte){
+  return [
+    "Tu convertis des notes d'enquête en lignes pour AEGIS, l'outil du SASP SUD.",
+    '',
+    'SYNTAXE À PRODUIRE, une ligne par fiche :',
+    '    <type> <nom>, <champ> <valeur>, <champ> <valeur>, niveau <0-5>',
+    'et pour relier deux fiches :',
+    '    lien <nom A> <intitulé de relation> <nom B>, <niveau du lien>',
+    '',
+    'RÈGLES STRICTES :',
+    "1. N'utilise que les types et les champs listés ci-dessous, avec leur libellé exact.",
+    '2. Pour un champ à choix, prends exactement une des valeurs entre crochets.',
+    "3. N'invente aucune information absente des notes. Ce qui n'est pas dit ne s'écrit pas.",
+    '4. Les liaisons viennent après les fiches, et ne citent que des noms déjà créés.',
+    "5. Niveau du lien : Neutre, Vérifié, À confirmer, Critique.",
+    '6. Dans un groupe, un rang peut être ajouté après le niveau : Tête de réseau, Bras droit, Lieutenant, Homme de main, Périphérie.',
+    "7. Réponds UNIQUEMENT par les lignes, sans commentaire, sans balise de code, sans titre.",
+    '',
+    'TYPES ET CHAMPS DISPONIBLES :',
+    saisieSpec(),
+    '',
+    'INTITULÉS DE RELATION DISPONIBLES :',
+    REL.join(' ; '),
+    '',
+    'EXEMPLE DE SORTIE :',
+    'suspect Jean Dupont, Alias Le Chat, Situation Recherché, niveau 4',
+    'arme Glock 17, Calibre 9 mm, État Saisie, N° de scellé SC-2026-0920',
+    'lien Jean Dupont Détient Glock 17, Critique',
+    '',
+    'NOTES À CONVERTIR :',
+    texte.trim()
+  ].join('\n');
+}
+
+async function saisiePourClaude(texte){
+  if(!texte.trim()){toast('Rien à traduire','Écrivez vos notes dans le cadre.','warn');return}
+  const consigne=saisieConsigne(texte);
+  try{
+    await navigator.clipboard.writeText(consigne);
+    saisieModeEmploi(true);
+  }catch(e){
+    // Le presse-papiers peut etre refuse : on montre le texte a copier
+    // a la main plutot que d'echouer sans rien proposer.
+    saisieModeEmploi(false,consigne);
+  }
+}
+
+function saisieModeEmploi(copie,consigne){
+  modal({title:'Faire traduire par un assistant',
+    foot:'<button class="btn pri" data-x>Compris</button>',
+    body:
+      (copie
+        ? `<div class="sLigne sOk"><b>${svg(I.chk,13)}</b><div><b>La consigne est dans votre presse-papiers.</b>
+             <div class="sMsg">Elle contient vos notes, les 24 types avec tous leurs champs, et la syntaxe attendue.</div></div></div>`
+        : `<div class="sLigne sErr"><b>!</b><div><b>Le navigateur a refusé le presse-papiers.</b>
+             <div class="sMsg">Copiez le texte ci-dessous à la main.</div></div></div>
+           <textarea class="mono" readonly style="width:100%;min-height:140px;background:var(--paper);border:1px solid #B39A6A;border-radius:2px;padding:9px;font-size:11px">${esc(consigne||'')}</textarea>`)+
+      `<div class="isec">La marche à suivre</div>
+       <ol style="margin:0;padding-left:20px;color:var(--ink2);line-height:1.9">
+         <li>Ouvrez votre assistant : <a href="https://claude.ai" target="_blank" rel="noopener" style="color:var(--red)">claude.ai</a>, ChatGPT, celui que vous voulez.</li>
+         <li>Collez la consigne et envoyez.</li>
+         <li>Copiez les lignes qu'il renvoie.</li>
+         <li>Revenez ici, collez-les dans le cadre de la saisie rapide.</li>
+         <li>Relisez l'aperçu, puis validez.</li>
+       </ol>
+       <p style="margin:12px 0 0;font-size:11.5px;color:var(--ink3);line-height:1.6">
+         Rien n'est envoyé automatiquement : c'est vous qui collez, vous qui rapportez, et l'aperçu
+         vérifie chaque ligne avant création. Aucun champ inventé ne peut passer, puisque seuls les
+         libellés du schéma sont reconnus.</p>`});
+}
+
 function saisieDlg(){
   if(!MOI.ecriture){toast('Lecture seule','Votre accès ne permet pas de modifier le tableau.','warn');return}
   const exemples=[
@@ -3261,6 +3352,7 @@ function saisieDlg(){
       <div style="display:flex;gap:7px;margin:9px 0 0;flex-wrap:wrap">
         <button class="btn sm" id="sEx">Coller l'exemple</button>
         <button class="btn sm" id="sAide">Champs disponibles</button>
+        <button class="btn sm" id="sClaude">${svg(I.copy,12)}Préparer pour un assistant</button>
       </div>
       <div class="isec">Aperçu<span id="sN"></span></div>
       <div id="sApercu"><div class="empty" style="padding:16px">Tapez quelque chose.</div></div>`,
@@ -3283,6 +3375,7 @@ function saisieDlg(){
   txt.addEventListener('input',rafraichir);
   $('#sEx',m.scrim).onclick=()=>{txt.value=exemples;rafraichir();txt.focus()};
   $('#sAide',m.scrim).onclick=()=>saisieAideDlg();
+  $('#sClaude',m.scrim).onclick=()=>saisiePourClaude(txt.value);
   setTimeout(()=>txt.focus(),60);
 }
 
