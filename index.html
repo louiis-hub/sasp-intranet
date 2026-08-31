@@ -1856,7 +1856,7 @@ function psCandidatures(id,apres){
                 ${Q.map((q,i)=>`<div>
                   <div style="font-size:11.5px;color:var(--t3)">${esc(q.q)}</div>
                   <div style="font-size:13px;color:var(--t1);line-height:1.6;white-space:pre-wrap">
-                    ${esc((c.reponses||{})[String(i)]||'—')}</div></div>`).join('')}
+                    ${esc((c.reponses||{})[String(i)]||'-')}</div></div>`).join('')}
               </div>
               ${c.statut==='attente'?`<div style="margin-top:12px;display:flex;gap:7px">
                   <button class="btn pri sm" data-ok="${c.id}">Accepter</button>
