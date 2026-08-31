@@ -1,0 +1,6 @@
+node_modules/
+.next/
+next-env.d.ts
+# Les pages actuelles y sont deposees par mettre-a-jour.sh : la source
+# fait foi a la racine du depot.
+public/

@@ -6,4 +6,6 @@
 # systemd en CRLF donne "bad interpreter: /bin/bash^M" et rien d autre.
 vps/* text eol=lf
 vps/**/* text eol=lf
+web/* text eol=lf
+web/**/* text eol=lf
 *.md text eol=lf

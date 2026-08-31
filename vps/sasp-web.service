@@ -1,0 +1,25 @@
+[Unit]
+Description=SASP SUD - site Next.js
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sasp
+WorkingDirectory=/opt/sasp/web
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# Next parle a l'API sur la boucle locale : inutile de ressortir par nginx.
+Environment=SASP_API=http://127.0.0.1:8787
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sasp-web
+
+[Install]
+WantedBy=multi-user.target
