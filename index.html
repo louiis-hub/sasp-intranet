@@ -215,6 +215,58 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
   border-top-color:var(--bleu);border-radius:50%;animation:tourner .8s linear infinite}
 @keyframes tourner{to{transform:rotate(360deg)}}
 
+/* ── widgets libres ───────────────────────────────────────────── */
+/* Ils flottent sur le bureau et se rangent ou l on veut, plutot que
+   dans une colonne figee a droite. */
+.wid{position:absolute;width:360px;background:var(--vitre);border:1px solid var(--bord);
+  border-radius:var(--r);backdrop-filter:blur(16px);overflow:hidden;
+  box-shadow:0 10px 32px rgba(0,0,0,.34);transition:box-shadow .14s,border-color .14s}
+.wid:hover{border-color:var(--bord2)}
+.wid.tire{box-shadow:0 22px 54px rgba(0,0,0,.5);border-color:var(--bord2);opacity:.96}
+.wid > header{display:flex;align-items:center;gap:9px;padding:11px 12px 11px 15px;
+  cursor:grab;user-select:none;border-bottom:1px solid var(--bord)}
+.wid > header.tire{cursor:grabbing}
+.wid > header h3{margin:0;font-size:13.5px;font-weight:600;flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wid > header .poignet{color:var(--t3);font-size:13px;letter-spacing:-1px}
+.wid .wx{width:26px;height:24px;display:grid;place-items:center;background:none;border:0;
+  border-radius:6px;color:var(--t3);cursor:pointer;font-size:13px}
+.wid .wx:hover{background:rgba(255,255,255,.09);color:var(--t0)}
+.wid .bd{padding:14px 16px 16px}
+.wid.sansTete > header{border-bottom:0}
+
+/* La zone libre du bureau : c est elle qui porte les widgets. */
+#plan{position:absolute;inset:0;z-index:1;pointer-events:none}
+.wid{pointer-events:auto}
+
+.wvide{padding:18px 4px;text-align:center;color:var(--t3);font-size:12.5px}
+.wligne{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--bord)}
+.wligne:last-child{border-bottom:0}
+.wligne .pt{flex:none;width:7px;height:7px;border-radius:50%;background:var(--bleu);margin-top:6px}
+.wligne b{display:block;font-size:13px;font-weight:600;color:var(--bleu2)}
+.wligne p{margin:3px 0 0;font-size:12.5px;color:var(--t2);line-height:1.55}
+.wligne .qd{font-size:11px;color:var(--t3);white-space:nowrap;margin-left:auto}
+
+.wunite{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--bord);
+  cursor:pointer}
+.wunite:last-child{border-bottom:0}
+.wunite:hover b{color:var(--bleu2)}
+.wunite b{font-size:13.5px;font-weight:600}
+
+/* Menu du bureau, au clic droit. */
+#menuBureau{position:fixed;z-index:75;display:none;min-width:232px;padding:5px;
+  background:rgba(17,27,46,.98);border:1px solid var(--bord2);border-radius:11px;
+  box-shadow:0 20px 46px rgba(0,0,0,.62);backdrop-filter:blur(18px)}
+#menuBureau button{display:flex;align-items:center;gap:10px;width:100%;padding:8px 11px;
+  background:none;border:0;border-radius:7px;color:var(--t1);cursor:pointer;
+  font-size:13px;text-align:left}
+#menuBureau button:hover{background:rgba(59,130,246,.18);color:var(--t0)}
+#menuBureau button[disabled]{opacity:.4;cursor:default}
+#menuBureau button[disabled]:hover{background:none;color:var(--t1)}
+#menuBureau hr{border:0;border-top:1px solid var(--bord);margin:5px 0}
+#menuBureau .tt{padding:7px 11px 4px;font-size:11px;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--t3)}
+
 /* ── ouverture de session ─────────────────────────────────────── */
 #ouverture{position:fixed;inset:0;z-index:95;display:none;
   align-items:center;justify-content:center;flex-direction:column;
@@ -321,37 +373,12 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
         </div>
       </div>
 
-      <div class="sec"><b>Accès rapide</b><i></i></div>
-      <div class="dossiers" id="dossiers"></div>
-    </div>
-
-    <div>
-      <div class="panneau">
-        <div class="bd">
-          <div class="meteo">
-            <div>
-              <div class="lieu">Los Santos</div>
-              <div class="deg"><span class="ic" id="mtIc">☀️</span>
-                <b id="mtDeg">—</b><sup>°F</sup></div>
-              <div class="etat" id="mtEtat">—</div>
-            </div>
-            <div>
-              <div class="heure" id="mtHeure">--:--</div>
-              <div class="jour" id="mtJour">—</div>
-            </div>
-          </div>
-          <div class="jours" id="mtJours"></div>
-        </div>
-      </div>
-
-      <div class="panneau">
-        <header><span>📣</span><h3>Annonces</h3></header>
-        <div class="bd" id="annonces"><div class="vide" style="padding:20px 0">Chargement…</div></div>
-        <button class="plus" id="plusAnnonces">Voir toutes les annonces <span>→</span></button>
-      </div>
     </div>
   </div>
+  <!-- Les widgets vivent ici, libres de position. -->
+  <div id="plan"></div>
 </div>
+<div id="menuBureau"></div>
 
 <div id="barre">
   <button class="tache demarrer" id="btDemarrer" title="Menu">
@@ -369,7 +396,7 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
 <div id="porte"><div class="pcard" id="pcard"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=20260831-bureau"></script>
+<script src="config.js?v=20260831-widgets"></script>
 <script>
 /* ============================================================
    POSTE DE TRAVAIL SASP
@@ -581,6 +608,7 @@ const MT_ETATS={0:'Ensoleillé',1:'Peu nuageux',2:'Partiellement nuageux',3:'Cou
   80:'Averses',81:'Averses',82:'Averses fortes',95:'Orage',96:'Orage',99:'Orage'};
 
 function horloge(){
+  if(!$('#mtHeure'))return;
   const d=new Date();
   const z=x=>String(x).padStart(2,'0');
   $('#mtHeure').textContent=z(d.getHours())+':'+z(d.getMinutes());
@@ -588,6 +616,7 @@ function horloge(){
     {weekday:'long',day:'numeric',month:'long',year:'numeric'});
 }
 async function meteo(){
+  if(!$('#mtIc'))return;
   try{
     const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.05&longitude=-118.24'+
       '&current=temperature_2m,apparent_temperature,weather_code'+
@@ -610,8 +639,240 @@ async function meteo(){
         <div class="b">${Math.round(d.daily.temperature_2m_min[i+1])}°</div></div>`;
     }).join('');
   }catch(e){
-    $('#mtEtat').textContent='Météo indisponible';
+    const e2=$('#mtEtat');if(e2)e2.textContent='Météo indisponible';
   }
+}
+
+/* ============================================================
+   WIDGETS
+   Ils flottent librement sur le bureau. Leur disposition est
+   propre au poste : elle vit dans le navigateur, pas en base,
+   puisque personne d'autre n'a a la subir.
+   ============================================================ */
+const RANGEMENT='sasp.bureau.widgets';
+
+const CATALOGUE={
+  meteo:    {titre:'Météo · Los Santos', icone:'🌤️', l:360, rendre:widMeteo},
+  annonces: {titre:'Annonces',           icone:'📣', l:380, rendre:widAnnonces},
+  unites:   {titre:'Vos unités',         icone:'🚔', l:330, rendre:widUnites},
+  mail:     {titre:'Messagerie',         icone:'✉️', l:330, rendre:widMail},
+  demandes: {titre:'Mes demandes',       icone:'📮', l:340, rendre:widDemandes},
+  notes:    {titre:'Bloc-notes',         icone:'📝', l:340, rendre:widNotes},
+  horloge:  {titre:'Horloge',            icone:'🕐', l:270, rendre:widHorloge}
+};
+
+let PLAN=[];
+
+function planLire(){
+  try{
+    const b=JSON.parse(localStorage.getItem(RANGEMENT)||'null');
+    if(Array.isArray(b)&&b.length)return b.filter(w=>CATALOGUE[w.cle]);
+  }catch(e){}
+  // Disposition d'origine : la colonne de droite d'avant, mais libre.
+  const d=innerWidth-400;
+  return [
+    {cle:'meteo',   x:d, y:24},
+    {cle:'unites',  x:d, y:300},
+    {cle:'annonces',x:d, y:520}
+  ];
+}
+function planEcrire(){
+  try{ localStorage.setItem(RANGEMENT,JSON.stringify(PLAN)); }catch(e){}
+}
+
+function dessinerPlan(){
+  const z=$('#plan');
+  z.innerHTML=PLAN.map((w,i)=>{
+    const c=CATALOGUE[w.cle]; if(!c)return '';
+    return `<section class="wid" data-w="${i}" style="left:${w.x}px;top:${w.y}px;width:${c.l}px">
+      <header><span class="poignet">⠿</span><span style="font-size:15px">${c.icone}</span>
+        <h3>${esc(c.titre)}</h3>
+        <button class="wx" data-ret="${i}" title="Retirer">✕</button></header>
+      <div class="bd" id="w${i}"></div></section>`;
+  }).join('');
+
+  PLAN.forEach((w,i)=>{
+    const c=CATALOGUE[w.cle]; if(!c)return;
+    const corps=$('#w'+i,z); if(corps)c.rendre(corps,i);
+  });
+
+  $$('.wid',z).forEach(el2=>{
+    const i=+el2.dataset.w;
+    const tete=$('header',el2);
+    tete.addEventListener('mousedown',e=>{
+      if(e.target.closest('.wx'))return;
+      const r=el2.getBoundingClientRect(), dx=e.clientX-r.left, dy=e.clientY-r.top;
+      tete.classList.add('tire'); el2.classList.add('tire');
+      const mv=ev=>{
+        // On garde toujours l en-tete attrapable : un widget pousse hors
+        // de l ecran serait irrecuperable.
+        PLAN[i].x=Math.max(-r.width+120,Math.min(innerWidth-100,ev.clientX-dx));
+        PLAN[i].y=Math.max(0,Math.min(innerHeight-120,ev.clientY-dy));
+        el2.style.left=PLAN[i].x+'px'; el2.style.top=PLAN[i].y+'px';
+      };
+      const up=()=>{
+        tete.classList.remove('tire'); el2.classList.remove('tire');
+        planEcrire();
+        window.removeEventListener('mousemove',mv); window.removeEventListener('mouseup',up);
+      };
+      window.addEventListener('mousemove',mv); window.addEventListener('mouseup',up);
+      e.preventDefault();
+    });
+  });
+  $$('[data-ret]',z).forEach(b=>b.onclick=()=>{
+    PLAN.splice(+b.dataset.ret,1); planEcrire(); dessinerPlan();
+  });
+}
+
+function ajouterWidget(cle,x,y){
+  if(!CATALOGUE[cle])return;
+  PLAN.push({cle,x:Math.round(x??120),y:Math.round(y??120)});
+  planEcrire(); dessinerPlan();
+  avis('Widget ajouté',CATALOGUE[cle].titre,'ok');
+}
+
+/* ---------- le contenu de chaque widget ---------- */
+function widMeteo(z){
+  z.innerHTML=`<div class="meteo">
+      <div><div class="deg"><span class="ic" id="mtIc">☀️</span><b id="mtDeg">—</b><sup>°F</sup></div>
+        <div class="etat" id="mtEtat">—</div></div>
+      <div><div class="heure" id="mtHeure">--:--</div><div class="jour" id="mtJour">—</div></div>
+    </div><div class="jours" id="mtJours"></div>`;
+  horloge(); meteo();
+}
+function widHorloge(z){
+  z.innerHTML=`<div style="text-align:center;padding:6px 0">
+    <div id="mtHeure" style="font-size:44px;font-weight:600;line-height:1">--:--</div>
+    <div id="mtJour" style="font-size:13px;color:var(--t2);margin-top:9px">—</div></div>`;
+  horloge();
+}
+function widUnites(z){
+  z.innerHTML=MOI.divisions.length
+    ? MOI.divisions.map(d=>`<div class="wunite" data-d="${esc(d.code)}">
+        <b>${esc(d.nom)}</b>
+        ${d.lead?'<span class="puce p-ambre" style="margin-left:auto">Lead</span>'
+                :'<span class="puce p-gris" style="margin-left:auto">Membre</span>'}</div>`).join('')
+    : '<div class="wvide">Vous n\'êtes rattaché à aucune unité.</div>';
+  $$('[data-d]',z).forEach(b=>b.onclick=()=>ouvrirDivision(b.dataset.d));
+}
+function widMail(z){
+  z.innerHTML=`<button class="btn pri" id="wmOuvrir" style="width:100%;justify-content:center">
+      ✉️ Ouvrir la messagerie</button>
+    <div style="margin-top:12px;font-size:13px;color:var(--t2);text-align:center" id="wmEtat">…</div>`;
+  $('#wmOuvrir',z).onclick=ouvrirMail;
+  const maj=()=>{ const e=$('#wmEtat',z); if(e)e.textContent=MAILS_NON_LUS
+    ? MAILS_NON_LUS+' message'+(MAILS_NON_LUS>1?'s':'')+' non lu'+(MAILS_NON_LUS>1?'s':'')
+    : 'Aucun message non lu'; };
+  maj(); setTimeout(maj,1200);
+}
+async function widDemandes(z){
+  z.innerHTML='<div class="wvide">Chargement…</div>';
+  const r=await api('/api/bureau/contacts');
+  const cs=(r.ok&&r.data.contacts)||[];
+  z.innerHTML=cs.length?cs.slice(0,5).map(c=>`<div class="wunite" data-c="${c.id}">
+      <b style="font-size:13px">${esc(c.sujet)}</b>
+      <span class="puce ${c.statut==='ferme'?'p-gris':c.statut==='en cours'?'p-ambre':'p-bleu'}"
+        style="margin-left:auto">${esc(c.statut)}</span></div>`).join('')
+    :'<div class="wvide">Aucune demande en cours.</div>';
+  $$('[data-c]',z).forEach(b=>b.onclick=()=>ouvrirContact(+b.dataset.c));
+}
+function widNotes(z){
+  const cle='sasp.bureau.notes';
+  let t=''; try{ t=localStorage.getItem(cle)||''; }catch(e){}
+  z.innerHTML=`<textarea class="champ" id="wnT" style="min-height:130px;font-size:13px"
+    placeholder="Vos notes, gardées sur ce poste uniquement.">${esc(t)}</textarea>`;
+  const ta=$('#wnT',z);
+  let m;
+  ta.addEventListener('input',()=>{ clearTimeout(m);
+    m=setTimeout(()=>{ try{ localStorage.setItem(cle,ta.value); }catch(e){} },400); });
+}
+async function widAnnonces(z){
+  z.innerHTML='<div class="wvide">Chargement…</div>';
+  const r=await api('/api/bureau/annonces');
+  if(!r.ok){ z.innerHTML='<div class="wvide">Annonces indisponibles.</div>'; return; }
+  const a=r.data.annonces||[];
+  z.innerHTML=(a.length?a.slice(0,4).map(x=>`<div class="wligne"><span class="pt"></span>
+      <div style="flex:1;min-width:0"><b>${esc(x.titre)}</b>
+      ${x.corps?`<p>${esc(String(x.corps).slice(0,140))}</p>`:''}</div></div>`).join('')
+    :'<div class="wvide">Aucune annonce.</div>')+
+    `<button class="btn" id="waTout" style="width:100%;justify-content:center;margin-top:12px">
+      Voir toutes les annonces →</button>`;
+  $('#waTout',z).onclick=ouvrirAnnonces;
+}
+
+/* ---------- la fenêtre des annonces ---------- */
+function ouvrirAnnonces(){
+  fenetre('annonces',{titre:'Annonces de l\'état-major',icone:'📣',l:820,h:600,apres:o=>{
+    const charger=async()=>{
+      o.corps.innerHTML='<div class="vide">Chargement…</div>';
+      const r=await api('/api/bureau/annonces');
+      if(!r.ok){o.corps.innerHTML=`<div class="vide"><b>Indisponible</b>${esc(r.data.error||'')}</div>`;return}
+      const a=r.data.annonces||[];
+      o.corps.innerHTML=`<div class="pad">
+        ${r.data.peut_publier?'<button class="btn pri" id="anNew" style="margin-bottom:18px">✎ Publier une annonce</button>':''}
+        ${a.length?a.map(x=>`<article style="padding:16px 18px;border-radius:11px;border:1px solid var(--bord);
+          background:rgba(255,255,255,.035);margin-bottom:12px">
+          <div style="display:flex;gap:9px;align-items:center;margin-bottom:7px">
+            <b style="font-size:15px;color:var(--bleu2)">${esc(x.titre)}</b>
+            ${x.division?`<span class="puce p-bleu">${esc(x.division)}</span>`:''}
+            <span style="margin-left:auto;font-size:11.5px;color:var(--t3)">
+              ${esc(x.auteur||'—')} · ${new Date(x.created_at).toLocaleDateString('fr-FR')}</span>
+            ${r.data.peut_publier?`<button class="btn sm dgr" data-sup="${x.id}">✕</button>`:''}
+          </div>
+          ${x.corps?`<div style="font-size:13.5px;color:var(--t1);line-height:1.75;white-space:pre-wrap">${esc(x.corps)}</div>`:''}
+        </article>`).join('')
+        :'<div class="vide"><b>Aucune annonce</b>Rien n\'a encore été publié.</div>'}
+      </div>`;
+      const nb=$('#anNew',o.corps);
+      if(nb)nb.onclick=()=>dlg({titre:'Publier une annonce',ok:'Publier',corps:`
+        <label class="lbl">Titre</label><input class="champ" id="anT" placeholder="Réunion d'état-major">
+        <label class="lbl" style="margin-top:14px">Division concernée (facultatif)</label>
+        <select class="champ" id="anD"><option value="">Toutes</option>
+          ${MOI.toutes.map(d=>`<option value="${esc(d.code)}">${esc(d.code)} · ${esc(d.nom)}</option>`).join('')}</select>
+        <label class="lbl" style="margin-top:14px">Message</label>
+        <textarea class="champ" id="anC" style="min-height:150px"></textarea>`,
+        onOk:async v=>{
+          const t=$('#anT',v).value.trim();
+          if(!t){avis('Titre manquant','','err');return false}
+          const rr=await api('/api/bureau/annonces',{method:'POST',
+            body:{titre:t,corps:$('#anC',v).value,division:$('#anD',v).value||null}});
+          if(!rr.ok){avis('Publication refusée',rr.data.error||'','err');return false}
+          avis('Annonce publiée','','ok'); charger(); dessinerPlan();
+        }});
+      $$('[data-sup]',o.corps).forEach(b=>b.onclick=()=>confirmer('Retirer l\'annonce',
+        'Elle disparaîtra pour tout le monde.','Retirer',async()=>{
+          const rr=await api('/api/bureau/annonces?id='+b.dataset.sup,{method:'DELETE'});
+          if(!rr.ok)return avis('Échec',rr.data.error||'','err');
+          charger(); dessinerPlan();
+        },true));
+    };
+    charger();
+  }});
+}
+
+/* ---------- menu du bureau, au clic droit ---------- */
+function menuBureau(x,y){
+  const m=$('#menuBureau');
+  const poses=PLAN.map(w=>w.cle);
+  m.innerHTML=`<div class="tt">Ajouter un widget</div>`+
+    Object.keys(CATALOGUE).map(k=>{
+      const c=CATALOGUE[k], deja=poses.indexOf(k)!==-1;
+      return `<button data-add="${k}" ${deja?'disabled':''}>
+        <span style="font-size:15px">${c.icone}</span>${esc(c.titre)}
+        ${deja?'<span style="margin-left:auto;font-size:11px;color:var(--t3)">posé</span>':''}</button>`;
+    }).join('')+
+    `<hr><button data-raz>↺ Remettre la disposition d'origine</button>`;
+  m.style.display='block';
+  m.style.left=Math.min(x,innerWidth-m.offsetWidth-10)+'px';
+  m.style.top=Math.min(y,innerHeight-m.offsetHeight-10)+'px';
+  $$('[data-add]',m).forEach(b=>{ if(!b.disabled)b.onclick=()=>{
+    m.style.display='none'; ajouterWidget(b.dataset.add,x-40,y-30); }; });
+  $('[data-raz]',m).onclick=()=>{
+    m.style.display='none';
+    try{ localStorage.removeItem(RANGEMENT); }catch(e){}
+    PLAN=planLire(); planEcrire(); dessinerPlan();
+    avis('Disposition rétablie','','ok');
+  };
 }
 
 /* ============================================================
@@ -1286,27 +1547,16 @@ function construireBureau(){
       '. Votre adresse interne est '+MOI.adresse+'.'
     : 'Vous n\'êtes rattaché à aucune division. Utilisez « Prendre contact » pour vous adresser à l\'une d\'elles.';
 
-  const D=[
-    {t:'Police Academy',i:ICO.dossierOr,f:()=>ouvrirSite('pa','Police Academy','🎓','pa.html','intranet')},
-    {t:'CID · AEGIS',   i:ICO.dossierOr,f:()=>ouvrirSite('aegis','AEGIS','🛡️','sasp/liaisons/','outil d\'enquête')},
-    {t:'Divisions',     i:ICO.dossier,  f:ouvrirDivisions},
-    {t:'Messagerie',    i:ICO.dossier,  f:ouvrirMail, badge:()=>MAILS_NON_LUS},
-    {t:'Mes demandes',  i:ICO.dossier,  f:ouvrirMesDemandes}
-  ];
-  MOI.divisions.forEach(d=>D.push({t:d.code+' · '+d.nom,i:ICO.dossier,f:()=>ouvrirDivision(d.code)}));
-
-  $('#dossiers').innerHTML=D.map((d,i)=>`
-    <button class="doss" data-i="${i}">${d.i}<span>${esc(d.t)}</span>
-      ${d.badge&&d.badge()?`<span class="pastille">${d.badge()}</span>`:''}</button>`).join('')+
-    `<button class="doss ajout" id="dsAjout">＋ Ajouter un raccourci</button>`;
-  $$('#dossiers [data-i]').forEach(b=>b.onclick=()=>D[+b.dataset.i].f());
-  $('#dsAjout').onclick=()=>avis('Bientôt','Les raccourcis personnels arrivent dans une prochaine version.','warn');
+  // Tout se rejoint par la barre des taches ; les widgets portent le
+  // reste. Les accès rapides faisaient doublon avec les deux.
+  PLAN=planLire();
+  dessinerPlan();
 
   RACCOURCIS=[
     {cle:'pa',   titre:'Police Academy',icone:'🎓',court:'Academy',
      ouvrir:()=>ouvrirSite('pa','Police Academy','🎓','pa.html','intranet')},
     {cle:'aegis',titre:'AEGIS',icone:'🛡️',court:'AEGIS',
-     ouvrir:()=>ouvrirSite('aegis','AEGIS','🛡️','sasp/liaisons/','outil d\'enquête')},
+     ouvrir:()=>ouvrirSite('aegis','AEGIS','🛡️','sasp/liaisons/#/dash','outil d\'enquête')},
     {cle:'divisions',titre:'Divisions',icone:'🚔',court:'Divisions',ouvrir:ouvrirDivisions},
     {cle:'mail',titre:'Messagerie',icone:'✉️',court:'Mail',ouvrir:ouvrirMail,badge:0},
     {cle:'demandes',titre:'Mes demandes',icone:'📮',court:'Demandes',ouvrir:ouvrirMesDemandes}
@@ -1331,18 +1581,18 @@ function construireBureau(){
     'Se déconnecter',async()=>{ try{await SB.auth.signOut()}catch(e){} location.reload(); },true);
 
   $('#btDemarrer').onclick=()=>ouvrirDivisions();
-  $('#plusAnnonces').onclick=()=>avis('Annonces','Le journal complet arrivera avec la prochaine étape.','warn');
+
+  // Le bureau se règle au clic droit, comme un vrai poste.
+  $('#bureau').addEventListener('contextmenu',e=>{
+    if(e.target.closest('.wid'))return;   // le widget garde son menu natif
+    e.preventDefault();
+    menuBureau(e.clientX,e.clientY);
+  });
+  document.addEventListener('click',()=>{$('#menuBureau').style.display='none'});
 }
 
-function annonces(){
-  const A=[
-    ['Poste de travail en service','L\'intranet, AEGIS et les divisions sont accessibles depuis ce bureau.'],
-    ['Messagerie interne','Écrivez à un agent ou à une division. Les adresses sont internes au site.'],
-    ['Prendre contact','Pour joindre une division dont vous ne faites pas partie, ouvrez une demande.']
-  ];
-  $('#annonces').innerHTML=A.map(([t,c])=>
-    `<div class="annonce"><span class="pt"></span><div><b>${esc(t)}</b><p>${esc(c)}</p></div></div>`).join('');
-}
+// Les annonces viennent de la base : le widget les recharge lui-meme.
+function annonces(){ dessinerPlan(); }
 
 /* ---------- porte d'entrée ---------- */
 const LOGO='assets/sasp-sud-logo.png';
