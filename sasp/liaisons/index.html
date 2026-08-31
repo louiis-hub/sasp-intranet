@@ -126,7 +126,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .frame:before{content:"";position:absolute;inset:-16px;border:16px solid transparent;
   box-shadow:inset 0 3px 6px rgba(255,220,170,.18), inset 0 -3px 8px rgba(0,0,0,.4)}
 #gworld{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
-#gedges{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+#gedges{position:absolute;left:-12000px;top:-12000px;
+  width:24000px;height:24000px;overflow:visible;pointer-events:none}
 
 /* ---------- fiches épinglées ---------- */
 /* --ech : le facteur de taille de la fiche, pour mettre en evidence
@@ -521,7 +522,13 @@ table.pt tbody tr:hover{background:#F6EBC9}
 <div id="board">
   <div class="frame"></div>
   <div id="gworld">
-    <svg id="gedges"><g id="glinks"></g><g id="glabels"></g></svg>
+    <svg id="gedges">
+      <!-- Le decalage compense la position negative du SVG : le point
+           (0,0) du tableau retombe ainsi sur (0,0) a l ecran. -->
+      <g transform="translate(12000,12000)">
+        <g id="glinks"></g><g id="glabels"></g>
+      </g>
+    </svg>
     <div id="gnodes"></div>
   </div>
   <div class="gtools" id="gtools"></div>
@@ -1305,6 +1312,7 @@ function render(){
   // l enregistrement quand on ajoute des images.
   const ko=Math.round((JSON.stringify(S.nodes).length+JSON.stringify(S.edges).length)/1024);
   $('#counts').textContent=`${S.nodes.filter(visible).length} éléments · ${S.edges.length} liaisons`+
+    (S.orphelines?` (${S.orphelines} sans extrémité)`:'')+
     (ko>400?` · ${ko>1024?(ko/1024).toFixed(1)+' Mo':ko+' Ko'}`:'');
 }
 function measure(){
@@ -1314,8 +1322,15 @@ const pinPt=n=>({x:n.x,y:n.y-((NH[n.id]?.h||110)*(n.ech||1))/2+2});
 function drawEdges(){
   const pos=id=>{const n=node(id);return n&&visible(n)?n:null};
   let sh='',p='',l='';
+  // Une liaison dont une extremite n existe plus ne se dessine pas. La
+  // compter permet de le dire au lieu de la laisser disparaitre.
+  let orphelines=0;
   S.edges.forEach(e=>{
-    const na=pos(e.a),nb=pos(e.b); if(!na||!nb)return;
+    const na=pos(e.a),nb=pos(e.b);
+    if(!na||!nb){
+      if(!node(e.a)||!node(e.b))orphelines++;   // masquee ne veut pas dire perdue
+      return;
+    }
     const a=pinPt(na),b=pinPt(nb);
     const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
     const sag=Math.min(90,Math.max(20,len*0.16));
@@ -1330,6 +1345,7 @@ function drawEdges(){
     l+=`<text class="elabel${S.selEdge===e.id?' sel':''}${dim}" x="${lx}" y="${ly-4}" text-anchor="middle" data-edge="${e.id}" transform="rotate(${ang.toFixed(1)} ${lx} ${ly-4})">${esc(e.l)}</text>`;
   });
   $('#glinks').innerHTML=sh+p; $('#glabels').innerHTML=l;
+  S.orphelines=orphelines;
   $$('[data-edge]').forEach(x=>{
     x.onclick=ev=>{ev.stopPropagation();selectEdge(x.dataset.edge)};
     x.addEventListener('contextmenu',ev=>{
@@ -2132,14 +2148,57 @@ function autoGroup(){
   render();fitView();save('Regroupement appliqué');
   toast('Regroupement appliqué',types.length+' groupes par type','ok');
 }
+// Repeint les ficelles sur le canvas exporte. html2canvas rend mal le
+// SVG en ligne : sans cela le PNG sortait avec les fiches et sans un
+// seul fil, ce qui vide un tableau de liaisons de son sens.
+function ficellesSurCanvas(ctx,rect){
+  const s=S.scale;
+  const p=w=>({x:(w.x*s)+S.tx,y:(w.y*s)+S.ty});
+  ctx.lineCap='round';
+  S.edges.forEach(e=>{
+    const na=node(e.a),nb=node(e.b);
+    if(!na||!nb||!visible(na)||!visible(nb))return;
+    const a=p(pinPt(na)),b=p(pinPt(nb));
+    const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
+    const sag=Math.min(90,Math.max(20,(len/s)*0.16))*s;
+    const cx=(a.x+b.x)/2,cy=(a.y+b.y)/2+sag;
+    const large=(e.w==='hot'?4.4:3.4)*s;
+    const teinte=e.w==='cool'?'#245278':e.w==='warm'?'#C0761A':e.w==='hot'?'#B01810':'#A8241C';
+    ctx.setLineDash(e.dash?[9*s,7*s]:[]);
+    // L ombre d abord, decalee, comme a l ecran.
+    ctx.strokeStyle='rgba(58,32,8,.26)'; ctx.lineWidth=large+1.2*s;
+    ctx.beginPath(); ctx.moveTo(a.x+2*s,a.y+3*s);
+    ctx.quadraticCurveTo(cx+2*s,cy+3*s,b.x+2*s,b.y+3*s); ctx.stroke();
+    ctx.strokeStyle=teinte; ctx.lineWidth=large;
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.quadraticCurveTo(cx,cy,b.x,b.y); ctx.stroke();
+    ctx.setLineDash([]);
+    // L intitule, sur fond clair pour rester lisible par-dessus le liege.
+    const lx=(a.x+2*cx+b.x)/4, ly=(a.y+2*cy+b.y)/4-4*s;
+    ctx.font=(14*s)+'px "Caveat", cursive';
+    ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+    ctx.lineWidth=4*s; ctx.strokeStyle='rgba(250,242,222,.95)';
+    ctx.lineJoin='round'; ctx.strokeText(e.l||'',lx,ly);
+    ctx.fillStyle='#3A2A18'; ctx.fillText(e.l||'',lx,ly);
+  });
+}
+
 function exportPng(){
   toast('Export en cours','Génération de l\'image…');
   if(typeof html2canvas!=='function')return toast('Export indisponible','Moteur de rendu non chargé.','err');
-  html2canvas($('#board'),{backgroundColor:'#C79B62',scale:2,logging:false}).then(cv=>cv.toBlob(b=>{
-    const u=URL.createObjectURL(b),a=document.createElement('a');
-    a.href=u;a.download='SASP_tableau_liaisons.png';document.body.appendChild(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Image générée','','ok');
-  })).catch(()=>toast('Export impossible','Le rendu a échoué.','err'));
+  const rect=$('#board').getBoundingClientRect();
+  html2canvas($('#board'),{backgroundColor:'#C79B62',scale:2,logging:false}).then(cv=>{
+    try{
+      const ctx=cv.getContext('2d');
+      ctx.save(); ctx.scale(cv.width/rect.width,cv.height/rect.height);
+      ficellesSurCanvas(ctx,rect);
+      ctx.restore();
+    }catch(err){ console.error('[aegis] ficelles non repeintes',err); }
+    cv.toBlob(b=>{
+      const u=URL.createObjectURL(b),a=document.createElement('a');
+      a.href=u;a.download='SASP_tableau_liaisons.png';document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Image générée','','ok');
+    });
+  }).catch(()=>toast('Export impossible','Le rendu a échoué.','err'));
 }
 function exportJson(){
   const data=JSON.stringify({nom:S.nom,dossier:S.dossier,nodes:S.nodes,edges:S.edges,seq:S.seq},null,1);
