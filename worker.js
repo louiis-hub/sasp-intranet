@@ -425,17 +425,43 @@ function liaisonsRefusDossier() {
 // Les dix divisions, avec le role qui en donne l'acces et celui qui
 // donne l'encadrement. Le separateur decoratif ne compte jamais.
 const BUREAU_DIVISIONS = [
-  { code: "PA",   nom: "Police Academy",              adr: "academy",  roles: ["1518631032167993534"], lead: ["1518631032167993534"] },
-  { code: "CID",  nom: "Criminal Investigation Div.", adr: "cid",      roles: ["1501526844959363114", "1501526499910746132"], lead: ["1501526499910746132"] },
-  { code: "SWAT", nom: "Special Weapons & Tactics",   adr: "swat",     roles: ["1504449839000326344", "1504450026393309276"], lead: ["1504450026393309276"] },
-  { code: "FTF",  nom: "Fugitive Task Force",         adr: "ftf",      roles: ["1528370972153872515"], lead: [] },
-  { code: "TU",   nom: "Traffic Unit",                adr: "traffic",  roles: [], lead: [] },
-  { code: "CNU",  nom: "Crisis & Negotiation Unit",   adr: "cnu",      roles: [], lead: [] },
-  { code: "K9",   nom: "Unite cynophile K9",          adr: "k9",       roles: [], lead: [] },
-  { code: "IA",   nom: "Affaires Internes",           adr: "intel",    roles: ["1524117754725007422", "1514523559127548016"], lead: ["1524117754725007422"] },
-  { code: "SYND", nom: "Syndicat",                    adr: "syndicat", roles: [], lead: [] },
-  { code: "LP",   nom: "Lincoln Patrol",              adr: "lincoln",  roles: [], lead: [] }
+  { code: "PA",   nom: "Police Academy",              adr: "academy",  ic: "🎓",
+    lead: ["1518632035911205168"], colead: [],
+    roles: ["1518631032167993534", "1523753182457495653", "1527820344558354613"] },
+  { code: "CID",  nom: "Criminal Investigation Div.", adr: "cid",      ic: "🗂️",
+    lead: ["1501526499910746132"], colead: ["1529286790521819267"],
+    roles: ["1501526844959363114"] },
+  { code: "SWAT", nom: "Special Weapons & Tactics",   adr: "swat",     ic: "🛡️",
+    lead: ["1504450026393309276"], colead: [],
+    roles: ["1504449839000326344"] },
+  { code: "FTF",  nom: "Fugitive Task Force",         adr: "ftf",      ic: "🎯",
+    lead: ["1528370954319822949"], colead: [],
+    roles: ["1528370972153872515"] },
+  { code: "TU",   nom: "Traffic Unit",                adr: "traffic",  ic: "🚦",
+    lead: ["1501522839717679185"], colead: ["1501525042037788772"],
+    roles: ["1501525276813955253", "1501525793640022017", "1501525992605487275"] },
+  { code: "CNU",  nom: "Crisis & Negotiation Unit",   adr: "cnu",      ic: "🤝",
+    lead: ["1519495585487388773"], colead: ["1519495090798858322", "1519495618060619877"],
+    roles: ["1519495087963246733"] },
+  { code: "K9",   nom: "Unite cynophile K9",          adr: "k9",       ic: "🐕",
+    lead: ["1535392140140748820"], colead: ["1535392215889870869"],
+    roles: ["1535392448187072632", "1535392294570692628"] },
+  { code: "IA",   nom: "Affaires Internes",           adr: "intel",    ic: "🔎",
+    lead: ["1524117754725007422"], colead: [],
+    roles: ["1514523559127548016"] },
+  { code: "SYND", nom: "Syndicat",                    adr: "syndicat", ic: "⚖️",
+    lead: ["1519496676539109486"], colead: [],
+    roles: ["1519496680397869147"] },
+  { code: "LP",   nom: "Lincoln Patrol",              adr: "lincoln",  ic: "🚓",
+    lead: [], colead: [],
+    roles: ["1519688600395055154"] }
 ];
+
+// Appartenir a une division, c est porter l un de ses roles, encadrement
+// compris : le lead d une unite en fait evidemment partie.
+function bureauRolesDiv(d) {
+  return d.roles.concat(d.lead || [], d.colead || []);
+}
 const BUREAU_CS = "1500975725153620033";   // Command Staff
 const BUREAU_ST = "1504452141518032956";   // Supervisor Team
 // « San Andreas State Police Sud » : le role qui dit qu on est du
@@ -449,7 +475,7 @@ function bureauEstPersonnel(roles) {
   const r = roles || [];
   if (r.indexOf(BUREAU_SASP) !== -1) return true;
   if (r.indexOf(BUREAU_CS) !== -1 || r.indexOf(BUREAU_ST) !== -1) return true;
-  return BUREAU_DIVISIONS.some(d => d.roles.some(x => r.indexOf(x) !== -1));
+  return BUREAU_DIVISIONS.some(d => bureauRolesDiv(d).some(x => r.indexOf(x) !== -1));
 }
 
 // Une adresse se derive du nom affiche : « [12] Boris Miller » donne
@@ -516,11 +542,12 @@ async function bureauIdentifier(env, request) {
   const estCS = roles.indexOf(BUREAU_CS) !== -1;
   const estST = roles.indexOf(BUREAU_ST) !== -1;
   const divisions = BUREAU_DIVISIONS
-    .filter(d => estCS || estST || d.roles.some(r => roles.indexOf(r) !== -1))
+    .filter(d => estCS || estST || bureauRolesDiv(d).some(r => roles.indexOf(r) !== -1))
     .map(d => ({
-      code: d.code, nom: d.nom, adresse: d.adr + "@sasp.com",
+      code: d.code, nom: d.nom, adresse: d.adr + "@sasp.com", ic: d.ic,
       // L'encadrement d'une division, ou le Command Staff qui l'a partout.
       lead: estCS || d.lead.some(r => roles.indexOf(r) !== -1)
+          || (d.colead || []).some(r => roles.indexOf(r) !== -1)
     }));
 
   return {
@@ -531,7 +558,7 @@ async function bureauIdentifier(env, request) {
     // Toutes les divisions restent listees : on voit qu'elles existent,
     // et le bouton « prendre contact » sert justement a celles ou l'on
     // n'est pas. Seul le contenu est ferme.
-    toutes: BUREAU_DIVISIONS.map(d => ({ code: d.code, nom: d.nom, adresse: d.adr + "@sasp.com" }))
+    toutes: BUREAU_DIVISIONS.map(d => ({ code: d.code, nom: d.nom, adresse: d.adr + "@sasp.com", ic: d.ic }))
   };
 }
 
@@ -6095,7 +6122,8 @@ export default {
         const mMsg = url.pathname.match(/^\/api\/bureau\/division\/([A-Z0-9]+)\/messages$/);
         if (mMsg) {
           const code = mMsg[1];
-          const portee = url.searchParams.get("portee") === "lead" ? "lead" : "global";
+          const p = url.searchParams.get("portee");
+          const portee = p === "lead" ? "lead" : p === "pseudo" ? "pseudo" : "global";
           if (!bureauDansDivision(qui, code)) {
             return json({ ok: false, error: "Vous ne faites pas partie de cette division." }, 403);
           }
@@ -6276,6 +6304,73 @@ export default {
             await sb(env, "DELETE", `/bureau_annonces?id=eq.${id}`);
             return json({ ok: true });
           }
+        }
+
+        // ── Organigramme ───────────────────────────────────
+        // Qui commande quoi. Les roles Discord donnent la place, la table
+        // des agents donne le matricule et le telephone. Rien n est saisi
+        // deux fois : si un role bouge sur Discord, l organigramme suit.
+        if (url.pathname === "/api/bureau/organigramme" && request.method === "GET") {
+          let membres = [];
+          try {
+            const res = await discordFetch(
+              `${DISCORD_API}/guilds/${envGuildId(env)}/members?limit=1000`,
+              { headers: { authorization: `Bot ${env.DISCORD_BOT_TOKEN}` } });
+            if (res.ok) membres = await res.json();
+          } catch (e) {}
+          if (!membres.length) {
+            return json({ ok: false, error: "Discord ne repond pas, organigramme indisponible." }, 503);
+          }
+
+          // Le dossier agent porte le matricule, le grade et le telephone.
+          let fiches = [];
+          try {
+            fiches = await sbForSite(env, "GET",
+              "/agents?select=matricule,nom,prenom,grade,telephone,discord_id" +
+              "&discord_id=not.is.null&statut=neq.Arch%C3%A9&order=matricule", null, "sud") || [];
+          } catch (e) {}
+          const parId = {};
+          fiches.forEach(f => { if (f.discord_id) parId[String(f.discord_id)] = f; });
+
+          const carte = m => {
+            const nom = m.nick || (m.user && m.user.username) || "Agent";
+            const f = parId[String(m.user.id)] || {};
+            return {
+              id: m.user.id,
+              nom: nom.replace(/^[[^]]*]s*/, ""),
+              matricule: f.matricule || null,
+              grade: f.grade || null,
+              telephone: f.telephone || null,
+              mail: bureauAdresse(nom)
+            };
+          };
+          const humains = membres.filter(m => m.user && !m.user.bot);
+          const porteurs = ids => humains
+            .filter(m => (m.roles || []).some(r => ids.indexOf(r) !== -1))
+            .map(carte)
+            .sort((a, b) => String(a.matricule || "zzz").localeCompare(String(b.matricule || "zzz")));
+
+          // L etat-major d abord : c est le sommet de la hierarchie.
+          const etatMajor = [
+            { rang: "Command Staff",   ic: "⭐", gens: porteurs([BUREAU_CS]) },
+            { rang: "Supervisor Team", ic: "🎖️", gens: porteurs([BUREAU_ST]) },
+            { rang: "Troopers",        ic: "👮", gens: porteurs(["1505148850699112478"]) }
+          ];
+
+          const divisions = BUREAU_DIVISIONS.map(d => {
+            const lead = porteurs(d.lead || []);
+            const colead = porteurs(d.colead || []).filter(p => !lead.some(l => l.id === p.id));
+            const encadre = lead.concat(colead).map(p => p.id);
+            const gens = porteurs(d.roles).filter(p => encadre.indexOf(p.id) === -1);
+            return {
+              code: d.code, nom: d.nom, ic: d.ic, adresse: d.adr + "@sasp.com",
+              lead, colead, membres: gens,
+              effectif: lead.length + colead.length + gens.length
+            };
+          });
+
+          return json({ ok: true, etat_major: etatMajor, divisions,
+            effectif: humains.filter(m => bureauEstPersonnel(m.roles)).length });
         }
 
         // ── Annuaire, pour choisir un destinataire ─────────────────

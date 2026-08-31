@@ -215,6 +215,74 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
   border-top-color:var(--bleu);border-radius:50%;animation:tourner .8s linear infinite}
 @keyframes tourner{to{transform:rotate(360deg)}}
 
+/* ── la barre des tâches, en liste de salons ──────────────────── */
+/* Reprise de la colonne de gauche de Discord : un dièse, un nom en
+   minuscules, le gris qui s'éclaircit au survol. Ce que tout le monde
+   sait déjà lire. */
+#barre .cat{flex:none;display:flex;flex-direction:column;justify-content:center;
+  padding:0 16px 0 4px;margin-right:6px;border-right:1px solid var(--bord);height:46px}
+#barre .cat b{font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--t0);
+  white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis}
+#barre .cat i{font-style:normal;font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--t3);margin-top:3px}
+.tache{display:flex;flex-direction:row;align-items:center;gap:7px;
+  min-width:0;height:34px;padding:0 10px;border:0;border-radius:5px;background:transparent;
+  color:#949BA4;cursor:pointer;transition:background .1s,color .1s;position:relative}
+.tache:hover{background:rgba(255,255,255,.055);color:#DBDEE1}
+.tache.on{background:rgba(255,255,255,.11);color:#fff}
+.tache.ouvert:not(.on){color:#DBDEE1}
+.tache.ouvert:after{content:"";position:absolute;bottom:2px;left:50%;transform:translateX(-50%);
+  width:16px;height:2px;border-radius:2px;background:#DBDEE1;opacity:.8}
+.tache.on:after{width:22px;background:#fff;opacity:1}
+.tache .di{flex:none;font-size:17px;line-height:1;color:#80848E;font-weight:400}
+.tache.on .di,.tache:hover .di{color:currentColor}
+.tache .et{font-size:13.5px;font-weight:500;white-space:nowrap;letter-spacing:.005em}
+.tache .badge{position:static;margin-left:4px;min-width:16px;height:16px;padding:0 5px;
+  border-radius:8px;background:var(--rouge);color:#3B0A0A;font-size:10.5px;font-weight:700;
+  display:grid;place-items:center}
+#barre .demarrer{width:40px;min-width:40px;justify-content:center;padding:0}
+#barre{height:60px}
+#bureau{inset:0 0 60px 0}
+
+/* ── les salons d'une division ────────────────────────────────── */
+.salons{flex:none;width:216px;display:flex;flex-direction:column;padding:12px 8px;
+  background:rgba(0,0,0,.24);border-right:1px solid var(--bord);overflow-y:auto}
+.salons .tt{padding:6px 8px 8px;font-size:11px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.salons button{display:flex;align-items:center;gap:7px;width:100%;height:33px;padding:0 8px;
+  margin-bottom:1px;background:none;border:0;border-radius:5px;color:#949BA4;cursor:pointer;
+  font-size:14px;text-align:left;transition:background .1s,color .1s}
+.salons button:hover{background:rgba(255,255,255,.045);color:#DBDEE1}
+.salons button.on{background:rgba(255,255,255,.11);color:#fff}
+.salons button .di{flex:none;font-size:18px;color:#80848E;line-height:1}
+.salons button.on .di,.salons button:hover .di{color:currentColor}
+.salons button span.n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.salons hr{border:0;border-top:1px solid var(--bord);margin:9px 4px}
+.salonTete{flex:none;display:flex;align-items:center;gap:9px;padding:12px 18px;
+  border-bottom:1px solid var(--bord);background:rgba(255,255,255,.02)}
+.salonTete .di{font-size:19px;color:#80848E}
+.salonTete b{font-size:14.5px}
+.salonTete p{margin:0 0 0 6px;padding-left:12px;border-left:1px solid var(--bord);
+  font-size:12.5px;color:var(--t3)}
+
+/* ── l'organigramme ───────────────────────────────────────────── */
+.orgCarte{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:10px;
+  border:1px solid var(--bord);background:rgba(255,255,255,.035)}
+.orgCarte .av{flex:none;width:38px;height:38px;border-radius:9px;display:grid;place-items:center;
+  background:var(--bleu-sombre);font-size:13px;font-weight:700;color:var(--bleu2)}
+.orgCarte.chef .av{background:rgba(200,162,74,.2);color:#D9B863}
+.orgCarte b{display:block;font-size:13.5px}
+.orgCarte .fiche{margin-top:3px;font-family:var(--fm);font-size:11.5px;color:var(--t3);
+  display:flex;flex-wrap:wrap;gap:4px 14px}
+.orgBloc{margin-bottom:26px}
+.orgBloc > h3{margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--t2);display:flex;align-items:center;gap:9px}
+.orgBloc > h3 em{font-style:normal;margin-left:auto;font-size:11.5px;font-weight:500;
+  letter-spacing:0;text-transform:none;color:var(--t3)}
+.orgGrille{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.orgTrait{margin:0 0 12px;padding-left:14px;border-left:2px solid var(--bord2);
+  font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3)}
+
 /* ── widgets libres ───────────────────────────────────────────── */
 /* Ils flottent sur le bureau et se rangent ou l on veut, plutot que
    dans une colonne figee a droite. */
@@ -384,7 +452,8 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
   <button class="tache demarrer" id="btDemarrer" title="Menu">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg>
   </button>
-  <div id="taches" style="display:flex;gap:4px;align-items:center;overflow-x:auto"></div>
+  <div class="cat"><b>San Andreas State Police</b><i>Sud</i></div>
+  <div id="taches" style="display:flex;gap:2px;align-items:center;overflow-x:auto"></div>
   <div class="fin" id="barreFin"></div>
 </div>
 
@@ -396,7 +465,7 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
 <div id="porte"><div class="pcard" id="pcard"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=20260831-widgets"></script>
+<script src="config.js?v=20260831-salons"></script>
 <script>
 /* ============================================================
    POSTE DE TRAVAIL SASP
@@ -481,7 +550,7 @@ function fenetre(cle,o){
   const f=el('div','fen');
   const l=Math.min(o.l||940,innerWidth-60), h=Math.min(o.h||620,innerHeight-140);
   const g=Math.max(20,Math.round((innerWidth-l)/2)+decalage-60);
-  const t=Math.max(14,Math.round((innerHeight-78-h)/2)+decalage-40);
+  const t=Math.max(14,Math.round((innerHeight-60-h)/2)+decalage-40);
   decalage=(decalage+30)%150;
   f.style.cssText=`left:${g}px;top:${t}px;width:${l}px;height:${h}px;z-index:${++zTop}`;
   f.innerHTML=`<header>
@@ -578,11 +647,14 @@ function basculerFenetre(cle){
 let RACCOURCIS=[];
 function majTaches(){
   const z=$('#taches');
+  // Un dièse, un nom en minuscules : la barre se lit comme une liste de
+  // salons Discord plutôt que comme une rangée de tuiles.
   z.innerHTML=RACCOURCIS.map(r=>{
     const o=FEN[r.cle];
     const cl='tache'+(o?(o.active&&!o.rangee?' on':' ouvert'):'');
+    const n=(r.court||r.titre).toLowerCase().replace(/\s+/g,'-');
     return `<button class="${cl}" data-app="${esc(r.cle)}" title="${esc(r.titre)}">
-      <span style="font-size:19px">${r.icone}</span><span class="et">${esc(r.court||r.titre)}</span>
+      <span class="di">#</span><span class="et">${esc(n)}</span>
       ${r.badge?`<span class="badge">${r.badge}</span>`:''}</button>`;
   }).join('');
   $$('#taches [data-app]',z).forEach(b=>b.onclick=()=>{
@@ -816,7 +888,7 @@ function ouvrirAnnonces(){
             <b style="font-size:15px;color:var(--bleu2)">${esc(x.titre)}</b>
             ${x.division?`<span class="puce p-bleu">${esc(x.division)}</span>`:''}
             <span style="margin-left:auto;font-size:11.5px;color:var(--t3)">
-              ${esc(x.auteur||'—')} · ${new Date(x.created_at).toLocaleDateString('fr-FR')}</span>
+              ${esc(x.auteur||'-')} · ${new Date(x.created_at).toLocaleDateString('fr-FR')}</span>
             ${r.data.peut_publier?`<button class="btn sm dgr" data-sup="${x.id}">✕</button>`:''}
           </div>
           ${x.corps?`<div style="font-size:13.5px;color:var(--t1);line-height:1.75;white-space:pre-wrap">${esc(x.corps)}</div>`:''}
@@ -851,6 +923,110 @@ function ouvrirAnnonces(){
 }
 
 /* ---------- menu du bureau, au clic droit ---------- */
+/* ============================================================
+   FOND D'ÉCRAN
+   Comme la disposition des widgets, le fond appartient au poste :
+   il vit dans le navigateur, personne d'autre ne le subit.
+   ============================================================ */
+const FOND_CLE='sasp.bureau.fond';
+const DEGRADE_ORIGINE=
+  'radial-gradient(1200px 620px at 50% 34%, rgba(40,70,120,.30), transparent 70%),'+
+  'radial-gradient(900px 520px at 84% 92%, rgba(150,95,40,.16), transparent 70%),'+
+  'linear-gradient(180deg,#060A12 0%,#0A1120 45%,#0D1424 100%)';
+
+const FONDS={
+  nuit:   {n:'Nuit bleue',   apercu:'linear-gradient(160deg,#0A1120,#060A12)', css:DEGRADE_ORIGINE},
+  ardoise:{n:'Ardoise',      apercu:'linear-gradient(160deg,#1B2029,#0B0D11)',
+    css:'radial-gradient(1100px 600px at 50% 30%, rgba(120,130,150,.14), transparent 70%),'+
+        'linear-gradient(180deg,#0D1014 0%,#151A21 55%,#0A0C10 100%)'},
+  cuivre: {n:'Cuivre',       apercu:'linear-gradient(160deg,#2A1C10,#0D0906)',
+    css:'radial-gradient(1000px 560px at 34% 26%, rgba(190,120,50,.20), transparent 70%),'+
+        'linear-gradient(180deg,#0B0805 0%,#1A1108 50%,#0D0906 100%)'},
+  foret:  {n:'Forêt',        apercu:'linear-gradient(160deg,#0F2119,#05100B)',
+    css:'radial-gradient(1000px 560px at 62% 30%, rgba(45,130,95,.18), transparent 70%),'+
+        'linear-gradient(180deg,#040A07 0%,#0C1A14 52%,#060E0A 100%)'},
+  aube:   {n:'Aube',         apercu:'linear-gradient(160deg,#2B1836,#0B0710)',
+    css:'radial-gradient(1100px 600px at 44% 24%, rgba(140,80,190,.20), transparent 68%),'+
+        'radial-gradient(800px 460px at 80% 88%, rgba(210,110,90,.14), transparent 70%),'+
+        'linear-gradient(180deg,#080510 0%,#160C22 52%,#0A0710 100%)'},
+  encre:  {n:'Encre',        apercu:'linear-gradient(160deg,#111,#000)',
+    css:'linear-gradient(180deg,#000 0%,#0A0A0C 60%,#000 100%)'}
+};
+
+const IMAGES_FOND=[
+  {f:'assets/ceremonie-salle.webp',        n:'Salle de cérémonie'},
+  {f:'assets/service-housing-luxury-3.png',n:'Los Santos'},
+  {f:'villa-cayo.jpg',                     n:'Cayo Perico'},
+  {f:'cayo.png',                           n:'Littoral'}
+];
+
+function fondLire(){
+  try{ return JSON.parse(localStorage.getItem(FOND_CLE)||'null')||{t:'nuit'}; }
+  catch(e){ return {t:'nuit'}; }
+}
+function fondEcrire(v){
+  try{ localStorage.setItem(FOND_CLE,JSON.stringify(v)); }catch(e){}
+  fondAppliquer();
+}
+function fondAppliquer(){
+  const v=fondLire(), z=$('#fond'); if(!z)return;
+  let papier=$('.papier',z);
+  if(!papier){ papier=el('div','papier'); z.insertBefore(papier,z.firstChild); }
+  if(v.t==='image'&&v.src){
+    z.style.background=DEGRADE_ORIGINE;
+    // Un voile sombre par-dessus la photo : sans lui, le texte clair du
+    // bureau devient illisible sur les zones vives.
+    papier.style.cssText='position:absolute;inset:0;background-size:cover;'+
+      'background-position:center;background-image:'+
+      'linear-gradient(180deg,rgba(5,8,14,.62),rgba(5,8,14,.78)),url("'+
+      String(v.src).replace(/"/g,'%22')+'")';
+  }else{
+    papier.style.cssText='display:none';
+    z.style.background=(FONDS[v.t]||FONDS.nuit).css;
+  }
+}
+
+function fondDlg(){
+  const v=fondLire();
+  dlg({titre:'Fond d\'écran',pied:'<button class="btn pri" data-x>Fermer</button>',corps:`
+    <label class="lbl">Teintes</label>
+    <div id="fdT" style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:8px">
+      ${Object.keys(FONDS).map(k=>`<button class="fdOpt" data-t="${k}"
+        style="height:62px;border-radius:9px;cursor:pointer;color:var(--t1);font-size:11.5px;
+        display:flex;align-items:flex-end;padding:7px 9px;background:${FONDS[k].apercu};
+        border:2px solid ${v.t===k?'var(--bleu)':'var(--bord)'}">${esc(FONDS[k].n)}</button>`).join('')}
+    </div>
+    <label class="lbl" style="margin-top:18px">Images du département</label>
+    <div id="fdI" style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:8px">
+      ${IMAGES_FOND.map(i=>`<button class="fdOpt" data-src="${esc(i.f)}"
+        style="height:76px;border-radius:9px;cursor:pointer;color:#fff;font-size:11.5px;
+        display:flex;align-items:flex-end;padding:7px 9px;text-shadow:0 1px 4px #000;
+        background:linear-gradient(180deg,transparent,rgba(0,0,0,.6)),url('${esc(i.f)}') center/cover;
+        border:2px solid ${v.src===i.f?'var(--bleu)':'var(--bord)'}">${esc(i.n)}</button>`).join('')}
+    </div>
+    <label class="lbl" style="margin-top:18px">Ou l'adresse d'une image</label>
+    <div style="display:flex;gap:9px;margin-top:8px">
+      <input class="champ" id="fdUrl" placeholder="https://…"
+        value="${v.t==='image'&&IMAGES_FOND.every(i=>i.f!==v.src)?esc(v.src||''):''}">
+      <button class="btn" id="fdUrlOk">Appliquer</button>
+    </div>`,
+    apres:z=>{
+      const marquer=()=>$$('.fdOpt',z).forEach(b=>{
+        const c=fondLire();
+        const pris=b.dataset.t?(c.t===b.dataset.t):(c.t==='image'&&c.src===b.dataset.src);
+        b.style.borderColor=pris?'var(--bleu)':'var(--bord)';
+      });
+      $$('[data-t]',z).forEach(b=>b.onclick=()=>{ fondEcrire({t:b.dataset.t}); marquer(); });
+      $$('[data-src]',z).forEach(b=>b.onclick=()=>{ fondEcrire({t:'image',src:b.dataset.src}); marquer(); });
+      $('#fdUrlOk',z).onclick=()=>{
+        const u=$('#fdUrl',z).value.trim();
+        if(!u)return avis('Adresse vide','','err');
+        if(!/^https?:\/\//i.test(u))return avis('Adresse invalide','L\'adresse doit commencer par http.','err');
+        fondEcrire({t:'image',src:u}); marquer(); avis('Fond appliqué','','ok');
+      };
+    }});
+}
+
 function menuBureau(x,y){
   const m=$('#menuBureau');
   const poses=PLAN.map(w=>w.cle);
@@ -861,12 +1037,13 @@ function menuBureau(x,y){
         <span style="font-size:15px">${c.icone}</span>${esc(c.titre)}
         ${deja?'<span style="margin-left:auto;font-size:11px;color:var(--t3)">posé</span>':''}</button>`;
     }).join('')+
-    `<hr><button data-raz>↺ Remettre la disposition d'origine</button>`;
+    `<hr><button data-fond>🖼️ Changer le fond d'écran…</button><button data-raz>↺ Remettre la disposition d'origine</button>`;
   m.style.display='block';
   m.style.left=Math.min(x,innerWidth-m.offsetWidth-10)+'px';
   m.style.top=Math.min(y,innerHeight-m.offsetHeight-10)+'px';
   $$('[data-add]',m).forEach(b=>{ if(!b.disabled)b.onclick=()=>{
     m.style.display='none'; ajouterWidget(b.dataset.add,x-40,y-30); }; });
+  $('[data-fond]',m).onclick=()=>{ m.style.display='none'; fondDlg(); };
   $('[data-raz]',m).onclick=()=>{
     m.style.display='none';
     try{ localStorage.removeItem(RANGEMENT); }catch(e){}
@@ -931,31 +1108,165 @@ function ouvrirDivisions(){
 }
 
 /* ---------- une division ---------- */
-function ouvrirDivision(code){
+// Chaque division retrouve ses salons Discord, dans le meme ordre et
+// sous les memes noms : c'est le site qui vient a l'habitude, pas
+// l'inverse.
+const SALONS=[
+  {c:'annonce',        n:'annonce',         t:'Annonces de l\'encadrement'},
+  {c:'discussion-lead',n:'discussion-lead', t:'Entre encadrants uniquement', lead:true},
+  {c:'discussion',     n:'discussion',      t:'Toute la division'},
+  {c:'documents',      n:'documents',       t:'Procédures et fiches'},
+  {c:'pseudo',         n:'pseudo',          t:'Nom RP et indicatif'},
+  {c:'equipe',         n:'equipe',          t:'Qui compose la division'}
+];
+
+function ouvrirDivision(code,salon){
   const d=MOI.toutes.filter(x=>x.code===code)[0]||{code,nom:code};
   const lead=MOI.divisions.some(x=>x.code===code&&x.lead);
-  fenetre('div:'+code,{titre:d.nom,sous:code,icone:'🚔',l:980,h:660,apres:o=>{
+  fenetre('div:'+code,{titre:d.nom,sous:code,icone:d.ic||'🚔',l:1020,h:680,apres:o=>{
     o.corps.style.display='flex';
-    o.corps.style.flexDirection='column';
+    o.corps.style.flexDirection='row';
+    const dispo=SALONS.filter(s=>!s.lead||lead);
     o.corps.innerHTML=`
-      <div class="onglets">
-        <button data-t="global" class="on">💬 Discussion générale</button>
-        ${lead?'<button data-t="lead">🛡️ Discussion encadrement</button>':''}
-        <button data-t="docs">📄 Documents</button>
-        <button data-t="contacts">📮 Demandes reçues</button>
-      </div>
-      <div style="flex:1;min-height:0;display:flex;flex-direction:column" id="dvCorps"></div>`;
-    const corps=$('#dvCorps',o.corps);
+      <nav class="salons">
+        <div class="tt">${esc(d.nom)}</div>
+        ${dispo.map(s=>`<button data-t="${s.c}"><span class="di">#</span>
+          <span class="n">${esc(s.n)}</span></button>`).join('')}
+        ${lead?`<hr><button data-t="demandes"><span class="di">📮</span>
+          <span class="n">demandes reçues</span></button>`:''}
+      </nav>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <div class="salonTete" id="dvTete"></div>
+        <div style="flex:1;min-height:0;display:flex;flex-direction:column" id="dvCorps"></div>
+      </div>`;
+    const corps=$('#dvCorps',o.corps), tete=$('#dvTete',o.corps);
     const aller=t=>{
-      $$('.onglets button',o.corps).forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+      $$('.salons button',o.corps).forEach(b=>b.classList.toggle('on',b.dataset.t===t));
       if(o.arret){o.arret();o.arret=null}
-      if(t==='global'||t==='lead')filDiscussion(o,corps,code,t);
-      else if(t==='docs')filDocuments(corps,code,lead);
-      else filContacts(corps,code);
+      const s=SALONS.filter(x=>x.c===t)[0];
+      tete.innerHTML=s
+        ? `<span class="di">#</span><b>${esc(s.n)}</b><p>${esc(s.t)}</p>`
+        : `<span class="di">📮</span><b>demandes reçues</b><p>Contacts venus d'autres divisions</p>`;
+      if(t==='annonce')        filAnnoncesDivision(corps,code,lead);
+      else if(t==='documents') filDocuments(corps,code,lead);
+      else if(t==='equipe')    filEquipe(corps,code);
+      else if(t==='demandes')  filContacts(corps,code);
+      else filDiscussion(o,corps,code,t==='discussion-lead'?'lead':t==='pseudo'?'pseudo':'global');
     };
-    $$('.onglets button',o.corps).forEach(b=>b.onclick=()=>aller(b.dataset.t));
+    $$('.salons button',o.corps).forEach(b=>b.onclick=()=>aller(b.dataset.t));
     o.avantFermeture=()=>{ if(o.arret)o.arret(); };
-    aller('global');
+    aller(dispo.some(s=>s.c===salon)?salon:'discussion');
+  }});
+}
+
+/* ---------- # annonce ---------- */
+function filAnnoncesDivision(zone,code,lead){
+  zone.innerHTML='<div class="vide">Chargement…</div>';
+  const charger=async()=>{
+    const r=await api('/api/bureau/annonces?division='+encodeURIComponent(code));
+    if(!r.ok){zone.innerHTML=`<div class="vide"><b>Indisponible</b>${esc(r.data.error||'')}</div>`;return}
+    const a=r.data.annonces||[], peut=r.data.peut_publier;
+    zone.innerHTML=`<div style="flex:1;min-height:0;overflow:auto" class="pad" id="anL"></div>
+      ${peut?`<div style="flex:none;padding:12px 16px;border-top:1px solid var(--bord)">
+        <button class="btn pri" id="anAdd">＋ Publier dans ce salon</button></div>`:''}`;
+    $('#anL',zone).innerHTML=a.length?a.map(x=>`<article style="padding:15px 17px;border-radius:11px;
+        border:1px solid var(--bord);background:rgba(255,255,255,.035);margin-bottom:11px">
+        <div style="display:flex;gap:9px;align-items:center;margin-bottom:6px">
+          <b style="font-size:14.5px;color:var(--bleu2)">${esc(x.titre)}</b>
+          <span style="margin-left:auto;font-size:11.5px;color:var(--t3)">${esc(x.auteur||'-')} ·
+            ${new Date(x.created_at).toLocaleDateString('fr-FR')}</span>
+          ${peut?`<button class="btn sm dgr" data-sup="${x.id}">✕</button>`:''}
+        </div>
+        ${x.corps?`<div style="font-size:13.5px;color:var(--t1);line-height:1.7;
+          white-space:pre-wrap">${esc(x.corps)}</div>`:''}
+      </article>`).join('')
+      :'<div class="vide"><b>Aucune annonce</b>Ce salon est encore vide.</div>';
+    const ab=$('#anAdd',zone);
+    if(ab)ab.onclick=()=>dlg({titre:'Publier dans #annonce',ok:'Publier',corps:`
+      <label class="lbl">Titre</label><input class="champ" id="adT">
+      <label class="lbl" style="margin-top:14px">Message</label>
+      <textarea class="champ" id="adC" style="min-height:140px"></textarea>`,
+      onOk:async v=>{
+        const t=$('#adT',v).value.trim();
+        if(!t){avis('Titre manquant','','err');return false}
+        const rr=await api('/api/bureau/annonces',{method:'POST',
+          body:{titre:t,corps:$('#adC',v).value,division:code}});
+        if(!rr.ok){avis('Publication refusée',rr.data.error||'','err');return false}
+        avis('Annonce publiée','','ok'); charger();
+      }});
+    $$('[data-sup]',zone).forEach(b=>b.onclick=()=>confirmer('Retirer l\'annonce',
+      'Elle disparaîtra pour toute la division.','Retirer',async()=>{
+        const rr=await api('/api/bureau/annonces?id='+b.dataset.sup,{method:'DELETE'});
+        if(!rr.ok)return avis('Échec',rr.data.error||'','err');
+        charger();
+      },true));
+  };
+  charger();
+}
+
+/* ---------- # equipe ---------- */
+function filEquipe(zone,code){
+  zone.innerHTML='<div class="vide">Chargement…</div>';
+  api('/api/bureau/organigramme').then(r=>{
+    if(!r.ok){zone.innerHTML=`<div class="vide"><b>Indisponible</b>${esc(r.data.error||'')}</div>`;return}
+    const d=(r.data.divisions||[]).filter(x=>x.code===code)[0];
+    if(!d){zone.innerHTML='<div class="vide"><b>Division inconnue</b></div>';return}
+    zone.innerHTML=`<div style="flex:1;min-height:0;overflow:auto" class="pad">
+      ${orgGroupe('Encadrement',d.lead,true)}
+      ${orgGroupe('Adjoints',d.colead,true)}
+      ${orgGroupe('Membres',d.membres,false)}
+      ${d.effectif?'':'<div class="vide"><b>Aucun effectif</b>Aucun rôle Discord n\'est attribué.</div>'}
+    </div>`;
+  });
+}
+
+// Un bloc de l'organigramme : le meme rendu partout, du salon #equipe
+// au dossier Organigramme.
+function orgGroupe(titre,gens,chef){
+  if(!gens||!gens.length)return '';
+  return `<div class="orgBloc"><h3>${esc(titre)}<em>${gens.length}</em></h3>
+    <div class="orgGrille">${gens.map(p=>orgCarte(p,chef)).join('')}</div></div>`;
+}
+function orgCarte(p,chef){
+  const ini=(p.nom||'?').split(/\s+/).map(x=>x[0]||'').join('').slice(0,2).toUpperCase();
+  return `<div class="orgCarte${chef?' chef':''}">
+    <div class="av">${esc(ini)}</div>
+    <div style="flex:1;min-width:0">
+      <b>${esc(p.nom)}</b>
+      ${p.grade?`<div style="font-size:11.5px;color:var(--t2);margin-top:2px">${esc(p.grade)}</div>`:''}
+      <div class="fiche">
+        <span>${p.matricule?'#'+esc(p.matricule):'matricule -'}</span>
+        <span>${p.telephone?esc(p.telephone):'tél. -'}</span>
+        <span>${esc(p.mail)}</span>
+      </div>
+    </div></div>`;
+}
+
+/* ---------- le dossier Organigramme ---------- */
+function ouvrirOrganigramme(){
+  fenetre('organigramme',{titre:'Organigramme',icone:'🏛️',l:1080,h:720,apres:async o=>{
+    o.corps.innerHTML='<div class="vide">Chargement…</div>';
+    const r=await api('/api/bureau/organigramme');
+    if(!r.ok){o.corps.innerHTML=`<div class="vide"><b>Indisponible</b>${esc(r.data.error||'')}</div>`;return}
+    const em=r.data.etat_major||[], dv=r.data.divisions||[];
+    o.corps.innerHTML=`<div class="pad">
+      <p style="margin:0 0 22px;color:var(--t2);line-height:1.65">
+        La hiérarchie du poste et l'encadrement de chaque unité. Tout vient des rôles
+        Discord et du dossier agent : matricule, téléphone et adresse interne.
+        <b style="color:var(--t1)">${r.data.effectif}</b> membres du personnel.</p>
+      <div class="orgTrait">Hiérarchie du poste</div>
+      ${em.map(b=>orgGroupe(b.ic+'  '+b.rang,b.gens,b.rang!=='Troopers')).join('')}
+      <div class="orgTrait" style="margin-top:6px">Divisions et unités</div>
+      ${dv.map(d=>`<div class="orgBloc">
+        <h3><span style="font-size:15px">${d.ic||'🚔'}</span> ${esc(d.code)} · ${esc(d.nom)}
+          <em>${d.effectif} membre${d.effectif>1?'s':''} · ${esc(d.adresse)}</em></h3>
+        ${d.effectif?`<div class="orgGrille">
+            ${d.lead.map(p=>orgCarte(p,true)).join('')}
+            ${d.colead.map(p=>orgCarte(p,true)).join('')}
+            ${d.membres.map(p=>orgCarte(p,false)).join('')}</div>`
+          :'<div style="font-size:12.5px;color:var(--t3);padding:4px 2px">Aucun effectif.</div>'}
+      </div>`).join('')}
+    </div>`;
   }});
 }
 
@@ -1549,6 +1860,7 @@ function construireBureau(){
 
   // Tout se rejoint par la barre des taches ; les widgets portent le
   // reste. Les accès rapides faisaient doublon avec les deux.
+  fondAppliquer();
   PLAN=planLire();
   dessinerPlan();
 
@@ -1558,6 +1870,8 @@ function construireBureau(){
     {cle:'aegis',titre:'AEGIS',icone:'🛡️',court:'AEGIS',
      ouvrir:()=>ouvrirSite('aegis','AEGIS','🛡️','sasp/liaisons/#/dash','outil d\'enquête')},
     {cle:'divisions',titre:'Divisions',icone:'🚔',court:'Divisions',ouvrir:ouvrirDivisions},
+    {cle:'organigramme',titre:'Organigramme',icone:'🏛️',court:'Organigramme',
+     ouvrir:ouvrirOrganigramme},
     {cle:'mail',titre:'Messagerie',icone:'✉️',court:'Mail',ouvrir:ouvrirMail,badge:0},
     {cle:'demandes',titre:'Mes demandes',icone:'📮',court:'Demandes',ouvrir:ouvrirMesDemandes}
   ];
@@ -1565,8 +1879,8 @@ function construireBureau(){
 
   $('#barreFin').innerHTML=`
     <div class="sep"></div>
-    <button class="tache" id="btProfil"><span style="font-size:19px">👤</span><span class="et">Profil</span></button>
-    <button class="tache" id="btSortie"><span style="font-size:19px">⏻</span><span class="et">Déconnexion</span></button>`;
+    <button class="tache" id="btProfil"><span class="di">👤</span><span class="et">profil</span></button>
+    <button class="tache" id="btSortie"><span class="di">⏻</span><span class="et">déconnexion</span></button>`;
   $('#btProfil').onclick=()=>dlg({titre:'Mon profil',pied:'<button class="btn pri" data-x>Fermer</button>',
     corps:`<div style="display:grid;gap:12px">
       ${[['Agent',MOI.nom],['Adresse interne',MOI.adresse],['Identifiant Discord',MOI.discord_id],
