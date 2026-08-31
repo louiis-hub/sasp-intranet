@@ -1010,6 +1010,15 @@ function majEntete(){
 
 // Changer de dossier recharge tout : les fiches, les ficelles et le
 // numero de version. On passe par l'adresse pour que le lien reste bon.
+function ouvrirDossier(id){
+  if(id===BOARD_ID)return;
+  BOARD_ID=id;
+  const u=new URL(location.href);
+  u.searchParams.set('dossier',String(id));
+  history.replaceState(null,'',u);
+  demarrer();
+}
+
 async function dossiersDlg(){
   const r=await api('/api/sasp/tableaux');
   if(!r.ok)return toast('Liste indisponible',r.data.error||'','err');
@@ -1023,16 +1032,7 @@ async function dossiersDlg(){
         <span class="rv">${t.updated_at?new Date(t.updated_at).toLocaleDateString('fr-FR'):'—'}
           ${t.id===BOARD_ID?' · ouvert':''}</span></div>`).join('')
       ||'<div class="empty"><b>Aucun dossier</b>Créez-en un.</div>'});
-  $$('[data-d]',m.scrim).forEach(x=>x.onclick=()=>{
-    const id=+x.dataset.d;
-    m.close();
-    if(id===BOARD_ID)return;
-    BOARD_ID=id;
-    const u=new URL(location.href);
-    u.searchParams.set('dossier',String(id));
-    history.replaceState(null,'',u);
-    demarrer();
-  });
+  $$('[data-d]',m.scrim).forEach(x=>x.onclick=()=>{m.close();ouvrirDossier(+x.dataset.d)});
   const nb=$('#dNew',m.scrim);
   if(nb)nb.onclick=()=>{
     m.close();
@@ -1043,11 +1043,7 @@ async function dossiersDlg(){
         const rr=await api('/api/sasp/tableaux',{method:'POST',
           body:{nom:$('#ndN',sc).value.trim()||'Nouveau dossier',dossier:$('#ndR',sc).value.trim()}});
         if(!rr.ok)return toast('Création impossible',rr.data.error||'','err');
-        BOARD_ID=rr.data.tableau.id;
-        const u=new URL(location.href);
-        u.searchParams.set('dossier',String(BOARD_ID));
-        history.replaceState(null,'',u);
-        demarrer();
+        ouvrirDossier(rr.data.tableau.id);
       }});
   };
 }
@@ -1087,6 +1083,8 @@ async function demarrer(){
     if(!location.hash)location.hash='#/board';
   }
   render();route();
+  // On reste sur la page ouverte : basculer de dossier depuis la liste
+  // des enquetes ne doit pas renvoyer sur le liege sans prevenir.
   let vue=null;try{vue=localStorage.getItem(VUE_KEY)}catch(e){}
   if(!vue&&S.nodes.length)fitView(true);else applyView();
   toast('AEGIS chargé',S.nom+' · '+S.nodes.length+' élément'+(S.nodes.length>1?'s':''),'ok');
@@ -1998,11 +1996,23 @@ function pDash(v){
 }
 
 /* ---------- enquêtes ---------- */
-function pCases(v){
+async function pCases(v){
   const cs=byType('enquete');
   v.innerHTML=`<div class="pwrap">
-   <div class="phead"><div><h1>Enquêtes</h1><p>Chaque dossier est un élément du tableau ; ses pièces sont celles qui lui sont reliées.</p></div>
-     <div class="acts"><button class="btn pri" id="cNew" ${MOI.ecriture?'':'disabled'}>${svg(I.plus,13)}Nouveau dossier</button></div></div>
+   <div class="phead"><div><h1>Enquêtes</h1>
+     <p>Chaque dossier est un tableau à part. Ouvrez-en un pour travailler dessus ; les fiches d'enquête posées à l'intérieur apparaissent en dessous.</p></div>
+     <div class="acts"><button class="btn pri" id="cNewD" ${MOI.ecriture?'':'disabled'}>${svg(I.plus,13)}Nouveau dossier</button></div></div>
+
+   <section class="sheet"><header><h3>Dossiers d'enquête</h3>
+     <div class="r"><span class="lbl" id="cN">chargement…</span></div></header>
+     <div class="bd tight"><div class="tblwrap"><table class="pt">
+       <thead><tr><th style="width:150px">N° de dossier</th><th>Intitulé</th>
+         <th style="width:110px">Éléments</th><th style="width:150px">Dernière écriture</th>
+         <th style="width:120px"></th></tr></thead>
+       <tbody id="cBody"><tr><td colspan="5"><div class="empty">Chargement…</div></td></tr></tbody>
+     </table></div></div></section>
+
+   <div class="lbl" style="margin:18px 0 9px;color:#E2CBA0">Fiches d'enquête dans le dossier ouvert</div>
    ${cs.map(c=>{
      const r=relsOf(c.id), grp={};
      r.forEach(x=>{(grp[x.o.t]=grp[x.o.t]||[]).push(x.o)});
@@ -2033,7 +2043,43 @@ function pCases(v){
   </div>`;
   $$('[data-open]',v).forEach(b=>b.onclick=()=>openOnBoard(b.dataset.open));
   $$('[data-id]',v).forEach(b=>b.onclick=()=>openOnBoard(b.dataset.id));
-  $('#cNew').onclick=()=>addDlg('enquete',()=>route());
+  $('#cNewD').onclick=()=>{
+    modal({title:'Nouveau dossier d\'enquête',ok:'Créer',
+      body:'<div class="f"><label>Intitulé</label><input id="ndN" placeholder="Opération …"></div>'+
+           '<div class="f"><label>N° de dossier</label><input id="ndR" class="mono" placeholder="ENQ-SUD-2026-000"></div>'+
+           '<p style="margin:6px 0 0;font-size:11.5px;color:var(--ink3);line-height:1.5">Un dossier est un tableau vide, séparé des autres.</p>',
+      onOk:async sc=>{
+        const rr=await api('/api/sasp/tableaux',{method:'POST',
+          body:{nom:$('#ndN',sc).value.trim()||'Nouveau dossier',dossier:$('#ndR',sc).value.trim()}});
+        if(!rr.ok)return toast('Création impossible',rr.data.error||'','err');
+        ouvrirDossier(rr.data.tableau.id);
+      }});
+  };
+
+  // La liste des dossiers vient du serveur : elle ne depend pas du
+  // tableau ouvert, c est justement ce qu on venait chercher ici.
+  const r=await api('/api/sasp/tableaux');
+  const corps=$('#cBody',v); if(!corps)return;
+  if(!r.ok){
+    corps.innerHTML='<tr><td colspan="5"><div class="empty"><b>Liste indisponible</b>'+esc(r.data.error||'')+'</div></td></tr>';
+    return;
+  }
+  const liste=r.data.tableaux||[];
+  $('#cN',v).textContent=liste.length+' dossier'+(liste.length>1?'s':'');
+  corps.innerHTML=liste.map(t=>{
+    const ouvert=t.id===BOARD_ID;
+    return `<tr class="clk" data-d="${t.id}" ${ouvert?'style="background:#F6EBC9"':''}>
+      <td class="mono" style="color:var(--red)">${esc(t.dossier||'—')}</td>
+      <td><span class="ttl">${esc(t.nom||'Sans nom')}</span>
+        ${ouvert?' <span class="tag t-grn">ouvert</span>':''}</td>
+      <td class="mono">${ouvert?S.nodes.length:'—'}</td>
+      <td class="mono" style="font-size:11px;color:var(--ink3)">
+        ${t.updated_at?new Date(t.updated_at).toLocaleDateString('fr-FR'):'—'}
+        ${t.updated_by?'<div style="font-size:10px;color:var(--ink4)">'+esc(t.updated_by)+'</div>':''}</td>
+      <td>${ouvert?'<span class="muted" style="font-size:11px">en cours</span>'
+        :'<button class="btn sm pri" data-o="'+t.id+'">Ouvrir</button>'}</td></tr>`;
+  }).join('')||'<tr><td colspan="5"><div class="empty"><b>Aucun dossier</b>Créez-en un.</div></td></tr>';
+  $$('#cBody [data-d]',v).forEach(x=>x.onclick=()=>ouvrirDossier(+x.dataset.d));
 }
 
 /* ---------- répertoire ---------- */
