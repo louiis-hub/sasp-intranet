@@ -1438,16 +1438,35 @@ function membresDe(idGroupe){
     .sort((a,b)=>a.rang-b.rang||titleOf(a.o).localeCompare(titleOf(b.o),'fr'));
 }
 
+// La disposition de l'organigramme, calculée une seule fois : l'écran
+// et le PNG la partagent, sinon les deux finiraient par diverger au
+// premier réglage de marge.
+const HDIM={BW:186,BH:64,GX:18,GY:94,MT:118};
+function hierarchieDisposition(g){
+  const membres=membresDe(g.id);
+  if(!membres.length)return null;
+  const {BW,BH,GX,GY,MT}=HDIM;
+  const paliers=RANGS.map(r=>({r,liste:membres.filter(m=>m.rang===r.n)})).filter(p=>p.liste.length);
+  const large=Math.max(...paliers.map(p=>p.liste.length*BW+(p.liste.length-1)*GX),BW+80);
+  const L=large+80, H=MT+paliers.length*(BH+GY)+20, cx=L/2;
+  paliers.forEach((p,pi)=>{
+    p.y=MT+pi*(BH+GY);
+    p.l=p.liste.length*BW+(p.liste.length-1)*GX;
+    p.x0=cx-p.l/2;
+    p.yPrec=pi===0?84:MT+(pi-1)*(BH+GY)+BH;
+    p.yBarre=p.y-GY/2;
+    p.liste.forEach((m,mi)=>{ m.x=p.x0+mi*(BW+GX); m.y=p.y; });
+  });
+  return {membres,paliers,L,H,cx};
+}
+
 // Organigramme en SVG : les traits doivent relier des boites de
 // largeurs variables, ce qu une grille HTML rend penible.
 function hierarchieSvg(g){
-  const membres=membresDe(g.id);
-  if(!membres.length)return '';
-  const BW=186,BH=64,GX=18,GY=94,MT=118;
-  const paliers=RANGS.map(r=>({r,liste:membres.filter(m=>m.rang===r.n)})).filter(p=>p.liste.length);
-  const large=Math.max(...paliers.map(p=>p.liste.length*BW+(p.liste.length-1)*GX),BW+80);
-  const L=large+80, H=MT+paliers.length*(BH+GY)+20;
-  const cx=L/2;
+  const D=hierarchieDisposition(g);
+  if(!D)return '';
+  const {BW,BH}=HDIM;
+  const {paliers,L,H,cx}=D;
 
   let s=`<svg viewBox="0 0 ${L} ${H}" width="100%" style="display:block;max-height:64vh">`;
   // Le groupe, en tête.
@@ -1457,12 +1476,8 @@ function hierarchieSvg(g){
   s+=`<text x="${cx}" y="68" text-anchor="middle" font-family="Special Elite,monospace" font-size="17"`+
      ` fill="#241F19">${esc(titleOf(g))}</text>`;
 
-  paliers.forEach((p,pi)=>{
-    const y=MT+pi*(BH+GY);
-    const l=p.liste.length*BW+(p.liste.length-1)*GX;
-    const x0=cx-l/2;
-    const yPrec=pi===0?84:MT+(pi-1)*(BH+GY)+BH;
-    const yBarre=y-GY/2;
+  paliers.forEach(p=>{
+    const y=p.y, l=p.l, x0=p.x0, yPrec=p.yPrec, yBarre=p.yBarre;
     // Descente depuis le palier precedent, puis barre horizontale.
     s+=`<path d="M${cx} ${yPrec} L${cx} ${yBarre}" stroke="#A8241C" stroke-width="2.4" fill="none"/>`;
     if(p.liste.length>1){
@@ -1472,8 +1487,8 @@ function hierarchieSvg(g){
     s+=`<text x="18" y="${y+BH/2+4}" font-family="Special Elite,monospace" font-size="10"`+
        ` letter-spacing="1.4" fill="${p.r.c}">${esc(p.r.l.toUpperCase())}</text>`;
 
-    p.liste.forEach((m,mi)=>{
-      const x=x0+mi*(BW+GX);
+    p.liste.forEach(m=>{
+      const x=m.x;
       s+=`<path d="M${x+BW/2} ${yBarre} L${x+BW/2} ${y}" stroke="#A8241C" stroke-width="2.4" fill="none"/>`;
       s+=`<g class="hNoeud" data-id="${m.o.id}" style="cursor:pointer">`;
       s+=`<rect x="${x}" y="${y}" width="${BW}" height="${BH}" rx="3" fill="#FBF6E9"`+
@@ -1495,12 +1510,114 @@ function hierarchieSvg(g){
 }
 const coupe=(s,n)=>String(s||'').length>n?String(s).slice(0,n-1)+'…':String(s||'');
 
+// Le PNG est dessiné sur un canvas plutôt que converti depuis le SVG :
+// une image SVG rasterisée par le navigateur n'a pas accès aux polices
+// de la page, et le rendu serait différent de ce qui est affiché.
+function hierarchieCanvas(g,echelle){
+  const D=hierarchieDisposition(g);
+  if(!D)return null;
+  const {BW,BH}=HDIM;
+  const {paliers,L,H,cx}=D;
+  const e=echelle||2;
+  const cv=document.createElement('canvas');
+  cv.width=L*e; cv.height=H*e;
+  const c=cv.getContext('2d');
+  c.scale(e,e);
+  c.textBaseline='alphabetic';
+
+  c.fillStyle='#F7F0DC'; c.fillRect(0,0,L,H);
+
+  // En-tête : le groupe.
+  c.fillStyle=sch(g.t).c;
+  c.strokeStyle='#3A2A14'; c.lineWidth=2;
+  c.beginPath(); c.rect(cx-125,18,250,66); c.fill(); c.stroke();
+  c.textAlign='center';
+  c.fillStyle='rgba(0,0,0,.55)';
+  c.font='9px "Special Elite", monospace';
+  c.fillText(sch(g.t).l.toUpperCase(),cx,44);
+  c.fillStyle='#241F19';
+  c.font='17px "Special Elite", monospace';
+  c.fillText(titleOf(g),cx,68);
+
+  paliers.forEach(p=>{
+    c.strokeStyle='#A8241C'; c.lineWidth=2.4;
+    c.beginPath(); c.moveTo(cx,p.yPrec); c.lineTo(cx,p.yBarre); c.stroke();
+    if(p.liste.length>1){
+      c.beginPath();
+      c.moveTo(p.x0+BW/2,p.yBarre); c.lineTo(p.x0+p.l-BW/2,p.yBarre); c.stroke();
+    }
+    c.textAlign='left';
+    c.fillStyle=p.r.c;
+    c.font='10px "Special Elite", monospace';
+    c.fillText(p.r.l.toUpperCase(),18,p.y+BH/2+4);
+
+    p.liste.forEach(m=>{
+      c.strokeStyle='#A8241C'; c.lineWidth=2.4;
+      c.beginPath(); c.moveTo(m.x+BW/2,p.yBarre); c.lineTo(m.x+BW/2,m.y); c.stroke();
+      c.fillStyle='#FBF6E9';
+      c.strokeStyle=p.r.c; c.lineWidth=2;
+      c.beginPath(); c.rect(m.x,m.y,BW,BH); c.fill(); c.stroke();
+      c.fillStyle=sch(m.o.t).c; c.fillRect(m.x,m.y,5,BH);
+      c.textAlign='left';
+      c.fillStyle='#241F19';
+      c.font='13px "Special Elite", monospace';
+      c.fillText(coupe(titleOf(m.o),19),m.x+14,m.y+25);
+      c.fillStyle='#7A6E5C';
+      c.font='9px "IBM Plex Mono", monospace';
+      c.fillText((sch(m.o.t).l+' · '+m.e.l).toUpperCase().slice(0,30),m.x+14,m.y+43);
+      for(let k=0;k<5;k++){
+        c.fillStyle=k<(m.o.r||0)?((m.o.r||0)>=4?'#A8221B':'#C0761A'):'rgba(120,100,70,.28)';
+        c.fillRect(m.x+14+k*11,m.y+50,8,3);
+      }
+    });
+  });
+
+  c.textAlign='right';
+  c.fillStyle='#9C8E78';
+  c.font='9px "IBM Plex Mono", monospace';
+  c.fillText('AEGIS · SASP SUD · '+new Date().toLocaleDateString('fr-FR'),L-14,H-10);
+  return cv;
+}
+
+function hierarchieNomFichier(g){
+  return ('hierarchie-'+titleOf(g)).replace(/[^A-Za-z0-9À-ÿ_-]+/g,'-');
+}
+
+async function hierarchieCopier(g){
+  const cv=hierarchieCanvas(g,2);
+  if(!cv)return;
+  if(!navigator.clipboard||!window.ClipboardItem){
+    toast('Copie indisponible','Votre navigateur ne la permet pas. Utilisez le téléchargement.','warn');
+    return;
+  }
+  cv.toBlob(async b=>{
+    try{
+      await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);
+      toast('Image copiée','Collez-la où vous voulez.','ok');
+    }catch(e){
+      toast('Copie refusée','Le navigateur l\'a bloquée. Utilisez le téléchargement.','warn');
+    }
+  },'image/png');
+}
+
+function hierarchieTelecharger(g){
+  const cv=hierarchieCanvas(g,2);
+  if(!cv)return;
+  const a=document.createElement('a');
+  a.href=cv.toDataURL('image/png');
+  a.download=hierarchieNomFichier(g)+'.png';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast('Organigramme téléchargé','','ok');
+}
+
 function hierarchieDlg(id){
   const g=node(id); if(!g)return;
   const membres=membresDe(id);
   const svg2=hierarchieSvg(g);
   const m=modal({title:'Hiérarchie · '+titleOf(g),
-    foot:'<button class="btn" data-x>Fermer</button>',
+    foot:(svg2?'<button class="btn" id="hCopy">Copier l\'image</button>'+
+               '<button class="btn" id="hPng">Télécharger le PNG</button>':'')+
+         '<button class="btn pri" data-x>Fermer</button>',
     body: svg2
       ? `<div style="background:rgba(255,255,255,.5);border:1px solid #C0A472;border-radius:3px;padding:10px;overflow:auto">${svg2}</div>`+
         `<p style="margin:11px 0 0;font-size:11.5px;color:var(--ink3);line-height:1.55">`+
@@ -1510,6 +1627,49 @@ function hierarchieDlg(id){
       : `<div class="empty"><b>Personne n'est rattaché</b>Reliez des personnes à ce groupe, `+
         `puis donnez un rang à chaque ficelle.</div>`});
   $$('.hNoeud',m.scrim).forEach(x=>x.onclick=()=>{m.close();openOnBoard(x.dataset.id)});
+  const bc=$('#hCopy',m.scrim); if(bc)bc.onclick=()=>hierarchieCopier(g);
+  const bp=$('#hPng',m.scrim);  if(bp)bp.onclick=()=>hierarchieTelecharger(g);
+}
+
+// ── Le contenu d'une fiche Enquête ────────────────────────────────
+// Une fiche Enquête sert de couverture au dossier : on veut voir d'un
+// coup tout ce qui lui est rattaché, sans parcourir le liège.
+function dossierDlg(id){
+  const e=node(id); if(!e)return;
+  const liens=relsOf(id);
+  const grp={};
+  liens.forEach(x=>{(grp[x.o.t]=grp[x.o.t]||[]).push(x)});
+  const rattaches=new Set(liens.map(x=>x.o.id)); rattaches.add(id);
+  const dehors=S.nodes.filter(n=>!rattaches.has(n.id));
+  const d=e.d||{};
+
+  const bloc=(t,liste)=>`<div style="background:#F7F0DC;border:1px solid #D6C79F;border-radius:2px;padding:9px 11px">
+     <div style="display:flex;gap:7px;align-items:center;margin-bottom:6px;color:${sch(t).c}">
+       ${svg(sch(t).i,13)}<span style="font-family:var(--f-ui);font-size:11px;letter-spacing:.1em;text-transform:uppercase">${esc(sch(t).l)}</span>
+       <span class="mono" style="margin-left:auto;font-size:10px;color:var(--ink4)">${liste.length}</span></div>
+     ${liste.map(x=>`<div class="relrow dNoeud" data-id="${x.o.id}" style="border-color:#E0D3B2;padding:4px 0">
+       <span class="rv">${x.dir}</span><span class="rn">${esc(titleOf(x.o))}</span></div>`).join('')}
+   </div>`;
+
+  const m=modal({title:'Dossier · '+titleOf(e),
+    foot:'<button class="btn pri" data-x>Fermer</button>',
+    body:`
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">
+        ${d.numero?`<span class="tag t-gry">${esc(d.numero)}</span>`:''}
+        ${d.priorite?`<span class="tag ${d.priorite==='Critique'?'t-red':d.priorite==='Haute'?'t-amb':'t-gry'}">${esc(d.priorite)}</span>`:''}
+        ${d.statut?`<span class="tag ${d.statut==='Active'?'t-grn':'t-gry'}">${esc(d.statut)}</span>`:''}
+        ${d.classification?`<span class="tag t-red">${esc(d.classification)}</span>`:''}
+      </div>
+      ${d.resume?`<p style="margin:0 0 13px;color:var(--ink2);line-height:1.6">${esc(d.resume)}</p>`:''}
+      <div class="isec">Éléments rattachés<span>${liens.length}</span></div>
+      ${liens.length
+        ? `<div class="grid g2" style="gap:10px">${Object.keys(grp)
+            .sort((a,b)=>grp[b].length-grp[a].length).map(t=>bloc(t,grp[t])).join('')}</div>`
+        : `<div class="empty"><b>Rien n'est rattaché</b>Reliez des éléments à cette fiche pour les voir ici.</div>`}
+      ${dehors.length?`<p style="margin:13px 0 0;font-size:11.5px;color:var(--ink3);line-height:1.55">
+        ${dehors.length} élément${dehors.length>1?'s':''} du tableau ne ${dehors.length>1?'sont':'est'} pas rattaché${dehors.length>1?'s':''}
+        à cette fiche. Ils restent visibles dans le Répertoire.</p>`:''}`});
+  $$('.dNoeud',m.scrim).forEach(x=>x.onclick=()=>{m.close();openOnBoard(x.dataset.id)});
 }
 
 /* ============================================================
@@ -1540,6 +1700,9 @@ function selectNode(id){
      <div class="isec">Fiche ${esc(T.l.toLowerCase())}<span id="fSave"></span></div>
      <p style="margin:-4px 0 10px;font-size:11px;color:#7A6746;line-height:1.45">Rattachements à d'autres éléments : voir Relations ci-dessous.</p>
      ${niveauHTML(n.r,'i_')}
+     ${n.t==='enquete'?`<div class="isec">Dossier<span>${relsOf(n.id).length}</span></div>`+
+       `<button class="btn sm" id="iDossier" style="width:100%;justify-content:center">`+
+       `${svg(I.case,12)}Voir tout le dossier</button>`:''}
      ${A_HIERARCHIE(n.t)?(function(){
        const mb=membresDe(n.id);
        const paliers=RANGS.map(r=>({r,liste:mb.filter(x=>x.rang===r.n)})).filter(p=>p.liste.length);
@@ -1600,6 +1763,8 @@ function selectNode(id){
   });
   const bh=$('#iHier',p);
   if(bh)bh.onclick=()=>hierarchieDlg(id);
+  const bd=$('#iDossier',p);
+  if(bd)bd.onclick=()=>dossierDlg(id);
   $('#iLink').onclick=()=>startLink(id);
   $('#iHide').onclick=()=>{const nb2=S.edges.filter(e=>e.a===id||e.b===id).map(e=>e.a===id?e.b:e.a);
     nb2.forEach(x=>S.collapsed.add(x));render();toast('Branche masquée',nb2.length+' éléments repliés · touche R pour tout réafficher','')};
@@ -1786,7 +1951,8 @@ function nodeMenu(ev,n){
   const w=MOI.ecriture;
   ctxMenu(ev.clientX,ev.clientY,[{hd:titleOf(n)},
     {l:'Ouvrir la fiche',i:I.eye,fn:()=>selectNode(n.id)},
-    ...(A_HIERARCHIE(n.t)?[{l:'Voir l\x27organigramme',i:I.grp,fn:()=>hierarchieDlg(n.id)}]:[]),
+    ...(A_HIERARCHIE(n.t)?[{l:"Voir l'organigramme",i:I.grp,fn:()=>hierarchieDlg(n.id)}]:[]),
+    ...(n.t==='enquete'?[{l:"Voir tout le dossier",i:I.case,fn:()=>dossierDlg(n.id)}]:[]),
     ...(w?[{l:'Créer une liaison depuis ici',i:I.link,k:'L',fn:()=>startLink(n.id)},
     {l:'Dupliquer',i:I.copy,fn:()=>{const c={id:'n'+(++S.seq),t:n.t,x:n.x+210,y:n.y+70,r:n.r,d:{...n.d}};
       S.nodes.push(c);logAct('Duplication d\'élément',sch(n.t).l+' · '+titleOf(c));render();save()}}]:[]),'-',
