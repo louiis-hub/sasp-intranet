@@ -438,6 +438,19 @@ const BUREAU_DIVISIONS = [
 ];
 const BUREAU_CS = "1500975725153620033";   // Command Staff
 const BUREAU_ST = "1504452141518032956";   // Supervisor Team
+// « San Andreas State Police Sud » : le role qui dit qu on est du
+// departement. Il fait l annuaire de la messagerie et l acces au poste.
+const BUREAU_SASP = "1501250580058870104";
+
+// Un membre du Command Staff peut ne pas porter le role de departement :
+// c est le cas d au moins un aujourd hui. Le refuser sur ce seul critere
+// mettrait l encadrement dehors, alors on accepte aussi ses roles.
+function bureauEstPersonnel(roles) {
+  const r = roles || [];
+  if (r.indexOf(BUREAU_SASP) !== -1) return true;
+  if (r.indexOf(BUREAU_CS) !== -1 || r.indexOf(BUREAU_ST) !== -1) return true;
+  return BUREAU_DIVISIONS.some(d => d.roles.some(x => r.indexOf(x) !== -1));
+}
 
 // Une adresse se derive du nom affiche : « [12] Boris Miller » donne
 // « borismiller ». Deux agents homonymes partageraient leur boite, mais
@@ -496,6 +509,10 @@ async function bureauIdentifier(env, request) {
   } catch (e) {}
   if (roles === null) return { ok: false, motif: "verification-impossible" };
 
+  // Le poste est reserve au personnel. Sans ce filtre, n importe quel
+  // membre du Discord ouvrait le bureau et lisait l annuaire.
+  if (!bureauEstPersonnel(roles)) return { ok: false, motif: "pas-du-departement", nom };
+
   const estCS = roles.indexOf(BUREAU_CS) !== -1;
   const estST = roles.indexOf(BUREAU_ST) !== -1;
   const divisions = BUREAU_DIVISIONS
@@ -524,6 +541,7 @@ const bureauEstLead = (qui, code) => qui.divisions.some(d => d.code === code && 
 function bureauRefus(motif) {
   const m = {
     "non-connecte": "Connectez-vous avec Discord.",
+    "pas-du-departement": "Ce poste est reserve au personnel du SASP Sud.",
     "verification-impossible": "Verification des roles impossible pour le moment."
   };
   return json({ ok: false, motif: motif || "refus", message: m[motif] || "Acces refuse." },
@@ -6232,6 +6250,9 @@ export default {
               const vus = {};
               membres.forEach(m => {
                 if (!m.user || m.user.bot) return;
+                // Seul le personnel figure a l annuaire : les civils, les
+                // visiteurs et les comptes de passage n ont pas d adresse.
+                if (!bureauEstPersonnel(m.roles)) return;
                 const nom = m.nick || m.user.username;
                 const a = bureauAdresse(nom);
                 if (vus[a]) return;

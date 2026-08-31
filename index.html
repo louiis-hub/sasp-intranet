@@ -1163,6 +1163,9 @@ async function veilleMail(){
   if(MAILS_VUS===null){ MAILS_VUS=new Set(recus.map(m=>m.id)); return; }
 
   const nouveaux=nonLus.filter(m=>!MAILS_VUS.has(m.id));
+  // Trace volontaire : la veille est invisible quand elle marche, et
+  // indiscernable d une panne quand personne n ecrit.
+  console.log("[bureau] veille mail :",recus.length,"recus,",nonLus.length,"non lus,",nouveaux.length,"nouveau(x)");
   recus.forEach(m=>MAILS_VUS.add(m.id));
   if(!nouveaux.length)return;
 
