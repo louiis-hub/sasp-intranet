@@ -80,8 +80,8 @@ Une fois dedans, regardez sur quoi vous etes :
 cat /etc/os-release
 ```
 
-La suite suppose Debian 12 ou Ubuntu 22/24. Si c'est autre chose,
-dites-le-moi avant de continuer.
+Sur ce VPS : **Debian 13 (Trixie), image cloud**. La suite en tient
+compte, notamment a l'etape 1.6.
 
 ### 1.3 Changer le mot de passe root
 
@@ -122,19 +122,75 @@ l'autre, c'est se fermer dehors.
 
 ### 1.6 Couper root et les mots de passe
 
-Dans la session root :
+**Le piege des images cloud.** `/etc/ssh/sshd_config` commence par
+`Include /etc/ssh/sshd_config.d/*.conf`, et cloud-init y depose souvent
+un `50-cloud-init.conf` qui remet `PasswordAuthentication yes`. Modifier
+le fichier principal ne sert alors a rien : il est lu apres.
+
+Pire, entre deux fichiers inclus, **c'est le premier qui l'emporte**, pas
+le dernier. Un `99-...` perdrait contre le `50-` de cloud-init. D'ou le
+`00-` ci-dessous.
+
+Regardez d'abord ce qui existe :
 
 ```bash
-sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-sed -i 's/^#\?PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+ls -l /etc/ssh/sshd_config.d/
+grep -rn "PasswordAuthentication\|PermitRootLogin" \
+  /etc/ssh/sshd_config /etc/ssh/sshd_config.d/ 2>/dev/null
+```
+
+Puis posez le reglage dans un fichier a part, plutot que de trafiquer
+celui de la distribution :
+
+```bash
+cat > /etc/ssh/sshd_config.d/00-sasp.conf <<'FIN'
+# Cle uniquement, pas de root. Nomme 00- pour etre lu avant le fichier
+# de cloud-init, qui reactive les mots de passe.
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+FIN
 sshd -t && systemctl restart ssh
 ```
 
-`sshd -t` verifie le fichier avant de redemarrer : sans lui, une faute de
-frappe coupe SSH pour de bon.
+`sshd -t` verifie la syntaxe avant le redemarrage : sans lui, une faute
+de frappe coupe SSH pour de bon.
 
-### 1.7 Pare-feu et anti-force brute
+**Puis la seule verification qui compte.** Lire le fichier ne prouve
+rien, il faut demander a sshd ce qu'il applique vraiment :
+
+```bash
+sshd -T | grep -E "^(permitrootlogin|passwordauthentication|pubkeyauthentication)"
+```
+
+Vous devez lire exactement :
+
+```
+permitrootlogin no
+pubkeyauthentication yes
+passwordauthentication no
+```
+
+Si `passwordauthentication` est encore a `yes`, un autre fichier gagne :
+reprenez le `grep` ci-dessus pour trouver lequel.
+
+### 1.7 Qui est deja passe
+
+L'image affiche une connexion du 9 juillet depuis `92.184.96.169`. C'est
+sans doute l'hebergeur au moment de la preparation, mais sur une machine
+dont le mot de passe root a circule par courriel, un coup d'oeil ne coute
+rien :
+
+```bash
+last -a | head -20
+lastb -a | head -20      # les tentatives echouees
+```
+
+Beaucoup de lignes dans `lastb` depuis des adresses inconnues : c'est le
+balayage habituel, et c'est justement ce que l'etape 1.6 vient de fermer.
+
+### 1.8 Pare-feu et anti-force brute
 
 ```bash
 apt update && apt install -y ufw fail2ban
@@ -162,9 +218,31 @@ ssh sasp@193.38.250.69
 ```bash
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y curl git nginx rsync sqlite3 ca-certificates
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt install -y nodejs
-node --version        # doit afficher v22.x
+```
+
+**Node.** Debian 13 est recent, et le depot NodeSource ne le couvre pas
+toujours. On essaie, et on retombe sur celui de Debian s'il refuse :
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - \
+  && sudo apt install -y nodejs \
+  || sudo apt install -y nodejs
+node --version
+```
+
+**Node 20 suffit**, si c'est ce que Debian installe. L'adaptateur a besoin
+de `fetch`, `Request`, `Response`, `crypto.subtle` et
+`Headers.getSetCookie` : tout est present depuis la 19.7. Ce qui ne
+passerait pas, c'est une version 18 ou anterieure.
+
+```bash
+node -e "console.log(typeof fetch, typeof crypto.subtle, typeof new Headers().getSetCookie)"
+```
+
+Les trois doivent afficher `function object function`. Si l'un dit
+`undefined`, dites-le-moi avant d'aller plus loin.
+
+```bash
 nginx -v
 ```
 
