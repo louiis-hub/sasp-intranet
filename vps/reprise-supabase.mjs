@@ -2,8 +2,12 @@
 //
 //   node reprise-supabase.mjs [--vers /var/sasp/sasp.db] [--refaire]
 //
-// A lancer sur le VPS, ou vit la cle service :
-//   set -a; . /etc/sasp/api.env; set +a; node vps/reprise-supabase.mjs
+// A lancer sur le VPS, en root : /etc/sasp/api.env est en 600 root:root.
+//   sudo bash -c 'set -a; . /etc/sasp/api.env; set +a; node /opt/sasp/vps/reprise-supabase.mjs'
+//   sudo chown -R sasp:sasp /var/sasp
+//
+// Le chown final n'est pas optionnel : la base est creee par root, mais
+// c'est le service sasp-api, qui tourne sous sasp, qui devra y ecrire.
 //
 // Le schema n'est pas devine : PostgREST publie la description de toutes
 // ses tables a la racine de /rest/v1/. On la lit, on en tire le schema
