@@ -3608,7 +3608,7 @@ var PPA_NIVEAUX = [
 ];
 
 var _ppaCarte = {
-  prenom: '', nom: '', matricule: '', naissance: '', delivree: '', validite: '',
+  prenom: '', nom: '', naissance: '', delivree: '', validite: '',
   grade: '', niveaux: { ppa1: false, ppa2: false, ppa3: false },
   photo: null, zoom: 1, dx: 0, dy: 0, logo: null
 };
@@ -3739,7 +3739,7 @@ function ppaCarteDessiner() {
   ctx.fillText('DIVISION SUD', PPA_L - 26, 76);
 
   // Photo
-  var px = 34, py = 132, pl = 214, ph = 268;
+  var px = 34, py = 132, pl = 214, ph = 324;
   ctx.save();
   ppaRect(ctx, px, py, pl, ph, 5);
   ctx.fillStyle = '#DCE3EA'; ctx.fill();
@@ -3757,17 +3757,6 @@ function ppaCarteDessiner() {
   ctx.restore();
   ctx.strokeStyle = '#1F3A5C'; ctx.lineWidth = 2.5;
   ppaRect(ctx, px, py, pl, ph, 5); ctx.stroke();
-
-  // Matricule sous la photo
-  ctx.fillStyle = '#0B1E36';
-  ppaRect(ctx, px, py + ph + 12, pl, 44, 4); ctx.fill();
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#E7C97A';
-  ctx.font = '700 15px Arial, sans-serif';
-  ctx.fillText('MATRICULE', px + pl / 2, py + ph + 28);
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = '700 22px Arial, sans-serif';
-  ctx.fillText(C.matricule || '—', px + pl / 2, py + ph + 50);
 
   // Champs
   var fx = 274, fl = PPA_L - 274 - 34;
@@ -3801,11 +3790,11 @@ function ppaCarteDessiner() {
   });
 
   // Pied : code-barres et signature
-  ppaCodeBarres(ctx, 34, 596, 300, 40, (C.matricule || '') + (C.nom || '') + (C.validite || ''));
+  ppaCodeBarres(ctx, 34, 596, 300, 40, (C.nom || '') + (C.prenom || '') + (C.validite || ''));
   ctx.textAlign = 'left';
   ctx.fillStyle = '#5B6B7C';
   ctx.font = '400 12px Arial, sans-serif';
-  ctx.fillText('SASP-SUD · ' + (C.matricule || '000') + ' · DOCUMENT OFFICIEL', 34, 650);
+  ctx.fillText('SASP-SUD · DOCUMENT OFFICIEL', 34, 650);
 
   ctx.strokeStyle = '#1F3A5C'; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(PPA_L - 330, 626); ctx.lineTo(PPA_L - 34, 626); ctx.stroke();
@@ -3827,7 +3816,6 @@ function ppaLireFormulaire() {
   var c = function(id) { var e = document.getElementById(id); return e ? e.checked : false; };
   _ppaCarte.prenom    = v('ppaPrenom');
   _ppaCarte.nom       = v('ppaNom');
-  _ppaCarte.matricule = v('ppaMat');
   _ppaCarte.naissance = v('ppaNaiss');
   _ppaCarte.delivree  = v('ppaDeliv');
   _ppaCarte.validite  = v('ppaValid');
@@ -3843,7 +3831,6 @@ function ppaPrefill(id) {
   var mettre = function(cid, val) { var e = document.getElementById(cid); if (e) e.value = val || ''; };
   mettre('ppaPrenom', a.prenom);
   mettre('ppaNom', a.nom);
-  mettre('ppaMat', a.matricule);
   mettre('ppaNaiss', a.date_naissance || '');
   // Le grade de l agent est un champ texte, pas une reference.
   mettre('ppaGrade', a.grade || '');
@@ -3861,7 +3848,7 @@ function ppaPrefill(id) {
 function ppaTelecharger() {
   var canvas = document.getElementById('ppaCanvas');
   if (!canvas) return;
-  var nom = ('PPA-' + (_ppaCarte.matricule || '000') + '-' + (_ppaCarte.nom || 'agent'))
+  var nom = ('PPA-' + (_ppaCarte.nom || 'agent') + '-' + (_ppaCarte.prenom || ''))
     .replace(/[^A-Za-z0-9À-ÿ_-]+/g, '_');
   var a = document.createElement('a');
   a.href = canvas.toDataURL('image/png');
@@ -3870,7 +3857,6 @@ function ppaTelecharger() {
   toast('Carte téléchargée.', 'success');
   sendLog('🪪 Carte PPA générée', 0x3498db, [
     { name: 'Agent', value: (_ppaCarte.prenom + ' ' + _ppaCarte.nom).trim() || '—', inline: true },
-    { name: 'Matricule', value: _ppaCarte.matricule || '—', inline: true },
     { name: 'Par', value: _whoAmI(), inline: true }
   ]);
 }
@@ -3914,7 +3900,6 @@ async function renderCartesPPA() {
         '<div style="height:1px;background:var(--border1);margin:14px 0"></div>' +
         champ('ppaPrenom', 'Prénom', 'text', '') +
         champ('ppaNom', 'Nom', 'text', '') +
-        champ('ppaMat', 'Matricule', 'text', '') +
         champ('ppaNaiss', 'Date de naissance', 'date', '') +
         champ('ppaDeliv', 'Délivré le', 'date', ppaAujourdhui(0)) +
         champ('ppaValid', 'Valide jusqu\'au', 'date', ppaAujourdhui(2)) +
@@ -3955,7 +3940,7 @@ async function renderCartesPPA() {
 
   _ppaCarte.photo = null; _ppaCarte.zoom = 1; _ppaCarte.dx = 0; _ppaCarte.dy = 0;
 
-  ['ppaPrenom','ppaNom','ppaMat','ppaNaiss','ppaDeliv','ppaValid','ppaGrade'].forEach(function(id) {
+  ['ppaPrenom','ppaNom','ppaNaiss','ppaDeliv','ppaValid','ppaGrade'].forEach(function(id) {
     var e = document.getElementById(id);
     if (e) e.addEventListener('input', ppaLireFormulaire);
   });
