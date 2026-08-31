@@ -1,90 +1,1193 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>SASP Sud - Intranet</title>
-<link rel="icon" type="image/png" href="assets/sasp-pa-favicon.png?v=20260820-pa-favicon">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SASP SUD · Poste de travail</title>
+<link rel="icon" href="assets/sasp-sud-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260831-ppa3">
-</head>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Le logo ne réagit au survol que si le Worker a confirmé l accès
-   au tableau de liaisons (classe posée par activerLienLiaisons). */
-#logoLiaisons.logo-liaisons-ouvert { transition: transform .14s, filter .14s; }
-#logoLiaisons.logo-liaisons-ouvert:hover {
-  transform: scale(1.12) rotate(-4deg);
-  filter: drop-shadow(0 3px 8px rgba(200,60,40,.55));
+:root{
+  --nuit:#070C16; --nuit2:#0B1220; --nuit3:#111B2E;
+  --vitre:rgba(18,29,48,.72); --vitre2:rgba(26,40,64,.62);
+  --bord:rgba(120,160,215,.16); --bord2:rgba(120,160,215,.30);
+  --bleu:#3B82F6; --bleu2:#60A5FA; --bleu-sombre:#1E3A6B;
+  --or:#C8A24A; --vert:#34D399; --ambre:#FBBF24; --rouge:#F87171;
+  --t0:#F1F5FB; --t1:#C3D0E2; --t2:#8FA3BF; --t3:#63789A;
+  --f:"Inter",-apple-system,"Segoe UI",Roboto,sans-serif;
+  --fm:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --r:12px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:var(--f);font-size:14px;color:var(--t0);background:var(--nuit);
+  overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--bleu);outline-offset:2px}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(120,160,215,.22);border-radius:5px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:rgba(120,160,215,.38);background-clip:padding-box}
+
+/* ── le fond ──────────────────────────────────────────────────── */
+#fond{position:fixed;inset:0;z-index:0;overflow:hidden;
+  background:
+    radial-gradient(1200px 620px at 50% 34%, rgba(40,70,120,.30), transparent 70%),
+    radial-gradient(900px 520px at 84% 92%, rgba(150,95,40,.16), transparent 70%),
+    linear-gradient(180deg,#060A12 0%,#0A1120 45%,#0D1424 100%)}
+#fond .ecusson{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
+  width:min(52vw,620px);opacity:.055;filter:grayscale(1) contrast(1.2)}
+#fond .ville{position:absolute;left:0;right:0;bottom:0;height:34%;
+  background:linear-gradient(180deg,transparent,rgba(4,8,14,.86));
+  -webkit-mask-image:linear-gradient(180deg,transparent,#000 55%)}
+#fond .sasp{position:absolute;left:50%;bottom:12%;transform:translateX(-50%);
+  font-weight:700;font-size:min(9vw,116px);letter-spacing:.06em;color:rgba(190,205,230,.05);
+  white-space:nowrap;user-select:none}
+#fond .sasp span{display:block;font-size:.16em;letter-spacing:.5em;text-align:center;
+  color:rgba(190,205,230,.06);margin-top:.1em}
+
+/* ── plan de travail ──────────────────────────────────────────── */
+#bureau{position:fixed;inset:0 0 78px 0;z-index:1;overflow:auto;padding:26px 30px 20px}
+.grille{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:28px;
+  max-width:1720px;margin:0 auto;align-items:start}
+@media (max-width:1180px){ .grille{grid-template-columns:1fr} }
+
+.marque{display:flex;align-items:center;gap:18px;margin-bottom:30px}
+.marque img{width:78px;height:78px;object-fit:contain;
+  filter:drop-shadow(0 4px 16px rgba(0,0,0,.6))}
+.marque h1{margin:0;font-size:38px;font-weight:700;letter-spacing:.03em;line-height:1}
+.marque p{margin:6px 0 0;font-size:13px;letter-spacing:.22em;color:var(--bleu2);
+  text-transform:uppercase;font-weight:500}
+
+.bienvenue{display:flex;gap:12px;align-items:flex-start;margin-bottom:26px;max-width:620px}
+.bienvenue .ic{font-size:22px;line-height:1.1}
+.bienvenue h2{margin:0;font-size:17px;font-weight:600;color:var(--bleu2);
+  text-decoration:underline;text-underline-offset:4px;text-decoration-color:rgba(96,165,250,.4)}
+.bienvenue p{margin:8px 0 0;color:var(--t1);line-height:1.65;font-size:13.5px}
+
+.sec{display:flex;align-items:center;gap:14px;margin:0 0 16px}
+.sec b{font-size:13px;font-weight:600;color:var(--bleu2);letter-spacing:.04em;white-space:nowrap}
+.sec i{flex:1;height:1px;background:linear-gradient(90deg,var(--bord2),transparent)}
+
+.dossiers{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:12px;
+  max-width:620px}
+.doss{display:flex;align-items:center;gap:11px;padding:13px 14px;cursor:pointer;
+  background:var(--vitre);border:1px solid var(--bord);border-radius:10px;
+  backdrop-filter:blur(14px);transition:background .14s,border-color .14s,transform .1s;
+  text-align:left;width:100%}
+.doss:hover{background:var(--vitre2);border-color:var(--bord2);transform:translateY(-1px)}
+.doss:active{transform:translateY(0)}
+.doss svg{flex:none}
+.doss span{font-size:13.5px;color:var(--t0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doss .pastille{margin-left:auto;flex:none;min-width:19px;height:19px;padding:0 6px;border-radius:10px;
+  background:var(--bleu);color:#fff;font-size:11px;font-weight:600;display:grid;place-items:center}
+.doss.ajout{border-style:dashed;justify-content:center;color:var(--t2);background:transparent}
+.doss.ajout:hover{color:var(--t1)}
+
+/* ── panneaux de droite ───────────────────────────────────────── */
+.panneau{background:var(--vitre);border:1px solid var(--bord);border-radius:var(--r);
+  backdrop-filter:blur(16px);margin-bottom:20px;overflow:hidden}
+.panneau > header{display:flex;align-items:center;gap:10px;padding:15px 18px 0}
+.panneau > header h3{margin:0;font-size:15px;font-weight:600}
+.panneau .bd{padding:16px 18px 18px}
+
+.meteo{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.meteo .lieu{font-size:14px;color:var(--t1);margin-bottom:10px}
+.meteo .deg{display:flex;align-items:center;gap:12px}
+.meteo .deg .ic{font-size:30px}
+.meteo .deg b{font-size:36px;font-weight:600;line-height:1}
+.meteo .deg sup{font-size:15px;color:var(--t2);font-weight:400}
+.meteo .etat{font-size:12.5px;color:var(--t2);margin-top:8px}
+.meteo .heure{font-size:36px;font-weight:600;line-height:1;text-align:right}
+.meteo .jour{font-size:12.5px;color:var(--t2);margin-top:8px;text-align:right}
+.jours{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:20px;
+  padding-top:16px;border-top:1px solid var(--bord)}
+.jours div{text-align:center}
+.jours .j{font-size:11px;color:var(--t2);letter-spacing:.08em;font-weight:500}
+.jours .i{font-size:19px;margin:7px 0}
+.jours .h{font-size:12.5px;font-weight:600}
+.jours .b{font-size:11.5px;color:var(--t3)}
+
+.annonce{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--bord)}
+.annonce:last-child{border-bottom:0}
+.annonce .pt{flex:none;width:7px;height:7px;border-radius:50%;background:var(--bleu);margin-top:6px}
+.annonce b{display:block;font-size:13.5px;font-weight:600;color:var(--bleu2)}
+.annonce p{margin:4px 0 0;font-size:12.5px;color:var(--t2);line-height:1.6}
+.plus{display:flex;align-items:center;width:100%;padding:12px 18px;background:rgba(255,255,255,.03);
+  border:0;border-top:1px solid var(--bord);color:var(--t1);cursor:pointer;font-size:13px}
+.plus:hover{background:rgba(255,255,255,.06);color:var(--t0)}
+.plus span{margin-left:auto}
+
+/* ── barre des tâches ─────────────────────────────────────────── */
+#barre{position:fixed;left:0;right:0;bottom:0;height:78px;z-index:40;display:flex;align-items:center;
+  gap:4px;padding:0 14px;background:rgba(8,13,23,.90);border-top:1px solid var(--bord);
+  backdrop-filter:blur(20px)}
+.tache{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  min-width:96px;height:62px;padding:0 14px;border:0;border-radius:9px;background:transparent;
+  color:var(--t2);cursor:pointer;transition:background .13s,color .13s;position:relative}
+.tache:hover{background:rgba(255,255,255,.06);color:var(--t0)}
+.tache.on{background:var(--bleu);color:#fff}
+.tache.ouvert:not(.on){color:var(--t0)}
+.tache.ouvert:after{content:"";position:absolute;bottom:5px;left:50%;transform:translateX(-50%);
+  width:18px;height:2.5px;border-radius:2px;background:currentColor;opacity:.75}
+.tache .et{font-size:11.5px;font-weight:500;white-space:nowrap}
+.tache .badge{position:absolute;top:6px;right:12px;min-width:17px;height:17px;padding:0 5px;
+  border-radius:9px;background:var(--rouge);color:#3B0A0A;font-size:10.5px;font-weight:700;
+  display:grid;place-items:center}
+#barre .demarrer{width:52px;min-width:52px}
+#barre .fin{margin-left:auto;display:flex;gap:4px;align-items:center}
+#barre .sep{width:1px;height:36px;background:var(--bord);margin:0 8px}
+
+/* ── fenêtres ─────────────────────────────────────────────────── */
+.fen{position:fixed;z-index:20;display:flex;flex-direction:column;
+  background:rgba(11,18,32,.96);border:1px solid var(--bord2);border-radius:var(--r);
+  box-shadow:0 30px 80px rgba(0,0,0,.66),0 0 0 1px rgba(0,0,0,.4);
+  backdrop-filter:blur(20px);overflow:hidden;min-width:340px;min-height:220px}
+.fen.plein{left:0 !important;top:0 !important;width:100% !important;
+  height:calc(100% - 78px) !important;border-radius:0;border-width:0 0 1px 0}
+.fen.range{display:none}
+.fen > header{display:flex;align-items:center;gap:10px;padding:0 6px 0 14px;height:44px;flex:none;
+  background:rgba(255,255,255,.035);border-bottom:1px solid var(--bord);cursor:grab;user-select:none}
+.fen > header.tire{cursor:grabbing}
+.fen > header .ti{flex:1;min-width:0;font-size:13.5px;font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fen > header .st{font-size:11.5px;color:var(--t3);font-weight:400;margin-left:8px}
+.fbtn{width:38px;height:32px;display:grid;place-items:center;background:transparent;border:0;
+  border-radius:6px;color:var(--t2);cursor:pointer}
+.fbtn:hover{background:rgba(255,255,255,.09);color:var(--t0)}
+.fbtn.fermer:hover{background:#DC2626;color:#fff}
+.fen .corps{flex:1;min-height:0;overflow:auto;position:relative}
+.fen iframe{width:100%;height:100%;border:0;display:block;background:var(--nuit)}
+.poignee{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;z-index:3}
+.poignee:after{content:"";position:absolute;right:4px;bottom:4px;width:8px;height:8px;
+  border-right:2px solid var(--bord2);border-bottom:2px solid var(--bord2)}
+
+/* ── éléments communs aux applications ────────────────────────── */
+.pad{padding:20px 22px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:8px;
+  background:rgba(255,255,255,.06);border:1px solid var(--bord);color:var(--t0);
+  cursor:pointer;font-size:13px;transition:background .13s,border-color .13s}
+.btn:hover{background:rgba(255,255,255,.11);border-color:var(--bord2)}
+.btn.pri{background:var(--bleu);border-color:transparent;color:#fff;font-weight:500}
+.btn.pri:hover{background:#2F74E8}
+.btn.dgr{background:rgba(248,113,113,.13);border-color:rgba(248,113,113,.3);color:#FCA5A5}
+.btn.dgr:hover{background:rgba(248,113,113,.22)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.champ{width:100%;padding:9px 12px;border-radius:8px;background:rgba(255,255,255,.05);
+  border:1px solid var(--bord);color:var(--t0);font-size:13.5px;outline:none}
+.champ:focus{border-color:var(--bleu);background:rgba(255,255,255,.08)}
+.champ::placeholder{color:var(--t3)}
+textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(--f)}
+.lbl{display:block;font-size:11.5px;font-weight:600;color:var(--t2);letter-spacing:.07em;
+  text-transform:uppercase;margin-bottom:6px}
+.onglets{display:flex;gap:3px;padding:0 14px;border-bottom:1px solid var(--bord);flex:none;
+  background:rgba(255,255,255,.02);overflow-x:auto}
+.onglets button{padding:12px 15px;background:transparent;border:0;border-bottom:2px solid transparent;
+  color:var(--t2);cursor:pointer;font-size:13px;white-space:nowrap}
+.onglets button:hover{color:var(--t0)}
+.onglets button.on{color:var(--bleu2);border-bottom-color:var(--bleu)}
+.vide{padding:44px 24px;text-align:center;color:var(--t3)}
+.vide b{display:block;font-size:15px;color:var(--t1);margin-bottom:7px;font-weight:600}
+.puce{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:20px;
+  font-size:11px;font-weight:600;letter-spacing:.03em}
+.p-bleu{background:rgba(59,130,246,.16);color:var(--bleu2)}
+.p-vert{background:rgba(52,211,153,.14);color:var(--vert)}
+.p-ambre{background:rgba(251,191,36,.14);color:var(--ambre)}
+.p-rouge{background:rgba(248,113,113,.14);color:var(--rouge)}
+.p-gris{background:rgba(143,163,191,.13);color:var(--t2)}
+
+/* ── connexion ────────────────────────────────────────────────── */
+#porte{position:fixed;inset:0;z-index:90;display:none;place-items:center;padding:24px}
+#porte.on{display:grid}
+.pcard{width:min(430px,100%);background:var(--vitre);border:1px solid var(--bord2);
+  border-radius:18px;backdrop-filter:blur(24px);padding:38px 34px;text-align:center;
+  box-shadow:0 40px 90px rgba(0,0,0,.7)}
+.pcard img{width:82px;height:82px;object-fit:contain;margin-bottom:20px}
+.pcard h2{margin:0 0 10px;font-size:21px;font-weight:700}
+.pcard p{margin:0 0 22px;color:var(--t2);line-height:1.7;font-size:13.5px}
+.tourne{width:30px;height:30px;margin:0 auto 18px;border:3px solid rgba(120,160,215,.2);
+  border-top-color:var(--bleu);border-radius:50%;animation:tourner .8s linear infinite}
+@keyframes tourner{to{transform:rotate(360deg)}}
+
+/* ── notifications ───────────────────────────────────────────── */
+#avis{position:fixed;right:18px;bottom:92px;z-index:80;display:flex;flex-direction:column;
+  gap:10px;align-items:flex-end}
+.avis{display:flex;gap:11px;align-items:flex-start;min-width:270px;max-width:370px;
+  padding:13px 15px;border-radius:11px;background:rgba(17,27,46,.97);border:1px solid var(--bord2);
+  border-left:3px solid var(--bleu);box-shadow:0 16px 40px rgba(0,0,0,.6);animation:entre .22s}
+.avis.ok{border-left-color:var(--vert)} .avis.err{border-left-color:var(--rouge)}
+.avis.warn{border-left-color:var(--ambre)}
+.avis b{display:block;font-size:13.5px;font-weight:600}
+.avis span{font-size:12.5px;color:var(--t2);line-height:1.55}
+.avis .x{margin-left:auto;background:none;border:0;color:var(--t3);cursor:pointer;padding:0 2px}
+.avis .x:hover{color:var(--t0)}
+@keyframes entre{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+
+/* ── boîtes de dialogue ──────────────────────────────────────── */
+.voile{position:fixed;inset:0;z-index:70;background:rgba(4,8,15,.72);backdrop-filter:blur(4px);
+  display:grid;place-items:center;padding:24px;animation:apparait .16s}
+@keyframes apparait{from{opacity:0}to{opacity:1}}
+.dlg{width:min(560px,100%);max-height:86vh;display:flex;flex-direction:column;
+  background:rgba(13,21,37,.98);border:1px solid var(--bord2);border-radius:14px;
+  box-shadow:0 34px 80px rgba(0,0,0,.7)}
+.dlg > header{display:flex;align-items:center;gap:10px;padding:16px 20px;
+  border-bottom:1px solid var(--bord)}
+.dlg > header h3{margin:0;font-size:16px;font-weight:600}
+.dlg .bd{padding:20px;overflow:auto}
+.dlg > footer{display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;
+  border-top:1px solid var(--bord)}
+@media (max-width:760px){
+  #bureau{padding:18px 16px 12px}
+  .marque h1{font-size:27px} .marque img{width:58px;height:58px}
+  .fen{left:0 !important;top:0 !important;width:100% !important;height:calc(100% - 78px) !important;
+    border-radius:0}
+  .tache{min-width:64px} .tache .et{display:none}
 }
 </style>
+</head>
 <body>
 
-<!-- ══ LOGIN ════════════════════════════════════════════════════ -->
-<div id="loginView" class="login-page">
-  <div class="login-card">
-    <div class="login-star"><img src="assets/sasp-sud-logo.png" alt="SASP" style="width:70px;height:70px;object-fit:contain"></div>
-    <div class="login-eyebrow">SAN ANDREAS STATE TROOPER</div>
-    <h1 class="login-title">SASP SUD</h1>
-    <p class="login-sub">Accès réservé au personnel du SASP Sud</p>
-    <div class="login-err" id="loginErr"></div>
-    <button class="btn btn-discord btn-full" id="loginBtn" onclick="doDiscordLogin()">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.032.055a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-      <span id="loginBtnTxt">Se connecter avec Discord</span>
-    </button>
-    <p class="login-footer">SASP SUD - ACCÈS SÉCURISÉ</p>
-  </div>
+<div id="fond">
+  <img class="ecusson" src="assets/sasp-sud-logo.png" alt="">
+  <div class="sasp">SASP<span>SAN ANDREAS STATE POLICE</span></div>
+  <div class="ville"></div>
 </div>
 
-<!-- ══ APP SHELL ══════════════════════════════════════════════════ -->
-<div id="appView" style="display:none">
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-star" id="logoLiaisons"><img src="assets/sasp-sud-logo.png" alt="SASP" style="width:32px;height:32px;object-fit:contain"></div>
-      <div class="sidebar-brand">
-        <div class="sidebar-title">SASP</div>
-        <div class="sidebar-sub">Sud</div>
+<div id="bureau">
+  <div class="grille">
+    <div>
+      <div class="marque">
+        <img src="assets/sasp-sud-logo.png" alt="SASP">
+        <div>
+          <h1 id="mqTitre">SASP SUD</h1>
+          <p>San Andreas State Police</p>
+        </div>
       </div>
-      <button class="sidebar-close" onclick="toggleSidebar()">✕</button>
+
+      <div class="bienvenue">
+        <span class="ic">🎓</span>
+        <div>
+          <h2 id="acTitre">Bienvenue</h2>
+          <p id="acTexte">Chargement du poste de travail…</p>
+        </div>
+      </div>
+
+      <div class="sec"><b>Accès rapide</b><i></i></div>
+      <div class="dossiers" id="dossiers"></div>
     </div>
-    <nav class="sidebar-nav" id="sidebarNav"></nav>
-    <div class="sidebar-footer" id="sidebarFooter"></div>
-  </aside>
-  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-  <div class="app-main">
-    <header class="app-header">
-      <button class="hamburger" onclick="toggleSidebar()">☰</button>
-      <h1 class="page-title" id="pageTitle">Tableau de bord</h1>
-      <div class="header-actions">
-        <div class="header-search-btn" onclick="navigate('search')" title="Recherche">🔍</div>
+
+    <div>
+      <div class="panneau">
+        <div class="bd">
+          <div class="meteo">
+            <div>
+              <div class="lieu">Los Santos</div>
+              <div class="deg"><span class="ic" id="mtIc">☀️</span>
+                <b id="mtDeg">—</b><sup>°F</sup></div>
+              <div class="etat" id="mtEtat">—</div>
+            </div>
+            <div>
+              <div class="heure" id="mtHeure">--:--</div>
+              <div class="jour" id="mtJour">—</div>
+            </div>
+          </div>
+          <div class="jours" id="mtJours"></div>
+        </div>
       </div>
-    </header>
-    <main id="mainContent" class="main-content"></main>
+
+      <div class="panneau">
+        <header><span>📣</span><h3>Annonces</h3></header>
+        <div class="bd" id="annonces"><div class="vide" style="padding:20px 0">Chargement…</div></div>
+        <button class="plus" id="plusAnnonces">Voir toutes les annonces <span>→</span></button>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- ══ MODAL ════════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="modalOverlay" onclick="onModalOverlayClick(event)">
-  <div class="modal-box" id="modalBox">
-    <div class="modal-hd" id="modalHd"></div>
-    <div class="modal-body" id="modalBody"></div>
-    <div class="modal-ft" id="modalFt"></div>
-  </div>
+<div id="barre">
+  <button class="tache demarrer" id="btDemarrer" title="Menu">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg>
+  </button>
+  <div id="taches" style="display:flex;gap:4px;align-items:center;overflow-x:auto"></div>
+  <div class="fin" id="barreFin"></div>
 </div>
 
-<!-- Toast container -->
-<div class="toast-container" id="toastContainer"></div>
+<div id="fenetres"></div>
+<div id="avis"></div>
+<div id="dlgRoot"></div>
 
-<!-- CDN -->
+<div id="porte"><div class="pcard" id="pcard"></div></div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<script src="config.js?v=20260831-bureau"></script>
+<script>
+/* ============================================================
+   POSTE DE TRAVAIL SASP
+   La page est statique et se telecharge donc toujours. Elle ne
+   contient aucune donnee : tout vient de /api/bureau/, qui relit
+   les roles Discord a chaque requete.
+   ============================================================ */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const el=(t,c,h)=>{const n=document.createElement(t);if(c)n.className=c;if(h!==undefined)n.innerHTML=h;return n};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const API='https://sasp-intranet-bot.louisleurin.workers.dev';
 
-<script src="config.js?v=20260831-ppa3"></script>
-<script src="db.js?v=20260831-ppa3"></script>
-<script src="app.js?v=20260831-ppa3"></script>
-<script src="ticketing-advanced.js?v=20260802-ticketing"></script>
+let SB=null, SESSION=null, MOI=null;
+
+async function api(chemin,opts){
+  opts=opts||{};
+  const h={};
+  if(SESSION&&SESSION.access_token)h.authorization='Bearer '+SESSION.access_token;
+  if(opts.body)h['content-type']='application/json';
+  let r;
+  try{
+    r=await fetch(API+chemin,{method:opts.method||'GET',headers:h,
+      body:opts.body?JSON.stringify(opts.body):undefined});
+  }catch(e){ return {statut:0,ok:false,data:{error:'Serveur injoignable.'}}; }
+  let d=null; try{ d=await r.json(); }catch(e){}
+  return {statut:r.status,ok:r.ok,data:d||{}};
+}
+
+/* ---------- notifications ---------- */
+function avis(titre,texte,genre,ms){
+  const n=el('div','avis '+(genre||''),
+    `<div style="flex:1;min-width:0"><b>${esc(titre)}</b>${texte?`<span>${esc(texte)}</span>`:''}</div>
+     <button class="x" title="Fermer">✕</button>`);
+  $('#avis').appendChild(n);
+  let parti=false;
+  const fermer=()=>{ if(parti)return; parti=true;
+    n.style.transition='opacity .25s,transform .25s';
+    n.style.opacity=0;n.style.transform='translateX(20px)';
+    setTimeout(()=>n.remove(),260); };
+  $('.x',n).onclick=fermer;
+  let t=setTimeout(fermer,ms||4200);
+  n.addEventListener('mouseenter',()=>clearTimeout(t));
+  n.addEventListener('mouseleave',()=>{t=setTimeout(fermer,1400)});
+  return fermer;
+}
+
+/* ---------- boîtes de dialogue ---------- */
+function dlg(o){
+  const voile=el('div','voile');
+  voile.innerHTML=`<div class="dlg"><header><h3>${esc(o.titre)}</h3>
+    <button class="fbtn" data-x style="margin-left:auto">✕</button></header>
+    <div class="bd">${o.corps}</div>
+    <footer>${o.pied||`<button class="btn" data-x>Annuler</button>
+      <button class="btn pri" data-ok>${esc(o.ok||'Valider')}</button>`}</footer></div>`;
+  $('#dlgRoot').appendChild(voile);
+  const fermer=()=>{voile.remove();document.removeEventListener('keydown',ech)};
+  const ech=e=>{if(e.key==='Escape')fermer()};
+  document.addEventListener('keydown',ech);
+  voile.addEventListener('mousedown',e=>{if(e.target===voile)fermer()});
+  $$('[data-x]',voile).forEach(b=>b.onclick=fermer);
+  const ok=$('[data-ok]',voile);
+  if(ok)ok.onclick=()=>{ if(!o.onOk||o.onOk(voile)!==false)fermer(); };
+  if(o.apres)o.apres(voile,fermer);
+  return {voile,fermer};
+}
+function confirmer(titre,texte,libelle,onOk,danger){
+  dlg({titre,corps:`<p style="margin:0;line-height:1.7;color:var(--t1)">${texte}</p>`,
+    pied:`<button class="btn" data-x>Annuler</button>
+          <button class="btn ${danger?'dgr':'pri'}" data-ok>${esc(libelle)}</button>`,onOk});
+}
+
+/* ============================================================
+   FENÊTRES
+   Le bureau garde une seule fenetre par application : rouvrir
+   « Mail » ramene celle qui existe au lieu d'en empiler une
+   deuxieme, comme le ferait un vrai poste.
+   ============================================================ */
+const FEN={}; let zTop=20, decalage=0;
+
+function fenetre(cle,o){
+  if(FEN[cle]){ activerFenetre(cle); return FEN[cle]; }
+  const f=el('div','fen');
+  const l=Math.min(o.l||940,innerWidth-60), h=Math.min(o.h||620,innerHeight-140);
+  const g=Math.max(20,Math.round((innerWidth-l)/2)+decalage-60);
+  const t=Math.max(14,Math.round((innerHeight-78-h)/2)+decalage-40);
+  decalage=(decalage+30)%150;
+  f.style.cssText=`left:${g}px;top:${t}px;width:${l}px;height:${h}px;z-index:${++zTop}`;
+  f.innerHTML=`<header>
+      <span style="font-size:15px">${o.icone||'🗂️'}</span>
+      <span class="ti">${esc(o.titre)}${o.sous?`<span class="st">${esc(o.sous)}</span>`:''}</span>
+      <button class="fbtn" data-reduire title="Réduire">─</button>
+      <button class="fbtn" data-plein title="Agrandir">▢</button>
+      <button class="fbtn fermer" data-fermer title="Fermer">✕</button>
+    </header>
+    <div class="corps"></div>
+    <div class="poignee"></div>`;
+  $('#fenetres').appendChild(f);
+
+  const obj={cle,el:f,corps:$('.corps',f),titre:o.titre,icone:o.icone||'🗂️',rangee:false};
+  FEN[cle]=obj;
+  if(o.html)obj.corps.innerHTML=o.html;
+
+  const tete=$('header',f);
+  f.addEventListener('mousedown',()=>activerFenetre(cle),true);
+  $('[data-fermer]',f).onclick=e=>{e.stopPropagation();fermerFenetre(cle)};
+  $('[data-reduire]',f).onclick=e=>{e.stopPropagation();rangerFenetre(cle)};
+  $('[data-plein]',f).onclick=e=>{e.stopPropagation();f.classList.toggle('plein')};
+  tete.addEventListener('dblclick',()=>f.classList.toggle('plein'));
+
+  // Déplacement
+  tete.addEventListener('mousedown',e=>{
+    if(e.target.closest('.fbtn'))return;
+    if(f.classList.contains('plein'))return;
+    const r=f.getBoundingClientRect(), dx=e.clientX-r.left, dy=e.clientY-r.top;
+    tete.classList.add('tire');
+    const mv=ev=>{
+      f.style.left=Math.max(-r.width+90,Math.min(innerWidth-90,ev.clientX-dx))+'px';
+      f.style.top=Math.max(0,Math.min(innerHeight-120,ev.clientY-dy))+'px';
+    };
+    const up=()=>{tete.classList.remove('tire');
+      window.removeEventListener('mousemove',mv);window.removeEventListener('mouseup',up)};
+    window.addEventListener('mousemove',mv);window.addEventListener('mouseup',up);
+    e.preventDefault();
+  });
+
+  // Redimensionnement
+  $('.poignee',f).addEventListener('mousedown',e=>{
+    const r=f.getBoundingClientRect(), x0=e.clientX, y0=e.clientY;
+    const mv=ev=>{
+      f.style.width=Math.max(340,r.width+ev.clientX-x0)+'px';
+      f.style.height=Math.max(220,r.height+ev.clientY-y0)+'px';
+    };
+    const up=()=>{window.removeEventListener('mousemove',mv);window.removeEventListener('mouseup',up)};
+    window.addEventListener('mousemove',mv);window.addEventListener('mouseup',up);
+    e.preventDefault();e.stopPropagation();
+  });
+
+  if(o.apres)o.apres(obj);
+  activerFenetre(cle);
+  majTaches();
+  return obj;
+}
+function activerFenetre(cle){
+  const o=FEN[cle]; if(!o)return;
+  o.rangee=false; o.el.classList.remove('range');
+  o.el.style.zIndex=++zTop;
+  Object.keys(FEN).forEach(k=>FEN[k].active=(k===cle));
+  majTaches();
+}
+function rangerFenetre(cle){
+  const o=FEN[cle]; if(!o)return;
+  o.rangee=true; o.active=false; o.el.classList.add('range'); majTaches();
+}
+function fermerFenetre(cle){
+  const o=FEN[cle]; if(!o)return;
+  if(o.avantFermeture)o.avantFermeture();
+  o.el.remove(); delete FEN[cle]; majTaches();
+}
+function basculerFenetre(cle){
+  const o=FEN[cle]; if(!o)return false;
+  if(o.rangee||!o.active)activerFenetre(cle); else rangerFenetre(cle);
+  return true;
+}
+
+/* ============================================================
+   BARRE DES TÂCHES
+   ============================================================ */
+let RACCOURCIS=[];
+function majTaches(){
+  const z=$('#taches');
+  z.innerHTML=RACCOURCIS.map(r=>{
+    const o=FEN[r.cle];
+    const cl='tache'+(o?(o.active&&!o.rangee?' on':' ouvert'):'');
+    return `<button class="${cl}" data-app="${esc(r.cle)}" title="${esc(r.titre)}">
+      <span style="font-size:19px">${r.icone}</span><span class="et">${esc(r.court||r.titre)}</span>
+      ${r.badge?`<span class="badge">${r.badge}</span>`:''}</button>`;
+  }).join('');
+  $$('#taches [data-app]',z).forEach(b=>b.onclick=()=>{
+    const cle=b.dataset.app;
+    if(!basculerFenetre(cle)){
+      const r=RACCOURCIS.filter(x=>x.cle===cle)[0];
+      if(r&&r.ouvrir)r.ouvrir();
+    }
+  });
+}
+
+/* ============================================================
+   MÉTÉO ET HORLOGE
+   Los Santos, c'est Los Angeles : la meteo est vraie, prise sans
+   cle d'API. Si le service ne repond pas, on n'invente rien, on
+   affiche un tiret.
+   ============================================================ */
+const MT_ICONES={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌦️',
+  61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'🌨️',80:'🌦️',81:'🌧️',82:'⛈️',95:'⛈️',96:'⛈️',99:'⛈️'};
+const MT_ETATS={0:'Ensoleillé',1:'Peu nuageux',2:'Partiellement nuageux',3:'Couvert',
+  45:'Brouillard',48:'Brouillard givrant',51:'Bruine',53:'Bruine',55:'Bruine dense',
+  61:'Pluie faible',63:'Pluie',65:'Pluie forte',71:'Neige',73:'Neige',75:'Neige forte',
+  80:'Averses',81:'Averses',82:'Averses fortes',95:'Orage',96:'Orage',99:'Orage'};
+
+function horloge(){
+  const d=new Date();
+  const z=x=>String(x).padStart(2,'0');
+  $('#mtHeure').textContent=z(d.getHours())+':'+z(d.getMinutes());
+  $('#mtJour').textContent=d.toLocaleDateString('fr-FR',
+    {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+async function meteo(){
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.05&longitude=-118.24'+
+      '&current=temperature_2m,apparent_temperature,weather_code'+
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min'+
+      '&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles&forecast_days=6');
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    const c=d.current, code=c.weather_code;
+    $('#mtIc').textContent=MT_ICONES[code]||'🌤️';
+    $('#mtDeg').textContent=Math.round(c.temperature_2m);
+    $('#mtEtat').textContent=(MT_ETATS[code]||'—')+
+      ' · Ressenti '+Math.round(c.apparent_temperature)+'°F';
+    const J=['DIM','LUN','MAR','MER','JEU','VEN','SAM'];
+    $('#mtJours').innerHTML=d.daily.time.slice(1,6).map((t,i)=>{
+      const j=new Date(t+'T12:00:00');
+      const k=d.daily.weather_code[i+1];
+      return `<div><div class="j">${J[j.getDay()]}</div>
+        <div class="i">${MT_ICONES[k]||'🌤️'}</div>
+        <div class="h">${Math.round(d.daily.temperature_2m_max[i+1])}°</div>
+        <div class="b">${Math.round(d.daily.temperature_2m_min[i+1])}°</div></div>`;
+    }).join('');
+  }catch(e){
+    $('#mtEtat').textContent='Météo indisponible';
+  }
+}
+
+/* ============================================================
+   APPLICATIONS
+   ============================================================ */
+const ICO={
+  dossier:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#3B82F6" fill-opacity=".22" stroke="#60A5FA" stroke-width="1.5"/></svg>',
+  dossierOr:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#C8A24A" fill-opacity=".2" stroke="#D9B863" stroke-width="1.5"/></svg>'
+};
+
+/* ---------- fenêtre qui contient un site existant ---------- */
+// La Police Academy et AEGIS sont des applications a part entiere, avec
+// leur propre feuille de style et leurs propres variables globales. Les
+// fondre dans le bureau les casserait ; on les ouvre dans un cadre, ce
+// qui est exactement ce qu'une fenetre de bureau est censee faire.
+function ouvrirSite(cle,titre,icone,adresse,sous){
+  fenetre(cle,{titre,icone,sous,l:1280,h:760,apres:o=>{
+    o.corps.innerHTML=`<iframe src="${adresse}" title="${esc(titre)}"
+      allow="clipboard-write; fullscreen"></iframe>`;
+  }});
+}
+
+/* ---------- dossier des divisions ---------- */
+function ouvrirDivisions(){
+  fenetre('divisions',{titre:'Divisions et unités',icone:'🚔',l:900,h:600,apres:o=>{
+    const mienne=c=>MOI.divisions.some(d=>d.code===c);
+    o.corps.innerHTML=`<div class="pad">
+      <p style="margin:0 0 20px;color:var(--t2);line-height:1.65">
+        Les divisions dont vous faites partie s'ouvrent directement. Pour les autres,
+        « Prendre contact » ouvre une demande auprès de leur encadrement.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+        ${MOI.toutes.map(d=>{
+          const dedans=mienne(d.code);
+          const lead=MOI.divisions.some(x=>x.code===d.code&&x.lead);
+          return `<div style="padding:16px;border-radius:11px;border:1px solid var(--bord);
+            background:rgba(255,255,255,.035)">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px">
+              <span style="font-size:17px">${dedans?'🔓':'🔒'}</span>
+              <b style="font-size:14.5px">${esc(d.code)}</b>
+              ${lead?'<span class="puce p-ambre">Encadrement</span>':
+                dedans?'<span class="puce p-vert">Membre</span>':
+                '<span class="puce p-gris">Hors division</span>'}
+            </div>
+            <div style="font-size:13px;color:var(--t1);margin-bottom:4px">${esc(d.nom)}</div>
+            <div class="mono" style="font-size:11.5px;color:var(--t3);font-family:var(--fm);margin-bottom:12px">
+              ${esc(d.adresse)}</div>
+            ${dedans
+              ? `<button class="btn pri sm" data-ouvrir="${esc(d.code)}">Ouvrir</button>`
+              : `<button class="btn sm" data-contact="${esc(d.code)}">Prendre contact</button>`}
+          </div>`;
+        }).join('')}
+      </div></div>`;
+    $$('[data-ouvrir]',o.corps).forEach(b=>b.onclick=()=>ouvrirDivision(b.dataset.ouvrir));
+    $$('[data-contact]',o.corps).forEach(b=>b.onclick=()=>contactDlg(b.dataset.contact));
+  }});
+}
+
+/* ---------- une division ---------- */
+function ouvrirDivision(code){
+  const d=MOI.toutes.filter(x=>x.code===code)[0]||{code,nom:code};
+  const lead=MOI.divisions.some(x=>x.code===code&&x.lead);
+  fenetre('div:'+code,{titre:d.nom,sous:code,icone:'🚔',l:980,h:660,apres:o=>{
+    o.corps.style.display='flex';
+    o.corps.style.flexDirection='column';
+    o.corps.innerHTML=`
+      <div class="onglets">
+        <button data-t="global" class="on">💬 Discussion générale</button>
+        ${lead?'<button data-t="lead">🛡️ Discussion encadrement</button>':''}
+        <button data-t="docs">📄 Documents</button>
+        <button data-t="contacts">📮 Demandes reçues</button>
+      </div>
+      <div style="flex:1;min-height:0;display:flex;flex-direction:column" id="dvCorps"></div>`;
+    const corps=$('#dvCorps',o.corps);
+    const aller=t=>{
+      $$('.onglets button',o.corps).forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+      if(o.arret){o.arret();o.arret=null}
+      if(t==='global'||t==='lead')filDiscussion(o,corps,code,t);
+      else if(t==='docs')filDocuments(corps,code,lead);
+      else filContacts(corps,code);
+    };
+    $$('.onglets button',o.corps).forEach(b=>b.onclick=()=>aller(b.dataset.t));
+    o.avantFermeture=()=>{ if(o.arret)o.arret(); };
+    aller('global');
+  }});
+}
+
+/* ---------- discussion ---------- */
+function filDiscussion(fen,zone,code,portee){
+  zone.innerHTML=`
+    <div id="msgs" style="flex:1;min-height:0;overflow:auto;padding:16px 20px"></div>
+    <div style="flex:none;padding:12px 16px;border-top:1px solid var(--bord);display:flex;gap:9px">
+      <input class="champ" id="msgTxt" placeholder="Écrire un message…" autocomplete="off">
+      <button class="btn pri" id="msgEnv">Envoyer</button>
+    </div>`;
+  const liste=$('#msgs',zone), champ=$('#msgTxt',zone);
+  let dernier=0, premier=true;
+
+  const rendre=(msgs,ajout)=>{
+    if(!ajout)liste.innerHTML='';
+    if(!msgs.length&&!ajout&&!liste.children.length){
+      liste.innerHTML='<div class="vide"><b>Aucun message</b>Ouvrez la discussion.</div>';
+      return;
+    }
+    if(msgs.length&&liste.querySelector('.vide'))liste.innerHTML='';
+    msgs.forEach(m=>{
+      if(m.id>dernier)dernier=m.id;
+      const moi=m.auteur_id===MOI.discord_id;
+      liste.appendChild(el('div','',`
+        <div style="display:flex;gap:10px;padding:7px 0">
+          <div style="flex:none;width:32px;height:32px;border-radius:8px;display:grid;place-items:center;
+            background:${moi?'var(--bleu-sombre)':'rgba(255,255,255,.06)'};font-size:12px;font-weight:600">
+            ${esc((m.auteur_nom||'?').replace(/^\[[^\]]*\]\s*/,'').slice(0,2).toUpperCase())}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:8px;align-items:baseline">
+              <b style="font-size:13px;color:${moi?'var(--bleu2)':'var(--t0)'}">${esc(m.auteur_nom||'—')}</b>
+              ${m.auteur_role==='Encadrement'?'<span class="puce p-ambre">Encadrement</span>':''}
+              <span style="font-size:11px;color:var(--t3);margin-left:auto">
+                ${new Date(m.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+            </div>
+            <div style="font-size:13.5px;color:var(--t1);line-height:1.6;margin-top:3px;
+              white-space:pre-wrap;word-break:break-word">${esc(m.texte)}</div>
+          </div>
+        </div>`));
+    });
+    if(msgs.length)liste.scrollTop=liste.scrollHeight;
+  };
+
+  const charger=async()=>{
+    const r=await api('/api/bureau/division/'+code+'/messages?portee='+portee+
+      (dernier?'&depuis='+dernier:''));
+    if(!r.ok){
+      if(premier)zone.innerHTML=`<div class="vide"><b>Discussion fermée</b>${esc(r.data.error||'')}</div>`;
+      return false;
+    }
+    rendre(r.data.messages||[],!premier);
+    premier=false;
+    return true;
+  };
+
+  const envoyer=async()=>{
+    const t=champ.value.trim(); if(!t)return;
+    champ.value='';
+    const r=await api('/api/bureau/division/'+code+'/messages?portee='+portee,
+      {method:'POST',body:{texte:t}});
+    if(!r.ok){ avis('Message non envoyé',r.data.error||'','err'); champ.value=t; return; }
+    charger();
+  };
+  $('#msgEnv',zone).onclick=envoyer;
+  champ.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();envoyer()} });
+
+  charger().then(ok=>{
+    if(!ok)return;
+    // Interrogation reguliere plutot que temps reel : ouvrir les tables
+    // au navigateur demonterait tout le controle des roles.
+    const t=setInterval(charger,3000);
+    fen.arret=()=>clearInterval(t);
+  });
+}
+
+/* ---------- documents ---------- */
+function filDocuments(zone,code,lead){
+  zone.innerHTML=`<div style="flex:1;min-height:0;overflow:auto" id="docs"></div>
+    <div style="flex:none;padding:12px 16px;border-top:1px solid var(--bord)">
+      <button class="btn pri" id="docAdd">＋ Ajouter un document</button></div>`;
+  const liste=$('#docs',zone);
+
+  const charger=async()=>{
+    const r=await api('/api/bureau/division/'+code+'/documents');
+    if(!r.ok){liste.innerHTML=`<div class="vide"><b>Indisponible</b>${esc(r.data.error||'')}</div>`;return}
+    const docs=r.data.documents||[];
+    liste.innerHTML=docs.length?`<div class="pad" style="display:grid;gap:10px">${docs.map(d=>`
+      <div style="padding:14px 16px;border-radius:10px;border:1px solid var(--bord);
+        background:rgba(255,255,255,.035)">
+        <div style="display:flex;gap:9px;align-items:center">
+          <span style="font-size:16px">${d.type==='lien'?'🔗':d.type==='procedure'?'📋':d.type==='rapport'?'📊':'📄'}</span>
+          <b style="font-size:14px">${esc(d.titre)}</b>
+          <span class="puce p-gris">${esc(d.type)}</span>
+          <span style="margin-left:auto;font-size:11.5px;color:var(--t3)">
+            ${esc(d.ajoute_par||'—')} · ${new Date(d.created_at).toLocaleDateString('fr-FR')}</span>
+        </div>
+        ${d.description?`<p style="margin:9px 0 0;font-size:13px;color:var(--t2);line-height:1.6">${esc(d.description)}</p>`:''}
+        ${d.contenu?`<pre style="margin:10px 0 0;padding:11px;border-radius:8px;background:rgba(0,0,0,.3);
+          font-family:var(--fm);font-size:12px;color:var(--t1);white-space:pre-wrap;max-height:220px;
+          overflow:auto">${esc(d.contenu)}</pre>`:''}
+        <div style="display:flex;gap:7px;margin-top:11px">
+          ${d.lien?`<a class="btn sm" href="${esc(d.lien)}" target="_blank" rel="noopener">Ouvrir le lien</a>`:''}
+          ${(d.ajoute_id===MOI.discord_id||lead)?`<button class="btn sm dgr" data-sup="${d.id}">Retirer</button>`:''}
+        </div>
+      </div>`).join('')}</div>`
+      :'<div class="vide"><b>Aucun document</b>Déposez une procédure, un rapport ou un lien utile.</div>';
+    $$('[data-sup]',liste).forEach(b=>b.onclick=()=>{
+      confirmer('Retirer le document','Ce document sera supprimé définitivement.','Retirer',async()=>{
+        const rr=await api('/api/bureau/division/'+code+'/documents?id='+b.dataset.sup,{method:'DELETE'});
+        if(!rr.ok)return avis('Échec',rr.data.error||'','err');
+        avis('Document retiré','','ok');charger();
+      },true);
+    });
+  };
+
+  $('#docAdd',zone).onclick=()=>{
+    dlg({titre:'Ajouter un document',ok:'Déposer',corps:`
+      <label class="lbl">Titre</label><input class="champ" id="dcT" placeholder="Procédure d'intervention">
+      <label class="lbl" style="margin-top:14px">Type</label>
+      <select class="champ" id="dcTy">
+        <option value="note">Note</option><option value="procedure">Procédure</option>
+        <option value="rapport">Rapport</option><option value="lien">Lien</option></select>
+      <label class="lbl" style="margin-top:14px">Description</label>
+      <textarea class="champ" id="dcD" style="min-height:70px" placeholder="À quoi sert ce document…"></textarea>
+      <label class="lbl" style="margin-top:14px">Lien (facultatif)</label>
+      <input class="champ" id="dcL" placeholder="https://…">
+      <label class="lbl" style="margin-top:14px">Contenu (facultatif)</label>
+      <textarea class="champ" id="dcC" style="min-height:110px;font-family:var(--fm);font-size:12.5px"
+        placeholder="Le texte du document, s'il tient ici."></textarea>`,
+      onOk:async v=>{
+        const t=$('#dcT',v).value.trim();
+        if(!t){avis('Titre manquant','','err');return false}
+        const r=await api('/api/bureau/division/'+code+'/documents',{method:'POST',body:{
+          titre:t,type:$('#dcTy',v).value,description:$('#dcD',v).value.trim(),
+          lien:$('#dcL',v).value.trim(),contenu:$('#dcC',v).value}});
+        if(!r.ok){avis('Échec',r.data.error||'','err');return false}
+        avis('Document déposé','','ok');charger();
+      }});
+  };
+  charger();
+}
+
+/* ---------- demandes reçues par la division ---------- */
+function filContacts(zone,code){
+  zone.innerHTML='<div style="flex:1;min-height:0;overflow:auto" id="cts"></div>';
+  const liste=$('#cts',zone);
+  const charger=async()=>{
+    const r=await api('/api/bureau/contacts?division='+code);
+    if(!r.ok){liste.innerHTML=`<div class="vide"><b>Indisponible</b>${esc(r.data.error||'')}</div>`;return}
+    const cs=r.data.contacts||[];
+    liste.innerHTML=cs.length?`<div class="pad" style="display:grid;gap:9px">${cs.map(c=>`
+      <button style="text-align:left;padding:13px 15px;border-radius:10px;border:1px solid var(--bord);
+        background:rgba(255,255,255,.035);cursor:pointer;color:inherit" data-c="${c.id}">
+        <div style="display:flex;gap:9px;align-items:center">
+          <b style="font-size:13.5px">${esc(c.sujet)}</b>
+          <span class="puce ${c.statut==='ferme'?'p-gris':c.statut==='en cours'?'p-ambre':'p-bleu'}">${esc(c.statut)}</span>
+          <span style="margin-left:auto;font-size:11.5px;color:var(--t3)">
+            ${new Date(c.maj_at).toLocaleDateString('fr-FR')}</span>
+        </div>
+        <div style="font-size:12.5px;color:var(--t2);margin-top:4px">Ouvert par ${esc(c.ouvert_par||'—')}</div>
+      </button>`).join('')}</div>`
+      :'<div class="vide"><b>Aucune demande</b>Les prises de contact adressées à cette division arriveront ici.</div>';
+    $$('[data-c]',liste).forEach(b=>b.onclick=()=>ouvrirContact(+b.dataset.c));
+  };
+  charger();
+}
+
+/* ---------- prendre contact ---------- */
+function contactDlg(code){
+  const d=MOI.toutes.filter(x=>x.code===code)[0]||{code,nom:code};
+  dlg({titre:'Prendre contact · '+d.nom,ok:'Envoyer la demande',corps:`
+    <p style="margin:0 0 16px;color:var(--t2);line-height:1.65">
+      Votre demande ouvre une conversation avec l'encadrement de ${esc(d.nom)}.
+      Vous en suivrez les réponses dans « Mes demandes ».</p>
+    <label class="lbl">Objet</label>
+    <input class="champ" id="ctS" placeholder="Demande de renfort, question, signalement…">
+    <label class="lbl" style="margin-top:14px">Message</label>
+    <textarea class="champ" id="ctM" style="min-height:130px"
+      placeholder="Décrivez votre demande."></textarea>`,
+    onOk:async v=>{
+      const s=$('#ctS',v).value.trim();
+      if(!s){avis('Objet manquant','','err');return false}
+      const r=await api('/api/bureau/contacts',{method:'POST',
+        body:{division:code,sujet:s,message:$('#ctM',v).value.trim()}});
+      if(!r.ok){avis('Échec',r.data.error||'','err');return false}
+      avis('Demande envoyée','L\'encadrement de '+d.nom+' la recevra.','ok');
+      if(r.data.contact)ouvrirContact(r.data.contact.id);
+    }});
+}
+
+function ouvrirContact(id){
+  fenetre('contact:'+id,{titre:'Demande n° '+id,icone:'📮',l:760,h:560,apres:o=>{
+    o.corps.style.display='flex'; o.corps.style.flexDirection='column';
+    o.corps.innerHTML=`<div id="ctT" style="flex:none;padding:14px 18px;border-bottom:1px solid var(--bord)"></div>
+      <div id="ctL" style="flex:1;min-height:0;overflow:auto;padding:16px 18px"></div>
+      <div style="flex:none;padding:12px 16px;border-top:1px solid var(--bord);display:flex;gap:9px">
+        <input class="champ" id="ctI" placeholder="Répondre…" autocomplete="off">
+        <button class="btn pri" id="ctE">Envoyer</button></div>`;
+    const charger=async()=>{
+      const r=await api('/api/bureau/contacts/'+id);
+      if(!r.ok){o.corps.innerHTML=`<div class="vide"><b>Indisponible</b>${esc(r.data.error||'')}</div>`;return}
+      const c=r.data.contact;
+      const mien=c.ouvert_par_id===MOI.discord_id;
+      $('#ctT',o.corps).innerHTML=`<div style="display:flex;gap:9px;align-items:center">
+        <b style="font-size:14.5px">${esc(c.sujet)}</b>
+        <span class="puce ${c.statut==='ferme'?'p-gris':c.statut==='en cours'?'p-ambre':'p-bleu'}">${esc(c.statut)}</span>
+        ${!mien&&c.statut!=='ferme'?'<button class="btn sm" id="ctF" style="margin-left:auto">Clore</button>':''}
+      </div>
+      <div style="font-size:12px;color:var(--t3);margin-top:5px">
+        ${esc(c.division)} · ouvert par ${esc(c.ouvert_par||'—')} le
+        ${new Date(c.created_at).toLocaleDateString('fr-FR')}</div>`;
+      const f=$('#ctF',o.corps);
+      if(f)f.onclick=async()=>{
+        const rr=await api('/api/bureau/contacts/'+id,{method:'POST',body:{statut:'ferme'}});
+        if(rr.ok){avis('Demande close','','ok');charger()}
+      };
+      $('#ctL',o.corps).innerHTML=(r.data.messages||[]).map(m=>`
+        <div style="margin-bottom:14px">
+          <div style="display:flex;gap:8px;align-items:baseline">
+            <b style="font-size:13px;color:${m.auteur_role==='Division'?'var(--bleu2)':'var(--t0)'}">${esc(m.auteur_nom||'—')}</b>
+            <span class="puce p-gris">${esc(m.auteur_role||'')}</span>
+            <span style="font-size:11px;color:var(--t3);margin-left:auto">
+              ${new Date(m.created_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span>
+          </div>
+          <div style="font-size:13.5px;color:var(--t1);line-height:1.6;margin-top:4px;white-space:pre-wrap">${esc(m.texte)}</div>
+        </div>`).join('')||'<div class="vide">Aucun message.</div>';
+      const l=$('#ctL',o.corps); l.scrollTop=l.scrollHeight;
+    };
+    const envoyer=async()=>{
+      const i=$('#ctI',o.corps), t=i.value.trim(); if(!t)return;
+      i.value='';
+      const r=await api('/api/bureau/contacts/'+id,{method:'POST',body:{texte:t}});
+      if(!r.ok){avis('Non envoyé',r.data.error||'','err');i.value=t;return}
+      charger();
+    };
+    $('#ctE',o.corps).onclick=envoyer;
+    $('#ctI',o.corps).addEventListener('keydown',e=>{
+      if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();envoyer()} });
+    charger();
+    const t=setInterval(charger,5000);
+    o.avantFermeture=()=>clearInterval(t);
+  }});
+}
+
+function ouvrirMesDemandes(){
+  fenetre('demandes',{titre:'Mes demandes',icone:'📮',l:720,h:520,apres:async o=>{
+    const r=await api('/api/bureau/contacts');
+    const cs=(r.ok&&r.data.contacts)||[];
+    o.corps.innerHTML=cs.length?`<div class="pad" style="display:grid;gap:9px">${cs.map(c=>`
+      <button style="text-align:left;padding:13px 15px;border-radius:10px;border:1px solid var(--bord);
+        background:rgba(255,255,255,.035);cursor:pointer;color:inherit" data-c="${c.id}">
+        <div style="display:flex;gap:9px;align-items:center">
+          <b style="font-size:13.5px">${esc(c.sujet)}</b>
+          <span class="puce p-bleu">${esc(c.division)}</span>
+          <span class="puce ${c.statut==='ferme'?'p-gris':c.statut==='en cours'?'p-ambre':'p-bleu'}">${esc(c.statut)}</span>
+          <span style="margin-left:auto;font-size:11.5px;color:var(--t3)">
+            ${new Date(c.maj_at).toLocaleDateString('fr-FR')}</span>
+        </div></button>`).join('')}</div>`
+      :'<div class="vide"><b>Aucune demande</b>Ouvrez-en une depuis le dossier Divisions.</div>';
+    $$('[data-c]',o.corps).forEach(b=>b.onclick=()=>ouvrirContact(+b.dataset.c));
+  }});
+}
+
+/* ============================================================
+   MESSAGERIE
+   Les adresses en @sasp.com sont internes au site : elles ne
+   partent pas sur le vrai courrier, et rien ne rentre depuis
+   l'extérieur. C'est un annuaire, pas un serveur de mail.
+   ============================================================ */
+let ANNUAIRE=null;
+let MAILS_NON_LUS=0;
+
+async function chargerAnnuaire(){
+  if(ANNUAIRE)return ANNUAIRE;
+  const r=await api('/api/bureau/annuaire');
+  ANNUAIRE=(r.ok&&r.data.annuaire)||[];
+  return ANNUAIRE;
+}
+
+function ouvrirMail(){
+  fenetre('mail',{titre:'Messagerie',sous:MOI.adresse,icone:'✉️',l:1080,h:680,apres:o=>{
+    o.corps.style.display='flex';
+    o.corps.innerHTML=`
+      <div style="flex:none;width:200px;border-right:1px solid var(--bord);padding:14px 12px;
+        display:flex;flex-direction:column;gap:6px">
+        <button class="btn pri" id="mlNew" style="justify-content:center;margin-bottom:8px">✎ Écrire</button>
+        <button class="btn" data-b="recus" style="justify-content:flex-start">📥 Reçus</button>
+        <button class="btn" data-b="envoyes" style="justify-content:flex-start">📤 Envoyés</button>
+        <div style="margin-top:auto;font-size:11px;color:var(--t3);line-height:1.6;padding:8px 4px">
+          Vos adresses<br><span id="mlAdr" style="font-family:var(--fm);color:var(--t2)"></span></div>
+      </div>
+      <div style="flex:none;width:320px;border-right:1px solid var(--bord);overflow:auto" id="mlListe"></div>
+      <div style="flex:1;min-width:0;overflow:auto" id="mlVue">
+        <div class="vide"><b>Aucun message ouvert</b>Choisissez un message à gauche.</div></div>`;
+
+    let boite='recus', mails=[];
+    const majBoutons=()=>$$('[data-b]',o.corps).forEach(b=>
+      b.classList.toggle('pri',b.dataset.b===boite));
+
+    const charger=async()=>{
+      const r=await api('/api/bureau/mails?boite='+boite);
+      if(!r.ok){$('#mlListe',o.corps).innerHTML=`<div class="vide">${esc(r.data.error||'')}</div>`;return}
+      mails=r.data.mails||[];
+      $('#mlAdr',o.corps).textContent=(r.data.mes_adresses||[]).join('\n');
+      MAILS_NON_LUS=boite==='recus'
+        ? mails.filter(m=>(m.lu_par||[]).indexOf(MOI.discord_id)===-1).length
+        : MAILS_NON_LUS;
+      majBadgeMail();
+      $('#mlListe',o.corps).innerHTML=mails.length?mails.map(m=>{
+        const nonLu=boite==='recus'&&(m.lu_par||[]).indexOf(MOI.discord_id)===-1;
+        return `<button data-m="${m.id}" style="display:block;width:100%;text-align:left;padding:13px 15px;
+          background:${nonLu?'rgba(59,130,246,.07)':'transparent'};border:0;
+          border-bottom:1px solid var(--bord);cursor:pointer;color:inherit">
+          <div style="display:flex;gap:7px;align-items:center">
+            ${nonLu?'<span style="flex:none;width:7px;height:7px;border-radius:50%;background:var(--bleu)"></span>':''}
+            <b style="font-size:12.5px;color:var(--bleu2);font-family:var(--fm);overflow:hidden;
+              text-overflow:ellipsis;white-space:nowrap">${esc(boite==='recus'?m.expediteur_adr:(m.destinataires||[]).join(', '))}</b>
+            <span style="margin-left:auto;font-size:11px;color:var(--t3);flex:none">
+              ${new Date(m.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}</span>
+          </div>
+          <div style="font-size:13.5px;font-weight:${nonLu?'600':'400'};margin-top:4px;overflow:hidden;
+            text-overflow:ellipsis;white-space:nowrap">${esc(m.sujet||'(sans objet)')}</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:3px;overflow:hidden;
+            text-overflow:ellipsis;white-space:nowrap">${esc((m.corps||'').slice(0,90))}</div>
+          ${(m.pieces||[]).length?`<div style="font-size:11px;color:var(--t2);margin-top:4px">📎 ${(m.pieces||[]).length} pièce(s)</div>`:''}
+        </button>`;
+      }).join(''):'<div class="vide"><b>Boîte vide</b></div>';
+      $$('[data-m]',o.corps).forEach(b=>b.onclick=()=>voir(+b.dataset.m));
+    };
+
+    const voir=async id=>{
+      const m=mails.filter(x=>x.id===id)[0]; if(!m)return;
+      if(boite==='recus'&&(m.lu_par||[]).indexOf(MOI.discord_id)===-1){
+        api('/api/bureau/mails/'+id+'/lu',{method:'POST'}).then(()=>{
+          m.lu_par=(m.lu_par||[]).concat([MOI.discord_id]); charger();
+        });
+      }
+      $('#mlVue',o.corps).innerHTML=`<div class="pad">
+        <h2 style="margin:0 0 14px;font-size:19px;font-weight:600">${esc(m.sujet||'(sans objet)')}</h2>
+        <div style="display:flex;gap:10px;align-items:center;padding-bottom:14px;
+          border-bottom:1px solid var(--bord);margin-bottom:16px">
+          <div style="width:38px;height:38px;border-radius:9px;background:var(--bleu-sombre);
+            display:grid;place-items:center;font-size:13px;font-weight:600">
+            ${esc((m.expediteur_nom||'?').replace(/^\[[^\]]*\]\s*/,'').slice(0,2).toUpperCase())}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13.5px;font-weight:600">${esc(m.expediteur_nom||'—')}</div>
+            <div style="font-size:12px;color:var(--t3);font-family:var(--fm)">${esc(m.expediteur_adr)}</div>
+          </div>
+          <div style="text-align:right;font-size:11.5px;color:var(--t3)">
+            ${new Date(m.created_at).toLocaleString('fr-FR')}</div>
+        </div>
+        <div style="font-size:12px;color:var(--t3);margin-bottom:16px;font-family:var(--fm)">
+          À : ${esc((m.destinataires||[]).join(', '))}</div>
+        <div style="font-size:14px;color:var(--t1);line-height:1.75;white-space:pre-wrap">${esc(m.corps||'')}</div>
+        ${(m.pieces||[]).length?`<div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--bord)">
+          <div class="lbl">Pièces jointes</div>
+          ${(m.pieces||[]).map((p,i)=>`<a class="btn sm" download="${esc(p.nom||'piece')}"
+            href="${esc(p.donnee||'#')}" style="margin:4px 6px 0 0">📎 ${esc(p.nom||'pièce '+(i+1))}</a>`).join('')}
+        </div>`:''}
+        <div style="margin-top:22px"><button class="btn" id="mlRep">↩ Répondre</button></div>
+      </div>`;
+      const rep=$('#mlRep',o.corps);
+      if(rep)rep.onclick=()=>ecrire({a:[m.expediteur_adr],sujet:'Re : '+(m.sujet||'')});
+    };
+
+    const ecrire=async pre=>{
+      const ann=await chargerAnnuaire();
+      dlg({titre:'Nouveau message',ok:'Envoyer',corps:`
+        <label class="lbl">Destinataires</label>
+        <input class="champ" id="mlA" list="mlAnn" placeholder="agent@sasp.com, swat@sasp.com"
+          value="${esc((pre&&pre.a||[]).join(', '))}">
+        <datalist id="mlAnn">${ann.map(a=>
+          `<option value="${esc(a.adresse)}">${esc(a.nom)}${a.genre==='division'?' (division)':''}</option>`).join('')}</datalist>
+        <div style="font-size:11.5px;color:var(--t3);margin-top:5px">
+          Séparez par des virgules. Une adresse de division atteint tous ses membres.</div>
+        <label class="lbl" style="margin-top:14px">Objet</label>
+        <input class="champ" id="mlS" value="${esc(pre&&pre.sujet||'')}">
+        <label class="lbl" style="margin-top:14px">Message</label>
+        <textarea class="champ" id="mlC" style="min-height:170px"></textarea>
+        <label class="lbl" style="margin-top:14px">Pièce jointe</label>
+        <input type="file" class="champ" id="mlF" multiple style="padding:7px">
+        <div style="font-size:11.5px;color:var(--t3);margin-top:5px">
+          700 Ko au total : les pièces voyagent avec le message.</div>`,
+        onOk:async v=>{
+          const dest=$('#mlA',v).value.split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+          if(!dest.length){avis('Aucun destinataire','','err');return false}
+          const suj=$('#mlS',v).value.trim();
+          if(!suj){avis('Objet manquant','','err');return false}
+          const f=$('#mlF',v).files;
+          const pieces=[];
+          for(let i=0;i<Math.min(f.length,5);i++){
+            const d=await new Promise(res=>{
+              const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>res(null);
+              fr.readAsDataURL(f[i]);
+            });
+            if(d)pieces.push({nom:f[i].name,type:f[i].type,donnee:d});
+          }
+          const r=await api('/api/bureau/mails',{method:'POST',
+            body:{destinataires:dest,sujet:suj,corps:$('#mlC',v).value,pieces}});
+          if(!r.ok){avis('Non envoyé',r.data.error||'','err');return false}
+          avis('Message envoyé',dest.join(', '),'ok');
+          if(boite==='envoyes')charger();
+        }});
+    };
+
+    $('#mlNew',o.corps).onclick=()=>ecrire(null);
+    $$('[data-b]',o.corps).forEach(b=>b.onclick=()=>{boite=b.dataset.b;majBoutons();charger()});
+    majBoutons();charger();
+    const t=setInterval(()=>{ if(boite==='recus')charger(); },15000);
+    o.avantFermeture=()=>clearInterval(t);
+  }});
+}
+
+function majBadgeMail(){
+  const r=RACCOURCIS.filter(x=>x.cle==='mail')[0];
+  if(r){ r.badge=MAILS_NON_LUS||0; majTaches(); }
+}
+async function veilleMail(){
+  const r=await api('/api/bureau/mails?boite=recus');
+  if(!r.ok)return;
+  MAILS_NON_LUS=(r.data.mails||[]).filter(m=>(m.lu_par||[]).indexOf(MOI.discord_id)===-1).length;
+  majBadgeMail();
+}
+
+/* ============================================================
+   BUREAU : dossiers, raccourcis, démarrage
+   ============================================================ */
+function construireBureau(){
+  $('#mqTitre').textContent='SASP SUD';
+  $('#acTitre').textContent='Bienvenue, '+String(MOI.nom).replace(/^\[[^\]]*\]\s*/,'');
+  $('#acTexte').textContent=MOI.divisions.length
+    ? 'Vos divisions : '+MOI.divisions.map(d=>d.code).join(', ')+
+      '. Votre adresse interne est '+MOI.adresse+'.'
+    : 'Vous n\'êtes rattaché à aucune division. Utilisez « Prendre contact » pour vous adresser à l\'une d\'elles.';
+
+  const D=[
+    {t:'Police Academy',i:ICO.dossierOr,f:()=>ouvrirSite('pa','Police Academy','🎓','pa.html','intranet')},
+    {t:'CID · AEGIS',   i:ICO.dossierOr,f:()=>ouvrirSite('aegis','AEGIS','🛡️','sasp/liaisons/','outil d\'enquête')},
+    {t:'Divisions',     i:ICO.dossier,  f:ouvrirDivisions},
+    {t:'Messagerie',    i:ICO.dossier,  f:ouvrirMail, badge:()=>MAILS_NON_LUS},
+    {t:'Mes demandes',  i:ICO.dossier,  f:ouvrirMesDemandes}
+  ];
+  MOI.divisions.forEach(d=>D.push({t:d.code+' · '+d.nom,i:ICO.dossier,f:()=>ouvrirDivision(d.code)}));
+
+  $('#dossiers').innerHTML=D.map((d,i)=>`
+    <button class="doss" data-i="${i}">${d.i}<span>${esc(d.t)}</span>
+      ${d.badge&&d.badge()?`<span class="pastille">${d.badge()}</span>`:''}</button>`).join('')+
+    `<button class="doss ajout" id="dsAjout">＋ Ajouter un raccourci</button>`;
+  $$('#dossiers [data-i]').forEach(b=>b.onclick=()=>D[+b.dataset.i].f());
+  $('#dsAjout').onclick=()=>avis('Bientôt','Les raccourcis personnels arrivent dans une prochaine version.','warn');
+
+  RACCOURCIS=[
+    {cle:'pa',   titre:'Police Academy',icone:'🎓',court:'Academy',
+     ouvrir:()=>ouvrirSite('pa','Police Academy','🎓','pa.html','intranet')},
+    {cle:'aegis',titre:'AEGIS',icone:'🛡️',court:'AEGIS',
+     ouvrir:()=>ouvrirSite('aegis','AEGIS','🛡️','sasp/liaisons/','outil d\'enquête')},
+    {cle:'divisions',titre:'Divisions',icone:'🚔',court:'Divisions',ouvrir:ouvrirDivisions},
+    {cle:'mail',titre:'Messagerie',icone:'✉️',court:'Mail',ouvrir:ouvrirMail,badge:0},
+    {cle:'demandes',titre:'Mes demandes',icone:'📮',court:'Demandes',ouvrir:ouvrirMesDemandes}
+  ];
+  majTaches();
+
+  $('#barreFin').innerHTML=`
+    <div class="sep"></div>
+    <button class="tache" id="btProfil"><span style="font-size:19px">👤</span><span class="et">Profil</span></button>
+    <button class="tache" id="btSortie"><span style="font-size:19px">⏻</span><span class="et">Déconnexion</span></button>`;
+  $('#btProfil').onclick=()=>dlg({titre:'Mon profil',pied:'<button class="btn pri" data-x>Fermer</button>',
+    corps:`<div style="display:grid;gap:12px">
+      ${[['Agent',MOI.nom],['Adresse interne',MOI.adresse],['Identifiant Discord',MOI.discord_id],
+         ['Command Staff',MOI.command_staff?'oui':'non'],['Supervisor Team',MOI.superviseur?'oui':'non'],
+         ['Divisions',MOI.divisions.map(d=>d.code+(d.lead?' (encadrement)':'')).join(', ')||'aucune']]
+        .map(([k,v])=>`<div style="display:flex;gap:12px;padding:10px 12px;border-radius:9px;
+          background:rgba(255,255,255,.04)">
+          <span style="flex:none;width:150px;font-size:12px;color:var(--t3)">${k}</span>
+          <span style="font-size:13.5px">${esc(v||'—')}</span></div>`).join('')}
+    </div>`});
+  $('#btSortie').onclick=()=>confirmer('Déconnexion','Vous serez déconnecté du poste de travail.',
+    'Se déconnecter',async()=>{ try{await SB.auth.signOut()}catch(e){} location.reload(); },true);
+
+  $('#btDemarrer').onclick=()=>ouvrirDivisions();
+  $('#plusAnnonces').onclick=()=>avis('Annonces','Le journal complet arrivera avec la prochaine étape.','warn');
+}
+
+function annonces(){
+  const A=[
+    ['Poste de travail en service','L\'intranet, AEGIS et les divisions sont accessibles depuis ce bureau.'],
+    ['Messagerie interne','Écrivez à un agent ou à une division. Les adresses sont internes au site.'],
+    ['Prendre contact','Pour joindre une division dont vous ne faites pas partie, ouvrez une demande.']
+  ];
+  $('#annonces').innerHTML=A.map(([t,c])=>
+    `<div class="annonce"><span class="pt"></span><div><b>${esc(t)}</b><p>${esc(c)}</p></div></div>`).join('');
+}
+
+/* ---------- porte d'entrée ---------- */
+const LOGO='assets/sasp-sud-logo.png';
+function porte(etat,info){
+  const g=$('#porte'), c=$('#pcard');
+  if(!etat){g.classList.remove('on');return}
+  g.classList.add('on');
+  const v={
+    chargement:()=>`<div class="tourne"></div><h2>Ouverture de session</h2>
+      <p>Vérification de votre identité et de vos rôles Discord…</p>`,
+    connexion:()=>`<img src="${LOGO}" alt="SASP"><h2>San Andreas State Police</h2>
+      <p>Poste de travail réservé au personnel. Identifiez-vous avec Discord pour ouvrir votre session.</p>
+      <button class="btn pri" id="pLog" style="width:100%;justify-content:center;padding:11px">
+        Se connecter avec Discord</button>`,
+    refus:()=>`<img src="${LOGO}" alt="SASP"><h2>Accès refusé</h2>
+      <p>${esc((info&&info.message)||'Votre compte n\'a pas accès au poste de travail.')}</p>
+      <button class="btn" id="pOut" style="width:100%;justify-content:center">Changer de compte</button>`,
+    panne:()=>`<img src="${LOGO}" alt="SASP"><h2>Poste indisponible</h2>
+      <p>${esc((info&&info.error)||'Le serveur n\'a pas répondu.')}</p>
+      <button class="btn pri" id="pRetry" style="width:100%;justify-content:center">Réessayer</button>`
+  };
+  c.innerHTML=v[etat]();
+  const b=$('#pLog',c);
+  if(b)b.onclick=async()=>{
+    b.disabled=true;b.textContent='Redirection…';
+    await SB.auth.signInWithOAuth({provider:'discord',
+      options:{redirectTo:location.href.split('#')[0].split('?')[0]}});
+  };
+  const rt=$('#pRetry',c); if(rt)rt.onclick=()=>demarrer();
+  const so=$('#pOut',c); if(so)so.onclick=async()=>{
+    try{await SB.auth.signOut()}catch(e){} location.reload(); };
+}
+
+async function demarrer(){
+  porte('chargement');
+  if(!SB)SB=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,
+    {auth:{detectSessionInUrl:true,flowType:'pkce'}});
+  try{ const {data}=await SB.auth.getSession(); SESSION=data.session; }catch(e){ SESSION=null; }
+  if(!SESSION){porte('connexion');return}
+
+  const r=await api('/api/bureau/moi');
+  if(r.statut===401){porte('connexion');return}
+  if(r.statut===403){porte('refus',r.data);return}
+  if(!r.ok){porte('panne',r.data);return}
+
+  MOI=r.data;
+  porte(null);
+  construireBureau();
+  annonces();
+  veilleMail();
+  setInterval(veilleMail,60000);
+}
+
+horloge();
+setInterval(horloge,10000);
+meteo();
+setInterval(meteo,15*60*1000);
+demarrer();
+</script>
 </body>
 </html>

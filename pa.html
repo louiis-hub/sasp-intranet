@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Police Academy · SASP SUD</title>
+<link rel="icon" type="image/png" href="assets/sasp-pa-favicon.png?v=20260820-pa-favicon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=20260831-ppa3">
+</head>
+<style>
+/* Le logo ne réagit au survol que si le Worker a confirmé l accès
+   au tableau de liaisons (classe posée par activerLienLiaisons). */
+#logoLiaisons.logo-liaisons-ouvert { transition: transform .14s, filter .14s; }
+#logoLiaisons.logo-liaisons-ouvert:hover {
+  transform: scale(1.12) rotate(-4deg);
+  filter: drop-shadow(0 3px 8px rgba(200,60,40,.55));
+}
+</style>
+<body>
+
+<!-- ══ LOGIN ════════════════════════════════════════════════════ -->
+<div id="loginView" class="login-page">
+  <div class="login-card">
+    <div class="login-star"><img src="assets/sasp-sud-logo.png" alt="SASP" style="width:70px;height:70px;object-fit:contain"></div>
+    <div class="login-eyebrow">SAN ANDREAS STATE TROOPER</div>
+    <h1 class="login-title">SASP SUD</h1>
+    <p class="login-sub">Accès réservé au personnel du SASP Sud</p>
+    <div class="login-err" id="loginErr"></div>
+    <button class="btn btn-discord btn-full" id="loginBtn" onclick="doDiscordLogin()">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.032.055a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+      <span id="loginBtnTxt">Se connecter avec Discord</span>
+    </button>
+    <p class="login-footer">SASP SUD - ACCÈS SÉCURISÉ</p>
+  </div>
+</div>
+
+<!-- ══ APP SHELL ══════════════════════════════════════════════════ -->
+<div id="appView" style="display:none">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-star" id="logoLiaisons"><img src="assets/sasp-sud-logo.png" alt="SASP" style="width:32px;height:32px;object-fit:contain"></div>
+      <div class="sidebar-brand">
+        <div class="sidebar-title">SASP</div>
+        <div class="sidebar-sub">Sud</div>
+      </div>
+      <button class="sidebar-close" onclick="toggleSidebar()">✕</button>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-footer" id="sidebarFooter"></div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  <div class="app-main">
+    <header class="app-header">
+      <button class="hamburger" onclick="toggleSidebar()">☰</button>
+      <h1 class="page-title" id="pageTitle">Tableau de bord</h1>
+      <div class="header-actions">
+        <div class="header-search-btn" onclick="navigate('search')" title="Recherche">🔍</div>
+      </div>
+    </header>
+    <main id="mainContent" class="main-content"></main>
+  </div>
+</div>
+
+<!-- ══ MODAL ════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalOverlay" onclick="onModalOverlayClick(event)">
+  <div class="modal-box" id="modalBox">
+    <div class="modal-hd" id="modalHd"></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-ft" id="modalFt"></div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+
+<script src="config.js?v=20260831-ppa3"></script>
+<script src="db.js?v=20260831-ppa3"></script>
+<script src="app.js?v=20260831-ppa3"></script>
+<script src="ticketing-advanced.js?v=20260802-ticketing"></script>
+</body>
+</html>

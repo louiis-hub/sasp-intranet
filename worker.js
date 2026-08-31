@@ -415,6 +415,110 @@ function liaisonsRefusDossier() {
   return json({ ok: false, error: "Dossier introuvable ou fermé." }, 403);
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  BUREAU SASP
+//  Meme principe qu'AEGIS : le site est statique, donc la page se
+//  telecharge toujours, mais aucune donnee ne sort d'ici sans que les
+//  roles Discord aient ete relus.
+// ════════════════════════════════════════════════════════════════════
+
+// Les dix divisions, avec le role qui en donne l'acces et celui qui
+// donne l'encadrement. Le separateur decoratif ne compte jamais.
+const BUREAU_DIVISIONS = [
+  { code: "PA",   nom: "Police Academy",              adr: "academy",  roles: ["1518631032167993534"], lead: ["1518631032167993534"] },
+  { code: "CID",  nom: "Criminal Investigation Div.", adr: "cid",      roles: ["1501526844959363114", "1501526499910746132"], lead: ["1501526499910746132"] },
+  { code: "SWAT", nom: "Special Weapons & Tactics",   adr: "swat",     roles: ["1504449839000326344", "1504450026393309276"], lead: ["1504450026393309276"] },
+  { code: "FTF",  nom: "Fugitive Task Force",         adr: "ftf",      roles: ["1528370972153872515"], lead: [] },
+  { code: "TU",   nom: "Traffic Unit",                adr: "traffic",  roles: [], lead: [] },
+  { code: "CNU",  nom: "Crisis & Negotiation Unit",   adr: "cnu",      roles: [], lead: [] },
+  { code: "K9",   nom: "Unite cynophile K9",          adr: "k9",       roles: [], lead: [] },
+  { code: "IA",   nom: "Affaires Internes",           adr: "intel",    roles: ["1524117754725007422", "1514523559127548016"], lead: ["1524117754725007422"] },
+  { code: "SYND", nom: "Syndicat",                    adr: "syndicat", roles: [], lead: [] },
+  { code: "LP",   nom: "Lincoln Patrol",              adr: "lincoln",  roles: [], lead: [] }
+];
+const BUREAU_CS = "1500975725153620033";   // Command Staff
+const BUREAU_ST = "1504452141518032956";   // Supervisor Team
+
+// Une adresse se derive du nom affiche : « [12] Boris Miller » donne
+// « borismiller ». Deux agents homonymes partageraient leur boite, mais
+// la piece d'identite reste l'identifiant Discord, jamais l'adresse.
+function bureauAdresse(nom) {
+  const base = String(nom || "")
+    .replace(/^\[[^\]]*\]\s*/, "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]/g, "");
+  return (base || "agent") + "@sasp.com";
+}
+
+// Qui est-ce, et que peut-il voir ? Une seule lecture des roles Discord
+// sert ensuite a tout : divisions, encadrement, adresse.
+async function bureauIdentifier(env, request) {
+  const entete = request.headers.get("authorization") || "";
+  const jeton = entete.startsWith("Bearer ") ? entete.slice(7).trim() : "";
+  if (!jeton) return { ok: false, motif: "non-connecte" };
+
+  let compte;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { apikey: env.SUPABASE_SERVICE_KEY, authorization: `Bearer ${jeton}` }
+    });
+    if (!res.ok) return { ok: false, motif: "non-connecte" };
+    compte = await res.json();
+  } catch (e) {
+    return { ok: false, motif: "non-connecte" };
+  }
+
+  const meta = compte.user_metadata || {};
+  const discordId = String(meta.provider_id || meta.sub || "").trim();
+  if (!/^\d{17,20}$/.test(discordId)) return { ok: false, motif: "non-connecte" };
+
+  let roles = null, nom = meta.full_name || meta.global_name || meta.name || "Agent";
+  try {
+    const res = await discordFetch(`${DISCORD_API}/guilds/${envGuildId(env)}/members/${discordId}`, {
+      headers: { authorization: `Bot ${env.DISCORD_BOT_TOKEN}` }
+    });
+    if (res.ok) {
+      const m = await res.json();
+      roles = m.roles || [];
+      if (m.nick) nom = m.nick;
+    } else if (res.status === 404) roles = [];
+  } catch (e) {}
+  if (roles === null) return { ok: false, motif: "verification-impossible" };
+
+  const estCS = roles.indexOf(BUREAU_CS) !== -1;
+  const estST = roles.indexOf(BUREAU_ST) !== -1;
+  const divisions = BUREAU_DIVISIONS
+    .filter(d => estCS || estST || d.roles.some(r => roles.indexOf(r) !== -1))
+    .map(d => ({
+      code: d.code, nom: d.nom, adresse: d.adr + "@sasp.com",
+      // L'encadrement d'une division, ou le Command Staff qui l'a partout.
+      lead: estCS || d.lead.some(r => roles.indexOf(r) !== -1)
+    }));
+
+  return {
+    ok: true, discordId, nom, roles,
+    adresse: bureauAdresse(nom),
+    estCS, estST,
+    divisions,
+    // Toutes les divisions restent listees : on voit qu'elles existent,
+    // et le bouton « prendre contact » sert justement a celles ou l'on
+    // n'est pas. Seul le contenu est ferme.
+    toutes: BUREAU_DIVISIONS.map(d => ({ code: d.code, nom: d.nom, adresse: d.adr + "@sasp.com" }))
+  };
+}
+
+const bureauDansDivision = (qui, code) => qui.divisions.some(d => d.code === code);
+const bureauEstLead = (qui, code) => qui.divisions.some(d => d.code === code && d.lead);
+
+function bureauRefus(motif) {
+  const m = {
+    "non-connecte": "Connectez-vous avec Discord.",
+    "verification-impossible": "Verification des roles impossible pour le moment."
+  };
+  return json({ ok: false, motif: motif || "refus", message: m[motif] || "Acces refuse." },
+    motif === "non-connecte" ? 401 : 403);
+}
+
 // Une entree de journal. Les echecs d'ecriture ne bloquent jamais l'action
 // en cours : le tableau doit rester utilisable meme si le journal tombe.
 async function liaisonsJournaliser(env, request, qui, tableauId, action, cible) {
@@ -5870,6 +5974,259 @@ export default {
         return json({ ok: true, id: t && t.id, elements: c.nodes.length, liaisons: c.edges.length });
       } catch (e) {
         return json({ ok: false, error: e.message }, 500);
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  API du bureau
+    // ════════════════════════════════════════════════════════════════
+    if (url.pathname.startsWith("/api/bureau/")) {
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: {
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, PUT, POST, DELETE, OPTIONS",
+          "access-control-allow-headers": "authorization, content-type",
+          "access-control-max-age": "86400"
+        }});
+      }
+
+      const qui = await bureauIdentifier(env, request);
+      if (!qui.ok) return bureauRefus(qui.motif);
+
+      try {
+        // ── Qui suis-je ────────────────────────────────────────────
+        if (url.pathname === "/api/bureau/moi" && request.method === "GET") {
+          return json({ ok: true, nom: qui.nom, adresse: qui.adresse,
+            discord_id: qui.discordId, command_staff: qui.estCS, superviseur: qui.estST,
+            divisions: qui.divisions, toutes: qui.toutes });
+        }
+
+        // ── Messagerie ─────────────────────────────────────────────
+        // La boite se compose de l'adresse personnelle et de celles des
+        // divisions dont on fait partie : un mail a swat@sasp.com arrive
+        // chez tous les membres du SWAT.
+        const mesAdresses = [qui.adresse].concat(qui.divisions.map(d => d.adresse));
+
+        if (url.pathname === "/api/bureau/mails" && request.method === "GET") {
+          const boite = url.searchParams.get("boite") || "recus";
+          let filtre;
+          if (boite === "envoyes") {
+            filtre = `expediteur_id=eq.${encodeURIComponent(qui.discordId)}`;
+          } else {
+            const liste = mesAdresses.map(a => `"${a}"`).join(",");
+            filtre = `destinataires=ov.{${liste}}`;
+          }
+          const rows = await sb(env, "GET",
+            `/bureau_mails?${filtre}&select=*&order=created_at.desc&limit=200`);
+          return json({ ok: true, mails: rows || [], mes_adresses: mesAdresses });
+        }
+
+        if (url.pathname === "/api/bureau/mails" && request.method === "POST") {
+          const c = await request.json().catch(() => ({}));
+          const dest = (Array.isArray(c.destinataires) ? c.destinataires : [])
+            .map(x => String(x).trim().toLowerCase()).filter(Boolean);
+          if (!dest.length) return json({ ok: false, error: "Aucun destinataire." }, 400);
+          if (!String(c.sujet || "").trim()) return json({ ok: false, error: "Sujet manquant." }, 400);
+          const pieces = Array.isArray(c.pieces) ? c.pieces.slice(0, 5) : [];
+          // Les pieces jointes partent avec le mail dans la base : au-dela
+          // de quelques centaines de kilo-octets, chaque lecture de boite
+          // deviendrait lourde pour tout le monde.
+          const poids = JSON.stringify(pieces).length;
+          if (poids > 700000) return json({ ok: false, error: "Pieces jointes trop lourdes (700 Ko maximum)." }, 400);
+          const cree = await sb(env, "POST", "/bureau_mails", {
+            expediteur_id: qui.discordId, expediteur_nom: qui.nom, expediteur_adr: qui.adresse,
+            destinataires: dest, sujet: String(c.sujet).slice(0, 200),
+            corps: String(c.corps || "").slice(0, 20000), pieces
+          });
+          return json({ ok: true, mail: cree && cree[0] });
+        }
+
+        const mLu = url.pathname.match(/^\/api\/bureau\/mails\/(\d+)\/lu$/);
+        if (mLu && request.method === "POST") {
+          const rows = await sb(env, "GET", `/bureau_mails?id=eq.${mLu[1]}&select=lu_par,destinataires`);
+          const m = rows && rows[0];
+          if (!m) return json({ ok: false, error: "Introuvable." }, 404);
+          const lus = m.lu_par || [];
+          if (lus.indexOf(qui.discordId) === -1) {
+            await sb(env, "PATCH", `/bureau_mails?id=eq.${mLu[1]}`,
+              { lu_par: lus.concat([qui.discordId]) });
+          }
+          return json({ ok: true });
+        }
+
+        // ── Discussions de division ────────────────────────────────
+        const mMsg = url.pathname.match(/^\/api\/bureau\/division\/([A-Z0-9]+)\/messages$/);
+        if (mMsg) {
+          const code = mMsg[1];
+          const portee = url.searchParams.get("portee") === "lead" ? "lead" : "global";
+          if (!bureauDansDivision(qui, code)) {
+            return json({ ok: false, error: "Vous ne faites pas partie de cette division." }, 403);
+          }
+          if (portee === "lead" && !bureauEstLead(qui, code)) {
+            return json({ ok: false, error: "Discussion reservee a l'encadrement." }, 403);
+          }
+          if (request.method === "GET") {
+            const depuis = url.searchParams.get("depuis");
+            const f = /^\d+$/.test(depuis || "") ? `&id=gt.${depuis}` : "";
+            const rows = await sb(env, "GET",
+              `/bureau_messages?division=eq.${code}&portee=eq.${portee}${f}&select=*&order=id.desc&limit=120`);
+            return json({ ok: true, messages: (rows || []).reverse(), lead: bureauEstLead(qui, code) });
+          }
+          if (request.method === "POST") {
+            const c = await request.json().catch(() => ({}));
+            const t = String(c.texte || "").trim();
+            if (!t) return json({ ok: false, error: "Message vide." }, 400);
+            const cree = await sb(env, "POST", "/bureau_messages", {
+              division: code, portee, auteur_id: qui.discordId, auteur_nom: qui.nom,
+              auteur_role: bureauEstLead(qui, code) ? "Encadrement" : "Membre",
+              texte: t.slice(0, 4000)
+            });
+            return json({ ok: true, message: cree && cree[0] });
+          }
+        }
+
+        // ── Documents de division ──────────────────────────────────
+        const mDoc = url.pathname.match(/^\/api\/bureau\/division\/([A-Z0-9]+)\/documents$/);
+        if (mDoc) {
+          const code = mDoc[1];
+          if (!bureauDansDivision(qui, code)) {
+            return json({ ok: false, error: "Vous ne faites pas partie de cette division." }, 403);
+          }
+          if (request.method === "GET") {
+            const rows = await sb(env, "GET",
+              `/bureau_documents?division=eq.${code}&select=*&order=created_at.desc&limit=200`);
+            return json({ ok: true, documents: rows || [] });
+          }
+          if (request.method === "POST") {
+            const c = await request.json().catch(() => ({}));
+            if (!String(c.titre || "").trim()) return json({ ok: false, error: "Titre manquant." }, 400);
+            const cree = await sb(env, "POST", "/bureau_documents", {
+              division: code, titre: String(c.titre).slice(0, 200),
+              description: String(c.description || "").slice(0, 2000),
+              lien: c.lien ? String(c.lien).slice(0, 800) : null,
+              contenu: c.contenu ? String(c.contenu).slice(0, 40000) : null,
+              type: ["note", "lien", "procedure", "rapport"].indexOf(c.type) !== -1 ? c.type : "note",
+              ajoute_par: qui.nom, ajoute_id: qui.discordId
+            });
+            return json({ ok: true, document: cree && cree[0] });
+          }
+          if (request.method === "DELETE") {
+            const id = url.searchParams.get("id");
+            if (!/^\d+$/.test(id || "")) return json({ ok: false, error: "Identifiant invalide." }, 400);
+            const rows = await sb(env, "GET", `/bureau_documents?id=eq.${id}&select=ajoute_id,division`);
+            const d = rows && rows[0];
+            if (!d || d.division !== code) return json({ ok: false, error: "Introuvable." }, 404);
+            // On retire ce qu'on a depose ; l'encadrement retire n'importe quoi.
+            if (d.ajoute_id !== qui.discordId && !bureauEstLead(qui, code)) {
+              return json({ ok: false, error: "Seul l'auteur ou l'encadrement peut retirer ce document." }, 403);
+            }
+            await sb(env, "DELETE", `/bureau_documents?id=eq.${id}`);
+            return json({ ok: true });
+          }
+        }
+
+        // ── Prises de contact ──────────────────────────────────────
+        // Ouvrir un contact ne demande aucun droit : c'est justement fait
+        // pour s'adresser a une division dont on ne fait pas partie.
+        if (url.pathname === "/api/bureau/contacts" && request.method === "GET") {
+          const code = url.searchParams.get("division") || "";
+          let filtre = `ouvert_par_id=eq.${encodeURIComponent(qui.discordId)}`;
+          if (code && bureauDansDivision(qui, code)) filtre = `division=eq.${code}`;
+          const rows = await sb(env, "GET",
+            `/bureau_contacts?${filtre}&select=*&order=maj_at.desc&limit=100`);
+          return json({ ok: true, contacts: rows || [] });
+        }
+
+        if (url.pathname === "/api/bureau/contacts" && request.method === "POST") {
+          const c = await request.json().catch(() => ({}));
+          const code = String(c.division || "").toUpperCase();
+          if (!BUREAU_DIVISIONS.some(d => d.code === code)) {
+            return json({ ok: false, error: "Division inconnue." }, 400);
+          }
+          if (!String(c.sujet || "").trim()) return json({ ok: false, error: "Sujet manquant." }, 400);
+          const cree = await sb(env, "POST", "/bureau_contacts", {
+            division: code, sujet: String(c.sujet).slice(0, 200),
+            ouvert_par: qui.nom, ouvert_par_id: qui.discordId
+          });
+          const t = cree && cree[0];
+          if (t && String(c.message || "").trim()) {
+            await sb(env, "POST", "/bureau_messages", {
+              division: code, portee: "contact", contact_id: t.id,
+              auteur_id: qui.discordId, auteur_nom: qui.nom, auteur_role: "Demandeur",
+              texte: String(c.message).slice(0, 4000)
+            });
+          }
+          return json({ ok: true, contact: t });
+        }
+
+        const mCon = url.pathname.match(/^\/api\/bureau\/contacts\/(\d+)$/);
+        if (mCon) {
+          const id = Number(mCon[1]);
+          const rows = await sb(env, "GET", `/bureau_contacts?id=eq.${id}&select=*`);
+          const t = rows && rows[0];
+          if (!t) return json({ ok: false, error: "Introuvable." }, 404);
+          // On voit son propre contact, et ceux adresses a sa division.
+          const droit = t.ouvert_par_id === qui.discordId || bureauDansDivision(qui, t.division);
+          if (!droit) return json({ ok: false, error: "Contact introuvable." }, 403);
+
+          if (request.method === "GET") {
+            const msgs = await sb(env, "GET",
+              `/bureau_messages?contact_id=eq.${id}&select=*&order=id.asc&limit=200`);
+            return json({ ok: true, contact: t, messages: msgs || [] });
+          }
+          if (request.method === "POST") {
+            const c = await request.json().catch(() => ({}));
+            if (c.statut) {
+              if (["ouvert", "en cours", "ferme"].indexOf(c.statut) === -1) {
+                return json({ ok: false, error: "Statut invalide." }, 400);
+              }
+              await sb(env, "PATCH", `/bureau_contacts?id=eq.${id}`, {
+                statut: c.statut, maj_at: new Date().toISOString(),
+                ferme_par: c.statut === "ferme" ? qui.nom : null,
+                ferme_at: c.statut === "ferme" ? new Date().toISOString() : null
+              });
+              return json({ ok: true });
+            }
+            const t2 = String(c.texte || "").trim();
+            if (!t2) return json({ ok: false, error: "Message vide." }, 400);
+            await sb(env, "POST", "/bureau_messages", {
+              division: t.division, portee: "contact", contact_id: id,
+              auteur_id: qui.discordId, auteur_nom: qui.nom,
+              auteur_role: t.ouvert_par_id === qui.discordId ? "Demandeur" : "Division",
+              texte: t2.slice(0, 4000)
+            });
+            await sb(env, "PATCH", `/bureau_contacts?id=eq.${id}`,
+              { maj_at: new Date().toISOString(), statut: t.statut === "ouvert" ? "en cours" : t.statut });
+            return json({ ok: true });
+          }
+        }
+
+        // ── Annuaire, pour choisir un destinataire ─────────────────
+        if (url.pathname === "/api/bureau/annuaire" && request.method === "GET") {
+          const sortie = qui.toutes.map(d => ({ adresse: d.adresse, nom: d.nom, genre: "division" }));
+          try {
+            const res = await discordFetch(
+              `${DISCORD_API}/guilds/${envGuildId(env)}/members?limit=1000`,
+              { headers: { authorization: `Bot ${env.DISCORD_BOT_TOKEN}` } });
+            if (res.ok) {
+              const membres = await res.json();
+              const vus = {};
+              membres.forEach(m => {
+                if (!m.user || m.user.bot) return;
+                const nom = m.nick || m.user.username;
+                const a = bureauAdresse(nom);
+                if (vus[a]) return;
+                vus[a] = 1;
+                sortie.push({ adresse: a, nom, genre: "agent" });
+              });
+            }
+          } catch (e) {}
+          return json({ ok: true, annuaire: sortie });
+        }
+
+        return json({ ok: false, error: "Route inconnue." }, 404);
+      } catch (e) {
+        return json({ ok: false, error: e.message || "Erreur serveur." }, 500);
       }
     }
 
