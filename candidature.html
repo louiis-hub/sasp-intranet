@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Candidature - Police Academy - SASP Sud</title>
+<link rel="icon" href="assets/sasp-pa-favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Page publique : aucun candidat n'a de compte ni de rôle. Elle ne
+   charge donc ni Supabase, ni app.js, ni quoi que ce soit du site. */
+:root{
+  --nuit:#060A12; --carte:rgba(255,255,255,.035); --bord:rgba(140,170,215,.14);
+  --bord2:rgba(140,170,215,.26); --t0:#E8EEF9; --t1:#C3CFE2; --t2:#93A4C0;
+  --t3:#6C7C99; --bleu:#3B82F6; --bleu2:#60A5FA; --vert:#34D399; --rouge:#F87171;
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:
+  radial-gradient(1100px 600px at 50% 0%, rgba(40,70,120,.30), transparent 70%),
+  linear-gradient(180deg,#060A12 0%,#0A1120 50%,#0D1424 100%);
+  color:var(--t0);font-family:Inter,system-ui,sans-serif;font-size:15px;
+  -webkit-font-smoothing:antialiased}
+.enveloppe{max-width:720px;margin:0 auto;padding:48px 22px 80px}
+header.tete{display:flex;align-items:center;gap:18px;margin-bottom:34px}
+header.tete img{width:64px;height:64px;object-fit:contain}
+header.tete h1{margin:0;font-size:23px;font-weight:700;letter-spacing:.01em}
+header.tete p{margin:4px 0 0;font-size:13px;color:var(--bleu2);
+  letter-spacing:.14em;text-transform:uppercase}
+.carte{background:var(--carte);border:1px solid var(--bord);border-radius:14px;
+  padding:28px 26px;margin-bottom:18px}
+.carte h2{margin:0 0 8px;font-size:20px}
+.carte .intro{margin:0;color:var(--t2);line-height:1.7;white-space:pre-wrap}
+.meta{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+.puce{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;
+  background:rgba(59,130,246,.16);color:var(--bleu2);font-size:12.5px;font-weight:500}
+label.q{display:block;margin:0 0 8px;font-size:14.5px;font-weight:600}
+label.q .req{color:var(--rouge);margin-left:4px}
+.champ{width:100%;padding:12px 14px;background:rgba(0,0,0,.28);color:var(--t0);
+  border:1px solid var(--bord2);border-radius:10px;font:inherit;font-size:14.5px}
+.champ:focus{outline:none;border-color:var(--bleu);box-shadow:0 0 0 3px rgba(59,130,246,.18)}
+textarea.champ{min-height:110px;resize:vertical;line-height:1.6}
+.bloc{margin-bottom:22px}
+.aide{margin:7px 0 0;font-size:12.5px;color:var(--t3);line-height:1.6}
+button.env{width:100%;padding:15px;border:0;border-radius:11px;background:var(--bleu);
+  color:#fff;font:inherit;font-size:15.5px;font-weight:600;cursor:pointer;
+  transition:background .14s}
+button.env:hover{background:#2563EB}
+button.env:disabled{opacity:.55;cursor:default}
+.etat{padding:44px 26px;text-align:center}
+.etat .ic{font-size:44px;line-height:1}
+.etat h2{margin:16px 0 8px;font-size:21px}
+.etat p{margin:0;color:var(--t2);line-height:1.7}
+.etat.bon h2{color:var(--vert)} .etat.mal h2{color:var(--rouge)}
+.pied{margin-top:28px;text-align:center;font-size:12px;color:var(--t3);line-height:1.7}
+</style>
+</head>
+<body>
+<div class="enveloppe">
+  <header class="tete">
+    <img src="assets/sasp-sud-logo.png" alt="">
+    <div>
+      <h1>Police Academy</h1>
+      <p>San Andreas State Police Sud</p>
+    </div>
+  </header>
+  <div id="zone"><div class="carte etat"><div class="ic">⏳</div>
+    <h2>Chargement</h2><p>Un instant.</p></div></div>
+  <p class="pied">Ce formulaire est propre a une session. Ne partagez pas ce lien.</p>
+</div>
+
+<script>
+var API = location.origin;
+var CODE = new URLSearchParams(location.search).get('s') || '';
+var zone = document.getElementById('zone');
+
+function esc(s){ return String(s == null ? '' : s)
+  .replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+function etat(cls, ic, titre, texte){
+  zone.innerHTML = '<div class="carte etat ' + cls + '"><div class="ic">' + ic + '</div>' +
+    '<h2>' + esc(titre) + '</h2><p>' + esc(texte) + '</p></div>';
+}
+
+if (!CODE) {
+  etat('mal', '🔒', 'Lien incomplet',
+    'Ce lien ne designe aucune session. Demandez-en un a la Police Academy.');
+} else {
+  fetch(API + '/api/pa/form/' + encodeURIComponent(CODE))
+    .then(function(r){ return r.json().catch(function(){ return {}; }); })
+    .then(function(d){
+      if (!d.ok) {
+        etat('mal', d.ferme ? '🚪' : '❔', d.ferme ? 'Candidatures closes' : 'Lien inconnu',
+          d.error || 'Ce lien n’existe pas ou a expire.');
+        return;
+      }
+      formulaire(d);
+    })
+    .catch(function(){
+      etat('mal', '📡', 'Service indisponible',
+        'Le serveur ne repond pas. Reessayez dans quelques minutes.');
+    });
+}
+
+function formulaire(d){
+  var quand = d.date_session
+    ? new Date(d.date_session).toLocaleString('fr-FR',
+        { dateStyle:'full', timeStyle:'short' })
+    : null;
+
+  var html = '<div class="carte"><h2>' + esc(d.titre) + '</h2>';
+  if (d.description) html += '<p class="intro">' + esc(d.description) + '</p>';
+  if (quand || d.places) {
+    html += '<div class="meta">';
+    if (quand)    html += '<span class="puce">📅 ' + esc(quand) + '</span>';
+    if (d.places) html += '<span class="puce">👥 ' + d.places + ' places</span>';
+    html += '</div>';
+  }
+  html += '</div><form id="f" class="carte">';
+
+  // Le pseudo Discord sert a retrouver la personne pour lui repondre en
+  // message prive. Sans lui, la Police Academy ne pourrait pas la joindre.
+  html += '<div class="bloc"><label class="q" for="pseudo">Votre pseudo Discord' +
+    '<span class="req">*</span></label>' +
+    '<input class="champ" id="pseudo" maxlength="60" autocomplete="off" required>' +
+    '<p class="aide">Exactement tel qu’il apparait sur le serveur Discord du SASP. ' +
+    'C’est par la que la reponse vous sera envoyee.</p></div>';
+
+  (d.questions || []).forEach(function(q, i){
+    html += '<div class="bloc"><label class="q" for="q' + i + '">' + esc(q.q) +
+      (q.requis ? '<span class="req">*</span>' : '') + '</label>' +
+      (q.type === 'long'
+        ? '<textarea class="champ" id="q' + i + '" maxlength="2000"' + (q.requis ? ' required' : '') + '></textarea>'
+        : '<input class="champ" id="q' + i + '" maxlength="2000"' + (q.requis ? ' required' : '') + '>') +
+      '</div>';
+  });
+
+  html += '<button class="env" type="submit">Envoyer ma candidature</button></form>';
+  zone.innerHTML = html;
+
+  document.getElementById('f').addEventListener('submit', function(e){
+    e.preventDefault();
+    var bt = e.target.querySelector('button');
+    bt.disabled = true; bt.textContent = 'Envoi…';
+    var reponses = {};
+    (d.questions || []).forEach(function(q, i){
+      reponses[String(i)] = document.getElementById('q' + i).value;
+    });
+    fetch(API + '/api/pa/form/' + encodeURIComponent(CODE), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pseudo: document.getElementById('pseudo').value, reponses: reponses })
+    })
+      .then(function(r){ return r.json().catch(function(){ return {}; }); })
+      .then(function(r){
+        if (!r.ok) {
+          bt.disabled = false; bt.textContent = 'Envoyer ma candidature';
+          alert(r.error || 'Envoi refuse.');
+          return;
+        }
+        etat('bon', '✅', 'Candidature envoyee',
+          r.reconnu
+            ? 'La Police Academy va l’examiner. Vous recevrez la reponse en message prive sur Discord.'
+            : 'La Police Academy va l’examiner. Attention : votre pseudo n’a pas ete retrouve '
+              + 'sur le serveur Discord, la reponse vous sera donnee autrement.');
+      })
+      .catch(function(){
+        bt.disabled = false; bt.textContent = 'Envoyer ma candidature';
+        alert('Le serveur ne repond pas. Reessayez.');
+      });
+  });
+}
+</script>
+</body>
+</html>

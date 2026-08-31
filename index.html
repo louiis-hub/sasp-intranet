@@ -554,7 +554,7 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
 <div id="porte"><div class="pcard" id="pcard"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=20260831-gestion"></script>
+<script src="config.js?v=20260831-pa"></script>
 <script>
 /* ============================================================
    POSTE DE TRAVAIL SASP
@@ -783,27 +783,49 @@ const APPS={
   annonces:    {n:'Annonces',       ic:'📣', d:'Journal de l\'état-major',
                 f:ouvrirAnnonces},
   gestion:     {n:'Administration', ic:'⚙️', d:'Accès, divisions, rôles',
-                f:ouvrirGestion, admin:true}
+                f:ouvrirGestion, admin:true},
+  paSessions:  {n:'Organisation PA', ic:'🎓', d:'Sessions et candidatures',
+                f:ouvrirSessionsPA, pa:true}
 };
 
-const NAV=[
-  {t:'Académie',       it:[{a:'pa',n:'Police Academy'},{d:'PA',n:'Salons PA'}]},
-  {t:'Divisions',      it:[{d:'SWAT',n:'SWAT'},{d:'CID',n:'CID'},{d:'K9',n:'K9'},
-                           {d:'FTF',n:'Fugitive T. Force'},{d:'IA',n:'Internal Affairs'},
-                           {d:'SYND',n:'Syndicat'}]},
-  {t:'Unités',         it:[{d:'TU',n:'Traffic Unit'},{d:'CNU',n:'Crisis & Negotiation Unit'},
-                           {d:'LP',n:'Lincoln Patrol'}]},
-  {t:'Administration', it:[{a:'organigramme',n:'État-major'},{a:'annonces',n:'Annonces'},
-                           {a:'gestion',n:'Gestion',admin:true}]},
-  {t:'Général',        it:[{a:'aegis',n:'AEGIS'},{a:'mail',n:'Messagerie'},
-                           {a:'demandes',n:'Demandes'}]}
-];
+// Les applications, posees dans leur rubrique. Les divisions, elles,
+// viennent de la configuration : leur rubrique et leur libelle se
+// reglent depuis l'ecran de gestion.
+const NAV_APPS={
+  'Academie':       [{a:'pa',n:'Police Academy'},{a:'paSessions',n:'Organisation',pa:true}],
+  'Administration': [{a:'organigramme',n:'Etat-major'},{a:'annonces',n:'Annonces'},
+                     {a:'gestion',n:'Gestion',admin:true}],
+  'General':        [{a:'aegis',n:'AEGIS'},{a:'mail',n:'Messagerie'},{a:'demandes',n:'Demandes'}]
+};
+// L'accent ne survit pas au passage en base : on l'ajoute a l'affichage.
+const NAV_TITRES={'Academie':'Academie','Divisions':'Divisions','Unites':'Unites',
+                  'Administration':'Administration','General':'General'};
+const NAV_ORDRE=['Academie','Divisions','Unites','Administration','General'];
+
+let NAV=[];
+function construireNav(){
+  const par={};
+  NAV_ORDRE.forEach(g=>{ par[g]=(NAV_APPS[g]||[]).slice(); });
+  ((MOI&&MOI.toutes)||[]).forEach(d=>{
+    const g=d.groupe||'Divisions';
+    if(g==='-')return;                       // volontairement hors de la barre
+    (par[g]=par[g]||[]).push({d:d.code,n:d.court||d.nom});
+  });
+  NAV=NAV_ORDRE.filter(g=>par[g]&&par[g].length)
+    .map(g=>({t:NAV_TITRES[g]||g,it:par[g]}));
+}
 
 const cleDe=it=>it.a?it.a:'div:'+it.d;
 // Ce qui est reserve a l'administration ne s'affiche pas pour les autres.
 // Le serveur refuserait de toute facon, mais une porte visible et fermee
 // invite a pousser dessus.
-const visible=it=>!(it.a&&APPS[it.a]&&APPS[it.a].admin)||!!(MOI&&MOI.admin);
+const dansPA=()=>!!(MOI&&(MOI.command_staff||MOI.divisions.some(d=>d.code==='PA')));
+const visible=it=>{
+  const a=it.a&&APPS[it.a];
+  if(a&&a.admin)return !!(MOI&&MOI.admin);
+  if(a&&a.pa)return dansPA();
+  return true;
+};
 const dedansDiv=c=>MOI&&MOI.divisions.some(d=>d.code===c);
 
 // Une division dont on ne fait pas partie n'ouvre pas une fenêtre vide :
@@ -818,6 +840,7 @@ function lancer(it){
 
 function majTaches(){
   const z=$('#nav'); if(!z)return;
+  construireNav(); majNomsNav();
   z.innerHTML=NAV.map(g=>`<div class="navGr"><i>${esc(g.t)}</i><div>
     ${g.it.filter(visible).map((it,j)=>{
       const o=FEN[cleDe(it)];
@@ -966,8 +989,11 @@ let ICONES=[];
 
 // Le nom court vient de la barre du bas : « Salons PA » plutôt qu'un
 // deuxième « Police Academy », « SWAT » plutôt que le nom complet.
-const NOM_NAV={};
-NAV.forEach(g=>g.it.forEach(it=>{ if(it.d)NOM_NAV[it.d]=it.n; }));
+let NOM_NAV={};
+function majNomsNav(){
+  NOM_NAV={};
+  NAV.forEach(g=>g.it.forEach(it=>{ if(it.d)NOM_NAV[it.d]=it.n; }));
+}
 const nomDiv=c=>NOM_NAV[c]||((MOI&&MOI.toutes.filter(d=>d.code===c)[0])||{nom:c}).nom;
 const icoDiv=c=>((MOI&&MOI.toutes.filter(d=>d.code===c)[0])||{}).ic||'🚔';
 
@@ -975,6 +1001,7 @@ function iconesCatalogue(){
   // Les applications d'abord, puis les unités dont on fait partie :
   // celles-la seules s'ouvrent d'un double-clic.
   const L=[{a:'pa'},{a:'aegis'},{a:'organigramme'},{a:'mail'},{a:'demandes'},{a:'divisions'}];
+  if(dansPA())L.push({a:'paSessions'});
   if(MOI&&MOI.admin)L.push({a:'gestion'});
   ((MOI&&MOI.divisions)||[]).forEach(d=>L.push({d:d.code}));
   return L;
@@ -1541,7 +1568,7 @@ function ouvrirDivisions(){
 // l'inverse.
 const SALONS=[
   {c:'annonce',        i:'📣', n:'Annonces',               t:'Publications de l\u0027encadrement'},
-  {c:'discussion-lead',i:'🛡️', n:'Discussion encadrement', t:'Entre encadrants uniquement', lead:true},
+  {c:'discussion-lead',i:'🛡️', n:'Discussion-Lead', t:'Entre encadrants uniquement', lead:true},
   {c:'discussion',     i:'💬', n:'Discussion',             t:'Toute la division'},
   {c:'documents',      i:'📄', n:'Documents',              t:'Procédures et fiches'},
   {c:'pseudo',         i:'🏷️', n:'Pseudos',                t:'Nom RP et indicatif'},
@@ -1670,6 +1697,209 @@ function orgCarte(p,chef){
     </div></div>`;
 }
 
+/* ---------- l'organisation des sessions PA ---------- */
+// Un agent de la PA ouvre une session, le site rend un lien. Les candidats
+// y repondent sans compte ni role : ce sont des gens de l'exterieur. La PA
+// relit, decide, et le bot previent en message prive.
+function ouvrirSessionsPA(){
+  fenetre('paSessions',{titre:'Organisation PA',icone:'🎓',l:1040,h:720,apres:o=>{
+    const charger=async()=>{
+      o.corps.innerHTML='<div class="vide">Chargement…</div>';
+      const r=await api('/api/pa/admin/sessions');
+      if(!r.ok){o.corps.innerHTML=`<div class="vide"><b>Refusé</b>${esc(r.data.error||'')}</div>`;return}
+      const S=r.data.sessions||[];
+      o.corps.innerHTML=`<div class="pad">
+        <button class="btn pri" id="psAdd" style="margin-bottom:18px">＋ Ouvrir une session</button>
+        ${S.length?S.map(s=>`<div class="orgCarte" style="align-items:flex-start;margin-bottom:12px">
+          <div class="av" style="font-size:18px">${s.ouverte?'📋':'🚪'}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+              <b style="font-size:14.5px">${esc(s.titre)}</b>
+              ${s.ouverte?'<span class="puce p-vert">ouverte</span>'
+                        :'<span class="puce p-gris">close</span>'}
+              ${s.compte.attente?`<span class="puce p-ambre">${s.compte.attente} à traiter</span>`:''}
+              <span style="margin-left:auto;font-size:11.5px;color:var(--t3)">
+                ${s.compte.total} candidature${s.compte.total>1?'s':''}</span>
+            </div>
+            ${s.date_session?`<div style="font-size:12.5px;color:var(--t2);margin-top:4px">
+              ${new Date(s.date_session).toLocaleString('fr-FR',{dateStyle:'full',timeStyle:'short'})}
+              ${s.places?' · '+s.places+' places':''}</div>`:''}
+            <div style="display:flex;gap:6px;align-items:center;margin-top:10px">
+              <input class="champ" readonly value="${esc(location.origin)}/candidature.html?s=${esc(s.code)}"
+                style="font-family:var(--fm);font-size:11.5px;padding:7px 10px" data-lien="${s.id}">
+              <button class="btn sm" data-copie="${s.id}">Copier</button>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap">
+              <button class="btn pri sm" data-voir="${s.id}">Candidatures (${s.compte.total})</button>
+              <button class="btn sm" data-bascule="${s.id}" data-ouv="${s.ouverte?1:0}">
+                ${s.ouverte?'Clore':'Rouvrir'}</button>
+              <button class="btn sm dgr" data-supp="${s.id}">Supprimer</button>
+            </div>
+          </div></div>`).join('')
+        :'<div class="vide"><b>Aucune session</b>Ouvrez-en une pour recevoir des candidatures.</div>'}
+      </div>`;
+      $('#psAdd',o.corps).onclick=()=>psForm(charger);
+      $$('[data-copie]',o.corps).forEach(b=>b.onclick=()=>{
+        const c=$(`[data-lien="${b.dataset.copie}"]`,o.corps);
+        c.select();
+        navigator.clipboard.writeText(c.value)
+          .then(()=>avis('Lien copié','Donnez-le aux candidats.','ok'))
+          .catch(()=>avis('Copie refusée','Sélectionnez le lien et copiez-le à la main.','warn'));
+      });
+      $$('[data-voir]',o.corps).forEach(b=>b.onclick=()=>psCandidatures(+b.dataset.voir,charger));
+      $$('[data-bascule]',o.corps).forEach(b=>b.onclick=async()=>{
+        const r2=await api('/api/pa/admin/sessions/'+b.dataset.bascule,
+          {method:'PATCH',body:{ouverte:b.dataset.ouv!=='1'}});
+        if(!r2.ok)return avis('Échec',r2.data.error||'','err');
+        charger();
+      });
+      $$('[data-supp]',o.corps).forEach(b=>b.onclick=()=>confirmer('Supprimer la session',
+        'Les candidatures reçues seront supprimées avec elle. C\'est définitif.','Supprimer',
+        async()=>{
+          const r2=await api('/api/pa/admin/sessions/'+b.dataset.supp,{method:'DELETE'});
+          if(!r2.ok)return avis('Échec',r2.data.error||'','err');
+          charger();
+        },true));
+    };
+    charger();
+  }});
+}
+
+function psForm(apres){
+  let questions=[
+    {q:'Votre nom et prénom RP',type:'texte',requis:true},
+    {q:'Votre âge RP',type:'texte',requis:true},
+    {q:'Pourquoi voulez-vous rejoindre le SASP ?',type:'long',requis:true},
+    {q:'Vos disponibilités',type:'texte',requis:false}
+  ];
+  dlg({titre:'Ouvrir une session',ok:'Créer et générer le lien',corps:`
+    <label class="lbl">Intitulé</label>
+    <input class="champ" id="psT" placeholder="Session de recrutement - septembre">
+    <label class="lbl" style="margin-top:14px">Présentation, vue par les candidats</label>
+    <textarea class="champ" id="psD" style="min-height:90px"
+      placeholder="Ce qui les attend, ce qu'il faut savoir avant de postuler."></textarea>
+    <div style="display:grid;grid-template-columns:1fr 130px;gap:12px;margin-top:14px">
+      <div><label class="lbl">Date de la session</label>
+        <input class="champ" id="psQ" type="datetime-local"></div>
+      <div><label class="lbl">Places</label>
+        <input class="champ" id="psP" type="number" min="1" placeholder="12"></div>
+    </div>
+    <label class="lbl" style="margin-top:18px">Questions posées</label>
+    <div id="psQL" style="margin-top:8px"></div>`,
+    apres:v=>{
+      const rendre=()=>{
+        $('#psQL',v).innerHTML=questions.map((q,i)=>`
+          <div class="mqLigne" style="align-items:flex-start;gap:8px">
+            <div style="flex:1;min-width:0;display:grid;gap:6px">
+              <input class="champ" data-q="${i}" value="${esc(q.q)}" style="font-size:13px">
+              <div style="display:flex;gap:12px;font-size:12px;color:var(--t2)">
+                <label style="display:flex;gap:5px;align-items:center;cursor:pointer">
+                  <input type="checkbox" data-long="${i}" ${q.type==='long'?'checked':''}> réponse longue</label>
+                <label style="display:flex;gap:5px;align-items:center;cursor:pointer">
+                  <input type="checkbox" data-req="${i}" ${q.requis?'checked':''}> obligatoire</label>
+              </div>
+            </div>
+            <button class="btn sm dgr" data-del="${i}">✕</button>
+          </div>`).join('')+
+          `<button class="btn sm" id="psQAdd" style="margin-top:6px">＋ Ajouter une question</button>`;
+        $$('[data-q]',v).forEach(c=>c.oninput=()=>{questions[+c.dataset.q].q=c.value});
+        $$('[data-long]',v).forEach(c=>c.onchange=()=>{
+          questions[+c.dataset.long].type=c.checked?'long':'texte'});
+        $$('[data-req]',v).forEach(c=>c.onchange=()=>{questions[+c.dataset.req].requis=c.checked});
+        $$('[data-del]',v).forEach(b=>b.onclick=()=>{questions.splice(+b.dataset.del,1);rendre()});
+        $('#psQAdd',v).onclick=()=>{questions.push({q:'',type:'texte',requis:true});rendre()};
+      };
+      rendre();
+    },
+    onOk:async v=>{
+      const t=$('#psT',v).value.trim();
+      if(!t){avis('Intitulé manquant','','err');return false}
+      const q=questions.filter(x=>x.q.trim());
+      if(!q.length){avis('Aucune question','Le formulaire serait vide.','err');return false}
+      const d=$('#psQ',v).value;
+      const r=await api('/api/pa/admin/sessions',{method:'POST',body:{
+        titre:t,description:$('#psD',v).value,
+        date_session:d?new Date(d).toISOString():null,
+        places:+$('#psP',v).value||null, questions:q}});
+      if(!r.ok){avis('Refusé',r.data.error||'','err');return false}
+      avis('Session ouverte','Copiez le lien et donnez-le aux candidats.','ok');
+      apres();
+    }});
+}
+
+function psCandidatures(id,apres){
+  fenetre('paCand:'+id,{titre:'Candidatures',icone:'📋',l:940,h:700,apres:o=>{
+    const charger=async()=>{
+      o.corps.innerHTML='<div class="vide">Chargement…</div>';
+      const r=await api('/api/pa/admin/sessions/'+id+'/candidatures');
+      if(!r.ok){o.corps.innerHTML=`<div class="vide"><b>Indisponible</b>${esc(r.data.error||'')}</div>`;return}
+      const S=r.data.session||{}, C=r.data.candidatures||[];
+      const Q=(S.questions)||[];
+      const P={attente:['p-ambre','à traiter'],accepte:['p-vert','acceptée'],refuse:['p-gris','refusée']};
+      o.corps.innerHTML=`<div class="pad">
+        <p style="margin:0 0 18px;color:var(--t2)">${esc(S.titre||'')} ·
+          <b style="color:var(--t1)">${C.length}</b> candidature${C.length>1?'s':''}</p>
+        ${C.length?C.map(c=>{
+          const [cl,lib]=P[c.statut]||P.attente;
+          return `<div class="orgCarte" style="align-items:flex-start;margin-bottom:12px">
+            <div class="av">${esc((c.pseudo||'?').slice(0,2).toUpperCase())}</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+                <b style="font-size:14px">${esc(c.pseudo)}</b>
+                <span class="puce ${cl}">${lib}</span>
+                ${c.discord_id?'':'<span class="puce p-rouge" title="Le pseudo n\'a pas été retrouvé sur Discord">injoignable</span>'}
+                ${c.dm_ok===false&&c.statut!=='attente'?'<span class="puce p-rouge">message privé refusé</span>':''}
+                <span style="margin-left:auto;font-size:11.5px;color:var(--t3)">
+                  ${new Date(c.created_at).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})}</span>
+              </div>
+              <div style="margin-top:10px;display:grid;gap:9px">
+                ${Q.map((q,i)=>`<div>
+                  <div style="font-size:11.5px;color:var(--t3)">${esc(q.q)}</div>
+                  <div style="font-size:13px;color:var(--t1);line-height:1.6;white-space:pre-wrap">
+                    ${esc((c.reponses||{})[String(i)]||'—')}</div></div>`).join('')}
+              </div>
+              ${c.statut==='attente'?`<div style="margin-top:12px;display:flex;gap:7px">
+                  <button class="btn pri sm" data-ok="${c.id}">Accepter</button>
+                  <button class="btn sm dgr" data-no="${c.id}">Refuser</button>
+                </div>`
+                :`<div style="margin-top:10px;font-size:11.5px;color:var(--t3)">
+                    ${lib} par ${esc(c.decide_par||'?')}
+                    ${c.decide_le?' le '+new Date(c.decide_le).toLocaleString('fr-FR'):''}
+                    ${c.motif?' · '+esc(c.motif):''}</div>`}
+            </div></div>`;
+        }).join('')
+        :'<div class="vide"><b>Aucune candidature</b>Personne n\'a encore répondu au formulaire.</div>'}
+      </div>`;
+
+      const decider=(cid,statut)=>{
+        const titre=statut==='accepte'?'Accepter la candidature':'Refuser la candidature';
+        dlg({titre,ok:statut==='accepte'?'Accepter et prévenir':'Refuser et prévenir',corps:`
+          <p style="margin:0 0 14px;color:var(--t1);line-height:1.7">
+            ${statut==='accepte'
+              ? 'Le candidat recevra un message privé du bot lui annonçant qu\'il est retenu.'
+              : 'Le candidat recevra un message privé bref. Vous pouvez y ajouter un motif.'}</p>
+          <label class="lbl">${statut==='accepte'?'Note interne (facultative)':'Motif, vu par le candidat (facultatif)'}</label>
+          <textarea class="champ" id="pdM" style="min-height:80px"></textarea>`,
+          onOk:async v=>{
+            const r2=await api('/api/pa/admin/candidature/'+cid,
+              {method:'POST',body:{statut,motif:$('#pdM',v).value}});
+            if(!r2.ok){avis('Échec',r2.data.error||'','err');return false}
+            // La décision est enregistrée même si le message privé échoue :
+            // un DM fermé ne doit pas faire perdre le travail de relecture.
+            if(r2.data.dm)avis('Décision enregistrée','Le candidat a été prévenu.','ok');
+            else avis('Décision enregistrée',
+              'Le message privé n\'a pas pu partir : '+(r2.data.dm_erreur||'destinataire injoignable')+
+              '. Prévenez-le autrement.','warn');
+            charger(); if(apres)apres();
+          }});
+      };
+      $$('[data-ok]',o.corps).forEach(b=>b.onclick=()=>decider(+b.dataset.ok,'accepte'));
+      $$('[data-no]',o.corps).forEach(b=>b.onclick=()=>decider(+b.dataset.no,'refuse'));
+    };
+    charger();
+  }});
+}
+
 /* ---------- l'administration des accès ---------- */
 // Qui accède à quoi vivait en dur dans le code. Cet écran le règle depuis
 // le site, pour les rôles qui portent la ligne « admin ».
@@ -1774,6 +2004,7 @@ function gsDivisions(z){
         <div style="display:flex;align-items:center;gap:9px">
           <b style="font-size:14.5px">${esc(d.code)} · ${esc(d.nom)}</b>
           ${d.actif?'':'<span class="puce p-gris">désactivée</span>'}
+          <span class="puce p-gris">${d.groupe==='-'?'hors barre':esc(d.groupe||'Divisions')}</span>
           <span style="margin-left:auto;font-size:11.5px;color:var(--t3);font-family:var(--fm)">
             ${esc(d.adr)}@sasp.com</span>
         </div>
@@ -1805,7 +2036,7 @@ function gsDivisions(z){
 }
 
 function gsFormDivision(d,z){
-  const e=d||{code:'',nom:'',adr:'',ic:'🚔',roles:[],lead:[],colead:[],ordre:100};
+  const e=d||{code:'',nom:'',adr:'',ic:'🚔',roles:[],lead:[],colead:[],ordre:100,groupe:'Divisions',court:''};
   let roles=[...(e.roles||[])], lead=[...(e.lead||[])], colead=[...(e.colead||[])];
   const {voile,fermer}=dlg({titre:d?('Modifier '+e.code):'Créer une division',ok:'Enregistrer',corps:`
     <div style="display:grid;grid-template-columns:110px 1fr;gap:12px">
@@ -1821,6 +2052,18 @@ function gsFormDivision(d,z){
         <input class="champ" id="gfA" value="${esc(e.adr)}" placeholder="swat">
         <div style="font-size:11.5px;color:var(--t3);margin-top:5px">
           Elle donnera <span class="mono" id="gfApercu">…</span></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+      <div><label class="lbl">Rubrique de la barre</label>
+        <select class="champ" id="gfG">
+          <option value="Academie"${e.groupe==='Academie'?' selected':''}>Académie</option>
+          <option value="Divisions"${(e.groupe||'Divisions')==='Divisions'?' selected':''}>Divisions</option>
+          <option value="Unites"${e.groupe==='Unites'?' selected':''}>Unités</option>
+          <option value="-"${e.groupe==='-'?' selected':''}>Ne pas afficher dans la barre</option>
+        </select></div>
+      <div><label class="lbl">Libellé dans la barre</label>
+        <input class="champ" id="gfCt" value="${esc(e.court||'')}" placeholder="${esc(e.nom||'nom complet')}">
+        <div style="font-size:11.5px;color:var(--t3);margin-top:5px">Vide : le nom complet</div></div>
     </div>
     <div style="margin-top:18px" id="gfRoles"></div>`,
     apres:v=>{
@@ -1856,7 +2099,8 @@ function gsFormDivision(d,z){
       if(!nom){avis('Nom manquant','','err');return false}
       const r=await api('/api/bureau/gestion/division',{method:'PUT',body:{
         code,nom,adr:$('#gfA',v).value.trim()||code.toLowerCase(),
-        ic:$('#gfI',v).value.trim()||'🚔',roles,lead,colead,ordre:e.ordre,actif:true}});
+        ic:$('#gfI',v).value.trim()||'🚔',roles,lead,colead,ordre:e.ordre,actif:true,
+        groupe:$('#gfG',v).value, court:$('#gfCt',v).value.trim()}});
       if(!r.ok){avis('Refusé',r.data.error||'','err');return false}
       avis('Division enregistrée','Elle s\'applique dans les trente secondes.','ok');
       GESTION=null;

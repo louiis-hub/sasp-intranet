@@ -625,7 +625,8 @@ async function bureauIdentifier(env, request) {
     // Toutes les divisions restent listees : on voit qu'elles existent,
     // et le bouton « prendre contact » sert justement a celles ou l'on
     // n'est pas. Seul le contenu est ferme.
-    toutes: BUREAU_DIVISIONS.map(d => ({ code: d.code, nom: d.nom, adresse: d.adr + "@sasp.com", ic: d.ic }))
+    toutes: BUREAU_DIVISIONS.map(d => ({ code: d.code, nom: d.nom, adresse: d.adr + "@sasp.com",
+      ic: d.ic, groupe: d.groupe || "Divisions", court: d.court || null }))
   };
 }
 
@@ -6111,6 +6112,211 @@ export default {
     // ════════════════════════════════════════════════════════════════
     //  API du bureau
     // ════════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════════
+    //  Sessions de la Police Academy
+    //
+    //  Deux moities qui ne se ressemblent pas. Le formulaire est PUBLIC :
+    //  les candidats n'ont ni compte ni role, c'est tout l'interet. La
+    //  gestion, elle, est reservee a la PA.
+    //
+    //  Ce qui protege le formulaire, c'est uniquement l'imprevisibilite
+    //  du code. Il ne rend donc que le titre et les questions, jamais les
+    //  candidatures deja deposees.
+    // ════════════════════════════════════════════════════════════════
+    if (url.pathname.startsWith("/api/pa/")) {
+      const mForm = url.pathname.match(/^\/api\/pa\/form\/([A-Za-z0-9_-]{8,40})$/);
+
+      if (mForm && request.method === "GET") {
+        const rows = await sb(env, "GET",
+          `/pa_sessions?code=eq.${mForm[1]}&select=titre,description,date_session,places,questions,ouverte`)
+          .catch(() => []);
+        const s = (rows || [])[0];
+        if (!s) return json({ ok: false, error: "Ce lien n'existe pas ou a expire." }, 404);
+        if (!s.ouverte) return json({ ok: false, ferme: true, titre: s.titre,
+          error: "Les candidatures pour cette session sont closes." }, 403);
+        return json({ ok: true, titre: s.titre, description: s.description,
+          date_session: s.date_session, places: s.places,
+          questions: Array.isArray(s.questions) ? s.questions : [] });
+      }
+
+      if (mForm && request.method === "POST") {
+        const rows = await sb(env, "GET",
+          `/pa_sessions?code=eq.${mForm[1]}&select=id,ouverte,questions`).catch(() => []);
+        const s = (rows || [])[0];
+        if (!s) return json({ ok: false, error: "Ce lien n'existe pas ou a expire." }, 404);
+        if (!s.ouverte) return json({ ok: false, error: "Les candidatures sont closes." }, 403);
+
+        const c = await request.json().catch(() => ({}));
+        const pseudo = String(c.pseudo || "").trim().slice(0, 60);
+        if (pseudo.length < 2) return json({ ok: false, error: "Indiquez votre pseudo Discord." }, 400);
+
+        const questions = Array.isArray(s.questions) ? s.questions : [];
+        const reponses = {};
+        for (let i = 0; i < questions.length; i++) {
+          const v = String((c.reponses || {})[String(i)] || "").trim().slice(0, 2000);
+          if (questions[i].requis && !v) {
+            return json({ ok: false, error: `Reponse manquante : ${questions[i].q}` }, 400);
+          }
+          reponses[String(i)] = v;
+        }
+
+        // On retrouve l'identifiant Discord depuis le pseudo. Sans lui,
+        // aucun message prive n'est possible : demander son identifiant
+        // numerique a un candidat serait lui demander de savoir ou le
+        // trouver, ce que presque personne ne sait.
+        let discordId = null;
+        try {
+          const res = await discordFetch(
+            `${DISCORD_API}/guilds/${envGuildId(env)}/members/search?query=${encodeURIComponent(pseudo)}&limit=5`,
+            { headers: { authorization: `Bot ${env.DISCORD_BOT_TOKEN}` } });
+          if (res.ok) {
+            const trouves = await res.json();
+            const bas = pseudo.toLowerCase();
+            const exact = (trouves || []).filter(m => m.user && !m.user.bot && (
+              String(m.user.username || "").toLowerCase() === bas ||
+              String(m.nick || "").toLowerCase() === bas ||
+              String(m.user.global_name || "").toLowerCase() === bas));
+            const retenu = exact[0] || (trouves || []).filter(m => m.user && !m.user.bot)[0];
+            if (retenu) discordId = retenu.user.id;
+          }
+        } catch (e) {}
+
+        // Une seule candidature par personne et par session : sinon un
+        // meme candidat peut noyer la liste.
+        if (discordId) {
+          const deja = await sb(env, "GET",
+            `/pa_candidatures?session_id=eq.${s.id}&discord_id=eq.${discordId}&select=id&limit=1`)
+            .catch(() => []);
+          if ((deja || []).length) {
+            return json({ ok: false, error: "Vous avez deja postule pour cette session." }, 409);
+          }
+        }
+
+        await sb(env, "POST", "/pa_candidatures", {
+          session_id: s.id, pseudo, discord_id: discordId, reponses,
+          ip: request.headers.get("cf-connecting-ip")
+           || request.headers.get("x-forwarded-for") || null
+        });
+        return json({ ok: true, reconnu: !!discordId });
+      }
+
+      // ── la gestion, reservee a la Police Academy ──────────────────
+      if (url.pathname.startsWith("/api/pa/admin")) {
+        await assurerConfig(env);
+        const qui = await bureauIdentifier(env, request);
+        if (!qui.ok) return bureauRefus(qui.motif);
+        const dansPA = qui.estCS || qui.divisions.some(d => d.code === "PA");
+        if (!dansPA) return json({ ok: false, error: "Reserve a la Police Academy." }, 403);
+
+        if (url.pathname === "/api/pa/admin/sessions" && request.method === "GET") {
+          const rows = await sb(env, "GET",
+            "/pa_sessions?select=*&order=created_at.desc&limit=100").catch(() => []);
+          const cands = await sb(env, "GET",
+            "/pa_candidatures?select=session_id,statut").catch(() => []);
+          const compte = {};
+          (cands || []).forEach(c => {
+            const k = c.session_id;
+            compte[k] = compte[k] || { total: 0, attente: 0 };
+            compte[k].total++;
+            if (c.statut === "attente") compte[k].attente++;
+          });
+          return json({ ok: true,
+            sessions: (rows || []).map(s => Object.assign({}, s, { compte: compte[s.id] || { total: 0, attente: 0 } })) });
+        }
+
+        if (url.pathname === "/api/pa/admin/sessions" && request.method === "POST") {
+          const c = await request.json().catch(() => ({}));
+          if (!String(c.titre || "").trim()) return json({ ok: false, error: "Titre manquant." }, 400);
+          // 22 caracteres tires au hasard : le code est la seule chose
+          // qui protege un formulaire ouvert a tous.
+          const octets = crypto.getRandomValues(new Uint8Array(16));
+          const code = Array.from(octets).map(b => b.toString(36)).join("").slice(0, 22);
+          const questions = (Array.isArray(c.questions) ? c.questions : [])
+            .filter(q => q && String(q.q || "").trim())
+            .slice(0, 20)
+            .map(q => ({ q: String(q.q).slice(0, 300),
+              type: ["texte", "long"].indexOf(q.type) !== -1 ? q.type : "texte",
+              requis: q.requis !== false }));
+          const cree = await sb(env, "POST", "/pa_sessions", {
+            code, titre: String(c.titre).slice(0, 140),
+            description: String(c.description || "").slice(0, 2000) || null,
+            date_session: c.date_session || null,
+            places: Number.isFinite(+c.places) && +c.places > 0 ? +c.places : null,
+            questions, ouverte: true,
+            cree_par: qui.nom, cree_par_id: qui.discordId
+          });
+          return json({ ok: true, session: cree && cree[0] });
+        }
+
+        const mSess = url.pathname.match(/^\/api\/pa\/admin\/sessions\/(\d+)$/);
+        if (mSess && request.method === "PATCH") {
+          const c = await request.json().catch(() => ({}));
+          await sb(env, "PATCH", `/pa_sessions?id=eq.${mSess[1]}`,
+            { ouverte: c.ouverte !== false });
+          return json({ ok: true });
+        }
+        if (mSess && request.method === "DELETE") {
+          await sb(env, "DELETE", `/pa_sessions?id=eq.${mSess[1]}`);
+          return json({ ok: true });
+        }
+
+        const mCand = url.pathname.match(/^\/api\/pa\/admin\/sessions\/(\d+)\/candidatures$/);
+        if (mCand && request.method === "GET") {
+          const rows = await sb(env, "GET",
+            `/pa_candidatures?session_id=eq.${mCand[1]}&select=*&order=created_at.asc`).catch(() => []);
+          const s = (await sb(env, "GET",
+            `/pa_sessions?id=eq.${mCand[1]}&select=titre,questions,code,date_session`).catch(() => []))[0];
+          return json({ ok: true, session: s || null, candidatures: rows || [] });
+        }
+
+        const mDec = url.pathname.match(/^\/api\/pa\/admin\/candidature\/(\d+)$/);
+        if (mDec && request.method === "POST") {
+          const c = await request.json().catch(() => ({}));
+          const statut = c.statut === "accepte" ? "accepte" : c.statut === "refuse" ? "refuse" : null;
+          if (!statut) return json({ ok: false, error: "Decision invalide." }, 400);
+
+          const cand = (await sb(env, "GET",
+            `/pa_candidatures?id=eq.${mDec[1]}&select=*`).catch(() => []))[0];
+          if (!cand) return json({ ok: false, error: "Candidature introuvable." }, 404);
+          const sess = (await sb(env, "GET",
+            `/pa_sessions?id=eq.${cand.session_id}&select=titre,date_session`).catch(() => []))[0] || {};
+
+          let dm = { ok: false, error: "pas_d_identifiant" };
+          if (cand.discord_id) {
+            const quand = sess.date_session
+              ? new Date(sess.date_session).toLocaleString("fr-FR",
+                  { timeZone: "Europe/Paris", dateStyle: "full", timeStyle: "short" })
+              : null;
+            const embed = statut === "accepte"
+              ? { title: "Candidature retenue",
+                  description: "Bien joue, vous avez ete retenu pour la session de la Police Academy."
+                    + (quand ? `\n\nElle se tiendra le **${quand}**.`
+                             : "\n\nVous serez informe de la date de la session."),
+                  color: 0x34D399,
+                  footer: { text: `San Andreas State Police Sud - ${sess.titre || "Police Academy"}` } }
+              : { title: "Candidature non retenue",
+                  description: (String(c.motif || "").trim()
+                    || "Votre candidature n'a pas ete retenue pour cette session.")
+                    + "\n\nVous pouvez postuler a une prochaine session.",
+                  color: 0xF87171,
+                  footer: { text: `San Andreas State Police Sud - ${sess.titre || "Police Academy"}` } };
+            dm = await sendUserDM(env, cand.discord_id, { embeds: [embed] });
+          }
+
+          await sb(env, "PATCH", `/pa_candidatures?id=eq.${mDec[1]}`, {
+            statut, motif: String(c.motif || "").slice(0, 500) || null,
+            decide_par: qui.nom, decide_le: new Date().toISOString(),
+            dm_ok: !!dm.ok, dm_erreur: dm.ok ? null : String(dm.error || "").slice(0, 200)
+          });
+          // La decision est enregistree meme si le message prive echoue :
+          // un DM ferme ne doit pas faire perdre le travail de relecture.
+          return json({ ok: true, dm: dm.ok, dm_erreur: dm.ok ? null : dm.error });
+        }
+      }
+
+      return json({ ok: false, error: "Route inconnue." }, 404);
+    }
+
     if (url.pathname.startsWith("/api/bureau/")) {
       if (request.method === "OPTIONS") {
         return new Response(null, { status: 204, headers: {
@@ -6461,6 +6667,10 @@ export default {
               code, nom: String(c.nom).slice(0, 80), adr, ic: String(c.ic || "🚔").slice(0, 8),
               roles: ids(c.roles), lead: ids(c.lead), colead: ids(c.colead),
               ordre: Number.isFinite(+c.ordre) ? +c.ordre : 100,
+              // '-' retire l'entree de la barre sans desactiver la division.
+              groupe: ["Academie", "Divisions", "Unites", "-"].indexOf(c.groupe) !== -1
+                ? c.groupe : "Divisions",
+              court: String(c.court || "").slice(0, 40) || null,
               actif: c.actif !== false,
               updated_at: new Date().toISOString(), updated_by: qui.nom
             };
