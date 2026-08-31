@@ -120,26 +120,6 @@ button,input,select,textarea{font:inherit;color:inherit}
 .plus:hover{background:rgba(255,255,255,.06);color:var(--t0)}
 .plus span{margin-left:auto}
 
-/* ── barre des tâches ─────────────────────────────────────────── */
-#barre{position:fixed;left:0;right:0;bottom:0;height:78px;z-index:40;display:flex;align-items:center;
-  gap:4px;padding:0 14px;background:rgba(8,13,23,.90);border-top:1px solid var(--bord);
-  backdrop-filter:blur(20px)}
-.tache{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-  min-width:96px;height:62px;padding:0 14px;border:0;border-radius:9px;background:transparent;
-  color:var(--t2);cursor:pointer;transition:background .13s,color .13s;position:relative}
-.tache:hover{background:rgba(255,255,255,.06);color:var(--t0)}
-.tache.on{background:var(--bleu);color:#fff}
-.tache.ouvert:not(.on){color:var(--t0)}
-.tache.ouvert:after{content:"";position:absolute;bottom:5px;left:50%;transform:translateX(-50%);
-  width:18px;height:2.5px;border-radius:2px;background:currentColor;opacity:.75}
-.tache .et{font-size:11.5px;font-weight:500;white-space:nowrap}
-.tache .badge{position:absolute;top:6px;right:12px;min-width:17px;height:17px;padding:0 5px;
-  border-radius:9px;background:var(--rouge);color:#3B0A0A;font-size:10.5px;font-weight:700;
-  display:grid;place-items:center}
-#barre .demarrer{width:52px;min-width:52px}
-#barre .fin{margin-left:auto;display:flex;gap:4px;align-items:center}
-#barre .sep{width:1px;height:36px;background:var(--bord);margin:0 8px}
-
 /* ── fenêtres ─────────────────────────────────────────────────── */
 .fen{position:fixed;z-index:20;display:flex;flex-direction:column;
   background:rgba(11,18,32,.96);border:1px solid var(--bord2);border-radius:var(--r);
@@ -215,34 +195,111 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
   border-top-color:var(--bleu);border-radius:50%;animation:tourner .8s linear infinite}
 @keyframes tourner{to{transform:rotate(360deg)}}
 
-/* ── la barre des tâches, en liste de salons ──────────────────── */
-/* Reprise de la colonne de gauche de Discord : un dièse, un nom en
-   minuscules, le gris qui s'éclaircit au survol. Ce que tout le monde
-   sait déjà lire. */
-#barre .cat{flex:none;display:flex;flex-direction:column;justify-content:center;
-  padding:0 16px 0 4px;margin-right:6px;border-right:1px solid var(--bord);height:46px}
-#barre .cat b{font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--t0);
-  white-space:nowrap;max-width:190px;overflow:hidden;text-overflow:ellipsis}
-#barre .cat i{font-style:normal;font-size:10px;letter-spacing:.13em;text-transform:uppercase;
-  color:var(--t3);margin-top:3px}
-.tache{display:flex;flex-direction:row;align-items:center;gap:7px;
-  min-width:0;height:34px;padding:0 10px;border:0;border-radius:5px;background:transparent;
-  color:#949BA4;cursor:pointer;transition:background .1s,color .1s;position:relative}
-.tache:hover{background:rgba(255,255,255,.055);color:#DBDEE1}
-.tache.on{background:rgba(255,255,255,.11);color:#fff}
-.tache.ouvert:not(.on){color:#DBDEE1}
-.tache.ouvert:after{content:"";position:absolute;bottom:2px;left:50%;transform:translateX(-50%);
-  width:16px;height:2px;border-radius:2px;background:#DBDEE1;opacity:.8}
-.tache.on:after{width:22px;background:#fff;opacity:1}
-.tache .di{flex:none;font-size:17px;line-height:1;color:#80848E;font-weight:400}
-.tache.on .di,.tache:hover .di{color:currentColor}
-.tache .et{font-size:13.5px;font-weight:500;white-space:nowrap;letter-spacing:.005em}
-.tache .badge{position:static;margin-left:4px;min-width:16px;height:16px;padding:0 5px;
-  border-radius:8px;background:var(--rouge);color:#3B0A0A;font-size:10.5px;font-weight:700;
+/* ── la barre du bas, sur le modèle de la nav du site ─────────── */
+/* Des rubriques en petites capitales, les entrées en dessous, des
+   filets verticaux entre les groupes. Exactement la barre que tout le
+   monde connaît déjà, ramenée en bas de l'écran. */
+#barre{position:fixed;left:0;right:0;bottom:0;height:78px;z-index:40;
+  display:flex;align-items:stretch;gap:0;padding:0;
+  background:linear-gradient(180deg,rgba(9,15,28,.96),rgba(6,10,20,.98));
+  border-top:1px solid var(--bord2);backdrop-filter:blur(20px)}
+#bureau{inset:0 0 78px 0}
+
+#barre .menuBt{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;width:82px;border:0;border-right:1px solid var(--bord);background:transparent;
+  cursor:pointer;transition:background .13s}
+#barre .menuBt:hover,#barre .menuBt.on{background:rgba(59,130,246,.14)}
+#barre .menuBt img{width:32px;height:32px;object-fit:contain;opacity:.9}
+#barre .menuBt b{font-size:10.5px;font-weight:700;letter-spacing:.14em;color:var(--bleu2)}
+
+#nav{flex:1;min-width:0;display:flex;align-items:stretch;overflow-x:auto;overflow-y:hidden}
+#nav::-webkit-scrollbar{height:0}
+.navGr{flex:none;display:flex;flex-direction:column;justify-content:center;
+  padding:8px 20px;border-right:1px solid var(--bord)}
+.navGr:last-child{border-right:0}
+.navGr > i{font-style:normal;font-size:9.5px;font-weight:700;letter-spacing:.17em;
+  text-transform:uppercase;color:#4E6488;padding:0 8px 5px;white-space:nowrap}
+.navGr > div{display:flex;gap:2px}
+.navIt{position:relative;padding:7px 11px;border:0;border-radius:6px;background:transparent;
+  color:#B7C4DA;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;
+  transition:background .12s,color .12s}
+.navIt:hover{background:rgba(255,255,255,.07);color:#fff}
+.navIt.on{background:rgba(59,130,246,.9);color:#fff}
+.navIt.ouvert:not(.on){color:#fff}
+.navIt.ouvert:after{content:"";position:absolute;bottom:1px;left:50%;transform:translateX(-50%);
+  width:15px;height:2px;border-radius:2px;background:currentColor;opacity:.75}
+.navIt.hors{color:#5C6B85}
+.navIt.hors:hover{color:#93A4C0}
+.navIt .badge{display:inline-grid;place-items:center;margin-left:6px;min-width:16px;height:16px;
+  padding:0 5px;border-radius:8px;background:var(--rouge);color:#3B0A0A;
+  font-size:10.5px;font-weight:700;vertical-align:1px}
+
+#barreFin{flex:none;display:flex;align-items:center;gap:4px;padding:0 14px;
+  border-left:1px solid var(--bord)}
+#barreFin .hr{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
+  padding-right:12px;margin-right:6px;border-right:1px solid var(--bord)}
+#barreFin .hr b{font-size:15px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+#barreFin .hr i{font-style:normal;font-size:10.5px;color:var(--t3);margin-top:3px}
+#barreFin button{display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;
+  padding:7px 0;border:0;border-radius:8px;background:transparent;color:var(--t2);cursor:pointer}
+#barreFin button:hover{background:rgba(255,255,255,.07);color:var(--t0)}
+#barreFin button span:first-child{font-size:17px;line-height:1}
+#barreFin button span:last-child{font-size:10.5px}
+
+/* ── le menu démarrer ─────────────────────────────────────────── */
+#menuDem{position:fixed;left:10px;bottom:88px;z-index:60;display:none;width:440px;
+  max-height:min(620px,calc(100vh - 120px));flex-direction:column;
+  background:rgba(13,20,36,.985);border:1px solid var(--bord2);border-radius:14px;
+  box-shadow:0 30px 76px rgba(0,0,0,.7);backdrop-filter:blur(22px);overflow:hidden}
+#menuDem.on{display:flex}
+#menuDem > header{flex:none;display:flex;align-items:center;gap:12px;padding:16px 18px;
+  border-bottom:1px solid var(--bord);background:rgba(255,255,255,.025)}
+#menuDem > header img{width:34px;height:34px;border-radius:9px;object-fit:cover}
+#menuDem > header b{font-size:14.5px;display:block}
+#menuDem > header i{font-style:normal;font-size:11.5px;color:var(--t3);
+  font-family:var(--fm);display:block;margin-top:2px}
+#menuDem .rech{flex:none;padding:12px 16px 0}
+#menuDem .liste{flex:1;min-height:0;overflow-y:auto;padding:12px 12px 14px}
+#menuDem .gr{padding:12px 8px 6px;font-size:10px;font-weight:700;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--t3)}
+#menuDem .gr:first-child{padding-top:2px}
+#menuDem .ap{display:flex;align-items:center;gap:11px;width:100%;padding:9px 10px;
+  background:none;border:0;border-radius:8px;color:var(--t1);cursor:pointer;
+  font-size:13.5px;text-align:left}
+#menuDem .ap:hover{background:rgba(59,130,246,.17);color:#fff}
+#menuDem .ap .ic{flex:none;width:30px;height:30px;border-radius:8px;display:grid;
+  place-items:center;background:rgba(255,255,255,.055);font-size:15px}
+#menuDem .ap .sst{display:block;font-size:11px;color:var(--t3);margin-top:1px}
+#menuDem > footer{flex:none;display:flex;gap:6px;padding:10px 14px;
+  border-top:1px solid var(--bord);background:rgba(0,0,0,.22)}
+#menuDem > footer button{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;
+  padding:9px;border:0;border-radius:8px;background:rgba(255,255,255,.05);color:var(--t1);
+  cursor:pointer;font-size:12.5px}
+#menuDem > footer button:hover{background:rgba(255,255,255,.11);color:#fff}
+
+/* ── les icônes du bureau ─────────────────────────────────────── */
+/* Sans elles le bureau n'était qu'une page. On les attrape, on les
+   range, on ouvre au double-clic : le geste que tout le monde a. */
+#icones{position:absolute;inset:0;z-index:2;pointer-events:none}
+.ico{position:absolute;width:96px;padding:9px 4px 8px;border-radius:9px;border:1px solid transparent;
+  display:flex;flex-direction:column;align-items:center;gap:7px;cursor:default;
+  pointer-events:auto;user-select:none;text-align:center}
+.ico:hover{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.08)}
+.ico.sel{background:rgba(59,130,246,.25);border-color:rgba(96,165,250,.55)}
+.ico.tire{opacity:.7}
+.ico .im{width:46px;height:46px;display:grid;place-items:center;font-size:29px;
+  filter:drop-shadow(0 3px 7px rgba(0,0,0,.6))}
+.ico .nm{font-size:11.5px;line-height:1.32;color:#E8EEF9;font-weight:500;
+  text-shadow:0 1px 3px rgba(0,0,0,.9);max-width:88px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ico .pst{position:absolute;top:5px;right:12px;min-width:17px;height:17px;padding:0 5px;
+  border-radius:9px;background:var(--rouge);color:#3B0A0A;font-size:10.5px;font-weight:700;
   display:grid;place-items:center}
-#barre .demarrer{width:40px;min-width:40px;justify-content:center;padding:0}
-#barre{height:60px}
-#bureau{inset:0 0 60px 0}
+.ico .cad{position:absolute;bottom:32px;right:16px;font-size:13px;opacity:.85}
+
+/* Le bandeau du bureau laisse la colonne de gauche aux icônes. */
+.grille{padding-left:126px}
+@media (max-width:900px){ .grille{padding-left:0} }
 
 /* ── les salons d'une division ────────────────────────────────── */
 .salons{flex:none;width:216px;display:flex;flex-direction:column;padding:12px 8px;
@@ -410,7 +467,8 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
   .marque h1{font-size:27px} .marque img{width:58px;height:58px}
   .fen{left:0 !important;top:0 !important;width:100% !important;height:calc(100% - 78px) !important;
     border-radius:0}
-  .tache{min-width:64px} .tache .et{display:none}
+  .navGr{padding:8px 12px} .navGr > i{padding-left:6px}
+  #barreFin button span:last-child{display:none}
 }
 </style>
 </head>
@@ -444,17 +502,19 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
     </div>
   </div>
   <!-- Les widgets vivent ici, libres de position. -->
+  <div id="icones"></div>
   <div id="plan"></div>
 </div>
 <div id="menuBureau"></div>
 
+<div id="menuDem"></div>
+
 <div id="barre">
-  <button class="tache demarrer" id="btDemarrer" title="Menu">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg>
+  <button class="menuBt" id="btDemarrer" title="Menu du poste">
+    <img src="assets/sasp-sud-logo.png" alt=""><b>MENU</b>
   </button>
-  <div class="cat"><b>San Andreas State Police</b><i>Sud</i></div>
-  <div id="taches" style="display:flex;gap:2px;align-items:center;overflow-x:auto"></div>
-  <div class="fin" id="barreFin"></div>
+  <nav id="nav"></nav>
+  <div id="barreFin"></div>
 </div>
 
 <div id="fenetres"></div>
@@ -465,7 +525,7 @@ textarea.champ{resize:vertical;min-height:90px;line-height:1.65;font-family:var(
 <div id="porte"><div class="pcard" id="pcard"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=20260831-salons"></script>
+<script src="config.js?v=20260831-poste"></script>
 <script>
 /* ============================================================
    POSTE DE TRAVAIL SASP
@@ -543,7 +603,18 @@ function confirmer(titre,texte,libelle,onOk,danger){
    « Mail » ramene celle qui existe au lieu d'en empiler une
    deuxieme, comme le ferait un vrai poste.
    ============================================================ */
-const FEN={}; let zTop=20, decalage=0;
+const FEN={}; let rangSuivant=0, decalage=0;
+
+// Le plan des fenetres etait un compteur qui ne redescendait jamais : au
+// bout d'une vingtaine de clics une fenetre passait par-dessus la barre
+// du bas, puis par-dessus le menu et les notifications. On renumerote a
+// chaque fois, du plus ancien au plus recent, pour rester dans la bande
+// 20-39 reservee aux fenetres.
+function empilerFenetres(){
+  Object.keys(FEN)
+    .sort((a,b)=>(FEN[a].rang||0)-(FEN[b].rang||0))
+    .forEach((k,i)=>{ FEN[k].el.style.zIndex=20+i; });
+}
 
 function fenetre(cle,o){
   if(FEN[cle]){ activerFenetre(cle); return FEN[cle]; }
@@ -552,7 +623,7 @@ function fenetre(cle,o){
   const g=Math.max(20,Math.round((innerWidth-l)/2)+decalage-60);
   const t=Math.max(14,Math.round((innerHeight-60-h)/2)+decalage-40);
   decalage=(decalage+30)%150;
-  f.style.cssText=`left:${g}px;top:${t}px;width:${l}px;height:${h}px;z-index:${++zTop}`;
+  f.style.cssText=`left:${g}px;top:${t}px;width:${l}px;height:${h}px;z-index:20`;
   f.innerHTML=`<header>
       <span style="font-size:15px">${o.icone||'🗂️'}</span>
       <span class="ti">${esc(o.titre)}${o.sous?`<span class="st">${esc(o.sous)}</span>`:''}</span>
@@ -622,7 +693,7 @@ function fenetre(cle,o){
 function activerFenetre(cle){
   const o=FEN[cle]; if(!o)return;
   o.rangee=false; o.el.classList.remove('range');
-  o.el.style.zIndex=++zTop;
+  o.rang=++rangSuivant; empilerFenetres();
   Object.keys(FEN).forEach(k=>FEN[k].active=(k===cle));
   majTaches();
 }
@@ -644,26 +715,219 @@ function basculerFenetre(cle){
 /* ============================================================
    BARRE DES TÂCHES
    ============================================================ */
-let RACCOURCIS=[];
+/* ============================================================
+   BARRE DU BAS, MENU ET ICÔNES
+   La barre reprend la navigation du site : des rubriques en
+   petites capitales, les entrées en dessous, un filet entre
+   chaque groupe. Les divisions y sont directement, sans passer
+   par un dossier.
+   ============================================================ */
+const APPS={
+  pa:          {n:'Police Academy', ic:'🎓', d:'Intranet de l\'académie',
+                f:()=>ouvrirSite('pa','Police Academy','🎓','pa.html','intranet')},
+  aegis:       {n:'AEGIS',          ic:'🛡️', d:'Outil d\'enquête du CID',
+                f:()=>ouvrirSite('aegis','AEGIS','🛡️','sasp/liaisons/#/dash','outil d\'enquête')},
+  organigramme:{n:'État-major',     ic:'🏛️', d:'Hiérarchie et encadrement',
+                f:ouvrirOrganigramme},
+  divisions:   {n:'Divisions',      ic:'🚔', d:'Toutes les unités du poste',
+                f:ouvrirDivisions},
+  mail:        {n:'Messagerie',     ic:'✉️', d:'Courrier interne',
+                f:ouvrirMail, badge:()=>MAILS_NON_LUS},
+  demandes:    {n:'Mes demandes',   ic:'📮', d:'Contacts ouverts',
+                f:ouvrirMesDemandes},
+  annonces:    {n:'Annonces',       ic:'📣', d:'Journal de l\'état-major',
+                f:ouvrirAnnonces}
+};
+
+const NAV=[
+  {t:'Académie',       it:[{a:'pa',n:'Police Academy'},{d:'PA',n:'Salons PA'}]},
+  {t:'Divisions',      it:[{d:'SWAT',n:'SWAT'},{d:'CID',n:'CID'},{d:'K9',n:'K9'},
+                           {d:'FTF',n:'Fugitive T. Force'},{d:'IA',n:'Internal Affairs'},
+                           {d:'SYND',n:'Syndicat'}]},
+  {t:'Unités',         it:[{d:'TU',n:'Traffic Unit'},{d:'CNU',n:'Crisis & Negotiation Unit'},
+                           {d:'LP',n:'Lincoln Patrol'}]},
+  {t:'Administration', it:[{a:'organigramme',n:'État-major'},{a:'annonces',n:'Annonces'}]},
+  {t:'Général',        it:[{a:'aegis',n:'AEGIS'},{a:'mail',n:'Messagerie'},
+                           {a:'demandes',n:'Demandes'}]}
+];
+
+const cleDe=it=>it.a?it.a:'div:'+it.d;
+const dedansDiv=c=>MOI&&MOI.divisions.some(d=>d.code===c);
+
+// Une division dont on ne fait pas partie n'ouvre pas une fenêtre vide :
+// elle propose la demande de contact, qui est la seule voie possible.
+function allerDivision(code){
+  if(dedansDiv(code))return ouvrirDivision(code);
+  contactDlg(code);
+}
+function lancer(it){
+  if(it.a)APPS[it.a].f(); else allerDivision(it.d);
+}
+
 function majTaches(){
-  const z=$('#taches');
-  // Un dièse, un nom en minuscules : la barre se lit comme une liste de
-  // salons Discord plutôt que comme une rangée de tuiles.
-  z.innerHTML=RACCOURCIS.map(r=>{
-    const o=FEN[r.cle];
-    const cl='tache'+(o?(o.active&&!o.rangee?' on':' ouvert'):'');
-    const n=(r.court||r.titre).toLowerCase().replace(/\s+/g,'-');
-    return `<button class="${cl}" data-app="${esc(r.cle)}" title="${esc(r.titre)}">
-      <span class="di">#</span><span class="et">${esc(n)}</span>
-      ${r.badge?`<span class="badge">${r.badge}</span>`:''}</button>`;
-  }).join('');
-  $$('#taches [data-app]',z).forEach(b=>b.onclick=()=>{
-    const cle=b.dataset.app;
-    if(!basculerFenetre(cle)){
-      const r=RACCOURCIS.filter(x=>x.cle===cle)[0];
-      if(r&&r.ouvrir)r.ouvrir();
-    }
+  const z=$('#nav'); if(!z)return;
+  z.innerHTML=NAV.map(g=>`<div class="navGr"><i>${esc(g.t)}</i><div>
+    ${g.it.map((it,j)=>{
+      const o=FEN[cleDe(it)];
+      const hors=it.d&&!dedansDiv(it.d);
+      const b=it.a&&APPS[it.a].badge?APPS[it.a].badge():0;
+      return `<button class="navIt${o?(o.active&&!o.rangee?' on':' ouvert'):''}${hors?' hors':''}"
+        data-g="${NAV.indexOf(g)}" data-j="${j}"
+        title="${hors?'Vous ne faites pas partie de cette unité : prendre contact':esc(it.n)}">
+        ${hors?'🔒 ':''}${esc(it.n)}${b?`<span class="badge">${b}</span>`:''}</button>`;
+    }).join('')}
+  </div></div>`).join('');
+  $$('.navIt',z).forEach(b=>b.onclick=()=>{
+    const it=NAV[+b.dataset.g].it[+b.dataset.j];
+    if(!basculerFenetre(cleDe(it)))lancer(it);
   });
+  dessinerIcones();
+}
+
+/* ---------- le menu démarrer ---------- */
+function menuDemarrer(){
+  const m=$('#menuDem');
+  if(m.classList.contains('on')){ fermerMenuDem(); return; }
+  const tout=[];
+  NAV.forEach(g=>g.it.forEach(it=>tout.push({g:g.t,it})));
+  tout.push({g:'Général',it:{a:'divisions',n:'Toutes les divisions'}});
+
+  m.innerHTML=`<header>
+      ${MOI.avatar?`<img src="${esc(MOI.avatar)}" alt="">`
+        :'<div style="width:34px;height:34px;border-radius:9px;background:var(--bleu-sombre)"></div>'}
+      <div style="flex:1;min-width:0">
+        <b>${esc(String(MOI.nom).replace(/^\[[^\]]*\]\s*/,''))}</b>
+        <i>${esc(MOI.adresse)}</i></div>
+    </header>
+    <div class="rech"><input class="champ" id="mdRech" placeholder="Rechercher une application…"
+      autocomplete="off"></div>
+    <div class="liste" id="mdListe"></div>
+    <footer>
+      <button id="mdFond">🖼️ Fond d'écran</button>
+      <button id="mdProfil">👤 Profil</button>
+      <button id="mdSortie">⏻ Déconnexion</button>
+    </footer>`;
+
+  const liste=$('#mdListe',m);
+  const rendre=q=>{
+    const f=tout.filter(x=>!q||sansAccentSimple(x.it.n).indexOf(q)!==-1);
+    let dernier='';
+    liste.innerHTML=f.length?f.map(x=>{
+      const t=x.g!==dernier?`<div class="gr">${esc(x.g)}</div>`:''; dernier=x.g;
+      const ap=x.it.a?APPS[x.it.a]:null;
+      const dv=x.it.d?(MOI.toutes.filter(d=>d.code===x.it.d)[0]||{}):null;
+      const hors=x.it.d&&!dedansDiv(x.it.d);
+      const b=ap&&ap.badge?ap.badge():0;
+      return t+`<button class="ap" data-n="${esc(x.it.n)}">
+        <span class="ic">${ap?ap.ic:(dv.ic||'🚔')}</span>
+        <span style="flex:1;min-width:0">${esc(x.it.n)}
+          <span class="sst">${esc(ap?ap.d:hors?'Prendre contact':(dv.nom||''))}</span></span>
+        ${b?`<span class="badge" style="background:var(--rouge);color:#3B0A0A;padding:0 6px;
+          border-radius:9px;font-size:10.5px;font-weight:700">${b}</span>`:''}
+      </button>`;
+    }).join('')
+      :'<div style="padding:26px 10px;text-align:center;color:var(--t3);font-size:12.5px">Aucun résultat.</div>';
+    $$('.ap',liste).forEach(b=>b.onclick=()=>{
+      const x=f.filter(y=>y.it.n===b.dataset.n)[0];
+      fermerMenuDem(); if(x)lancer(x.it);
+    });
+  };
+  rendre('');
+  const ch=$('#mdRech',m);
+  ch.addEventListener('input',()=>rendre(sansAccentSimple(ch.value)));
+  ch.addEventListener('keydown',e=>{
+    if(e.key==='Escape')fermerMenuDem();
+    if(e.key==='Enter'){ const p=$('.ap',liste); if(p)p.click(); }
+  });
+  $('#mdFond',m).onclick=()=>{fermerMenuDem();fondDlg()};
+  $('#mdProfil',m).onclick=()=>{fermerMenuDem();$('#btProfil').click()};
+  $('#mdSortie',m).onclick=()=>{fermerMenuDem();$('#btSortie').click()};
+
+  m.classList.add('on');
+  $('#btDemarrer').classList.add('on');
+  setTimeout(()=>ch.focus(),40);
+}
+function fermerMenuDem(){
+  $('#menuDem').classList.remove('on');
+  $('#btDemarrer').classList.remove('on');
+}
+const sansAccentSimple=s=>String(s||'').normalize('NFD')
+  .replace(/[̀-ͯ]/g,'').toLowerCase();
+
+/* ---------- les icônes du bureau ---------- */
+const ICONES_CLE='sasp.bureau.icones';
+let ICONES=[];
+
+function iconesCatalogue(){
+  // Les applications d'abord, puis les unités dont on fait partie :
+  // celles-la seules s'ouvrent d'un double-clic.
+  const L=[{a:'pa'},{a:'aegis'},{a:'organigramme'},{a:'mail'},{a:'demandes'},{a:'divisions'}];
+  (MOI.divisions||[]).forEach(d=>L.push({d:d.code}));
+  return L;
+}
+function iconesLire(){
+  const cat=iconesCatalogue();
+  let pos={};
+  try{ pos=JSON.parse(localStorage.getItem(ICONES_CLE)||'{}')||{}; }catch(e){}
+  // Une colonne le long du bord gauche, qui repart en haut quand elle
+  // touche la barre du bas.
+  const parCol=Math.max(3,Math.floor((innerHeight-160)/104));
+  return cat.map((x,i)=>{
+    const k=cleDe(x), p=pos[k];
+    return {...x,cle:k,
+      x:p?p.x:18+Math.floor(i/parCol)*104,
+      y:p?p.y:18+(i%parCol)*104};
+  });
+}
+function iconesEcrire(){
+  const o={}; ICONES.forEach(i=>o[i.cle]={x:i.x,y:i.y});
+  try{ localStorage.setItem(ICONES_CLE,JSON.stringify(o)); }catch(e){}
+}
+function dessinerIcones(){
+  const z=$('#icones'); if(!z||!MOI)return;
+  if(!ICONES.length)ICONES=iconesLire();
+  z.innerHTML=ICONES.map((x,i)=>{
+    const ap=x.a?APPS[x.a]:null;
+    const dv=x.d?(MOI.toutes.filter(d=>d.code===x.d)[0]||{nom:x.d}):null;
+    const o=FEN[x.cle];
+    const b=ap&&ap.badge?ap.badge():0;
+    return `<div class="ico" data-i="${i}" style="left:${x.x}px;top:${x.y}px"
+      title="${esc(ap?ap.n:dv.nom)}">
+      <div class="im">${ap?ap.ic:(dv.ic||'🚔')}</div>
+      <div class="nm">${esc(ap?ap.n:dv.nom)}</div>
+      ${b?`<span class="pst">${b}</span>`:''}
+      ${o?'<span class="cad">▪</span>':''}</div>`;
+  }).join('');
+
+  $$('.ico',z).forEach(n=>{
+    const i=+n.dataset.i;
+    n.addEventListener('dblclick',()=>lancer(ICONES[i]));
+    n.addEventListener('mousedown',e=>{
+      if(e.button!==0)return;
+      $$('.ico',z).forEach(a=>a.classList.remove('sel'));
+      n.classList.add('sel');
+      const r=n.getBoundingClientRect(), dx=e.clientX-r.left, dy=e.clientY-r.top;
+      let bouge=false;
+      const mv=ev=>{
+        if(!bouge&&Math.abs(ev.clientX-e.clientX)+Math.abs(ev.clientY-e.clientY)<4)return;
+        bouge=true; n.classList.add('tire');
+        ICONES[i].x=Math.max(4,Math.min(innerWidth-110,ev.clientX-dx));
+        ICONES[i].y=Math.max(4,Math.min(innerHeight-180,ev.clientY-dy));
+        n.style.left=ICONES[i].x+'px'; n.style.top=ICONES[i].y+'px';
+      };
+      const up=()=>{
+        n.classList.remove('tire'); if(bouge)iconesEcrire();
+        window.removeEventListener('mousemove',mv); window.removeEventListener('mouseup',up);
+      };
+      window.addEventListener('mousemove',mv); window.addEventListener('mouseup',up);
+      e.preventDefault();
+    });
+  });
+}
+function rangerIcones(){
+  try{ localStorage.removeItem(ICONES_CLE); }catch(e){}
+  ICONES=iconesLire(); dessinerIcones();
+  avis('Icônes rangées','','ok');
 }
 
 /* ============================================================
@@ -1037,12 +1301,13 @@ function menuBureau(x,y){
         <span style="font-size:15px">${c.icone}</span>${esc(c.titre)}
         ${deja?'<span style="margin-left:auto;font-size:11px;color:var(--t3)">posé</span>':''}</button>`;
     }).join('')+
-    `<hr><button data-fond>🖼️ Changer le fond d'écran…</button><button data-raz>↺ Remettre la disposition d'origine</button>`;
+    `<hr><button data-icones>⌗ Ranger les icônes</button><button data-fond>🖼️ Changer le fond d'écran…</button><button data-raz>↺ Remettre la disposition d'origine</button>`;
   m.style.display='block';
   m.style.left=Math.min(x,innerWidth-m.offsetWidth-10)+'px';
   m.style.top=Math.min(y,innerHeight-m.offsetHeight-10)+'px';
   $$('[data-add]',m).forEach(b=>{ if(!b.disabled)b.onclick=()=>{
     m.style.display='none'; ajouterWidget(b.dataset.add,x-40,y-30); }; });
+  $('[data-icones]',m).onclick=()=>{ m.style.display='none'; rangerIcones(); };
   $('[data-fond]',m).onclick=()=>{ m.style.display='none'; fondDlg(); };
   $('[data-raz]',m).onclick=()=>{
     m.style.display='none';
@@ -1715,10 +1980,7 @@ function ouvrirMail(){
   }});
 }
 
-function majBadgeMail(){
-  const r=RACCOURCIS.filter(x=>x.cle==='mail')[0];
-  if(r){ r.badge=MAILS_NON_LUS||0; majTaches(); }
-}
+function majBadgeMail(){ majTaches(); }
 // Les identifiants deja signales, pour ne pas reprevenir a chaque tour.
 let MAILS_VUS=null;
 
@@ -1858,29 +2120,24 @@ function construireBureau(){
       '. Votre adresse interne est '+MOI.adresse+'.'
     : 'Vous n\'êtes rattaché à aucune division. Utilisez « Prendre contact » pour vous adresser à l\'une d\'elles.';
 
-  // Tout se rejoint par la barre des taches ; les widgets portent le
-  // reste. Les accès rapides faisaient doublon avec les deux.
+  // Le bureau se monte dans cet ordre : le fond, les widgets, puis la
+  // barre, qui redessine les icônes une fois MOI connu.
   fondAppliquer();
   PLAN=planLire();
   dessinerPlan();
 
-  RACCOURCIS=[
-    {cle:'pa',   titre:'Police Academy',icone:'🎓',court:'Academy',
-     ouvrir:()=>ouvrirSite('pa','Police Academy','🎓','pa.html','intranet')},
-    {cle:'aegis',titre:'AEGIS',icone:'🛡️',court:'AEGIS',
-     ouvrir:()=>ouvrirSite('aegis','AEGIS','🛡️','sasp/liaisons/#/dash','outil d\'enquête')},
-    {cle:'divisions',titre:'Divisions',icone:'🚔',court:'Divisions',ouvrir:ouvrirDivisions},
-    {cle:'organigramme',titre:'Organigramme',icone:'🏛️',court:'Organigramme',
-     ouvrir:ouvrirOrganigramme},
-    {cle:'mail',titre:'Messagerie',icone:'✉️',court:'Mail',ouvrir:ouvrirMail,badge:0},
-    {cle:'demandes',titre:'Mes demandes',icone:'📮',court:'Demandes',ouvrir:ouvrirMesDemandes}
-  ];
   majTaches();
 
   $('#barreFin').innerHTML=`
-    <div class="sep"></div>
-    <button class="tache" id="btProfil"><span class="di">👤</span><span class="et">profil</span></button>
-    <button class="tache" id="btSortie"><span class="di">⏻</span><span class="et">déconnexion</span></button>`;
+    <div class="hr"><b id="bfH">--:--</b><i id="bfJ">—</i></div>
+    <button id="btProfil"><span>👤</span><span>Profil</span></button>
+    <button id="btSortie"><span>⏻</span><span>Quitter</span></button>`;
+  const bfMaj=()=>{
+    const n=new Date(), z=x=>String(x).padStart(2,'0');
+    $('#bfH').textContent=z(n.getHours())+':'+z(n.getMinutes());
+    $('#bfJ').textContent=n.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+  };
+  bfMaj(); setInterval(bfMaj,20000);
   $('#btProfil').onclick=()=>dlg({titre:'Mon profil',pied:'<button class="btn pri" data-x>Fermer</button>',
     corps:`<div style="display:grid;gap:12px">
       ${[['Agent',MOI.nom],['Adresse interne',MOI.adresse],['Identifiant Discord',MOI.discord_id],
@@ -1894,7 +2151,13 @@ function construireBureau(){
   $('#btSortie').onclick=()=>confirmer('Déconnexion','Vous serez déconnecté du poste de travail.',
     'Se déconnecter',async()=>{ try{await SB.auth.signOut()}catch(e){} location.reload(); },true);
 
-  $('#btDemarrer').onclick=()=>ouvrirDivisions();
+  $('#btDemarrer').onclick=e=>{ e.stopPropagation(); menuDemarrer(); };
+  // Le bureau, la barre et Echap referment le menu, comme partout.
+  document.addEventListener('mousedown',e=>{
+    if(!e.target.closest('#menuDem')&&!e.target.closest('#btDemarrer'))fermerMenuDem();
+  });
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape')fermerMenuDem(); });
+  addEventListener('resize',()=>{ ICONES=[]; dessinerIcones(); });
 
   // Le bureau se règle au clic droit, comme un vrai poste.
   $('#bureau').addEventListener('contextmenu',e=>{
