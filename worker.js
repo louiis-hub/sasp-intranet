@@ -6238,6 +6238,46 @@ export default {
           }
         }
 
+        // ── Annonces ───────────────────────────────────────────────
+        // Tout le personnel les lit ; seuls le Command Staff et le
+        // Supervisor Team en publient.
+        if (url.pathname === "/api/bureau/annonces") {
+          if (request.method === "GET") {
+            const div = url.searchParams.get("division") || "";
+            const mienne = qui.divisions.map(d => d.code);
+            const rows = await sb(env, "GET",
+              "/bureau_annonces?select=*&order=created_at.desc&limit=100");
+            // Une annonce visée sur une division ne sort pas de celle-ci.
+            const vues = (rows || []).filter(a =>
+              !a.division || mienne.indexOf(a.division) !== -1 || qui.estCS || qui.estST);
+            return json({ ok: true, annonces: div ? vues.filter(a => a.division === div) : vues,
+              peut_publier: qui.estCS || qui.estST });
+          }
+          if (request.method === "POST") {
+            if (!qui.estCS && !qui.estST) {
+              return json({ ok: false, error: "Reserve au Command Staff et au Supervisor Team." }, 403);
+            }
+            const c = await request.json().catch(() => ({}));
+            if (!String(c.titre || "").trim()) return json({ ok: false, error: "Titre manquant." }, 400);
+            const cree = await sb(env, "POST", "/bureau_annonces", {
+              titre: String(c.titre).slice(0, 200),
+              corps: String(c.corps || "").slice(0, 6000),
+              division: c.division ? String(c.division).toUpperCase().slice(0, 12) : null,
+              auteur: qui.nom
+            });
+            return json({ ok: true, annonce: cree && cree[0] });
+          }
+          if (request.method === "DELETE") {
+            if (!qui.estCS && !qui.estST) {
+              return json({ ok: false, error: "Reserve au Command Staff et au Supervisor Team." }, 403);
+            }
+            const id = url.searchParams.get("id");
+            if (!/^\d+$/.test(id || "")) return json({ ok: false, error: "Identifiant invalide." }, 400);
+            await sb(env, "DELETE", `/bureau_annonces?id=eq.${id}`);
+            return json({ ok: true });
+          }
+        }
+
         // ── Annuaire, pour choisir un destinataire ─────────────────
         if (url.pathname === "/api/bureau/annuaire" && request.method === "GET") {
           const sortie = qui.toutes.map(d => ({ adresse: d.adresse, nom: d.nom, genre: "division" }));

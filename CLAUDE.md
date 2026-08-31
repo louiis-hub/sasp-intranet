@@ -35,6 +35,8 @@ Les tables sensibles (`liaisons_*`, `bureau_*`) ont **RLS activé sans aucune po
 
 **Les fins de ligne.** Tous les gros fichiers sont en CRLF. L'outil Edit et `sed -i` les écrasent en LF et produisent un diff de plusieurs milliers de lignes pour un changement d'une ligne. Pour les modifications par motif, écrire un petit script Node qui remplace en joignant avec `\r?\n` et réécrit avec la fin de ligne d'origine.
 
+**`String.replace` mange les `$$`.** Dans le texte de remplacement, `$$` vaut un `$` littéral, `$&` la correspondance, `` $` `` ce qui précède. Un patch qui insérait `$$('#x').forEach(...)` a produit `$('#x').forEach(...)`, donc une TypeError qui coupait une fonction en plein milieu et désactivait tout ce qui suivait, sans message. Toujours passer une fonction : `s.replace(avant, () => apres)`, qui désactive ces motifs.
+
 **L'échappement shell.** Les apostrophes françaises et les `\s` cassent `node -e '...'`. Écrire le script dans un fichier, puis l'exécuter. Un `split(/s+/)` au lieu de `/\s+/` a déjà fait échouer silencieusement toute une fonctionnalité.
 
 **Le cache.** `index.html` et `pa.html` portent un `?v=` sur `config.js`, `db.js`, `app.js` et `style.css`. **Le changer à chaque déploiement**, sinon les navigateurs servent l'ancien JS et le bug rapporté n'existe déjà plus.
