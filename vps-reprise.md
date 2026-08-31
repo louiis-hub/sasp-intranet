@@ -42,13 +42,16 @@ ssh sasp@193.38.250.69
 Cle `~/.ssh/id_ed25519`, deja installee, **pas de mot de passe**. Root
 est desactive, les mots de passe SSH aussi.
 
-**Attention : `sudo` demande un mot de passe interactif**, que tu ne peux
-pas fournir depuis un shell non interactif. Deux voies :
+`sudo` ne demande pas de mot de passe : `/etc/sudoers.d/sasp` porte
+`NOPASSWD`, pose le 31 aout 2026 pour qu'un shell non interactif puisse
+travailler. Verifiable par `ssh sasp@193.38.250.69 "sudo -n true && echo ok"`.
 
-- Louis a peut-etre active `sudo` sans mot de passe (voir plus bas) :
-  verifie avec `ssh sasp@193.38.250.69 "sudo -n true && echo ok"`.
-- Sinon, donne-lui les commandes `sudo` a passer lui-meme, et fais le
-  reste toi.
+Le choix se tient parce que root SSH est coupe et les mots de passe SSH
+aussi : la cle est deja le seul facteur.
+
+**Tu peux donc tout faire toi-meme, sans rien faire passer par Louis.**
+Raison de plus pour lire deux fois avant d'ecrire : plus rien ne s'oppose
+a une commande privilegiee.
 
 ## Ou en est le chantier
 
