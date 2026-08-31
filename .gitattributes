@@ -4,5 +4,6 @@
 
 # Ce qui part sur le VPS doit etre en LF. Un script shell ou une unite
 # systemd en CRLF donne "bad interpreter: /bin/bash^M" et rien d autre.
-vps/** text eol=lf
+vps/* text eol=lf
+vps/**/* text eol=lf
 *.md text eol=lf
