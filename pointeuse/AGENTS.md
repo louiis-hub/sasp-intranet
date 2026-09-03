@@ -1,15 +1,27 @@
-# Construire une pointeuse Discord
+# Construire une pointeuse et un systeme de tickets Discord
 
-Consigne pour un agent. A deposer a la racine du projet ou la pointeuse
-doit etre construite.
+Consigne pour un agent. A deposer a la racine du projet ou ces systemes
+doivent etre construits.
 
-**Ce qui est demande : refaire ce systeme, pas le copier.** Il n'y a
-aucune donnee a reprendre, aucune base a migrer. On repart d'une base
-vide sur un autre serveur Discord.
+**Ce qui est demande : les refaire, pas les copier.** Il n'y a aucune
+donnee a reprendre, aucune base a migrer. On repart d'une base vide sur
+un autre serveur Discord.
+
+Deux parties, independantes l'une de l'autre :
+
+- **partie A**, la pointeuse : sections 1 a 10 ;
+- **partie B**, les tickets : sections B1 a B8.
+
+Construire celle dont vous avez besoin, ou les deux.
 
 Tout ce qui suit decrit un systeme qui tourne en production depuis
 plusieurs mois. Les valeurs, les structures et les pieges sont releves
 dessus, pas imagines.
+
+---
+---
+
+# Partie A - La pointeuse
 
 ---
 
@@ -328,3 +340,287 @@ qui a deja casse :
 
 Le cas 6 est celui qu'on oublie, et c'est le plus visible pour les
 utilisateurs.
+
+---
+---
+
+# Partie B - Le systeme de tickets
+
+Un panneau dans un salon public. On y choisit un service, et le bot cree
+un **salon prive** entre le demandeur et ce service.
+
+C'est un remplacant des messages prives a l'encadrement : la conversation
+est tracee, plusieurs personnes du service peuvent y repondre, et rien ne
+se perd quand celui qui suivait le dossier n'est pas la.
+
+---
+
+## B1. Le deroule
+
+1. Le demandeur choisit un service dans un menu deroulant.
+2. Le bot cree un salon, **invisible pour tout le monde sauf** le
+   demandeur, le service concerne et le staff.
+3. Il y poste un message d'accueil et **mentionne le service**.
+4. Quelqu'un du service **prend le ticket en charge** - le statut passe a
+   `claimed`, et on sait qui s'en occupe.
+5. A la fin, **fermeture en deux temps** : un bouton, puis une
+   confirmation.
+6. Un ticket ferme peut etre **rouvert**.
+
+---
+
+## B2. Les permissions du salon
+
+C'est la partie ou une erreur se paie cher : une permission trop large
+rend une conversation privee lisible par tout le serveur.
+
+Les valeurs sont les bits de Discord :
+
+```js
+const VIEW            = 1024n;
+const SEND            = 2048n;
+const EMBED           = 16384n;
+const ATTACH          = 32768n;
+const READ_HISTORY    = 65536n;
+const MANAGE_CHANNELS = 16n;
+
+const BASE  = String(VIEW | SEND | READ_HISTORY | ATTACH | EMBED);
+const STAFF = String(VIEW | SEND | READ_HISTORY | ATTACH | EMBED | MANAGE_CHANNELS);
+
+const permission_overwrites = [
+  // Tout le serveur : refuse. C'est cette ligne qui rend le salon prive.
+  { id: guildId, type: 0, deny: String(VIEW) },
+  // Le demandeur : lire, ecrire, joindre des fichiers.
+  { id: userId,  type: 1, allow: BASE },
+  // Le staff : les memes droits, plus la gestion du salon.
+  ...rolesStaff.map(r => ({ id: r, type: 0, allow: STAFF })),
+  // Les roles du service choisi : idem.
+  ...rolesDuService.map(r => ({ id: r, type: 0, allow: STAFF }))
+];
+```
+
+**`type: 0` designe un role, `type: 1` un membre.** Les inverser donne un
+salon soit inaccessible, soit ouvert a tous - et Discord ne proteste pas.
+
+**Refuser `VIEW` a `@everyone` d'abord.** Sans cette ligne, le salon
+herite des permissions de sa categorie et devient public.
+
+---
+
+## B3. Le nom du salon
+
+Le prendre dans **vos donnees**, pas dans le pseudo Discord.
+
+Chez nous : le nom et le prenom lus dans la fiche de l'agent, avec un
+repli sur le pseudo, puis sur les quatre derniers chiffres de
+l'identifiant. Un salon nomme d'apres un pseudo devient illisible le jour
+ou la personne en change.
+
+Discord impose des noms en minuscules, sans espaces ni accents : prevoir
+une fonction qui nettoie.
+
+---
+
+## B4. Le schema
+
+Huit tables. Les cinq premieres suffisent pour un systeme complet ; les
+trois dernieres sont du confort.
+
+```sql
+-- Le panneau : un par salon d'accueil
+create table ticket_panels (
+  id                    uuid primary key default gen_random_uuid(),
+  guild_id              text not null,
+  name                  text not null default 'Panneau tickets',
+  channel_id            text,
+  message_id            text,
+  default_category_id   text,
+  component_type        text not null default 'select'
+                        check (component_type in ('select','buttons')),
+  title                 text not null,
+  description           text not null default '',
+  placeholder           text default 'Faites un choix',
+  log_channel_id        text,
+  transcript_channel_id text,
+  -- Combien de tickets ouverts une meme personne peut avoir.
+  max_tickets_per_user  integer not null default 1,
+  enabled               boolean not null default true,
+  created_at            timestamptz not null default now()
+);
+
+-- Les services proposes dans le menu
+create table ticket_options (
+  id                   uuid primary key default gen_random_uuid(),
+  panel_id             uuid not null references ticket_panels(id) on delete cascade,
+  key                  text not null,
+  label                text not null,
+  description          text,
+  emoji                text default '🎫',
+  category_id          text,
+  -- Quand la categorie est pleine : Discord plafonne a 50 salons.
+  overflow_category_id text,
+  archive_category_id  text,
+  -- Qui voit le ticket, qui peut le gerer, qui est mentionne a l'ouverture.
+  support_role_ids     text[] not null default '{}',
+  manager_role_ids     text[] not null default '{}',
+  mention_role_ids     text[] not null default '{}',
+  -- Qui a le droit d'en ouvrir un, et qui en est exclu.
+  required_role_ids    text[] not null default '{}',
+  blocked_role_ids     text[] not null default '{}',
+  channel_name_format  text not null default 'ticket-{option}-{user}',
+  welcome_title        text,
+  welcome_message      text,
+  position             integer not null default 0,
+  max_tickets_per_user integer,
+  enabled              boolean not null default true,
+  unique(panel_id, key)
+);
+
+-- Les tickets ouverts
+create table ticket_tickets (
+  id             uuid primary key default gen_random_uuid(),
+  guild_id       text not null,
+  panel_id       uuid references ticket_panels(id) on delete set null,
+  option_id      uuid references ticket_options(id) on delete set null,
+  channel_id     text not null,
+  ticket_number  integer,
+  requester_id   text not null,
+  requester_name text,
+  status         text not null default 'open'
+                 check (status in ('open','claimed','closed','archived')),
+  claimed_by     text,
+  claimed_at     timestamptz,
+  opened_at      timestamptz not null default now(),
+  closed_at      timestamptz,
+  closed_by      text,
+  close_reason   text,
+  transcript_url text
+);
+
+-- Les questions posees avant l'ouverture, service par service
+create table ticket_questions (
+  id          uuid primary key default gen_random_uuid(),
+  option_id   uuid not null references ticket_options(id) on delete cascade,
+  label       text not null,
+  placeholder text,
+  required    boolean not null default false,
+  input_type  text not null default 'short'
+              check (input_type in ('short','paragraph')),
+  position    integer not null default 0
+);
+
+create table ticket_answers (
+  id          uuid primary key default gen_random_uuid(),
+  ticket_id   uuid not null references ticket_tickets(id) on delete cascade,
+  question_id uuid references ticket_questions(id) on delete set null,
+  label       text not null,     -- recopie : la question peut etre modifiee ensuite
+  answer      text
+);
+
+-- Confort
+create table ticket_members (
+  id        uuid primary key default gen_random_uuid(),
+  ticket_id uuid not null references ticket_tickets(id) on delete cascade,
+  user_id   text not null,
+  added_by  text,
+  unique(ticket_id, user_id)
+);
+
+create table ticket_logs (
+  id        uuid primary key default gen_random_uuid(),
+  ticket_id uuid references ticket_tickets(id) on delete set null,
+  action    text not null,
+  actor_id  text,
+  details   jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table ticket_blacklist (
+  id       uuid primary key default gen_random_uuid(),
+  guild_id text not null,
+  user_id  text not null,
+  reason   text,
+  unique(guild_id, user_id)
+);
+
+create index ticket_tickets_requester_idx
+  on ticket_tickets (guild_id, requester_id, status);
+```
+
+**`ticket_answers.label` recopie l'intitule de la question**, il ne se
+contente pas d'y renvoyer. Une question modifiee six mois plus tard
+rendrait sinon illisibles toutes les reponses passees.
+
+---
+
+## B5. Les boutons
+
+| `custom_id` | Ce qui se passe |
+|---|---|
+| `ticket_open_select` | le menu du panneau |
+| `ticket_claim\|id` | quelqu'un prend le ticket en charge |
+| `ticket_close\|id` | demande la fermeture |
+| `ticket_confirm_close\|id` | confirme |
+| `ticket_reopen\|id` | rouvre |
+
+**La fermeture se fait en deux temps.** Un seul bouton, et des tickets se
+ferment par erreur de clic - avec la conversation qui disparait pour le
+demandeur.
+
+---
+
+## B6. Les pieges
+
+**Discord plafonne une categorie a 50 salons.** Au-dela, la creation
+echoue. D'ou `overflow_category_id` : une seconde categorie de repli. Sans
+elle, le systeme s'arrete net un jour de forte activite, et le message
+d'erreur ne dit pas pourquoi.
+
+**Le nombre de tickets par personne doit etre plafonne.** Sans
+`max_tickets_per_user`, une seule personne peut ouvrir cinquante salons
+en une minute.
+
+**Le `custom_id` est plafonne a 100 caracteres**, comme pour la
+pointeuse. Un depassement echoue en silence.
+
+**Un service peut etre ferme temporairement** sans etre retire du menu :
+c'est `enabled`, ou le champ `unavailable` chez nous. L'entree reste
+visible mais repond « pas disponible ». Retirer l'entree fait croire que
+le service n'existe pas.
+
+**Le salon survit a la base.** Si vous supprimez une ligne
+`ticket_tickets`, le salon Discord reste. Toujours fermer le ticket par
+le bot, jamais en supprimant la ligne.
+
+---
+
+## B7. L'ordre de construction
+
+1. Les tables `ticket_panels`, `ticket_options`, `ticket_tickets`.
+2. Le panneau et son menu deroulant.
+3. La creation du salon avec ses permissions - **verifier avec un compte
+   sans role que le salon est bien invisible**.
+4. Le message d'accueil et la mention du service.
+5. La prise en charge.
+6. La fermeture en deux temps, puis la reouverture.
+7. Les questions et reponses, si vous les voulez.
+8. Le journal, la liste noire, les membres ajoutes.
+
+**Le point 3 est le seul qui puisse causer un vrai dommage.** Le tester
+avec un compte de passage avant d'ouvrir le systeme, pas apres.
+
+---
+
+## B8. Comment verifier que c'est bon
+
+1. Un compte **sans aucun role** ne voit pas le salon cree.
+2. Le demandeur le voit et peut y ecrire.
+3. Un membre du service concerne le voit.
+4. Un membre d'un **autre** service ne le voit pas.
+5. Ouvrir deux tickets d'affilee : le second est refuse si le plafond
+   vaut 1.
+6. Fermeture : la confirmation est bien demandee.
+7. Reouverture : le demandeur retrouve l'acces.
+
+Le cas 4 est celui qu'on oublie de tester, et c'est le seul qui expose
+une conversation a qui ne devrait pas la lire.
